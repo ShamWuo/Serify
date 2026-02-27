@@ -1,0 +1,6 @@
+.next/types/validator.ts(82,39): error TS2307: Cannot find module '../../pages/history.js' or its corresponding type declarations.
+.next/types/validator.ts(136,39): error TS2307: Cannot find module '../../pages/profile.js' or its corresponding type declarations.
+lib/supabase-server.ts(20,9): error TS2353: Object literal may only specify known properties, and 'cookies' does not exist in type 'SupabaseClientOptions<"public">'.
+lib/supabase-server.ts(22,36): error TS2339: Property 'get' does not exist on type 'Promise<ReadonlyRequestCookies>'.
+lib/supabase-server.ts(26,33): error TS2339: Property 'set' does not exist on type 'Promise<ReadonlyRequestCookies>'.
+lib/supabase-server.ts(35,33): error TS2339: Property 'set' does not exist on type 'Promise<ReadonlyRequestCookies>'.

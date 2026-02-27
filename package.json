@@ -1,0 +1,46 @@
+{
+  "name": "ai-quiz-generator",
+  "version": "1.0.0",
+  "description": "AI-powered quiz generation application",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@polar-sh/nextjs": "^0.9.3",
+    "@stripe/stripe-js": "^8.8.0",
+    "@supabase/supabase-js": "^2.97.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.8.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.16",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.0.0",
+    "date-fns": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.292.0",
+    "micro": "^10.0.1",
+    "next": "^16.1.6",
+    "postcss": "^8.4.31",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "stripe": "^20.3.1",
+    "tailwindcss": "^3.3.5",
+    "typescript": "^5.2.2",
+    "uuid": "^13.0.0",
+    "youtube-transcript": "^1.2.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0",
+    "eslint": "^8.51.0",
+    "eslint-config-next": "^14.0.0"
+  }
+}
