@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -7,12 +7,22 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function Login() {
     const router = useRouter();
-    const { login, loginWithGoogle } = useAuth();
+    const { user, login, loginWithGoogle } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            if (!user.onboardingCompleted) {
+                router.push('/onboarding');
+            } else {
+                router.push('/');
+            }
+        }
+    }, [user, router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,10 +31,9 @@ export default function Login() {
 
         try {
             await login(email, password);
-            router.push('/');
+            // The useEffect will handle the redirect once user state updates
         } catch (err: any) {
             setError(err.message || 'Failed to log in. Please check your credentials.');
-        } finally {
             setIsLoading(false);
         }
     };

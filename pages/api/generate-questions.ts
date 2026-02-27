@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             model: "gemini-2.5-flash",
             generationConfig: {
                 responseMimeType: 'application/json',
-                maxOutputTokens: 1000,
+                maxOutputTokens: 4096,
                 temperature: 0.1
             },
         });

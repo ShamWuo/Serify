@@ -192,3 +192,80 @@ export interface FlowConceptProgress {
     final_mastery_report?: string;
     self_reported_vs_actual?: 'aligned' | 'overconfident' | 'underconfident';
 }
+
+
+export interface CurriculumConcept {
+    id: string;
+    name: string;
+    definition: string;
+    difficulty: 'simple' | 'moderate' | 'complex';
+    estimatedMinutes: number;
+    isPrerequisite: boolean;
+    prerequisiteFor: string[];
+    alreadyInVault: boolean;
+    vaultMasteryState: string | null;
+    whyIncluded: string;
+    misconceptionRisk: 'low' | 'medium' | 'high';
+    orderIndex: number;
+}
+
+export interface CurriculumUnit {
+    unitNumber: number;
+    unitTitle: string;
+    unitSummary: string;
+    concepts: CurriculumConcept[];
+}
+
+export interface Curriculum {
+    id: string;
+    user_id: string;
+    title: string;
+    user_input: string;
+    input_type: 'concept' | 'topic' | 'goal' | 'question';
+    target_description: string;
+    outcomes: string[];
+    scope_note: string | null;
+    units: CurriculumUnit[];
+    concept_count: number;
+    estimated_minutes: number;
+    original_units: CurriculumUnit[];
+    edit_count: number;
+    status: 'active' | 'completed' | 'abandoned';
+    recommended_start_index: number;
+    current_concept_index: number;
+    completed_concept_ids: string[];
+    skipped_concept_ids: string[];
+    started_at: Date | string;
+    last_activity_at: Date | string;
+    completed_at?: Date | string | null;
+    total_sparks_spent: number;
+    created_at: Date | string;
+}
+
+export interface CurriculumConceptProgress {
+    id: string;
+    curriculum_id: string;
+    user_id: string;
+    concept_id: string;
+    concept_name: string;
+    status: 'not_started' | 'in_progress' | 'completed' | 'skipped' | 'needs_revisit';
+    path_taken?: 'full' | 'accelerated_solid' | 'accelerated_developing';
+    flow_session_id?: string;
+    mastery_at_completion?: MasteryState;
+    sparks_spent: number;
+    started_at: Date | string;
+    completed_at?: Date | string | null;
+}
+
+export interface CurriculumFlowContext {
+    curriculumId: string;
+    curriculumTitle: string;
+    allConcepts: CurriculumConcept[];
+    currentConceptIndex: number;
+    completedConceptIds: string[];
+    userVaultContext: {
+        strongConcepts: string[];
+        weakConcepts: string[];
+    };
+    learnerProfile: SessionLearnerProfile;
+}

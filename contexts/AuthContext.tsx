@@ -11,6 +11,7 @@ interface UserProfile {
   plan?: string;
   preferences: { tone: string; questionCount: number };
   onboardingCompleted: boolean;
+  userType?: string;
 }
 
 interface AuthContextType {
@@ -33,7 +34,7 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
     console.log(`AuthContext: Call started for ${userId}`);
     const { data, error: profileError } = await supabase
       .from('profiles')
-      .select('display_name, subscription_tier, preferences, created_at, onboarding_completed')
+      .select('display_name, subscription_tier, preferences, created_at, onboarding_completed, user_type')
       .eq('id', userId)
       .single();
     console.log(`AuthContext: Call completed for ${userId}. Data exist: ${!!data}, Error: ${profileError?.message || 'none'}`);
@@ -95,6 +96,7 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
     plan: profile.subscription_tier ?? 'free',
     preferences: profile.preferences ?? { tone: 'supportive', questionCount: 6 },
     onboardingCompleted: profile.onboarding_completed ?? false,
+    userType: profile.user_type ?? undefined,
   };
 }
 
@@ -324,7 +326,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ onboarding_completed: true })
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_at: new Date().toISOString()
+        })
         .eq('id', user.id);
 
       if (updateError) {

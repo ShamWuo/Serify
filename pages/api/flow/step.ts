@@ -69,8 +69,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             nextStepType = 'orient';
             content = plan.orient;
         } else if (lastStep.step_type === 'orient') {
-            nextStepType = 'build_layer';
-            content = plan.build?.layers?.[0] || { text: "Details loaded.", layerType: "plain_language" };
+            if (plan.build?.layers && plan.build.layers.length > 0) {
+                nextStepType = 'build_layer';
+                content = plan.build.layers[0];
+            } else {
+                // Skip build layers and anchor if accelerated path
+                nextStepType = 'check';
+                content = plan.checks?.[0] || { questionText: "How would you summarize this?", checkType: "recall" };
+            }
         } else if (lastStep.step_type === 'build_layer') {
             const currentLayerNum = lastStep.content.layerNumber || 1;
             const nextLayer = plan.build?.layers?.find((l: any) => l.layerNumber > currentLayerNum);
@@ -168,6 +174,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (nextStepType === 'completed') {
+            if (sessionData.source_type === 'curriculum' && sessionData.source_id) {
+                const curriculumId = sessionData.source_id;
+
+                const { data: curr } = await supabaseAdmin.from('curricula').select('*').eq('id', curriculumId).single();
+                if (curr) {
+                    const completed = curr.completed_concept_ids || [];
+                    if (!completed.includes(conceptId)) {
+                        completed.push(conceptId);
+
+                        await supabaseAdmin.from('curricula').update({
+                            completed_concept_ids: completed,
+                            current_concept_index: completed.length,
+                            status: completed.length >= curr.concept_count ? 'completed' : 'active',
+                            last_activity_at: new Date().toISOString()
+                        }).eq('id', curriculumId);
+
+                        // We also need to update curriculum_concept_progress
+                        // Note: conceptId here maps to the concept's specific ID inside the curriculum
+                        await supabaseAdmin.from('curriculum_concept_progress')
+                            .update({
+                                status: 'completed',
+                                completed_at: new Date().toISOString()
+                            })
+                            .eq('curriculum_id', curriculumId)
+                            .eq('concept_path_id', conceptId);
+                    }
+                }
+            }
+
             return res.status(200).json({
                 action: 'concept_complete',
                 totalSparksSpent: sessionData.total_sparks_spent,

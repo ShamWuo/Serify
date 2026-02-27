@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { sparkAdminClient } from '@/lib/sparks';
+import { getSparkAdminClient } from '@/lib/sparks';
 
 const PLAN_SPARK_ALLOWANCE: Record<string, number> = {
     free: 20,
@@ -14,10 +14,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
+        const sparkAdminClient = getSparkAdminClient();
         const { data: balances, error: fetchError } = await sparkAdminClient
             .from('spark_balances')
             .select('user_id, subscription_sparks, updated_at');

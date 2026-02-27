@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { sparkAdminClient } from '@/lib/sparks';
+import { getSparkAdminClient } from '@/lib/sparks';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const cronSecret = req.headers['x-cron-secret'];
@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-
+        const sparkAdminClient = getSparkAdminClient();
         const { data: expiredPurchases, error: fetchError } = await sparkAdminClient
             .from('spark_purchases')
             .select('*')

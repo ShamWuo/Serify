@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Pause, X, CheckCircle2, Circle } from 'lucide-react';
+import { Pause, X, CheckCircle2, Circle, Zap } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
@@ -55,7 +55,45 @@ export default function ActiveSession() {
 
     const [skippingId, setSkippingId] = useState<string | null>(null);
 
+    const [isFirstSession, setIsFirstSession] = useState(false);
+    const [showGuidance1, setShowGuidance1] = useState(false);
+    const [showGuidance2, setShowGuidance2] = useState(false);
+    const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
     const analysisPromises = useRef<Promise<any>[]>([]);
+
+    useEffect(() => {
+        const history = storage.getHistory();
+        if (history.length <= 1) { // It could be 1, or 0 if somehow not saved yet
+            setIsFirstSession(true);
+            const dismissed = localStorage.getItem('serify_guidance_dismissed');
+            if (!dismissed) {
+                setShowGuidance1(true);
+            }
+        }
+    }, []);
+
+    const dismissGuidance1 = async () => {
+        setShowGuidance1(false);
+        localStorage.setItem('serify_guidance_dismissed', 'true');
+        if (user) {
+            await supabase.from('profiles').update({ guidance_answer_dismissed: true }).eq('id', user.id);
+        }
+    };
+
+    useEffect(() => {
+        if (isFirstSession && currentIndex === 0 && !isAnalyzing && answer.length < 10) {
+            guidanceTimerRef.current = setTimeout(() => {
+                setShowGuidance2(true);
+            }, 90000); // 90 seconds
+        } else {
+            if (guidanceTimerRef.current) clearTimeout(guidanceTimerRef.current);
+            setShowGuidance2(false);
+        }
+        return () => {
+            if (guidanceTimerRef.current) clearTimeout(guidanceTimerRef.current);
+        };
+    }, [isFirstSession, currentIndex, answer, isAnalyzing]);
 
     const handlePause = async () => {
         setIsAnalyzing(true);
@@ -113,8 +151,10 @@ export default function ActiveSession() {
         }
     }, [currentIndex, assessments, sessionData]);
 
-    const loadingMessages = [
-        "Reading your answers...",
+    const loadingMessages = isFirstSession ? [
+        "Reading your answers carefully..."
+    ] : [
+        "Analyzing your responses...",
         "Mapping your understanding...",
         "Identifying gaps...",
         "Building your feedback report..."
@@ -294,8 +334,13 @@ export default function ActiveSession() {
                 <Head><title>Analyzing | Serify</title></Head>
                 <div className="text-center animate-fade-in flex flex-col items-center px-4">
                     <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin mb-6"></div>
-                    <p className="text-xl font-medium animate-pulse">{loadingMessages[loadingMsgIdx]}</p>
-                    {remainingConceptsCount > 0 && (
+                    <p className="text-xl font-medium animate-pulse mb-2">{loadingMessages[loadingMsgIdx]}</p>
+                    {isFirstSession && (
+                        <p className="text-lg text-[var(--accent)] font-medium animate-fade-in" style={{ animationDelay: '1.5s', animationFillMode: 'both' }}>
+                            This is where Serify earns it.
+                        </p>
+                    )}
+                    {remainingConceptsCount > 0 && !isFirstSession && (
                         <p className="text-sm text-[var(--muted)] mt-6 max-w-sm animate-fade-in" style={{ animationDelay: '2s', animationFillMode: 'both' }}>
                             We focused on {questions.length} core concepts. <br />
                             The remaining {remainingConceptsCount} concepts are being saved to your Vault for future practice.
@@ -361,6 +406,18 @@ export default function ActiveSession() {
 
                 <div className="flex-1 flex flex-col justify-center max-w-3xl mx-auto w-full px-6 py-24">
                     <div className="animate-slide-up" key={currentQuestion.id || currentIndex}>
+                        {isFirstSession && currentIndex === 0 && showGuidance1 && (
+                            <div className="mb-8 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm relative animate-fade-in group transition-all">
+                                <button onClick={dismissGuidance1} className="absolute top-4 right-4 text-[var(--muted)] hover:text-[var(--text)] transition-colors"><X size={18} /></button>
+                                <div className="flex items-center gap-2 text-sm font-bold text-[var(--accent)] mb-3">
+                                    <Zap size={16} /> Answer in your own words
+                                </div>
+                                <p className="text-[var(--text)] text-sm leading-relaxed max-w-[90%]">
+                                    There&apos;s no right or wrong format. Write as much or as little as you naturally would. The quality of your feedback depends on the quality of your answer.
+                                </p>
+                            </div>
+                        )}
+
                         <div className={`inline-flex items-center px-3 py-1 rounded text-[11px] font-bold uppercase tracking-wider mb-6 ${getTypeColor(currentQuestion.type)}`}>
                             {currentQuestion.type}
                         </div>
@@ -399,6 +456,12 @@ export default function ActiveSession() {
                                 placeholder="Write your answer here — use your own words."
                                 className="w-full min-h-[160px] p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-lg outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 transition-all resize-y shadow-sm disabled:opacity-50"
                             />
+
+                            {showGuidance2 && currentIndex === 0 && answer.length < 10 && skippingId !== currentQuestion.id && (
+                                <div className="text-sm text-[var(--muted)] mt-3 animate-fade-in font-medium italic mb-2">
+                                    Even a partial answer helps. Write what you know.
+                                </div>
+                            )}
 
                             {skippingId === currentQuestion.id ? (
                                 <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 animate-fade-in flex flex-col md:flex-row md:items-center justify-between gap-4">

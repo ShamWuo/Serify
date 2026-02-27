@@ -127,6 +127,7 @@ export async function deductSparks(
 export const SPARK_COSTS = {
 
     SESSION_INGESTION: 2,
+    CURRICULUM_GENERATION: 2,
     QUESTION_GENERATION: 1,
     SESSION_ANSWER_ANALYSIS: 1,
     BASIC_FEEDBACK_REPORT: 1,

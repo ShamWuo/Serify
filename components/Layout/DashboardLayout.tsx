@@ -9,7 +9,8 @@ import {
     Settings,
     LibraryBig,
     LogOut,
-    ChevronUp
+    ChevronUp,
+    Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SparkBalance from '@/components/sparks/SparkBalance';
@@ -28,9 +29,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         setIsProfileOpen(false);
     }, [router.asPath]);
 
-
     useEffect(() => {
         if (!user) return;
+
+        // Prevent non-onboarded users from accessing dashboard pages
+        if (
+            user.onboardingCompleted === false &&
+            !router.pathname.startsWith('/onboarding')
+        ) {
+            router.push('/onboarding');
+        }
+
         import('@/lib/supabase').then(({ supabase }) => {
             supabase.auth.getSession().then(({ data: { session } }) => {
                 const token = session?.access_token;
@@ -41,7 +50,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     .catch(() => { });
             });
         });
-    }, [user]);
+    }, [user, router]);
 
     const handleLogout = () => {
         logout();
@@ -51,6 +60,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const navItems = [
         { href: '/', label: 'Home', icon: <Home size={20} /> },
         { href: '/analyze', label: 'New Session', icon: <PlusCircle size={20} /> },
+        { href: '/learn', label: '✦ Learn', icon: <Sparkles size={20} className="text-[var(--accent)]" /> },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
         { href: '/flow', label: 'Flow Mode', icon: <LibraryBig size={20} className="text-purple-500" /> },
         { href: '/vault', label: 'Concept Vault', icon: <Archive size={20} />, badge: vaultNeedsWork > 0 ? vaultNeedsWork : undefined },

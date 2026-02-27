@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             model: "gemini-2.5-flash",
             generationConfig: {
                 responseMimeType: 'application/json',
-                maxOutputTokens: 1000,
+                maxOutputTokens: 8192,
                 temperature: 0.1
             },
         });
@@ -83,11 +83,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } catch (parseError) {
             console.error('Parse Error from Gemini for Process Content:', responseText);
+            console.error('Actual Error:', parseError);
             let errorMessage = 'Failed to process content. The AI service might be busy or the content format is unsupported.';
             if (contentType === 'youtube' || contentType === 'article') {
                 errorMessage = "Failed to extract content from the provided URL. Please ensure it's a valid, accessible link or try pasting the text/transcript directly.";
             }
-            return res.status(400).json({ message: errorMessage });
+            return res.status(400).json({ message: errorMessage, details: process.env.NODE_ENV === 'development' ? responseText : undefined });
         }
 
         await deductSparks(user, sparkCost, 'session_ingestion');

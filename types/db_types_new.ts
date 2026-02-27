@@ -7,7 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
-
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -161,7 +162,7 @@ export type Database = {
           concept_count?: number | null
           created_at?: string | null
           dominant_mastery?: string | null
-          id?: string
+          id: string
           last_updated_at?: string | null
           name: string
           user_id?: string | null
@@ -402,6 +403,184 @@ export type Database = {
           },
         ]
       }
+      flow_concept_progress: {
+        Row: {
+          completed_at: string | null
+          concept_id: string | null
+          final_mastery_report: string | null
+          flow_session_id: string | null
+          id: string
+          orchestrator_plan: Json | null
+          redirected_away: boolean | null
+          self_reported_vs_actual: string | null
+          started_at: string | null
+          status: string | null
+          step_count: number | null
+          strong_signals: number | null
+          user_id: string | null
+          weak_signals: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          concept_id?: string | null
+          final_mastery_report?: string | null
+          flow_session_id?: string | null
+          id: string
+          orchestrator_plan?: Json | null
+          redirected_away?: boolean | null
+          self_reported_vs_actual?: string | null
+          started_at?: string | null
+          status?: string | null
+          step_count?: number | null
+          strong_signals?: number | null
+          user_id?: string | null
+          weak_signals?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          concept_id?: string | null
+          final_mastery_report?: string | null
+          flow_session_id?: string | null
+          id?: string
+          orchestrator_plan?: Json | null
+          redirected_away?: boolean | null
+          self_reported_vs_actual?: string | null
+          started_at?: string | null
+          status?: string | null
+          step_count?: number | null
+          strong_signals?: number | null
+          user_id?: string | null
+          weak_signals?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_concept_progress_flow_session_id_fkey"
+            columns: ["flow_session_id"]
+            isOneToOne: false
+            referencedRelation: "flow_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flow_sessions: {
+        Row: {
+          completed_at: string | null
+          concepts_completed: string[] | null
+          concepts_in_progress: string[] | null
+          created_at: string | null
+          current_concept_id: string | null
+          id: string
+          initial_plan: Json
+          is_public: boolean | null
+          last_activity_at: string | null
+          learner_profile: Json | null
+          source_concept_id: string | null
+          source_session_id: string | null
+          source_type: string | null
+          started_at: string | null
+          status: string | null
+          total_sparks_spent: number | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          concepts_completed?: string[] | null
+          concepts_in_progress?: string[] | null
+          created_at?: string | null
+          current_concept_id?: string | null
+          id: string
+          initial_plan?: Json
+          is_public?: boolean | null
+          last_activity_at?: string | null
+          learner_profile?: Json | null
+          source_concept_id?: string | null
+          source_session_id?: string | null
+          source_type?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_sparks_spent?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          concepts_completed?: string[] | null
+          concepts_in_progress?: string[] | null
+          created_at?: string | null
+          current_concept_id?: string | null
+          id?: string
+          initial_plan?: Json
+          is_public?: boolean | null
+          last_activity_at?: string | null
+          learner_profile?: Json | null
+          source_concept_id?: string | null
+          source_session_id?: string | null
+          source_type?: string | null
+          started_at?: string | null
+          status?: string | null
+          total_sparks_spent?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      flow_steps: {
+        Row: {
+          ai_reasoning: string | null
+          concept_id: string | null
+          content: Json
+          created_at: string | null
+          evaluation: Json | null
+          flow_session_id: string | null
+          id: string
+          responded_at: string | null
+          response_type: string | null
+          spark_cost: number | null
+          step_number: number
+          step_type: string
+          user_id: string | null
+          user_response: string | null
+        }
+        Insert: {
+          ai_reasoning?: string | null
+          concept_id?: string | null
+          content?: Json
+          created_at?: string | null
+          evaluation?: Json | null
+          flow_session_id?: string | null
+          id: string
+          responded_at?: string | null
+          response_type?: string | null
+          spark_cost?: number | null
+          step_number: number
+          step_type: string
+          user_id?: string | null
+          user_response?: string | null
+        }
+        Update: {
+          ai_reasoning?: string | null
+          concept_id?: string | null
+          content?: Json
+          created_at?: string | null
+          evaluation?: Json | null
+          flow_session_id?: string | null
+          id?: string
+          responded_at?: string | null
+          response_type?: string | null
+          spark_cost?: number | null
+          step_number?: number
+          step_type?: string
+          user_id?: string | null
+          user_response?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_steps_flow_session_id_fkey"
+            columns: ["flow_session_id"]
+            isOneToOne: false
+            referencedRelation: "flow_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_nodes: {
         Row: {
           canonical_name: string
@@ -432,7 +611,7 @@ export type Database = {
           display_name: string
           first_seen_at?: string | null
           hint_request_count?: number | null
-          id?: string
+          id: string
           last_seen_at?: string | null
           mastery_history?: Json
           session_count?: number | null
@@ -538,26 +717,56 @@ export type Database = {
         Row: {
           created_at: string | null
           display_name: string
+          email_verification_sent_at: string | null
+          email_verification_token: string | null
+          email_verified: boolean | null
+          guidance_answer_dismissed: boolean | null
           id: string
+          learning_context: string | null
           onboarding_completed: boolean | null
+          onboarding_completed_at: string | null
           preferences: Json | null
+          reminder_declined: boolean | null
+          reminder_frequency: string | null
+          stripe_customer_id: string | null
           subscription_tier: string | null
+          user_type: string | null
         }
         Insert: {
           created_at?: string | null
           display_name: string
+          email_verification_sent_at?: string | null
+          email_verification_token?: string | null
+          email_verified?: boolean | null
+          guidance_answer_dismissed?: boolean | null
           id: string
+          learning_context?: string | null
           onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
           preferences?: Json | null
+          reminder_declined?: boolean | null
+          reminder_frequency?: string | null
+          stripe_customer_id?: string | null
           subscription_tier?: string | null
+          user_type?: string | null
         }
         Update: {
           created_at?: string | null
           display_name?: string
+          email_verification_sent_at?: string | null
+          email_verification_token?: string | null
+          email_verified?: boolean | null
+          guidance_answer_dismissed?: boolean | null
           id?: string
+          learning_context?: string | null
           onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
           preferences?: Json | null
+          reminder_declined?: boolean | null
+          reminder_frequency?: string | null
+          stripe_customer_id?: string | null
           subscription_tier?: string | null
+          user_type?: string | null
         }
         Relationships: []
       }
@@ -569,6 +778,7 @@ export type Database = {
           depth_score: number | null
           difficulty: string | null
           id: string
+          is_public: boolean | null
           status: string | null
           title: string
           user_id: string
@@ -580,6 +790,7 @@ export type Database = {
           depth_score?: number | null
           difficulty?: string | null
           id?: string
+          is_public?: boolean | null
           status?: string | null
           title: string
           user_id: string
@@ -591,6 +802,7 @@ export type Database = {
           depth_score?: number | null
           difficulty?: string | null
           id?: string
+          is_public?: boolean | null
           status?: string | null
           title?: string
           user_id?: string
@@ -604,6 +816,191 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      spark_balances: {
+        Row: {
+          subscription_sparks: number | null
+          topup_sparks: number | null
+          total_sparks: number | null
+          trial_sparks: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          subscription_sparks?: number | null
+          topup_sparks?: number | null
+          total_sparks?: number | null
+          trial_sparks?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          subscription_sparks?: number | null
+          topup_sparks?: number | null
+          total_sparks?: number | null
+          trial_sparks?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spark_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spark_grants: {
+        Row: {
+          expires_at: string | null
+          granted_at: string | null
+          id: string
+          reason: string | null
+          sparks_granted: number | null
+          sparks_remaining: number | null
+          user_id: string | null
+        }
+        Insert: {
+          expires_at?: string | null
+          granted_at?: string | null
+          id?: string
+          reason?: string | null
+          sparks_granted?: number | null
+          sparks_remaining?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          expires_at?: string | null
+          granted_at?: string | null
+          id?: string
+          reason?: string | null
+          sparks_granted?: number | null
+          sparks_remaining?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spark_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spark_purchases: {
+        Row: {
+          expires_at: string | null
+          id: string
+          pack_id: string | null
+          price_cents: number | null
+          purchased_at: string | null
+          sparks_granted: number | null
+          sparks_remaining: number | null
+          stripe_payment_intent_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          expires_at?: string | null
+          id?: string
+          pack_id?: string | null
+          price_cents?: number | null
+          purchased_at?: string | null
+          sparks_granted?: number | null
+          sparks_remaining?: number | null
+          stripe_payment_intent_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          expires_at?: string | null
+          id?: string
+          pack_id?: string | null
+          price_cents?: number | null
+          purchased_at?: string | null
+          sparks_granted?: number | null
+          sparks_remaining?: number | null
+          stripe_payment_intent_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spark_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      spark_transactions: {
+        Row: {
+          action: string | null
+          amount: number
+          balance_after: number | null
+          created_at: string | null
+          id: string
+          pool: string
+          reference_id: string | null
+          stripe_payment_intent_id: string | null
+          transaction_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          amount: number
+          balance_after?: number | null
+          created_at?: string | null
+          id?: string
+          pool: string
+          reference_id?: string | null
+          stripe_payment_intent_id?: string | null
+          transaction_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          amount?: number
+          balance_after?: number | null
+          created_at?: string | null
+          id?: string
+          pool?: string
+          reference_id?: string | null
+          stripe_payment_intent_id?: string | null
+          transaction_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spark_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trigger_debug_logs: {
+        Row: {
+          created_at: string | null
+          data: Json | null
+          id: string
+          message: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          message?: string | null
+        }
+        Relationships: []
       }
       tutor_conversations: {
         Row: {
@@ -700,7 +1097,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      add_topup_sparks: {
+        Args: {
+          p_amount: number
+          p_stripe_payment_intent_id: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      deduct_sparks: {
+        Args: {
+          p_action: string
+          p_amount: number
+          p_reference_id?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
@@ -717,116 +1130,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {

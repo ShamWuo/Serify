@@ -106,7 +106,8 @@ RULES YOU MUST FOLLOW:
 - Confirm question must be harder than any check question.
 - If a misconception is flagged, Anchor MUST use Form B (contrast) targeting that misconception.
 - Connection layer (layer 4) must reference a concept from the learner's strong concepts list if provided.
-- Minimum 4 angles available. Each must be genuinely different domain or framing.`
+- Minimum 4 angles available. Each must be genuinely different domain or framing.
+- ACCELERATED PATH: If "Current mastery state" is 'solid' or 'developing', keep the build layers completely empty (0 layers) and skip the anchor. Jump straight from orient to checking their knowledge.`
     });
 
     const promptText = `

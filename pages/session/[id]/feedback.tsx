@@ -9,6 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSparks } from '@/hooks/useSparks';
 import { useSessionMaterials } from '@/hooks/useSessionMaterials';
 import { Zap, RotateCcw } from 'lucide-react';
+import { storage } from '@/lib/storage';
+import { supabase } from '@/lib/supabase';
 
 export default function FeedbackReport() {
     const router = useRouter();
@@ -36,6 +38,34 @@ export default function FeedbackReport() {
         setIsRegenerateModalOpen(false);
 
         router.push(`/learn/${id}/${regenerateTarget.type}?regenerate=true`);
+    };
+
+    const [showRetentionPrompt, setShowRetentionPrompt] = useState(false);
+    const [reminderFreq, setReminderFreq] = useState('Weekly');
+    const [isSavingReminder, setIsSavingReminder] = useState(false);
+
+    useEffect(() => {
+        // Only show if it's the very first session and reminder not already set/declined
+        if (storage.getHistory().length === 1 && user) {
+            supabase.from('profiles').select('reminder_frequency, reminder_declined').eq('id', user.id).single().then(({ data }) => {
+                if (data && !data.reminder_frequency && !data.reminder_declined) {
+                    setShowRetentionPrompt(true);
+                }
+            });
+        }
+    }, [user]);
+
+    const handleSetReminder = async () => {
+        if (!user) return;
+        setIsSavingReminder(true);
+        await supabase.from('profiles').update({ reminder_frequency: reminderFreq }).eq('id', user.id);
+        setShowRetentionPrompt(false);
+    };
+
+    const handleDeclineReminder = async () => {
+        if (!user) return;
+        await supabase.from('profiles').update({ reminder_declined: true }).eq('id', user.id);
+        setShowRetentionPrompt(false);
     };
 
     useEffect(() => {
@@ -79,6 +109,11 @@ export default function FeedbackReport() {
             <div className="max-w-[900px] mx-auto w-full px-6 md:px-8 py-8 space-y-16 pb-24">
 
                 <header className="space-y-6 pt-4">
+                    {storage.getHistory().length === 1 && (
+                        <p className="text-xs font-medium text-[var(--muted)] mb-2 italic">
+                            This is your first Serify report. Everything here is based on what you actually wrote — not what the content covered.
+                        </p>
+                    )}
                     <div className="flex items-center gap-3 text-[var(--muted)]">
                         <Youtube size={18} className="text-red-500" />
                         <h3 className="font-medium text-sm">{title}</h3>
@@ -331,7 +366,7 @@ export default function FeedbackReport() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {}
+                        { }
                         {(report.overall_counts?.['shaky'] > 0 || report.overall_counts?.['revisit'] > 0) && (
                             <div className={`group p-5 bg-gradient-to-br from-[#7c3aed15] to-[#4f46e510] border border-[#7c3aed55] hover:border-[#7c3aed] rounded-2xl transition-all relative overflow-hidden flex flex-col ${!balance || balance.total_sparks < 1 ? 'opacity-50 pointer-events-none' : ''}`}>
                                 <div className="flex items-start justify-between mb-3 relative z-10">
@@ -609,6 +644,49 @@ export default function FeedbackReport() {
                         )}
                     </div>
                 </section>
+
+                {showRetentionPrompt && (
+                    <section className="mt-12 bg-indigo-50 border border-indigo-200 rounded-2xl p-6 md:p-8 animate-fade-in shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+                        <h2 className="text-xl font-display font-medium text-indigo-950 mb-3 relative z-10">Want to remember to come back?</h2>
+                        <p className="text-indigo-900/80 text-sm leading-relaxed mb-6 max-w-lg relative z-10">
+                            Serify works best with repeated sessions.<br />
+                            Your gaps are saved. Your Concept Vault is live. We can remind you.
+                        </p>
+
+                        <div className="mb-6 relative z-10">
+                            <label className="block text-indigo-900 text-xs font-bold uppercase tracking-wider mb-3">How often?</label>
+                            <div className="flex flex-wrap items-center gap-3">
+                                {['Daily', 'Every other day', 'Weekly'].map(freq => (
+                                    <button
+                                        key={freq}
+                                        onClick={() => setReminderFreq(freq)}
+                                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${reminderFreq === freq ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-white text-indigo-600 border border-indigo-200 hover:border-indigo-300'}`}
+                                    >
+                                        {freq}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 relative z-10">
+                            <button
+                                onClick={handleSetReminder}
+                                disabled={isSavingReminder}
+                                className="px-6 py-2.5 bg-indigo-950 text-white rounded-xl text-sm font-medium hover:bg-indigo-900 transition-colors shadow-sm disabled:opacity-70"
+                            >
+                                {isSavingReminder ? 'Saving...' : 'Set reminder \u2192'}
+                            </button>
+                            <button
+                                onClick={handleDeclineReminder}
+                                disabled={isSavingReminder}
+                                className="px-4 py-2 text-sm font-medium text-indigo-900/60 hover:text-indigo-900 transition-colors disabled:opacity-50"
+                            >
+                                Not now
+                            </button>
+                        </div>
+                    </section>
+                )}
 
                 <section className="pt-8 border-t border-[var(--border)] flex items-center justify-between">
                     <div className="text-[var(--muted)] text-sm font-medium">Share your results</div>

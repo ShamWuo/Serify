@@ -99,7 +99,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
 
     return (
         <div className="flex flex-col h-full overflow-y-auto">
-            {}
+            { }
             <div className="sticky top-0 bg-[var(--surface)] z-10 px-6 pt-6 pb-4 border-b border-[var(--border)]">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -119,14 +119,14 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
             </div>
 
             <div className="flex-1 px-6 py-5 space-y-7">
-                {}
+                { }
                 {node.definition && (
                     <div>
                         <p className="text-sm text-[var(--text)] leading-relaxed">{node.definition}</p>
                     </div>
                 )}
 
-                {}
+                { }
                 {history.length > 0 && (
                     <div>
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">Mastery Timeline</h3>
@@ -156,7 +156,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 )}
 
-                {}
+                { }
                 {node.synthesis ? (
                     <div>
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">Synthesized Understanding</h3>
@@ -190,7 +190,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 ) : null}
 
-                {}
+                { }
                 {sessions.length > 0 && (
                     <div>
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">Sessions Covering This</h3>
@@ -217,12 +217,28 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 )}
 
-                {}
+                { }
                 <div>
                     <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">Study This Concept</h3>
                     <p className="text-[11px] text-[var(--muted)] mb-3">Launch a learning mode focused specifically on this concept.</p>
 
-                    {}
+                    <Link
+                        href={`/learn?q=${encodeURIComponent(node.display_name || node.canonical_name || '')}`}
+                        className="flex items-center justify-between gap-3 p-3 mb-3 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 rounded-xl transition-colors shadow-sm group"
+                    >
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                                <BookOpen size={15} />
+                            </div>
+                            <div>
+                                <span className="text-[13px] font-bold block text-amber-200 group-hover:text-amber-300 transition-colors">✦ Learn This Concept</span>
+                                <span className="text-[10px] opacity-80">Build a curriculum around this</span>
+                            </div>
+                        </div>
+                        <ArrowRight size={14} className="opacity-70 group-hover:opacity-100 transition-opacity" />
+                    </Link>
+
+                    { }
                     {(node.current_mastery === 'shaky' || node.current_mastery === 'revisit' || node.current_mastery === 'developing') && (
                         <Link
                             href={`/flow?focus=${node.id}`}
@@ -263,7 +279,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 </div>
 
-                {}
+                { }
                 {(node.hint_request_count > 0 || node.skip_count > 0) && (
                     <div className="border-t border-[var(--border)] pt-5">
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">History</h3>
@@ -399,11 +415,11 @@ export default function VaultPage() {
             </Head>
 
             <div className="relative flex h-full">
-                {}
+                { }
                 <div className={`flex-1 min-w-0 transition-all duration-300 ${selectedNodeId ? 'mr-[420px]' : ''}`}>
                     <div className="max-w-[860px] mx-auto px-6 py-8">
 
-                        {}
+                        { }
                         <div className="flex items-start justify-between gap-4 mb-6">
                             <div>
                                 <h1 className="text-3xl font-display text-[var(--text)]">Concept Vault</h1>
@@ -421,7 +437,7 @@ export default function VaultPage() {
                             </div>
                         </div>
 
-                        {}
+                        { }
                         {hasAnyConcepts && (
                             <div className="flex flex-wrap items-center gap-4 mb-5 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl">
                                 {(['solid', 'developing', 'shaky', 'revisit'] as MasteryState[]).map(state => (
@@ -437,7 +453,7 @@ export default function VaultPage() {
                             </div>
                         )}
 
-                        {}
+                        { }
                         <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
                             <div className="flex items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1">
                                 {([['all', 'All'], ['needs_work', 'Needs Work'], ['solid', 'Solid']] as [Tab, string][]).map(([t, label]) => (
@@ -480,7 +496,7 @@ export default function VaultPage() {
                             </div>
                         </div>
 
-                        {}
+                        { }
                         {loading && (
                             <div className="space-y-3">
                                 {[...Array(4)].map((_, i) => (
@@ -489,7 +505,7 @@ export default function VaultPage() {
                             </div>
                         )}
 
-                        {}
+                        { }
                         {(!loading && !hasAnyConcepts) && (
                             <div className="flex flex-col items-center justify-center py-24 text-center">
                                 <div className="w-20 h-20 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center mb-6 shadow-sm">
@@ -544,7 +560,7 @@ export default function VaultPage() {
                             </div>
                         )}
 
-                        {}
+                        { }
                         {!loading && filteredNodes.length > 0 && (
                             viewMode === 'flat' ? (
 
@@ -587,7 +603,7 @@ export default function VaultPage() {
                                         );
                                     })}
 
-                                    {}
+                                    { }
                                     {uncategorized.length > 0 && (
                                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
                                             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-2">
@@ -608,7 +624,7 @@ export default function VaultPage() {
                     </div>
                 </div>
 
-                {}
+                { }
                 {selectedNodeId && (
                     <div className="fixed right-0 top-0 md:top-auto md:bottom-0 w-full md:w-[420px] bg-[var(--surface)] border-l border-[var(--border)] shadow-2xl z-50 md:h-screen overflow-hidden flex flex-col">
                         <DetailPanel nodeId={selectedNodeId} onClose={() => setSelectedNodeId(null)} />

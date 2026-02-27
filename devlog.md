@@ -1,42 +1,38 @@
-# Serify Development Log
-
-## Project Vision
-Serify is a context-aware learning reflection engine designed to move beyond simple testing. It uses AI to analyze conceptual depth, identify misconceptions, and map knowledge gaps in real-time.
+# 📓 Serify Devlog
 
 ---
 
-## Core Features Implemented
+## Feb 26, 2026 — The Great Bug Slaughter
 
-### 1. AI-Powered Diagnostic Engine
-- **Content Processing**: Extracts hierarchical concept maps from raw text, YouTube URLs, or PDFs using Gemini 2.5 Pro.
-- **Dynamic Question Generation**: Creates retrieval, application, and misconception-probe questions tailored to the extracted concepts.
-- **Real-time Answer Analysis**: Analyzes student responses for factual accuracy and conceptual depth without blocking the user flow.
-- **Feedback Synthesis**: Generates a comprehensive report including a summary of grasp, strength maps, and actionable focus suggestions.
+We sat down with a list of 21 bugs and said "not today."
 
-### 2. Design System & UX
-- **Aesthetic**: Premium, minimal design with high whitespace and a warm editorial feel.
-- **Typography**: `Instrument Serif` for headings and `DM Sans` for body text.
-- **Responsive Layout**: Sidebar-driven dashboard for desktop and a bottom-tab navigation system for mobile.
-- **Contextual Feedback**: Dynamic loading states and background processing for a seamless "diagnostic" experience.
+### What got fixed
 
-### 3. Data & Persistence
-- **Session History**: Persistent tracking of all historical and active sessions in `localStorage`.
-- **Knowledge Gaps**: A centralized summary of identified conceptual gaps rendered on the main dashboard.
-- **Storage Utility**: Centralized `lib/storage.ts` for managing the lifecycle of learning sessions.
+**Critical stuff (the duct-tape was showing):**
+- 🔥 **RLS error exposed to users** — `sessions/init.ts` was using an anonymous Supabase client server-side, which has zero auth context and explodes on insert. Swapped to the service-role admin client. No more raw Postgres errors hitting the UI.
+- ⚡ **Sparks deducted on failed sessions** — Same root cause. Once the RLS failure was plugged, there's no longer a window where AI runs, Sparks get eaten, and nothing saves.
+- 🔘 **Non-interactive settings buttons** — "Export Session Data" and "Delete Account" were glorified `<div>`s. They're real buttons now. Delete even has a two-step "type DELETE to confirm" modal because we're not animals.
+- 🔑 **Change Password did nothing** — Now triggers a Supabase reset email.
+
+**Major stuff (the annoyances):**
+- Pricing page now shows **"✓ Current Plan"** if you're already Pro — no more accidentally re-buying your own plan.
+- Teams **"Contact Us"** was a `window.alert`. It's a `mailto:` link now. Basic.
+- SparkBalance panel and the user dropdown were fighting for z-index supremacy. Fixed: opening one closes the other.
+- User dropdown now closes on **click-outside** and **Escape**. Revolutionary.
+- AI Tutor toggle subtitle was hardcoded. Now it's live state.
+- Stale localStorage sessions validated against the DB on home load — no more ghost "IN PROGRESS" banners.
+
+**Minor polish:**
+- Spark history: credits are green ↓, debits are red ↑. Labels show actual action names.
+- Trial Sparks expiry only shows when balance > 0. Zero Sparks, zero drama.
+- Vault "Solid" and "Needs Work" tabs each have their own empty-state copy.
+- `/analyze` subtitle now matches Home.
+
+### Git
+Squashed 2 years of chaos into a single `Initial commit`. Updated `.gitignore` to actually ignore everything it should (env files, Supabase local dev, editor configs, OS junk). Force-pushed to origin.
+
+**Files touched:** `sessions/init.ts`, `settings.tsx`, `pricing.tsx`, `DashboardLayout.tsx`, `SparkBalance.tsx`, `index.tsx`, `analyze.tsx`, `vault.tsx`, `settings/sparks.tsx`
 
 ---
 
-## Technical Architecture
-- **Framework**: Next.js (Pages Router)
-- **AI Backend**: Google Gemini API via `@google/generative-ai`
-- **Styling**: Vanilla CSS with modern CSS variables for theming and Glassmorphism effects.
-- **Icons**: Lucide React
-- **Authentication**: Firebase/Custom integration (ready for bridge to Supabase).
-
----
-
-## Roadmap & Next Steps
-- [ ] **Supabase Integration**: Move from `localStorage` to a robust PostgreSQL backend.
-- [ ] **Knowledge Map Visualization**: Implement the interactive network graph for longitudinal gap analysis.
-- [ ] **PDF Parsing**: Add server-side parsing for complex PDF documents.
-- [ ] **Multi-method learning**: Expand support for Socratic and Feynman-style reflection modes.
+*Build status: ✅ clean. Onwards.*
