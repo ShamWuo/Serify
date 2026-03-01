@@ -18,7 +18,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-
         console.log(`Mock Stripe Checkout initiated for user ${user} and price ${priceId}`);
 
         const mockSuccessUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/sparks?success=true`;

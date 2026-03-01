@@ -51,7 +51,12 @@ export function useSparks() {
             .channel(`public:spark_balances:user_id=eq.${user.id}`)
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'spark_balances', filter: `user_id=eq.${user.id}` },
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'spark_balances',
+                    filter: `user_id=eq.${user.id}`
+                },
                 (payload) => {
                     setBalance(payload.new as SparkBalance);
                 }
@@ -61,7 +66,7 @@ export function useSparks() {
         return () => {
             supabase.removeChannel(subscription);
         };
-    }, [user?.id]);
+    }, [user?.id, isDemo]);
 
     return { balance, loading };
 }

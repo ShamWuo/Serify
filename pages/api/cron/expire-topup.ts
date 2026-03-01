@@ -21,7 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (!expiredPurchases || expiredPurchases.length === 0) {
-            return res.status(200).json({ message: 'No expired top-up sparks to process', processed: 0 });
+            return res
+                .status(200)
+                .json({ message: 'No expired top-up sparks to process', processed: 0 });
         }
 
         let processed = 0;
@@ -50,19 +52,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .update({ sparks_remaining: 0 })
                 .eq('id', purchase.id);
 
-            await sparkAdminClient
-                .from('spark_transactions')
-                .insert({
-                    user_id: purchase.user_id,
-                    amount: -amountToExpire,
-                    pool: 'topup',
-                    transaction_type: 'expiry_forfeiture',
-                    action: 'topup_spark_expiry',
-                    reference_id: purchase.id,
-                    stripe_payment_intent_id: purchase.stripe_payment_intent_id,
-                    balance_after: currentBalance ? Math.max(0, currentBalance.topup_sparks - amountToExpire) : 0,
-                    created_at: new Date().toISOString(),
-                });
+            await sparkAdminClient.from('spark_transactions').insert({
+                user_id: purchase.user_id,
+                amount: -amountToExpire,
+                pool: 'topup',
+                transaction_type: 'expiry_forfeiture',
+                action: 'topup_spark_expiry',
+                reference_id: purchase.id,
+                stripe_payment_intent_id: purchase.stripe_payment_intent_id,
+                balance_after: currentBalance
+                    ? Math.max(0, currentBalance.topup_sparks - amountToExpire)
+                    : 0,
+                created_at: new Date().toISOString()
+            });
 
             if (purchase.price_cents && purchase.sparks_granted > 0) {
                 const breakagePerSpark = purchase.price_cents / purchase.sparks_granted;
@@ -72,11 +74,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             processed++;
         }
 
-        console.log(`Expired top-up sparks: processed ${processed} purchases, breakage revenue: $${(totalBreakageRevenueCents / 100).toFixed(2)}`);
+        console.log(
+            `Expired top-up sparks: processed ${processed} purchases, breakage revenue: $${(totalBreakageRevenueCents / 100).toFixed(2)}`
+        );
         return res.status(200).json({
             message: 'Top-up spark expiry complete',
             processed,
-            breakageRevenueCents: totalBreakageRevenueCents,
+            breakageRevenueCents: totalBreakageRevenueCents
         });
     } catch (error) {
         console.error('Top-up spark expiry job failed:', error);

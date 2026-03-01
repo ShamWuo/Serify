@@ -6,21 +6,43 @@ import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import {
-    Zap, Brain, Loader2, ChevronRight, CheckCircle2,
-    BookOpen, HelpCircle, Target, Route, ShieldAlert, Replace, Send, Layers
+    Zap,
+    Brain,
+    Loader2,
+    ChevronRight,
+    CheckCircle2,
+    BookOpen,
+    HelpCircle,
+    Target,
+    Route,
+    ShieldAlert,
+    Replace,
+    Send,
+    Layers
 } from 'lucide-react';
 import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
 
-// Flow Mode internal components 
-function ProgressBar({ concepts, currentConceptId }: { concepts: any[]; currentConceptId?: string }) {
-    const done = concepts.filter(c => c.status === 'completed').length;
+// Flow Mode internal components
+function ProgressBar({
+    concepts,
+    currentConceptId
+}: {
+    concepts: any[];
+    currentConceptId?: string;
+}) {
+    const done = concepts.filter((c) => c.status === 'completed').length;
     const total = concepts.length;
     return (
         <div className="flex items-center gap-2 mb-2">
             <div className="flex-1 h-1.5 bg-[var(--border)] rounded-full overflow-hidden">
-                <div className="h-full bg-[var(--accent)] rounded-full transition-all duration-500" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+                <div
+                    className="h-full bg-[var(--accent)] rounded-full transition-all duration-500"
+                    style={{ width: `${total ? (done / total) * 100 : 0}%` }}
+                />
             </div>
-            <span className="text-xs text-[var(--muted)] whitespace-nowrap">{done}/{total} concepts</span>
+            <span className="text-xs text-[var(--muted)] whitespace-nowrap">
+                {done}/{total} concepts
+            </span>
         </div>
     );
 }
@@ -32,24 +54,52 @@ function StepIcon({ type }: { type: FlowStepType }) {
         anchor: <BookOpen size={16} />,
         check: <HelpCircle size={16} />,
         reinforce: <Replace size={16} />,
-        confirm: <CheckCircle2 size={16} />,
+        confirm: <CheckCircle2 size={16} />
     };
     return MAP[type] || <Zap size={16} />;
 }
 
-function ActionButton({ label, icon, primary, secondary, onClick, disabled }: { label: string; icon?: JSX.Element; primary?: boolean; secondary?: boolean; onClick: () => void; disabled?: boolean }) {
+function ActionButton({
+    label,
+    icon,
+    primary,
+    secondary,
+    onClick,
+    disabled
+}: {
+    label: string;
+    icon?: JSX.Element;
+    primary?: boolean;
+    secondary?: boolean;
+    onClick: () => void;
+    disabled?: boolean;
+}) {
     const bg = primary ? 'var(--accent)' : secondary ? 'transparent' : 'var(--surface)';
     const border = primary ? 'var(--accent)' : secondary ? 'var(--border)' : 'var(--border)';
     const text = primary ? 'white' : 'var(--text-primary)';
 
     return (
-        <button onClick={onClick} disabled={disabled} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            background: bg, color: text, border: `1.5px solid ${border}`,
-            borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 600,
-            cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1, transition: 'all 0.15s'
-        }}>
-            {icon}{label}
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 7,
+                background: bg,
+                color: text,
+                border: `1.5px solid ${border}`,
+                borderRadius: 10,
+                padding: '9px 18px',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.6 : 1,
+                transition: 'all 0.15s'
+            }}
+        >
+            {icon}
+            {label}
         </button>
     );
 }
@@ -64,7 +114,12 @@ function OrientStep({ content, onNext }: { content: any; onNext: (response: stri
                 <ReactMarkdown>{content.text}</ReactMarkdown>
             </div>
             <div className="flex mt-5">
-                <ActionButton label="Got it" icon={<ChevronRight size={16} />} primary onClick={() => onNext('got_it')} />
+                <ActionButton
+                    label="Got it"
+                    icon={<ChevronRight size={16} />}
+                    primary
+                    onClick={() => onNext('got_it')}
+                />
             </div>
         </div>
     );
@@ -75,10 +130,13 @@ function BuildLayerStep({ content, onNext }: { content: any; onNext: (response: 
     const isExample = content.layerType === 'example';
     const isConnection = content.layerType === 'connection';
 
-    let containerClass = "mb-4 flow-markdown";
-    if (isMechanism) containerClass += " font-mono bg-[var(--surface-2,var(--surface))] p-4 rounded-xl border border-[var(--border)]";
-    if (isExample) containerClass += " bg-[var(--accent)]/5 border border-[var(--accent)]/20 p-5 rounded-xl";
-    if (isConnection) containerClass += " border-l-4 border-[var(--accent)] pl-4";
+    let containerClass = 'mb-4 flow-markdown';
+    if (isMechanism)
+        containerClass +=
+            ' font-mono bg-[var(--surface-2,var(--surface))] p-4 rounded-xl border border-[var(--border)]';
+    if (isExample)
+        containerClass += ' bg-[var(--accent)]/5 border border-[var(--accent)]/20 p-5 rounded-xl';
+    if (isConnection) containerClass += ' border-l-4 border-[var(--accent)] pl-4';
 
     return (
         <div>
@@ -88,7 +146,12 @@ function BuildLayerStep({ content, onNext }: { content: any; onNext: (response: 
                 </div>
             </div>
             <div className="flex mt-5">
-                <ActionButton label="Continue" icon={<ChevronRight size={16} />} primary onClick={() => onNext('continue')} />
+                <ActionButton
+                    label="Continue"
+                    icon={<ChevronRight size={16} />}
+                    primary
+                    onClick={() => onNext('continue')}
+                />
             </div>
         </div>
     );
@@ -102,13 +165,27 @@ function AnchorStep({ content, onNext }: { content: any; onNext: (response: stri
             </div>
             <div className="flex gap-2.5 mt-6">
                 <ActionButton label="Makes sense" primary onClick={() => onNext('makes_sense')} />
-                <ActionButton label="That doesn't help" secondary onClick={() => onNext('needs_work')} />
+                <ActionButton
+                    label="That doesn't help"
+                    secondary
+                    onClick={() => onNext('needs_work')}
+                />
             </div>
         </div>
     );
 }
 
-function CheckQuestionStep({ content, stepId, isEvaluated, onEvaluated }: { content: any; stepId: string; isEvaluated: boolean; onEvaluated: (response: string, evaluation: any) => void }) {
+function CheckQuestionStep({
+    content,
+    stepId,
+    isEvaluated,
+    onEvaluated
+}: {
+    content: any;
+    stepId: string;
+    isEvaluated: boolean;
+    onEvaluated: (response: string, evaluation: any) => void;
+}) {
     const [answer, setAnswer] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
@@ -116,15 +193,22 @@ function CheckQuestionStep({ content, stepId, isEvaluated, onEvaluated }: { cont
         if (!answer.trim() || submitting) return;
         setSubmitting(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const {
+                data: { session }
+            } = await supabase.auth.getSession();
             const res = await fetch('/api/flow/evaluate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-                body: JSON.stringify({ stepId, userResponse: answer }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({ stepId, userResponse: answer })
             });
             const data = await res.json();
             onEvaluated(answer, data.evaluation);
-        } finally { setSubmitting(false); }
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -134,8 +218,10 @@ function CheckQuestionStep({ content, stepId, isEvaluated, onEvaluated }: { cont
             </div>
             <textarea
                 value={answer}
-                onChange={e => setAnswer(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(); }}
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit();
+                }}
                 disabled={isEvaluated || submitting}
                 placeholder="Type your answer here…"
                 rows={4}
@@ -143,7 +229,19 @@ function CheckQuestionStep({ content, stepId, isEvaluated, onEvaluated }: { cont
             />
             {!isEvaluated && (
                 <div className="flex justify-end mt-3">
-                    <ActionButton label={submitting ? 'Evaluating…' : 'Submit'} icon={submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} primary onClick={submit} disabled={!answer.trim() || submitting} />
+                    <ActionButton
+                        label={submitting ? 'Evaluating…' : 'Submit'}
+                        icon={
+                            submitting ? (
+                                <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                                <Send size={16} />
+                            )
+                        }
+                        primary
+                        onClick={submit}
+                        disabled={!answer.trim() || submitting}
+                    />
                 </div>
             )}
         </div>
@@ -156,10 +254,19 @@ function ReinforceStep({ content, onNext }: { content: any; onNext: (response: s
 
     return (
         <div className={`rounded-xl ${bgClass}`}>
-            {isPathB && <p className="text-xs font-bold text-amber-500 uppercase mb-2 tracking-wider">Alternative Angle</p>}
+            {isPathB && (
+                <p className="text-xs font-bold text-amber-500 uppercase mb-2 tracking-wider">
+                    Alternative Angle
+                </p>
+            )}
             <p className="leading-relaxed text-[15.5px]">{content.text}</p>
             <div className="flex mt-6">
-                <ActionButton label="I see now" primary icon={<ChevronRight size={16} />} onClick={() => onNext('got_it')} />
+                <ActionButton
+                    label="I see now"
+                    primary
+                    icon={<ChevronRight size={16} />}
+                    onClick={() => onNext('got_it')}
+                />
             </div>
         </div>
     );
@@ -173,22 +280,42 @@ function EvaluationBanner({ evaluation, onContinue }: { evaluation: any; onConti
     let headerColor = 'var(--text-muted)';
 
     if (evaluation.path === 'A') {
-        bgColor = '#22c55e10'; borderColor = '#22c55e40';
-        headerColor = '#22c55e'; headerText = '✓ Excellent';
+        bgColor = '#22c55e10';
+        borderColor = '#22c55e40';
+        headerColor = '#22c55e';
+        headerText = '✓ Excellent';
     } else if (evaluation.path === 'B') {
-        bgColor = '#eab30810'; borderColor = '#eab30840';
-        headerColor = '#eab308'; headerText = '◑ Almost there';
+        bgColor = '#eab30810';
+        borderColor = '#eab30840';
+        headerColor = '#eab308';
+        headerText = '◑ Almost there';
     } else {
-        headerText = 'Let\'s align';
+        headerText = "Let's align";
     }
 
     return (
-        <div style={{ background: bgColor, border: `1.5px solid ${borderColor}` }} className="rounded-xl p-5 mt-6">
-            <p style={{ color: headerColor }} className="font-bold text-xs uppercase tracking-wider mb-2">{headerText}</p>
-            <div className="text-[15px] mb-4 leading-relaxed flow-markdown" style={{ color: textColor }}>
+        <div
+            style={{ background: bgColor, border: `1.5px solid ${borderColor}` }}
+            className="rounded-xl p-5 mt-6"
+        >
+            <p
+                style={{ color: headerColor }}
+                className="font-bold text-xs uppercase tracking-wider mb-2"
+            >
+                {headerText}
+            </p>
+            <div
+                className="text-[15px] mb-4 leading-relaxed flow-markdown"
+                style={{ color: textColor }}
+            >
                 <ReactMarkdown>{evaluation.feedbackText}</ReactMarkdown>
             </div>
-            <ActionButton label="Continue" icon={<ChevronRight size={16} />} primary onClick={onContinue} />
+            <ActionButton
+                label="Continue"
+                icon={<ChevronRight size={16} />}
+                primary
+                onClick={onContinue}
+            />
         </div>
     );
 }
@@ -204,7 +331,9 @@ export default function CurriculumFlowSessionPage() {
     const [currentStep, setCurrentStep] = useState<FlowStep | null>(null);
     const [pendingEvaluation, setPendingEvaluation] = useState<any | null>(null);
     const [stepHistory, setStepHistory] = useState<FlowStep[]>([]);
-    const [conceptStatuses, setConceptStatuses] = useState<Record<string, 'not_started' | 'in_progress' | 'completed'>>({});
+    const [conceptStatuses, setConceptStatuses] = useState<
+        Record<string, 'not_started' | 'in_progress' | 'completed'>
+    >({});
 
     // UI State
     const [loading, setLoading] = useState(true);
@@ -226,11 +355,16 @@ export default function CurriculumFlowSessionPage() {
         const initFlow = async () => {
             setLoading(true);
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const {
+                    data: { session }
+                } = await supabase.auth.getSession();
                 const res = await fetch('/api/serify/start-curriculum-flow', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-                    body: JSON.stringify({ curriculumId }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${session?.access_token}`
+                    },
+                    body: JSON.stringify({ curriculumId })
                 });
 
                 const data = await res.json();
@@ -264,7 +398,11 @@ export default function CurriculumFlowSessionPage() {
                 .eq('id', flowSessionId)
                 .single();
 
-            if (dbErr || !data) { setError('Flow Engine connection lost.'); setLoading(false); return; }
+            if (dbErr || !data) {
+                setError('Flow Engine connection lost.');
+                setLoading(false);
+                return;
+            }
             setFlowSession(data as FlowSession);
 
             const statuses: Record<string, 'not_started' | 'in_progress' | 'completed'> = {};
@@ -291,13 +429,6 @@ export default function CurriculumFlowSessionPage() {
         })();
     }, [flowSessionId]);
 
-    // 3. Step fetching engine
-    useEffect(() => {
-        if (flowSession && !currentStep && !stepping && currentConcept && !sessionDone) {
-            fetchNextStep();
-        }
-    }, [flowSession, currentConcept, sessionDone]);
-
     const fetchNextStep = useCallback(async () => {
         if (!flowSession || !currentConcept || stepping) return;
         setStepping(true);
@@ -305,7 +436,9 @@ export default function CurriculumFlowSessionPage() {
         setError(null);
 
         try {
-            const { data: { session: authSession } } = await supabase.auth.getSession();
+            const {
+                data: { session: authSession }
+            } = await supabase.auth.getSession();
 
             // Setup orchestrator plan if needed
             const { data: progress } = await supabase
@@ -318,29 +451,50 @@ export default function CurriculumFlowSessionPage() {
             if (!progress || !progress.orchestrator_plan) {
                 await fetch('/api/flow/orchestrate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSession?.access_token}` },
-                    body: JSON.stringify({ sessionId: flowSession.id, conceptId: currentConcept.conceptId }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authSession?.access_token}`
+                    },
+                    body: JSON.stringify({
+                        sessionId: flowSession.id,
+                        conceptId: currentConcept.conceptId
+                    })
                 });
             }
 
             // Step forward
             const res = await fetch('/api/flow/step', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authSession?.access_token}` },
-                body: JSON.stringify({ sessionId: flowSession.id, conceptId: currentConcept.conceptId }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authSession?.access_token}`
+                },
+                body: JSON.stringify({
+                    sessionId: flowSession.id,
+                    conceptId: currentConcept.conceptId
+                })
             });
 
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Step failed');
 
             if (data.action === 'concept_complete') {
-                const updatedConceptsCompleted = [...(flowSession.concepts_completed || []), currentConcept.conceptId];
-                await supabase.from('flow_sessions').update({ concepts_completed: updatedConceptsCompleted }).eq('id', flowSession.id);
+                const updatedConceptsCompleted = [
+                    ...(flowSession.concepts_completed || []),
+                    currentConcept.conceptId
+                ];
+                await supabase
+                    .from('flow_sessions')
+                    .update({ concepts_completed: updatedConceptsCompleted })
+                    .eq('id', flowSession.id);
 
-                setConceptStatuses(prev => ({ ...prev, [currentConcept.conceptId]: 'completed' }));
+                setConceptStatuses((prev) => ({
+                    ...prev,
+                    [currentConcept.conceptId]: 'completed'
+                }));
 
                 if (currentConceptIndex + 1 < totalConcepts) {
-                    setCurrentConceptIndex(i => i + 1);
+                    setCurrentConceptIndex((i) => i + 1);
                     setCurrentStep(null);
                     setStepHistory([]);
                 } else {
@@ -351,16 +505,26 @@ export default function CurriculumFlowSessionPage() {
                 if (data.stepHistory) {
                     setStepHistory(data.stepHistory);
                 } else {
-                    setStepHistory(prev => [...prev, data.step]);
+                    setStepHistory((prev) => [...prev, data.step]);
                 }
-                setConceptStatuses(prev => ({ ...prev, [currentConcept.conceptId]: 'in_progress' }));
+                setConceptStatuses((prev) => ({
+                    ...prev,
+                    [currentConcept.conceptId]: 'in_progress'
+                }));
             }
         } catch (err: any) {
             setError(err.message);
         } finally {
             setStepping(false);
         }
-    }, [flowSession, currentConcept, currentConceptIndex, totalConcepts, stepping, sessionDone]);
+    }, [flowSession, currentConcept, currentConceptIndex, totalConcepts, stepping]);
+
+    // 3. Step fetching engine
+    useEffect(() => {
+        if (flowSession && !currentStep && !stepping && currentConcept && !sessionDone) {
+            fetchNextStep();
+        }
+    }, [flowSession, currentConcept, sessionDone, currentStep, fetchNextStep, stepping]);
 
     const handleUserResponse = async (responseType: string) => {
         if (!currentStep) return;
@@ -368,9 +532,12 @@ export default function CurriculumFlowSessionPage() {
         supabase.auth.getSession().then(({ data: { session } }) => {
             fetch('/api/flow/evaluate', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-                body: JSON.stringify({ stepId: currentStep.id, userResponse: responseType }),
-            }).catch(() => { });
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({ stepId: currentStep.id, userResponse: responseType })
+            }).catch(() => {});
         });
 
         fetchNextStep();
@@ -386,48 +553,75 @@ export default function CurriculumFlowSessionPage() {
         const onSimpleNext = (r: string) => handleUserResponse(r);
 
         if (step_type === 'orient') return <OrientStep content={content} onNext={onSimpleNext} />;
-        if (step_type === 'build_layer') return <BuildLayerStep content={content} onNext={onSimpleNext} />;
+        if (step_type === 'build_layer')
+            return <BuildLayerStep content={content} onNext={onSimpleNext} />;
         if (step_type === 'anchor') return <AnchorStep content={content} onNext={onSimpleNext} />;
-        if (step_type === 'check' || step_type === 'confirm') return <CheckQuestionStep content={content} stepId={currentStep.id} isEvaluated={!!pendingEvaluation} onEvaluated={handleEvaluated} />;
-        if (step_type === 'reinforce') return <ReinforceStep content={content} onNext={onSimpleNext} />;
+        if (step_type === 'check' || step_type === 'confirm')
+            return (
+                <CheckQuestionStep
+                    content={content}
+                    stepId={currentStep.id}
+                    isEvaluated={!!pendingEvaluation}
+                    onEvaluated={handleEvaluated}
+                />
+            );
+        if (step_type === 'reinforce')
+            return <ReinforceStep content={content} onNext={onSimpleNext} />;
 
         return null;
     };
 
-    if (loading) return (
-        <DashboardLayout>
-            <div className="flex justify-center items-center min-h-[60vh]">
-                <Loader2 size={36} className="animate-spin text-[var(--accent)]" />
-            </div>
-        </DashboardLayout>
-    );
-
-    if (sessionDone) return (
-        <DashboardLayout>
-            <div className="max-w-xl mx-auto mt-16 text-center px-4">
-                <div className="text-6xl mb-6">🎉</div>
-                <h1 className="text-3xl font-display font-bold mb-3 text-[var(--text)]">Curriculum Complete!</h1>
-                <p className="text-[var(--muted)] mb-8">
-                    You've successfully mastered {totalConcepts} concept{totalConcepts !== 1 ? 's' : ''} in this curriculum path.
-                </p>
-                <div className="flex gap-4 justify-center flex-wrap">
-                    <ActionButton label="Back to Curriculum" onClick={() => router.push(`/learn/curriculum/${curriculumId}`)} />
-                    <ActionButton label="Go to Vault" primary onClick={() => router.push('/vault')} />
+    if (loading)
+        return (
+            <DashboardLayout>
+                <div className="flex justify-center items-center min-h-[60vh]">
+                    <Loader2 size={36} className="animate-spin text-[var(--accent)]" />
                 </div>
-            </div>
-        </DashboardLayout>
-    );
+            </DashboardLayout>
+        );
+
+    if (sessionDone)
+        return (
+            <DashboardLayout>
+                <div className="max-w-xl mx-auto mt-16 text-center px-4">
+                    <div className="text-6xl mb-6">🎉</div>
+                    <h1 className="text-3xl font-display font-bold mb-3 text-[var(--text)]">
+                        Curriculum Complete!
+                    </h1>
+                    <p className="text-[var(--muted)] mb-8">
+                        You&apos;ve successfully mastered {totalConcepts} concept
+                        {totalConcepts !== 1 ? 's' : ''} in this curriculum path.
+                    </p>
+                    <div className="flex gap-4 justify-center flex-wrap">
+                        <ActionButton
+                            label="Back to Curriculum"
+                            onClick={() => router.push(`/learn/curriculum/${curriculumId}`)}
+                        />
+                        <ActionButton
+                            label="Go to Vault"
+                            primary
+                            onClick={() => router.push('/vault')}
+                        />
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
 
     return (
         <>
-            <Head><title>Flow Mode — {currentConcept?.conceptName || 'Loading'}</title></Head>
+            <Head>
+                <title>Flow Mode — {currentConcept?.conceptName || 'Loading'}</title>
+            </Head>
             <DashboardLayout>
                 <div className="max-w-3xl mx-auto px-4 py-8 relative">
                     {/* Header Context */}
                     <div className="mb-6">
                         {flowSession && (
                             <ProgressBar
-                                concepts={(flowSession.initial_plan?.concepts || []).map(c => ({ ...c, status: conceptStatuses[c.conceptId] || 'not_started' }))}
+                                concepts={(flowSession.initial_plan?.concepts || []).map((c) => ({
+                                    ...c,
+                                    status: conceptStatuses[c.conceptId] || 'not_started'
+                                }))}
                                 currentConceptId={currentConcept?.conceptId}
                             />
                         )}
@@ -447,7 +641,12 @@ export default function CurriculumFlowSessionPage() {
                     {error && (
                         <div className="bg-red-50 border border-red-500 text-red-600 rounded-xl p-4 mb-4 text-sm flex items-center justify-between">
                             <span>{error}</span>
-                            <button onClick={() => fetchNextStep()} className="underline font-medium hover:text-red-700">Retry</button>
+                            <button
+                                onClick={() => fetchNextStep()}
+                                className="underline font-medium hover:text-red-700"
+                            >
+                                Retry
+                            </button>
                         </div>
                     )}
 
@@ -462,7 +661,10 @@ export default function CurriculumFlowSessionPage() {
                             <>
                                 {renderStep()}
                                 {pendingEvaluation && (
-                                    <EvaluationBanner evaluation={pendingEvaluation} onContinue={() => fetchNextStep()} />
+                                    <EvaluationBanner
+                                        evaluation={pendingEvaluation}
+                                        onContinue={() => fetchNextStep()}
+                                    />
                                 )}
                             </>
                         )}
@@ -472,7 +674,10 @@ export default function CurriculumFlowSessionPage() {
                     {stepHistory.length > 1 && (
                         <div className="mt-6 flex gap-2 flex-wrap">
                             {stepHistory.slice(0, -1).map((s, i) => (
-                                <div key={s.id} className="text-[11px] text-[var(--muted)] bg-[var(--surface)] border border-[var(--border)] rounded-lg px-2.5 py-1 flex items-center gap-1.5 opacity-60">
+                                <div
+                                    key={s.id}
+                                    className="text-[11px] text-[var(--muted)] bg-[var(--surface)] border border-[var(--border)] rounded-lg px-2.5 py-1 flex items-center gap-1.5 opacity-60"
+                                >
                                     <StepIcon type={s.step_type as FlowStepType} />
                                     {s.step_type.replace(/_/g, ' ')}
                                 </div>

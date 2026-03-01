@@ -1,42 +1,42 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { streamObject } from 'ai';
+import { google } from '@ai-sdk/google';
+import { z } from 'zod';
 import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
-import { parseJSON } from '@/lib/serify-ai';
 
-const apiKey = process.env.GEMINI_API_KEY!;
-const genAI = new GoogleGenerativeAI(apiKey);
+export const config = {
+    runtime: 'edge'
+};
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: Request) {
     if (req.method !== 'POST') {
-        return res.status(405).json({ message: 'Method Not Allowed' });
-    }
-
-    const { concepts, method = 'standard' } = req.body;
-
-    if (!concepts || !Array.isArray(concepts)) {
-        return res.status(400).json({ message: 'Concepts array is required' });
-    }
-
-    const user = await authenticateApiRequest(req);
-    if (!user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const sparkCost = SPARK_COSTS.QUESTION_GENERATION || 1;
-    const hasSparks = await hasEnoughSparks(user, sparkCost);
-    if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks.` });
+        return new Response(JSON.stringify({ message: 'Method Not Allowed' }), { status: 405 });
     }
 
     try {
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            generationConfig: {
-                responseMimeType: 'application/json',
-                maxOutputTokens: 4096,
-                temperature: 0.1
-            },
-        });
+        const { concepts, method = 'standard' } = await req.json();
+
+        if (!concepts || !Array.isArray(concepts)) {
+            return new Response(JSON.stringify({ message: 'Concepts array is required' }), {
+                status: 400
+            });
+        }
+
+        const user = await authenticateApiRequest(req);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+
+        const sparkCost = SPARK_COSTS.QUESTION_GENERATION || 1;
+        const hasSparks = await hasEnoughSparks(user, sparkCost);
+        if (!hasSparks) {
+            return new Response(
+                JSON.stringify({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Sparks.`
+                }),
+                { status: 403 }
+            );
+        }
 
         const prompt = `
     You are an expert tutor. I am giving you a Concept Map extracted from learning material.
@@ -45,29 +45,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     The learning method selected is: ${method}
     (If standard: balanced mix. If socratic: deep probing. If feynman: ask them to explain simply).
 
-    For each question, provide:
-    - id: a unique short string like 'q1'
-    - target_concept_id: the id of the concept this tests
-    - type: 'RETRIEVAL', 'APPLICATION', or 'MISCONCEPTION PROBE'
-    - text: The actual question text (must be open-ended, no multiple choice)
-
     Generate exactly ${Math.min(concepts.length, 5)} questions, focusing on the primary concepts.
-    Structure the output as a JSON array of question objects.
 
     Concept Map:
     ${JSON.stringify(concepts, null, 2)}
     `;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
+        const result = await streamObject({
+            model: google('gemini-2.5-flash'),
+            temperature: 0.1,
+            // @ts-ignore
+            maxTokens: 4096,
+            prompt,
+            schema: z.object({
+                questions: z.array(
+                    z.object({
+                        id: z.string().describe("a unique short string like 'q1'"),
+                        target_concept_id: z.string().describe('the id of the concept this tests'),
+                        type: z.enum(['RETRIEVAL', 'APPLICATION', 'MISCONCEPTION PROBE']),
+                        text: z
+                            .string()
+                            .describe(
+                                'The actual question text (must be open-ended, no multiple choice)'
+                            )
+                    })
+                )
+            }),
+            onFinish: async ({ object }) => {
+                if (object) {
+                    await deductSparks(user, sparkCost, 'question_generation');
+                }
+            }
+        });
 
-        const questions = parseJSON<any>(responseText);
-
-        await deductSparks(user, sparkCost, 'question_generation');
-
-        res.status(200).json({ questions });
+        return result.toTextStreamResponse();
     } catch (error) {
         console.error('Error generating questions:', error);
-        res.status(500).json({ message: 'Failed to generate questions' });
+        return new Response(JSON.stringify({ message: 'Failed to generate questions' }), {
+            status: 500
+        });
     }
 }

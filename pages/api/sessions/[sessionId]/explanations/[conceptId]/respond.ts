@@ -8,15 +8,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { sessionId, conceptId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-    if (!conceptId || typeof conceptId !== 'string') return res.status(400).json({ error: 'Missing or invalid conceptId' });
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
+    if (!conceptId || typeof conceptId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid conceptId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { response } = req.body;
     if (!response || !['got_it', 'still_unclear'].includes(response)) {
-        return res.status(400).json({ error: 'Invalid response. Must be got_it or still_unclear.' });
+        return res
+            .status(400)
+            .json({ error: 'Invalid response. Must be got_it or still_unclear.' });
     }
 
     const authHeader = req.headers.authorization;

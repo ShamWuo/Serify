@@ -8,16 +8,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { cardId, status } = req.body;
     if (!cardId || !['got_it', 'still_shaky'].includes(status)) {
-        return res.status(400).json({ error: 'Invalid cardId or status. Status must be got_it or still_shaky.' });
+        return res
+            .status(400)
+            .json({ error: 'Invalid cardId or status. Status must be got_it or still_shaky.' });
     }
 
     const authHeader = req.headers.authorization;
@@ -47,7 +48,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 status,
                 lastReviewedAt: new Date().toISOString(),
                 gotItCount: status === 'got_it' ? card.gotItCount + 1 : card.gotItCount,
-                stillShakyCount: status === 'still_shaky' ? card.stillShakyCount + 1 : card.stillShakyCount
+                stillShakyCount:
+                    status === 'still_shaky' ? card.stillShakyCount + 1 : card.stillShakyCount
             };
         });
 

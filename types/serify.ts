@@ -52,8 +52,6 @@ export interface ReflectionSession {
     status: 'input' | 'processing' | 'assessment' | 'feedback';
 }
 
-
-
 export type MasteryState = 'solid' | 'developing' | 'shaky' | 'revisit';
 
 export interface MasteryHistoryEntry {
@@ -103,10 +101,24 @@ export interface KnowledgeNode {
     updated_at: Date | string;
 }
 
-
-
-export type FlowStepType = 'orient' | 'build_layer' | 'anchor' | 'check' | 'reinforce' | 'confirm' | 'completed';
-export type FlowResponseType = 'text_answer' | 'got_it' | 'still_shaky' | 'read_again' | 'i_know_this' | 'solid' | 'fuzzy' | 'needs_work' | 'quick_explanation';
+export type FlowStepType =
+    | 'orient'
+    | 'build_layer'
+    | 'anchor'
+    | 'check'
+    | 'reinforce'
+    | 'confirm'
+    | 'completed';
+export type FlowResponseType =
+    | 'text_answer'
+    | 'got_it'
+    | 'still_shaky'
+    | 'read_again'
+    | 'i_know_this'
+    | 'solid'
+    | 'fuzzy'
+    | 'needs_work'
+    | 'quick_explanation';
 
 export interface SessionLearnerProfile {
     estimatedLevel: 'beginner' | 'intermediate' | 'advanced';
@@ -192,7 +204,6 @@ export interface FlowConceptProgress {
     final_mastery_report?: string;
     self_reported_vs_actual?: 'aligned' | 'overconfident' | 'underconfident';
 }
-
 
 export interface CurriculumConcept {
     id: string;

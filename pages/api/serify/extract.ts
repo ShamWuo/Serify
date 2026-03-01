@@ -31,7 +31,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!process.env.GEMINI_API_KEY) {
         console.error('GEMINI_API_KEY is not set');
-        return res.status(500).json({ error: 'GEMINI_API_KEY is not configured. Please set it in your .env.local file.' });
+        return res
+            .status(500)
+            .json({
+                error: 'GEMINI_API_KEY is not configured. Please set it in your .env.local file.'
+            });
     }
 
     const authHeader = req.headers.authorization;
@@ -45,12 +49,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
             headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        },
+                Authorization: `Bearer ${token}`
+            }
+        }
     });
 
-    const { data: { user }, error: authError } = await supabaseWithAuth.auth.getUser(token);
+    const {
+        data: { user },
+        error: authError
+    } = await supabaseWithAuth.auth.getUser(token);
 
     if (authError) {
         console.error('Auth error:', authError);
@@ -79,7 +86,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { contentType, content, url, title, difficulty } = req.body;
-    console.log('Request body:', { contentType, hasContent: !!content, hasUrl: !!url, title, difficulty });
+    console.log('Request body:', {
+        contentType,
+        hasContent: !!content,
+        hasUrl: !!url,
+        title,
+        difficulty
+    });
 
     if (!contentType || !title) {
         return res.status(400).json({ error: 'Missing contentType or title' });
@@ -99,11 +112,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             type: contentType,
             title,
             content,
-            url,
+            url
         };
 
         const targetContent = content ?? url;
-
 
         const { data: existingSession, error: checkErr } = await supabaseWithAuth
             .from('reflection_sessions')
@@ -116,7 +128,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (existingSession && !checkErr) {
             console.log('Found existing session for this content:', existingSession.id);
-
 
             if (['assessment', 'feedback', 'complete'].includes(existingSession.status)) {
                 const { data: existingConcepts } = await supabaseWithAuth
@@ -144,7 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 content_type: contentType,
                 content: content ?? url,
                 difficulty: difficulty ?? 'intermediate',
-                status: 'processing',
+                status: 'processing'
             })
             .select()
             .single();
@@ -166,8 +177,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const deduction = await deductSparks(user.id, sparkCost, 'session_ingestion', session.id);
         if (!deduction.success) {
-
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks to extract concepts.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Sparks to extract concepts.`
+                });
         }
 
         console.log('Extracting concepts via Gemini...');
@@ -175,12 +190,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const concepts = await extractConcepts(contentSource);
         console.log('Concepts extracted:', concepts.length);
 
-        const conceptRows = concepts.map(c => ({
+        const conceptRows = concepts.map((c) => ({
             session_id: session.id,
             name: c.name,
             description: c.description,
             importance: c.importance,
-            related_concept_names: c.relatedConcepts,
+            related_concept_names: c.relatedConcepts
         }));
 
         console.log('Saving concepts to database...');
@@ -194,7 +209,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        await supabaseWithAuth.from('reflection_sessions').update({ status: 'assessment' }).eq('id', session.id);
+        await supabaseWithAuth
+            .from('reflection_sessions')
+            .update({ status: 'assessment' })
+            .eq('id', session.id);
 
         console.log('Extraction complete, returning sessionId:', session.id);
         return res.status(200).json({ sessionId: session.id, concepts });

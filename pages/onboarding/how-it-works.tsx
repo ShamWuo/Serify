@@ -21,13 +21,13 @@ export default function OnboardingHowItWorks() {
         }
         switch (user.userType) {
             case 'student':
-                return "Serify helps you find out what you actually understood before the exam.";
+                return 'Serify helps you find out what you actually understood before the exam.';
             case 'professional':
-                return "Serify helps you verify what actually stuck from what you read and studied.";
+                return 'Serify helps you verify what actually stuck from what you read and studied.';
             case 'self_directed':
-                return "Serify shows you the gap between what you consumed and what you understood.";
+                return 'Serify shows you the gap between what you consumed and what you understood.';
             case 'educator':
-                return "Serify helps you experience learning the way your students do.";
+                return 'Serify helps you experience learning the way your students do.';
             default:
                 return "Here's how Serify works.";
         }
@@ -65,26 +65,47 @@ export default function OnboardingHowItWorks() {
 
                     <div className="space-y-4 mb-8">
                         <div className="border border-[var(--border)] rounded-xl p-5 flex gap-4">
-                            <div className="text-sm font-bold text-[var(--muted)] shrink-0 w-6">01</div>
+                            <div className="text-sm font-bold text-[var(--muted)] shrink-0 w-6">
+                                01
+                            </div>
                             <div>
-                                <h3 className="font-semibold text-[var(--text)] mb-1">Paste anything you&apos;ve been learning from</h3>
-                                <p className="text-sm text-[var(--muted)]">A YouTube video, article, PDF, or your own notes. Serify reads it.</p>
+                                <h3 className="font-semibold text-[var(--text)] mb-1">
+                                    Paste anything you&apos;ve been learning from
+                                </h3>
+                                <p className="text-sm text-[var(--muted)]">
+                                    A YouTube video, article, PDF, or your own notes. Serify reads
+                                    it.
+                                </p>
                             </div>
                         </div>
 
                         <div className="border border-[var(--border)] rounded-xl p-5 flex gap-4">
-                            <div className="text-sm font-bold text-[var(--muted)] shrink-0 w-6">02</div>
+                            <div className="text-sm font-bold text-[var(--muted)] shrink-0 w-6">
+                                02
+                            </div>
                             <div>
-                                <h3 className="font-semibold text-[var(--text)] mb-1">Answer questions about it</h3>
-                                <p className="text-sm text-[var(--muted)]">Not a quiz. Serify asks you to explain things in your own words. No right or wrong format.</p>
+                                <h3 className="font-semibold text-[var(--text)] mb-1">
+                                    Answer questions about it
+                                </h3>
+                                <p className="text-sm text-[var(--muted)]">
+                                    Not a quiz. Serify asks you to explain things in your own words.
+                                    No right or wrong format.
+                                </p>
                             </div>
                         </div>
 
                         <div className="border border-[var(--border)] rounded-xl p-5 flex gap-4">
-                            <div className="text-sm font-bold text-[var(--muted)] shrink-0 w-6">03</div>
+                            <div className="text-sm font-bold text-[var(--muted)] shrink-0 w-6">
+                                03
+                            </div>
                             <div>
-                                <h3 className="font-semibold text-[var(--text)] mb-1">See what you actually understood</h3>
-                                <p className="text-sm text-[var(--muted)]">A detailed map of what landed, what was shallow, and where your knowledge has gaps. Your Concept Vault starts here.</p>
+                                <h3 className="font-semibold text-[var(--text)] mb-1">
+                                    See what you actually understood
+                                </h3>
+                                <p className="text-sm text-[var(--muted)]">
+                                    A detailed map of what landed, what was shallow, and where your
+                                    knowledge has gaps. Your Concept Vault starts here.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -94,7 +115,9 @@ export default function OnboardingHowItWorks() {
                             <Zap size={16} fill="currentColor" className="text-amber-500" />
                             <span>Your 15 Sparks are ready.</span>
                         </div>
-                        <p className="text-sm text-[var(--muted)]">First session takes about 5 minutes.</p>
+                        <p className="text-sm text-[var(--muted)]">
+                            First session takes about 5 minutes.
+                        </p>
                     </div>
 
                     <button
@@ -102,7 +125,13 @@ export default function OnboardingHowItWorks() {
                         disabled={isSaving}
                         className="w-full h-12 bg-[var(--text)] text-[var(--surface)] rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : <>Analyze something now <ArrowRight size={18} /></>}
+                        {isSaving ? (
+                            <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                            <>
+                                Analyze something now <ArrowRight size={18} />
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

@@ -8,7 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { nodeId } = req.query;
-    if (!nodeId || typeof nodeId !== 'string') return res.status(400).json({ error: 'Missing nodeId' });
+    if (!nodeId || typeof nodeId !== 'string')
+        return res.status(400).json({ error: 'Missing nodeId' });
 
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
@@ -18,7 +19,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
-
 
     if (req.method === 'GET') {
         try {
@@ -31,7 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (error || !node) return res.status(404).json({ error: 'Node not found' });
 
-
             let sessions: any[] = [];
             if (node.session_ids && node.session_ids.length > 0) {
                 const { data: sessionRows } = await supabase
@@ -42,12 +41,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 sessions = sessionRows || [];
             }
 
-
             const synthesisStale = !node.synthesis_generated_at;
             if (synthesisStale && node.session_count >= 2) {
                 const supabaseAdmin = createClient(
                     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
                 );
                 generateConceptSynthesis(supabaseAdmin, userId, nodeId).catch(console.error);
             }

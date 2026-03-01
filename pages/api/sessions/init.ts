@@ -21,16 +21,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: 'Title and content type are required' });
     }
 
-
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
             headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        },
+                Authorization: `Bearer ${token}`
+            }
+        }
     });
 
     try {

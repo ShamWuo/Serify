@@ -23,8 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (skipped) {
         return res.status(200).json({
             assessment: {
-                analysis_text: "You couldn't retrieve this during the session — this is one of your clearest gaps.",
-                mastery_state: "revisit" as MasteryState,
+                analysis_text:
+                    "You couldn't retrieve this during the session — this is one of your clearest gaps.",
+                mastery_state: 'revisit' as MasteryState,
                 misconception: null,
                 overconfident: false
             }
@@ -39,13 +40,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sparkCost = SPARK_COSTS.SESSION_ANSWER_ANALYSIS || 1;
     const hasSparks = await hasEnoughSparks(user, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks to analyze an answer.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Sparks to analyze an answer.`
+            });
     }
 
     try {
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
-            generationConfig: { responseMimeType: 'application/json' },
+            generationConfig: { responseMimeType: 'application/json' }
         });
 
         const prompt = `
@@ -54,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     Target Concept: ${concept.name} (${concept.definition})
     Question: ${question.text}
     Student Answer: "${answerText}"
-    Explanation Requested Before Answering: ${explanationRequested ? "Yes" : "No"}
+    Explanation Requested Before Answering: ${explanationRequested ? 'Yes' : 'No'}
 
     Assess factual accuracy, conceptual depth, misconception detection, and confidence calibration.
 
@@ -81,7 +87,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }>(responseText);
 
         await deductSparks(user, sparkCost, 'session_answer_analysis');
-
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,

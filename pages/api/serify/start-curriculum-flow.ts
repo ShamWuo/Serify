@@ -59,7 +59,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     user_id: userId,
                     source_type: 'curriculum',
                     source_id: curriculumId,
-                    initial_plan: { concepts: planNodes, overallStrategy: `Curriculum: ${curriculum.title}` },
+                    initial_plan: {
+                        concepts: planNodes,
+                        overallStrategy: `Curriculum: ${curriculum.title}`
+                    },
                     concepts_completed: [],
                     total_sparks_spent: 0,
                     status: 'active'
@@ -68,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .single();
 
             if (fsErr || !flowSession) {
-                console.error("Failed creating flow session", fsErr);
+                console.error('Failed creating flow session', fsErr);
                 return res.status(500).json({ error: 'Failed to create flow session' });
             }
 
@@ -84,7 +87,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         return res.status(200).json({ flowSessionId });
-
     } catch (error: any) {
         console.error('Error starting curriculum flow:', error);
         return res.status(500).json({ error: 'Internal server error' });

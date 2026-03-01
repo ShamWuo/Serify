@@ -20,7 +20,7 @@ export default function SparkBalance() {
                 <span>{balance.total_sparks} Sparks</span>
             </button>
 
-            { }
+            {}
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex justify-end">
                     <div
@@ -46,16 +46,24 @@ export default function SparkBalance() {
                                 <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]">
                                     <span className="text-[var(--text)]">Subscription Sparks</span>
                                     <div className="text-right">
-                                        <div className="font-medium text-lg">{balance.subscription_sparks}</div>
-                                        <div className="text-xs text-[var(--muted)]">Resets end of period</div>
+                                        <div className="font-medium text-lg">
+                                            {balance.subscription_sparks}
+                                        </div>
+                                        <div className="text-xs text-[var(--muted)]">
+                                            Resets end of period
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div className="flex justify-between items-center pb-3 border-b border-[var(--border)]">
                                     <span className="text-[var(--text)]">Top-Up Sparks</span>
                                     <div className="text-right">
-                                        <div className="font-medium text-lg">{balance.topup_sparks}</div>
-                                        <div className="text-xs text-[var(--muted)]">Never expires</div>
+                                        <div className="font-medium text-lg">
+                                            {balance.topup_sparks}
+                                        </div>
+                                        <div className="text-xs text-[var(--muted)]">
+                                            Never expires
+                                        </div>
                                     </div>
                                 </div>
 
@@ -64,8 +72,12 @@ export default function SparkBalance() {
                                         Trial Sparks
                                     </span>
                                     <div className="text-right">
-                                        <div className="font-medium text-lg">{balance.trial_sparks}</div>
-                                        <div className="text-xs text-[var(--muted)]">Expires in 14 days</div>
+                                        <div className="font-medium text-lg">
+                                            {balance.trial_sparks}
+                                        </div>
+                                        <div className="text-xs text-[var(--muted)]">
+                                            Expires in 14 days
+                                        </div>
                                     </div>
                                 </div>
                             </div>

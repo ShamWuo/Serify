@@ -4,9 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 import { authenticateApiRequest } from '@/lib/sparks';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const supabaseServiceKey =
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error('Supabase configuration missing');
@@ -14,7 +14,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 
     if (!process.env.STRIPE_SECRET_KEY) {
         console.error('STRIPE_SECRET_KEY is missing');
@@ -30,7 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         res.setHeader('Allow', 'POST');
         return res.status(405).end('Method Not Allowed');
     }
-
 
     const authenticatedUserId = await authenticateApiRequest(req);
     if (!authenticatedUserId) {
@@ -61,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const customer = await stripe.customers.create({
                 email: user.email || undefined,
                 name: user.display_name || undefined,
-                metadata: { userId },
+                metadata: { userId }
             });
             customerId = customer.id;
 
@@ -79,18 +77,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             line_items: [
                 {
                     price: priceId,
-                    quantity: quantity,
-                },
+                    quantity: quantity
+                }
             ],
             success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/settings/billing?success=true`,
             cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/settings/billing?canceled=true`,
             allow_promotion_codes: true,
             subscription_data: !isDeepDive
                 ? {
-                    metadata: { userId },
-                }
+                      metadata: { userId }
+                  }
                 : undefined,
-            metadata: { userId },
+            metadata: { userId }
         });
 
         return res.status(200).json({ url: session.url });

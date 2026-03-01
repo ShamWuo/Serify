@@ -4,10 +4,7 @@ import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } fr
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -20,7 +17,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.FLASHCARD_DECK;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to generate flashcards.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Spark to generate flashcards.`
+            });
     }
 
     const { weakConcepts = [] } = req.body;
@@ -53,21 +55,28 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
 
         const deduction = await deductSparks(userId, sparkCost, 'flashcard_deck');
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to generate flashcards.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to generate flashcards.`
+                });
         }
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();
 
         try {
-            const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const cleanedText = text
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .trim();
             const cards = JSON.parse(cleanedText);
             return res.status(200).json({ cards });
         } catch (parseError) {
-            console.error("Failed to parse Gemini Flashcards output:", text);
+            console.error('Failed to parse Gemini Flashcards output:', text);
             return res.status(500).json({ error: 'Failed to parse AI response' });
         }
-
     } catch (error: any) {
         console.error('Error generating flashcards:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

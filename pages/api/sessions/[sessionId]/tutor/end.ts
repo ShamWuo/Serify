@@ -6,17 +6,14 @@ import { parseJSON } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) {
@@ -53,7 +50,6 @@ export default async function handler(
             systemInstruction: `You are evaluating a student's conversation with an AI tutor.`
         });
 
-
         const analysisPrompt = `
 Based on the following tutoring conversation, evaluate the student's final mastery of the concepts discussed.
 
@@ -75,7 +71,7 @@ Only include concepts that were actually discussed and demonstrated by the user 
         try {
             updates = parseJSON<any[]>(text);
         } catch (e) {
-            console.error("Failed to parse AI evaluation:", text);
+            console.error('Failed to parse AI evaluation:', text);
             return res.status(500).json({ error: 'Failed to parse AI evaluation' });
         }
 
@@ -92,7 +88,6 @@ Only include concepts that were actually discussed and demonstrated by the user 
         if (updateError) throw updateError;
 
         return res.status(200).json({ updates, conversation: updatedDoc });
-
     } catch (error: any) {
         console.error('Error in tutor chat evaluation:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

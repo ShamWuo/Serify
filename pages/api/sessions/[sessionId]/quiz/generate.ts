@@ -6,21 +6,22 @@ import { parseJSON } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!UUID_REGEX.test(sessionId)) {
-        return res.status(400).json({ error: 'Invalid session: this session was created before the current format and cannot be used with this feature.' });
+        return res
+            .status(400)
+            .json({
+                error: 'Invalid session: this session was created before the current format and cannot be used with this feature.'
+            });
     }
     const userId = await authenticateApiRequest(req);
     if (!userId) {
@@ -30,7 +31,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.PRACTICE_QUIZ_GEN;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to generate practice quizzes.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Spark to generate practice quizzes.`
+            });
     }
 
     const { concepts } = req.body;
@@ -83,7 +89,12 @@ ${concepts.map((c: any) => `- Concept: ${c.name} (ID: ${c.id})\n  Mastery State:
 
         const deduction = await deductSparks(userId, sparkCost, 'practice_quiz_gen');
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to generate practice quizzes.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to generate practice quizzes.`
+                });
         }
 
         const result = await model.generateContent(promptText);
@@ -105,7 +116,7 @@ ${concepts.map((c: any) => `- Concept: ${c.name} (ID: ${c.id})\n  Mastery State:
                 attempts: []
             }));
         } catch (parseError) {
-            console.error("Failed to parse Gemini Practice Quiz output:", text);
+            console.error('Failed to parse Gemini Practice Quiz output:', text);
             return res.status(500).json({ error: 'Failed to parse AI response' });
         }
 
@@ -120,12 +131,14 @@ ${concepts.map((c: any) => `- Concept: ${c.name} (ID: ${c.id})\n  Mastery State:
         const quizData = {
             questions: generatedQuestions,
             question_count: generatedQuestions.length,
-            attempts: [{
-                attemptNumber: existingQuiz ? existingQuiz.generation_count + 1 : 1,
-                startedAt: new Date().toISOString(),
-                completedAt: null,
-                results: { strong: 0, partial: 0, weak: 0, skipped: 0 }
-            }]
+            attempts: [
+                {
+                    attemptNumber: existingQuiz ? existingQuiz.generation_count + 1 : 1,
+                    startedAt: new Date().toISOString(),
+                    completedAt: null,
+                    results: { strong: 0, partial: 0, weak: 0, skipped: 0 }
+                }
+            ]
         };
 
         if (existingQuiz) {
@@ -159,7 +172,6 @@ ${concepts.map((c: any) => `- Concept: ${c.name} (ID: ${c.id})\n  Mastery State:
         }
 
         return res.status(200).json(finalQuiz);
-
     } catch (error: any) {
         console.error('Error generating practice questions:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

@@ -5,10 +5,7 @@ import { parseJSON } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -53,7 +50,6 @@ Tone: direct, warm, intellectually engaged.`
         });
 
         if (isFinalAnalysis) {
-
             const analysisPrompt = `
 Based on the following tutoring conversation, evaluate the student's final mastery of the concepts discussed.
 
@@ -83,12 +79,26 @@ Only include concepts that were actually discussed and demonstrated by the user 
         const sparkCost = isOpening ? SPARK_COSTS.AI_TUTOR_OPEN : SPARK_COSTS.AI_TUTOR_MESSAGE;
         const hasSparks = await hasEnoughSparks(userId, sparkCost);
         if (!hasSparks) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to continue chatting.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to continue chatting.`
+                });
         }
 
-        const deduction = await deductSparks(userId, sparkCost, isOpening ? 'ai_tutor_open' : 'ai_tutor_message');
+        const deduction = await deductSparks(
+            userId,
+            sparkCost,
+            isOpening ? 'ai_tutor_open' : 'ai_tutor_message'
+        );
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to continue chatting.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to continue chatting.`
+                });
         }
 
         const chat = model.startChat({
@@ -102,7 +112,6 @@ Only include concepts that were actually discussed and demonstrated by the user 
         const result = await chat.sendMessage(lastMessage);
 
         return res.status(200).json({ reply: result.response.text() });
-
     } catch (error: any) {
         console.error('Error in tutor chat:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

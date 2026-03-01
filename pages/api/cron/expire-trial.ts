@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSparkAdminClient } from '@/lib/sparks';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-
     const cronSecret = req.headers['x-cron-secret'];
     if (cronSecret !== process.env.CRON_SECRET) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -22,7 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (!expiredGrants || expiredGrants.length === 0) {
-            return res.status(200).json({ message: 'No expired trial sparks to process', processed: 0 });
+            return res
+                .status(200)
+                .json({ message: 'No expired trial sparks to process', processed: 0 });
         }
 
         let processed = 0;
@@ -50,18 +51,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .update({ sparks_remaining: 0 })
                 .eq('id', grant.id);
 
-            await sparkAdminClient
-                .from('spark_transactions')
-                .insert({
-                    user_id: grant.user_id,
-                    amount: -amountToExpire,
-                    pool: 'trial',
-                    transaction_type: 'expiry_forfeiture',
-                    action: 'trial_spark_expiry',
-                    reference_id: grant.id,
-                    balance_after: currentBalance ? Math.max(0, currentBalance.trial_sparks - amountToExpire) : 0,
-                    created_at: new Date().toISOString(),
-                });
+            await sparkAdminClient.from('spark_transactions').insert({
+                user_id: grant.user_id,
+                amount: -amountToExpire,
+                pool: 'trial',
+                transaction_type: 'expiry_forfeiture',
+                action: 'trial_spark_expiry',
+                reference_id: grant.id,
+                balance_after: currentBalance
+                    ? Math.max(0, currentBalance.trial_sparks - amountToExpire)
+                    : 0,
+                created_at: new Date().toISOString()
+            });
 
             processed++;
         }

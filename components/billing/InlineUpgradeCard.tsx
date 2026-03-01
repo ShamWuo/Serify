@@ -1,5 +1,6 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
+import Link from 'next/link';
 
 interface InlineUpgradeCardProps {
     featureName: string;
@@ -8,21 +9,22 @@ interface InlineUpgradeCardProps {
     hideSeeAll?: boolean;
 }
 
-export function InlineUpgradeCard({ featureName, description, onUpgradeClick, hideSeeAll }: InlineUpgradeCardProps) {
+export function InlineUpgradeCard({
+    featureName,
+    description,
+    onUpgradeClick,
+    hideSeeAll
+}: InlineUpgradeCardProps) {
     return (
         <div className="bg-surface border border-border rounded-xl p-6 my-4 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
                 <div className="bg-accent/10 p-2 rounded-lg text-accent">
                     <Lock className="w-5 h-5" />
                 </div>
-                <h3 className="text-xl font-semibold m-0 text-text">
-                    {featureName} — Pro Feature
-                </h3>
+                <h3 className="text-xl font-semibold m-0 text-text">{featureName} — Pro Feature</h3>
             </div>
 
-            <p className="text-text/70 mb-5 leading-relaxed">
-                {description}
-            </p>
+            <p className="text-text/70 mb-5 leading-relaxed">{description}</p>
 
             <div className="flex items-center gap-4">
                 <button
@@ -34,9 +36,12 @@ export function InlineUpgradeCard({ featureName, description, onUpgradeClick, hi
                 </button>
 
                 {!hideSeeAll && (
-                    <a href="/pricing" className="text-text/60 hover:text-text text-sm font-medium transition-colors">
+                    <Link
+                        href="/pricing"
+                        className="text-text/60 hover:text-text text-sm font-medium transition-colors"
+                    >
                         See all features
-                    </a>
+                    </Link>
                 )}
             </div>
         </div>

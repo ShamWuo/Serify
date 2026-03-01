@@ -4,10 +4,7 @@ import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } fr
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -20,7 +17,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.CONCEPT_DEEP_DIVE;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks for a Concept Deep Dive.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Sparks for a Concept Deep Dive.`
+            });
     }
 
     const { concept, deepDiveText } = req.body;
@@ -66,21 +68,28 @@ Generate the deep dive JSON.
 
         const deduction = await deductSparks(userId, sparkCost, 'concept_deep_dive', concept?.id);
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks for a Concept Deep Dive.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Sparks for a Concept Deep Dive.`
+                });
         }
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();
 
         try {
-            const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const cleanedText = text
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .trim();
             const deepDive = JSON.parse(cleanedText);
             return res.status(200).json({ deepDive });
         } catch (parseError) {
-            console.error("Failed to parse Gemini Deep Dive output:", text);
+            console.error('Failed to parse Gemini Deep Dive output:', text);
             return res.status(500).json({ error: 'Failed to parse AI response' });
         }
-
     } catch (error: any) {
         console.error('Error generating deep dive:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

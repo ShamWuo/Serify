@@ -4,10 +4,7 @@ import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } fr
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -20,7 +17,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.EXPLAIN_IT_TO_ME;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark for this explanation.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Spark for this explanation.`
+            });
     }
 
     const { concept, strongConcepts = [] } = req.body;
@@ -54,14 +56,18 @@ Write a clear, thorough explanation of this concept. Structure it as:
 
         const deduction = await deductSparks(userId, sparkCost, 'explain_it_to_me', concept?.id);
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark for this explanation.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark for this explanation.`
+                });
         }
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();
 
         return res.status(200).json({ explanation: text });
-
     } catch (error: any) {
         console.error('Error generating explanation:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

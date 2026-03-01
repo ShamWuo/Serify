@@ -6,7 +6,8 @@ import { SessionLearnerProfile } from '@/types/serify';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false, autoRefreshToken: false }
@@ -19,7 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { stepId, userResponse } = req.body;
-    if (!stepId || !userResponse) return res.status(400).json({ error: 'Missing stepId or userResponse' });
+    if (!stepId || !userResponse)
+        return res.status(400).json({ error: 'Missing stepId or userResponse' });
 
     try {
         const { data: step, error: stepError } = await supabaseAdmin
@@ -61,7 +63,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .order('step_number', { ascending: true });
 
         const planConcepts = sessionData.initial_plan?.concepts || [];
-        const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId) || { conceptName: 'Unknown Topic' };
+        const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId) || {
+            conceptName: 'Unknown Topic'
+        };
 
         let learnerProfile: SessionLearnerProfile = sessionData.learner_profile || {
             estimatedLevel: 'average',
@@ -71,15 +75,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
 
         const teachingHistory = (previousSteps || [])
-            .filter(s => ['orient', 'build_layer', 'anchor', 'reinforce'].includes(s.step_type))
-            .map(s => `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`);
+            .filter((s) => ['orient', 'build_layer', 'anchor', 'reinforce'].includes(s.step_type))
+            .map(
+                (s) =>
+                    `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`
+            );
 
         let sparkCost = SPARK_COSTS.FLOW_MODE_EVAL || 1;
         const hasSparks = await hasEnoughSparks(userId, sparkCost);
         if (!hasSparks) return res.status(403).json({ error: 'out_of_sparks' });
         await deductSparks(userId, sparkCost, 'flow_mode_eval');
         let totalSparksSpent = sessionData.total_sparks_spent + sparkCost;
-
 
         const evaluatorModel = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
@@ -106,7 +112,11 @@ Rules:
 - Evaluate against WHAT WAS ACTUALLY TAUGHT. Do not penalize for missing info not taught.`
         });
 
-        const anglesUsedStr = learnerProfile.anglesUsed.filter((a: any) => a.conceptId === conceptId).map((a: any) => a.angle).join(', ') || 'none used yet';
+        const anglesUsedStr =
+            learnerProfile.anglesUsed
+                .filter((a: any) => a.conceptId === conceptId)
+                .map((a: any) => a.angle)
+                .join(', ') || 'none used yet';
 
         const promptText = `
 CONCEPT: ${currentConcept.conceptName}
@@ -124,7 +134,12 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
 
         const result = await evaluatorModel.generateContent(promptText);
         const evalText = result.response.text();
-        const evaluation = JSON.parse(evalText.replace(/```json/g, '').replace(/```/g, '').trim());
+        const evaluation = JSON.parse(
+            evalText
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .trim()
+        );
 
         let nextReinforceContent: string | null = null;
 
@@ -176,15 +191,15 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
                         timestamp: new Date().toISOString()
                     });
                 }
-                learnerProfile.reinforcementsRequired = (learnerProfile.reinforcementsRequired || 0) + 1;
+                learnerProfile.reinforcementsRequired =
+                    (learnerProfile.reinforcementsRequired || 0) + 1;
             } else {
-                nextReinforceContent = "I wanted to explain that from a new angle, but you're out of Sparks. Let's try the question again.";
+                nextReinforceContent =
+                    "I wanted to explain that from a new angle, but you're out of Sparks. Let's try the question again.";
             }
         }
 
-
         evaluation.nextReinforceContent = nextReinforceContent;
-
 
         learnerProfile.checkHistory.push({
             conceptId: conceptId,
@@ -194,20 +209,27 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
         });
 
         if (evaluation.levelAdjustment === 'up' && learnerProfile.estimatedLevel !== 'advanced') {
-            learnerProfile.estimatedLevel = learnerProfile.estimatedLevel === 'beginner' ? 'intermediate' : 'advanced';
-        } else if (evaluation.levelAdjustment === 'down' && learnerProfile.estimatedLevel !== 'beginner') {
-            learnerProfile.estimatedLevel = learnerProfile.estimatedLevel === 'advanced' ? 'intermediate' : 'beginner';
+            learnerProfile.estimatedLevel =
+                learnerProfile.estimatedLevel === 'beginner' ? 'intermediate' : 'advanced';
+        } else if (
+            evaluation.levelAdjustment === 'down' &&
+            learnerProfile.estimatedLevel !== 'beginner'
+        ) {
+            learnerProfile.estimatedLevel =
+                learnerProfile.estimatedLevel === 'advanced' ? 'intermediate' : 'beginner';
         }
 
-        await supabaseAdmin.from('flow_sessions').update({
-            learner_profile: learnerProfile,
-            total_sparks_spent: totalSparksSpent
-        }).eq('id', sessionId);
+        await supabaseAdmin
+            .from('flow_sessions')
+            .update({
+                learner_profile: learnerProfile,
+                total_sparks_spent: totalSparksSpent
+            })
+            .eq('id', sessionId);
 
         await supabaseAdmin.from('flow_steps').update({ evaluation }).eq('id', stepId);
 
         return res.status(200).json({ evaluation, total_sparks_spent: totalSparksSpent });
-
     } catch (error: any) {
         console.error('Error in flow mode evaluate:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

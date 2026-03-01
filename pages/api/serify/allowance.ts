@@ -20,12 +20,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
             headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        },
+                Authorization: `Bearer ${token}`
+            }
+        }
     });
 
-    const { data: { user }, error: authError } = await supabaseWithAuth.auth.getUser(token);
+    const {
+        data: { user },
+        error: authError
+    } = await supabaseWithAuth.auth.getUser(token);
 
     if (authError || !user) {
         return res.status(401).json({ error: 'Unauthorized: Invalid token' });

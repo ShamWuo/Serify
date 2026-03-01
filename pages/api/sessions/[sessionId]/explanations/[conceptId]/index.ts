@@ -8,10 +8,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { sessionId, conceptId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
-
-    if (!conceptId || typeof conceptId !== 'string') return res.status(400).json({ error: 'Missing or invalid conceptId' });
+    if (!conceptId || typeof conceptId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid conceptId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });

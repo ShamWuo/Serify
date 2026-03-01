@@ -13,7 +13,6 @@ export async function checkSessionAllowance(userId: string): Promise<{
     reason?: string;
     passId?: string;
 }> {
-
     const { data: user } = await supabase
         .from('profiles')
         .select('subscription_tier')
@@ -49,7 +48,6 @@ export async function checkSessionAllowance(userId: string): Promise<{
         .single();
 
     if (!usage) {
-
         usage = { session_count: 0 };
     }
 
@@ -60,7 +58,7 @@ export async function checkSessionAllowance(userId: string): Promise<{
         return {
             allowed: false,
             remaining: 0,
-            reason: 'monthly_limit_reached',
+            reason: 'monthly_limit_reached'
         };
     }
 
@@ -69,7 +67,6 @@ export async function checkSessionAllowance(userId: string): Promise<{
 
 export async function incrementSessionUsage(userId: string, passId?: string) {
     if (passId) {
-
         await supabase
             .from('purchases')
             .update({ used: true, used_at: new Date().toISOString() })
@@ -96,12 +93,10 @@ export async function incrementSessionUsage(userId: string, passId?: string) {
             .eq('user_id', userId)
             .eq('month', currentMonth);
     } else {
-        await supabase
-            .from('usage')
-            .insert({
-                user_id: userId,
-                month: currentMonth,
-                session_count: 1,
-            });
+        await supabase.from('usage').insert({
+            user_id: userId,
+            month: currentMonth,
+            session_count: 1
+        });
     }
 }

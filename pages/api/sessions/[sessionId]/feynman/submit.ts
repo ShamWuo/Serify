@@ -6,17 +6,14 @@ import { parseJSON } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) {
@@ -26,7 +23,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.FEYNMAN_SUBMISSION;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks to evaluate this explanation.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Sparks to evaluate this explanation.`
+            });
     }
 
     const { concept, userExplanation } = req.body;
@@ -52,8 +54,8 @@ export default async function handler(
             .eq('concept_id', concept.id)
             .order('attempt_number', { ascending: false });
 
-
-        const maxAttemptNumber = pastAttempts && pastAttempts.length > 0 ? pastAttempts[0].attempt_number : 0;
+        const maxAttemptNumber =
+            pastAttempts && pastAttempts.length > 0 ? pastAttempts[0].attempt_number : 0;
         const currentAttemptNumber = maxAttemptNumber + 1;
 
         const model = genAI.getGenerativeModel({
@@ -80,7 +82,12 @@ Student's Feynman explanation:
 
         const deduction = await deductSparks(userId, sparkCost, 'feynman_evaluate', concept.id);
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks to evaluate this explanation.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Sparks to evaluate this explanation.`
+                });
         }
 
         const result = await model.generateContent(promptText);
@@ -90,7 +97,7 @@ Student's Feynman explanation:
         try {
             evaluation = parseJSON<any>(text);
         } catch (parseError) {
-            console.error("Failed to parse Gemini Feynman output:", text);
+            console.error('Failed to parse Gemini Feynman output:', text);
             return res.status(500).json({ error: 'Failed to parse AI response' });
         }
 
@@ -110,7 +117,6 @@ Student's Feynman explanation:
         if (insertError) throw insertError;
 
         return res.status(200).json({ attempt: newAttempt });
-
     } catch (error: any) {
         console.error('Error evaluating Feynman explanation:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

@@ -11,7 +11,7 @@ We sat down with a list of 21 bugs and said "not today."
 **Critical stuff (the duct-tape was showing):**
 - 🔥 **RLS error exposed to users** — `sessions/init.ts` was using an anonymous Supabase client server-side, which has zero auth context and explodes on insert. Swapped to the service-role admin client. No more raw Postgres errors hitting the UI.
 - ⚡ **Sparks deducted on failed sessions** — Same root cause. Once the RLS failure was plugged, there's no longer a window where AI runs, Sparks get eaten, and nothing saves.
-- 🔘 **Non-interactive settings buttons** — "Export Session Data" and "Delete Account" were glorified `<div>`s. They're real buttons now. Delete even has a two-step "type DELETE to confirm" modal because we're not animals.
+- 🔘 **Non-interactive settings buttons** — "Export Session Data" and "Delete Account" were glorified `<div>`s. They're real buttons now. Delete even has a two-step "type DELE TE to confirm" modal because we're not animals.
 - 🔑 **Change Password did nothing** — Now triggers a Supabase reset email.
 
 **Major stuff (the annoyances):**

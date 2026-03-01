@@ -6,21 +6,22 @@ import { parseJSON } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!UUID_REGEX.test(sessionId)) {
-        return res.status(400).json({ error: 'Invalid session: this session was created before the current format and cannot be used with this feature.' });
+        return res
+            .status(400)
+            .json({
+                error: 'Invalid session: this session was created before the current format and cannot be used with this feature.'
+            });
     }
     const userId = await authenticateApiRequest(req);
     if (!userId) {
@@ -73,7 +74,12 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
 
         const deduction = await deductSparks(userId, sparkCost, 'flashcard_deck');
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to generate flashcards.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to generate flashcards.`
+                });
         }
 
         const result = await model.generateContent(promptText);
@@ -86,7 +92,8 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
             generatedCards = generatedCards.map((card: any) => ({
                 id: card.id || crypto.randomUUID(),
                 conceptId: card.conceptId,
-                conceptName: weakConcepts.find((c: any) => c.id === card.conceptId)?.name || 'Concept',
+                conceptName:
+                    weakConcepts.find((c: any) => c.id === card.conceptId)?.name || 'Concept',
                 front: card.front,
                 back: card.back,
                 status: 'unseen',
@@ -95,7 +102,7 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
                 stillShakyCount: 0
             }));
         } catch (parseError) {
-            console.error("Failed to parse Gemini Flashcards output:", text);
+            console.error('Failed to parse Gemini Flashcards output:', text);
             return res.status(500).json({ error: 'Failed to parse AI response' });
         }
 
@@ -157,7 +164,6 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
         }
 
         return res.status(200).json(finalDeck);
-
     } catch (error: any) {
         console.error('Error generating flashcards:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

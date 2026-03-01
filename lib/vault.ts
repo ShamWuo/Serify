@@ -4,18 +4,18 @@ import { MasteryHistoryEntry, MasteryState, ConceptSynthesis } from '../types/se
 import { parseJSON } from './serify-ai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 async function callFlashAI(prompt: string, jsonMode: boolean = true): Promise<string> {
     const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
-        generationConfig: jsonMode ? {
-            responseMimeType: 'application/json',
-            maxOutputTokens: 1000,
-            temperature: 0.1
-        } : { temperature: 0.1 }
+        generationConfig: jsonMode
+            ? {
+                  responseMimeType: 'application/json',
+                  maxOutputTokens: 1000,
+                  temperature: 0.1
+              }
+            : { temperature: 0.1 }
     });
     const result = await model.generateContent(prompt);
     return result.response.text();
@@ -24,11 +24,13 @@ async function callFlashAI(prompt: string, jsonMode: boolean = true): Promise<st
 async function callProAI(prompt: string, jsonMode: boolean = true): Promise<string> {
     const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
-        generationConfig: jsonMode ? {
-            responseMimeType: 'application/json',
-            maxOutputTokens: 1000,
-            temperature: 0.1
-        } : { temperature: 0.1 }
+        generationConfig: jsonMode
+            ? {
+                  responseMimeType: 'application/json',
+                  maxOutputTokens: 1000,
+                  temperature: 0.1
+              }
+            : { temperature: 0.1 }
     });
     const result = await model.generateContent(prompt);
     return result.response.text();
@@ -39,14 +41,12 @@ type DbClient = SupabaseClient<Database>;
 export function calculateMasteryState(history: MasteryHistoryEntry[]): MasteryState {
     if (history.length === 0) return 'revisit';
 
-
     const weights = history.map((_, index) => {
         const recencyWeight = Math.pow(1.5, index);
         return recencyWeight;
     });
 
     const totalWeight = weights.reduce((a, b) => a + b, 0);
-
 
     const stateScores = { solid: 0, developing: 0, shaky: 0, revisit: 0 };
     const stateValues = { solid: 3, developing: 2, shaky: 1, revisit: 0 };
@@ -55,20 +55,16 @@ export function calculateMasteryState(history: MasteryHistoryEntry[]): MasterySt
         stateScores[entry.state] += weights[index];
     });
 
-
     let weightedScore = 0;
     Object.entries(stateScores).forEach(([state, score]) => {
         weightedScore += (score / totalWeight) * stateValues[state as MasteryState];
     });
 
-
     const lastEntry = history[history.length - 1];
-
 
     if (lastEntry.sourceType === 'session' && lastEntry.state === 'revisit') {
         return 'revisit';
     }
-
 
     let calcState: MasteryState = 'revisit';
     if (weightedScore >= 2.5) calcState = 'solid';
@@ -76,24 +72,25 @@ export function calculateMasteryState(history: MasteryHistoryEntry[]): MasterySt
     else if (weightedScore >= 0.75) calcState = 'shaky';
     else calcState = 'revisit';
 
-
-    if (calcState === 'solid' && history.filter(h => h.state === 'solid').length < 2) {
+    if (calcState === 'solid' && history.filter((h) => h.state === 'solid').length < 2) {
         return 'developing';
     }
 
-
     const lastThree = history.slice(-3);
-    if (lastThree.length === 3 && lastThree.every(h => h.state === 'solid')) {
+    if (lastThree.length === 3 && lastThree.every((h) => h.state === 'solid')) {
         return 'solid';
     }
 
     return calcState;
 }
 
-export async function findSimilarConcept(db: DbClient, userId: string, conceptName: string): Promise<any | null> {
-
-
-    const { data } = await db.from('knowledge_nodes')
+export async function findSimilarConcept(
+    db: DbClient,
+    userId: string,
+    conceptName: string
+): Promise<any | null> {
+    const { data } = await db
+        .from('knowledge_nodes')
         .select('*')
         .eq('user_id', userId)
         .ilike('canonical_name', `%${conceptName}%`)
@@ -110,9 +107,8 @@ export async function findOrCreateConceptNode(
     sessionId: string,
     definition: string
 ): Promise<any> {
-
-
-    const { data: exact } = await db.from('knowledge_nodes')
+    const { data: exact } = await db
+        .from('knowledge_nodes')
         .select('*')
         .eq('user_id', userId)
         .eq('canonical_name', conceptName.toLowerCase())
@@ -123,9 +119,9 @@ export async function findOrCreateConceptNode(
     const similar = await findSimilarConcept(db, userId, conceptName);
 
     if (similar) {
-
         const updatedSessionIds = [...(similar.session_ids || []), sessionId];
-        const { data: updated } = await db.from('knowledge_nodes')
+        const { data: updated } = await db
+            .from('knowledge_nodes')
             .update({
                 display_name: conceptName,
                 session_count: (similar.session_count || 0) + 1,
@@ -138,30 +134,33 @@ export async function findOrCreateConceptNode(
         if (updated) return updated;
     }
 
+    const { data: inserted, error } = await db
+        .from('knowledge_nodes')
+        .insert({
+            id: crypto.randomUUID(),
+            user_id: userId,
+            canonical_name: conceptName.toLowerCase(),
+            display_name: conceptName,
+            definition,
+            current_mastery: 'revisit',
+            mastery_history: JSON.parse(JSON.stringify([])),
+            session_count: 1,
+            session_ids: [sessionId] as any,
+            first_seen_at: new Date().toISOString(),
+            last_seen_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
-    const { data: inserted, error } = await db.from('knowledge_nodes').insert({
-        id: crypto.randomUUID(),
-        user_id: userId,
-        canonical_name: conceptName.toLowerCase(),
-        display_name: conceptName,
-        definition,
-        current_mastery: 'revisit',
-        mastery_history: JSON.parse(JSON.stringify([])),
-        session_count: 1,
-        session_ids: [sessionId] as any,
-        first_seen_at: new Date().toISOString(),
-        last_seen_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    }).select().single();
-
-
-    if (error) console.error("Error creating concept node:", error);
+    if (error) console.error('Error creating concept node:', error);
     return inserted;
 }
 
 export async function upsertTopic(db: DbClient, userId: string, topicName: string): Promise<any> {
-    const { data: existing } = await db.from('concept_topics')
+    const { data: existing } = await db
+        .from('concept_topics')
         .select('*')
         .eq('user_id', userId)
         .eq('name', topicName)
@@ -169,38 +168,47 @@ export async function upsertTopic(db: DbClient, userId: string, topicName: strin
 
     if (existing) return existing;
 
-    const { data: inserted } = await db.from('concept_topics').insert({
-        id: crypto.randomUUID(),
-        user_id: userId,
-        name: topicName,
-        concept_count: 0
-    }).select().single();
+    const { data: inserted } = await db
+        .from('concept_topics')
+        .insert({
+            id: crypto.randomUUID(),
+            user_id: userId,
+            name: topicName,
+            concept_count: 0
+        })
+        .select()
+        .single();
 
     return inserted;
 }
 
 export async function refreshTopicCounts(db: DbClient, userId: string) {
-
-
-    const { data: topics } = await db.from('concept_topics')
-        .select('id')
-        .eq('user_id', userId);
+    const { data: topics } = await db.from('concept_topics').select('id').eq('user_id', userId);
 
     if (!topics) return;
 
     for (const topic of topics) {
-        const { count, data } = await db.from('knowledge_nodes')
+        const { count, data } = await db
+            .from('knowledge_nodes')
             .select('current_mastery', { count: 'exact' })
             .eq('topic_id', topic.id);
 
         let dominant_mastery = null;
         if (data && data.length > 0) {
-            const counts: Record<string, number> = { solid: 0, developing: 0, shaky: 0, revisit: 0 };
-            data.forEach(d => counts[d.current_mastery]++);
-            dominant_mastery = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+            const counts: Record<string, number> = {
+                solid: 0,
+                developing: 0,
+                shaky: 0,
+                revisit: 0
+            };
+            data.forEach((d) => counts[d.current_mastery]++);
+            dominant_mastery = Object.keys(counts).reduce((a, b) =>
+                counts[a] > counts[b] ? a : b
+            );
         }
 
-        await db.from('concept_topics')
+        await db
+            .from('concept_topics')
             .update({
                 concept_count: count || 0,
                 dominant_mastery,
@@ -210,21 +218,19 @@ export async function refreshTopicCounts(db: DbClient, userId: string) {
     }
 }
 
-
 export async function updateTopicClusters(db: DbClient, userId: string) {
-    const { data: concepts } = await db.from('knowledge_nodes')
+    const { data: concepts } = await db
+        .from('knowledge_nodes')
         .select('id, canonical_name, definition, topic_id')
         .eq('user_id', userId);
 
     if (!concepts || concepts.length < 3) return;
 
-
-    const unclassified = concepts.filter(c => !c.topic_id);
+    const unclassified = concepts.filter((c) => !c.topic_id);
     if (unclassified.length < 1) {
         console.log(`[vault] Skipping clustering: no unclassified concepts`);
         return;
     }
-
 
     try {
         const prompt = `
@@ -232,19 +238,26 @@ export async function updateTopicClusters(db: DbClient, userId: string) {
             JSON Format: [{ "topicName": "Topic Name", "conceptIds": ["id1", "id2"] }]
 
             Concepts:
-            ${concepts.map(c => `- ${c.canonical_name}: ${c.definition}`).join('\n')}
+            ${concepts.map((c) => `- ${c.canonical_name}: ${c.definition}`).join('\n')}
         `;
 
         const responseString = await callFlashAI(prompt);
         // Clean markdown block matching standard lib/serify-ai format
-        const cleanJsonString = responseString.replace(/^```json\s*/m, '').replace(/```$/m, '').trim();
-        const clusters = JSON.parse(cleanJsonString) as { topicName: string, conceptIds: string[] }[];
+        const cleanJsonString = responseString
+            .replace(/^```json\s*/m, '')
+            .replace(/```$/m, '')
+            .trim();
+        const clusters = JSON.parse(cleanJsonString) as {
+            topicName: string;
+            conceptIds: string[];
+        }[];
 
         // Upsert topics and assign concepts
         for (const cluster of clusters) {
             const topic = await upsertTopic(db, userId, cluster.topicName);
 
-            await db.from('knowledge_nodes')
+            await db
+                .from('knowledge_nodes')
                 .update({
                     topic_id: topic.id,
                     topic_name: topic.name
@@ -254,22 +267,26 @@ export async function updateTopicClusters(db: DbClient, userId: string) {
 
         // Update concept counts per topic
         await refreshTopicCounts(db, userId);
-
     } catch (err) {
-        console.error("Failed to update topic clusters", err);
+        console.error('Failed to update topic clusters', err);
     }
 }
 
-
-export async function getSessionsForConcept(db: DbClient, userId: string, conceptId: string): Promise<any[]> {
-    const { data: node } = await db.from('knowledge_nodes')
+export async function getSessionsForConcept(
+    db: DbClient,
+    userId: string,
+    conceptId: string
+): Promise<any[]> {
+    const { data: node } = await db
+        .from('knowledge_nodes')
         .select('*')
         .eq('id', conceptId)
         .single();
 
     if (!node || !node.session_ids || node.session_ids.length === 0) return [];
 
-    const { data: sessions } = await db.from('reflection_sessions')
+    const { data: sessions } = await db
+        .from('reflection_sessions')
         .select('*')
         .in('id', node.session_ids)
         .order('created_at', { ascending: false });
@@ -283,9 +300,9 @@ export async function getSessionsForConcept(db: DbClient, userId: string, concep
             // I'm putting placeholders for those details since they require deeper querying
             formattedSessions.push({
                 date: session.created_at,
-                userAnswer: "See answer in session",
-                masteryState: "See mastery in session",
-                feedbackNote: "See feedback in session",
+                userAnswer: 'See answer in session',
+                masteryState: 'See mastery in session',
+                feedbackNote: 'See feedback in session',
                 hintRequested: 0,
                 skipped: 0
             });
@@ -294,14 +311,13 @@ export async function getSessionsForConcept(db: DbClient, userId: string, concep
     return formattedSessions;
 }
 
-
 export async function generateConceptSynthesis(
     db: DbClient,
     userId: string,
     conceptId: string
 ): Promise<ConceptSynthesis | null> {
-
-    const { data: node } = await db.from('knowledge_nodes')
+    const { data: node } = await db
+        .from('knowledge_nodes')
         .select('*')
         .eq('id', conceptId)
         .single();
@@ -321,7 +337,7 @@ export async function generateConceptSynthesis(
         Definition: ${node.definition}
 
         Session history:
-        ${sessions.map(s => `Date: ${s.date}, Answer: "${s.userAnswer}", Assessment: ${s.masteryState}, Feedback: "${s.feedbackNote}"`).join('\n---\n')}
+        ${sessions.map((s) => `Date: ${s.date}, Answer: "${s.userAnswer}", Assessment: ${s.masteryState}, Feedback: "${s.feedbackNote}"`).join('\n---\n')}
 
         Return JSON:
         {
@@ -333,16 +349,20 @@ export async function generateConceptSynthesis(
 
         // Switch to Flash for cost savings
         const responseString = await callFlashAI(prompt);
-        const cleanJsonString = responseString.replace(/^```json\s*/m, '').replace(/```$/m, '').trim();
+        const cleanJsonString = responseString
+            .replace(/^```json\s*/m, '')
+            .replace(/```$/m, '')
+            .trim();
         const synthesisResult = JSON.parse(cleanJsonString);
 
         const synthesis: ConceptSynthesis = {
             ...synthesisResult,
             generatedAt: new Date().toISOString(),
             sessionCount: sessions.length
-        }
+        };
 
-        await db.from('knowledge_nodes')
+        await db
+            .from('knowledge_nodes')
             .update({
                 synthesis: JSON.parse(JSON.stringify(synthesis)),
                 synthesis_generated_at: new Date().toISOString()
@@ -350,13 +370,11 @@ export async function generateConceptSynthesis(
             .eq('id', conceptId);
 
         return synthesis;
-
     } catch (err) {
-        console.error("error generating synthesis", err);
+        console.error('error generating synthesis', err);
         return null;
     }
 }
-
 
 export async function updateConceptMastery(
     db: DbClient,
@@ -366,7 +384,8 @@ export async function updateConceptMastery(
     sourceType: MasteryHistoryEntry['sourceType'],
     sourceId: string
 ) {
-    const { data: node } = await db.from('knowledge_nodes')
+    const { data: node } = await db
+        .from('knowledge_nodes')
         .select('*')
         .eq('id', conceptId)
         .single();
@@ -380,10 +399,11 @@ export async function updateConceptMastery(
         sourceId
     };
 
-    const updatedHistory = [...(node.mastery_history as any || []), newEntry];
+    const updatedHistory = [...((node.mastery_history as any) || []), newEntry];
     const calculatedMastery = calculateMasteryState(updatedHistory);
 
-    await db.from('knowledge_nodes')
+    await db
+        .from('knowledge_nodes')
         .update({
             mastery_history: JSON.parse(JSON.stringify(updatedHistory)),
             current_mastery: calculatedMastery,
@@ -392,9 +412,9 @@ export async function updateConceptMastery(
         .eq('id', conceptId)
         .eq('user_id', userId);
 
-
     if (node.synthesis_generated_at) {
-        await db.from('knowledge_nodes')
+        await db
+            .from('knowledge_nodes')
             .update({ synthesis_generated_at: null })
             .eq('id', conceptId);
     }

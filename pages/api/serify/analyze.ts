@@ -27,12 +27,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
             headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        },
+                Authorization: `Bearer ${token}`
+            }
+        }
     });
 
-    const { data: { user }, error: authError } = await supabaseWithAuth.auth.getUser(token);
+    const {
+        data: { user },
+        error: authError
+    } = await supabaseWithAuth.auth.getUser(token);
 
     if (authError) {
         console.error('Analyze API: Auth error:', authError);
@@ -52,17 +55,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing sessionId or answers' });
     }
 
-    const reportCost = isBasicMode ? SPARK_COSTS.BASIC_FEEDBACK_REPORT : (SPARK_COSTS.BASIC_FEEDBACK_REPORT + SPARK_COSTS.FULL_FEEDBACK_UPGRADE);
-    const sparkCost = (answers.length * SPARK_COSTS.SESSION_ANSWER_ANALYSIS) + reportCost;
+    const reportCost = isBasicMode
+        ? SPARK_COSTS.BASIC_FEEDBACK_REPORT
+        : SPARK_COSTS.BASIC_FEEDBACK_REPORT + SPARK_COSTS.FULL_FEEDBACK_UPGRADE;
+    const sparkCost = answers.length * SPARK_COSTS.SESSION_ANSWER_ANALYSIS + reportCost;
 
     const hasSparks = await hasEnoughSparks(user.id, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks to complete this session.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Sparks to complete this session.`
+            });
     }
 
-    const deduction = await deductSparks(user.id, sparkCost, isBasicMode ? 'session_basic_analysis' : 'session_full_analysis', sessionId);
+    const deduction = await deductSparks(
+        user.id,
+        sparkCost,
+        isBasicMode ? 'session_basic_analysis' : 'session_full_analysis',
+        sessionId
+    );
     if (!deduction.success) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks to complete this session.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Sparks to complete this session.`
+            });
     }
 
     try {
@@ -113,12 +133,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         console.log('Analyze API: Saving', answers.length, 'answers...');
-        const answerRows = answers.map((a: { questionId: string; answer: string; confidence: string }) => ({
-            session_id: sessionId,
-            question_id: a.questionId,
-            answer: a.answer,
-            confidence: a.confidence,
-        }));
+        const answerRows = answers.map(
+            (a: { questionId: string; answer: string; confidence: string }) => ({
+                session_id: sessionId,
+                question_id: a.questionId,
+                answer: a.answer,
+                confidence: a.confidence
+            })
+        );
 
         const { error: answerError } = await supabaseWithAuth
             .from('user_answers')
@@ -140,26 +162,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: sessionId,
                 type: session.content_type as any,
                 title: session.title,
-                content: session.content,
+                content: session.content
             },
-            extractedConcepts: conceptRows.map(c => ({
+            extractedConcepts: conceptRows.map((c) => ({
                 id: c.id,
                 name: c.name,
                 description: c.description ?? '',
                 importance: c.importance ?? 'medium',
-                relatedConcepts: c.related_concept_names ?? [],
+                relatedConcepts: c.related_concept_names ?? []
             })),
-            assessmentQuestions: questionRows.map(q => ({
+            assessmentQuestions: questionRows.map((q) => ({
                 id: q.id,
                 type: q.type,
                 text: q.text,
-                relatedConcepts: q.related_concept_ids ?? [],
+                relatedConcepts: q.related_concept_ids ?? []
             })),
             userAnswers: answers.map((a: { questionId: string; answer: string }) => ({
                 questionId: a.questionId,
-                answer: a.answer,
+                answer: a.answer
             })),
-            status: 'feedback',
+            status: 'feedback'
         };
 
         console.log('Analyze API: Analyzing answers via Gemini...');
@@ -173,15 +195,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Analyze API: Analysis complete, depth score:', depthScore);
 
-        const { error: analysisError } = await supabaseWithAuth
-            .from('analyses')
-            .upsert({
+        const { error: analysisError } = await supabaseWithAuth.from('analyses').upsert(
+            {
                 session_id: sessionId,
                 depth_score: depthScore,
                 strength_map: analysis.strengthMap,
                 insights: analysis.insights,
-                focus_suggestions: analysis.focusSuggestions,
-            }, { onConflict: 'session_id' });
+                focus_suggestions: analysis.focusSuggestions
+            },
+            { onConflict: 'session_id' }
+        );
 
         if (analysisError) {
             console.error('Analyze API: Failed to save analysis:', analysisError);

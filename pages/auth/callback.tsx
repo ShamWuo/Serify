@@ -11,9 +11,13 @@ export default function AuthCallback() {
     const { user, loading } = useAuth();
 
     useEffect(() => {
-
         const timeout = setTimeout(() => {
-            console.log('AuthCallback: 15s global timeout reached. user:', !!user, 'loading:', loading);
+            console.log(
+                'AuthCallback: 15s global timeout reached. user:',
+                !!user,
+                'loading:',
+                loading
+            );
             if (!user) {
                 console.log('AuthCallback: Timeout reached, no user, redirecting to login');
                 router.push('/login?error=OAuthTimeout');
@@ -53,7 +57,9 @@ export default function AuthCallback() {
                 ) : (
                     <div className="flex flex-col items-center gap-4">
                         <Loader2 className="animate-spin text-[var(--accent)]" size={32} />
-                        <p className="text-[var(--muted)] animate-pulse">Initializing your session...</p>
+                        <p className="text-[var(--muted)] animate-pulse">
+                            Initializing your session...
+                        </p>
                     </div>
                 )}
             </div>

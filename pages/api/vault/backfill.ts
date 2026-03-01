@@ -17,7 +17,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     try {
-
         const { data: sessions, error: sessErr } = await supabaseAdmin
             .from('reflection_sessions')
             .select('id')
@@ -30,7 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const sessionIds = sessions.map((s: any) => s.id);
 
-
         const { data: concepts, error: conceptErr } = await supabaseAdmin
             .from('concepts')
             .select('id, session_id, name, description')
@@ -41,14 +39,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(200).json({ backfilled: 0, message: 'No concepts found' });
         }
 
-
         const { data: existingNodes } = await supabaseAdmin
             .from('knowledge_nodes')
             .select('canonical_name')
             .eq('user_id', userId);
 
         const existingNames = new Set((existingNodes || []).map((n: any) => n.canonical_name));
-
 
         const now = new Date().toISOString();
         const toInsert = concepts
@@ -68,28 +64,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 first_seen_at: now,
                 last_seen_at: now,
                 created_at: now,
-                updated_at: now,
+                updated_at: now
             }));
 
         if (toInsert.length === 0) {
             return res.status(200).json({ backfilled: 0, message: 'Vault already up to date' });
         }
 
-
         let written = 0;
         const BATCH = 25;
         for (let i = 0; i < toInsert.length; i += BATCH) {
             const batch = toInsert.slice(i, i + BATCH);
-            const { error: insertErr } = await supabaseAdmin
-                .from('knowledge_nodes')
-                .insert(batch);
+            const { error: insertErr } = await supabaseAdmin.from('knowledge_nodes').insert(batch);
             if (insertErr) {
                 console.error('Batch insert error:', insertErr);
             } else {
                 written += batch.length;
             }
         }
-
 
         if (written > 0) {
             updateTopicClusters(supabaseAdmin, userId).catch(console.error);

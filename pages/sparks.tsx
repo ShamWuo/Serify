@@ -12,21 +12,21 @@ const SPARK_PACKS = [
         name: 'Starter Pack',
         sparks: 50,
         price: 4.99,
-        popular: false,
+        popular: false
     },
     {
         id: 'price_1_sparks_200',
         name: 'Learner Pack',
         sparks: 200,
         price: 14.99,
-        popular: true,
+        popular: true
     },
     {
         id: 'price_1_sparks_500',
         name: 'Master Pack',
         sparks: 500,
         price: 29.99,
-        popular: false,
+        popular: false
     }
 ];
 
@@ -47,7 +47,7 @@ export default function SparksShop() {
             const res = await fetch('/api/sparks/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ priceId }),
+                body: JSON.stringify({ priceId })
             });
 
             if (!res.ok) {
@@ -79,31 +79,36 @@ export default function SparksShop() {
             </Head>
 
             <div className="mx-auto max-w-5xl py-10 px-4 sm:px-6 lg:px-8">
-
-                {}
-                <div className="text-center mb-12">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-100 text-amber-500 mb-6">
-                        <Zap size={32} fill="currentColor" />
+                { }
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-100 text-amber-500 mb-4">
+                        <Zap size={24} fill="currentColor" />
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-display font-bold text-[var(--text)] mb-4">
+                    <h1 className="text-3xl font-display font-bold text-[var(--text)] mb-3">
                         Recharge Your Learning
                     </h1>
-                    <p className="text-lg text-[var(--muted)] max-w-2xl mx-auto">
-                        Sparks fuel Serify's AI. Use them to analyze content, generate custom quizzes, and get personalized feedback.
+                    <p className="text-base text-[var(--muted)] max-w-2xl mx-auto">
+                        Sparks fuel Serify&apos;s AI. Use them to analyze content, generate custom
+                        quizzes, and get personalized feedback.
                     </p>
                 </div>
 
-                {}
+                { }
                 {!loading && balance !== null && (
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 mb-12 flex flex-col md:flex-row items-center justify-between shadow-sm max-w-3xl mx-auto">
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-8 flex flex-col md:flex-row items-center justify-between shadow-sm max-w-3xl mx-auto">
                         <div className="flex items-center gap-4 mb-4 md:mb-0">
                             <div className="w-12 h-12 rounded-full bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center">
                                 <Zap size={24} fill="currentColor" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-medium text-[var(--muted)] uppercase tracking-wider">Current Balance</h3>
+                                <h3 className="text-sm font-medium text-[var(--muted)] uppercase tracking-wider">
+                                    Current Balance
+                                </h3>
                                 <div className="text-3xl font-display font-bold text-[var(--text)]">
-                                    {balance.total_sparks} <span className="text-lg text-[var(--muted)] font-normal">Sparks</span>
+                                    {balance.total_sparks}{' '}
+                                    <span className="text-lg text-[var(--muted)] font-normal">
+                                        Sparks
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -116,9 +121,9 @@ export default function SparksShop() {
                     </div>
                 )}
 
-                {}
+                { }
                 {user?.plan !== 'pro' && (
-                    <div className="mb-12 max-w-3xl mx-auto bg-gradient-to-r from-indigo-50 to-blue-50 border border-blue-100 rounded-3xl p-8 relative overflow-hidden">
+                    <div className="mb-8 max-w-3xl mx-auto bg-gradient-to-r from-indigo-50 to-blue-50 border border-blue-100 rounded-3xl p-6 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
                             <Crown size={120} />
                         </div>
@@ -131,7 +136,8 @@ export default function SparksShop() {
                                     Serify Pro Subscription
                                 </h3>
                                 <p className="text-gray-600 mb-4 max-w-md">
-                                    Get <strong>500 Sparks automatically every month</strong>, plus unlock advanced cognitive analysis and AI Tutor mode.
+                                    Get <strong>500 Sparks automatically every month</strong>, plus
+                                    unlock advanced cognitive analysis and AI Tutor mode.
                                 </p>
                             </div>
                             <button
@@ -146,11 +152,13 @@ export default function SparksShop() {
 
                 <div className="flex items-center justify-center gap-4 mb-8">
                     <div className="h-px bg-[var(--border)] flex-1 max-w-[100px]"></div>
-                    <span className="text-sm font-medium text-[var(--muted)] uppercase tracking-widest">Or buy a-la-carte</span>
+                    <span className="text-sm font-medium text-[var(--muted)] uppercase tracking-widest">
+                        Or buy a-la-carte
+                    </span>
                     <div className="h-px bg-[var(--border)] flex-1 max-w-[100px]"></div>
                 </div>
 
-                {}
+                { }
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
                     {SPARK_PACKS.map((pack) => (
                         <div
@@ -169,10 +177,14 @@ export default function SparksShop() {
                             )}
 
                             <div className="text-center mb-6">
-                                <h3 className="text-lg font-medium text-[var(--muted)] mb-2">{pack.name}</h3>
+                                <h3 className="text-lg font-medium text-[var(--muted)] mb-2">
+                                    {pack.name}
+                                </h3>
                                 <div className="flex items-center justify-center gap-2 mb-2">
                                     <Zap size={32} className="text-amber-500" fill="currentColor" />
-                                    <span className="text-4xl font-display font-bold text-[var(--text)]">{pack.sparks}</span>
+                                    <span className="text-4xl font-display font-bold text-[var(--text)]">
+                                        {pack.sparks}
+                                    </span>
                                 </div>
                                 <div className="text-[var(--text)] font-semibold text-xl">
                                     ${pack.price}
@@ -197,14 +209,13 @@ export default function SparksShop() {
                     ))}
                 </div>
 
-                {}
-                <div className="mt-16 text-center flex flex-col items-center justify-center text-[var(--muted)]">
+                { }
+                <div className="mt-10 text-center flex flex-col items-center justify-center text-[var(--muted)]">
                     <ShieldCheck size={32} className="mb-3 opacity-50" />
                     <p className="text-sm max-w-md">
                         Payments are processed securely by Stripe. Purchased Sparks never expire.
                     </p>
                 </div>
-
             </div>
         </DashboardLayout>
     );

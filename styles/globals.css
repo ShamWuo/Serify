@@ -4,100 +4,99 @@
 
 html,
 body {
-  height: 100%;
+    height: 100%;
 }
 
 :root {
-  --bg: #F7F6F2;
-  --surface: #FFFFFF;
-  --border: #E8E6DF;
-  --text: #1A1916;
-  --muted: #8C8880;
-  --accent: #2A5C45;
-  --accent-light: #EAF2EE;
-  --shallow: #B8860B;
-  --shallow-light: #FDF8E8;
-  --missing: #7C3D9E;
-  --missing-light: #F5EEFA;
-  --warn: #C4541A;
-  --warn-light: #FDF0E8;
-  --dark: #1A1916;
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --border: #e8e6df;
+    --text: #1a1916;
+    --muted: #8c8880;
+    --accent: #2a5c45;
+    --accent-light: #eaf2ee;
+    --shallow: #b8860b;
+    --shallow-light: #fdf8e8;
+    --missing: #7c3d9e;
+    --missing-light: #f5eefa;
+    --warn: #c4541a;
+    --warn-light: #fdf0e8;
+    --dark: #1a1916;
 }
 
 body {
-  color: var(--text);
-  background: var(--bg);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+    .text-balance {
+        text-wrap: balance;
+    }
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+    width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f7f6f2;
+    background: #f7f6f2;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d6d3d1;
-  border-radius: 3px;
+    background: #d6d3d1;
+    border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a29e;
+    background: #a8a29e;
 }
 
 /* Toast animations */
 @keyframes slide-in-right {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
 
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
 .animate-slide-in-right {
-  animation: slide-in-right 0.3s ease-out;
+    animation: slide-in-right 0.3s ease-out;
 }
 
 /* Shake animation for validation feedback */
 @keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
 
-  0%,
-  100% {
-    transform: translateX(0);
-  }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
 
-  10%,
-  30%,
-  50%,
-  70%,
-  90% {
-    transform: translateX(-5px);
-  }
-
-  20%,
-  40%,
-  60%,
-  80% {
-    transform: translateX(5px);
-  }
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
 }
 
 .animate-shake {
-  animation: shake 0.5s ease-in-out;
+    animation: shake 0.5s ease-in-out;
 }

@@ -5,17 +5,16 @@ import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId, conceptId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-    if (!conceptId || typeof conceptId !== 'string') return res.status(400).json({ error: 'Missing or invalid conceptId' });
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
+    if (!conceptId || typeof conceptId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid conceptId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) {
@@ -30,7 +29,6 @@ export default async function handler(
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         { global: { headers: { Authorization: `Bearer ${token}` } } }
     );
-
 
     const { data: existing } = await supabase
         .from('concept_explanations')
@@ -57,7 +55,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.EXPLAIN_IT_TO_ME;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark for this explanation.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Spark for this explanation.`
+            });
     }
 
     const { concept, strongConcepts = [] } = req.body;
@@ -87,9 +90,19 @@ Write a clear, thorough explanation of this concept. Structure it as:
 5. The most common misconception about it and why it's wrong
 `;
 
-        const deduction = await deductSparks(userId, sparkCost, 'explanation_generation', conceptId);
+        const deduction = await deductSparks(
+            userId,
+            sparkCost,
+            'explanation_generation',
+            conceptId
+        );
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark for this explanation.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark for this explanation.`
+                });
         }
 
         const result = await model.generateContent(promptText);
@@ -113,7 +126,6 @@ Write a clear, thorough explanation of this concept. Structure it as:
         if (error) throw error;
 
         return res.status(200).json(newExplanation);
-
     } catch (error: any) {
         console.error('Error generating explanation:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

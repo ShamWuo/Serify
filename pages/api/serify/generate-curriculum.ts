@@ -9,25 +9,37 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+    if (!process.env.GEMINI_API_KEY)
+        return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
 
     const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Unauthorized: No authorization header' });
+    if (!authHeader)
+        return res.status(401).json({ error: 'Unauthorized: No authorization header' });
     const token = authHeader.replace('Bearer ', '');
 
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: `Bearer ${token}` } }
     });
 
-    const { data: { user }, error: authError } = await supabaseWithAuth.auth.getUser(token);
+    const {
+        data: { user },
+        error: authError
+    } = await supabaseWithAuth.auth.getUser(token);
     if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
 
     const sparkCost = SPARK_COSTS.CURRICULUM_GENERATION;
     const hasSparks = await hasEnoughSparks(user.id, sparkCost);
-    if (!hasSparks) return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks to build a curriculum.` });
+    if (!hasSparks)
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Sparks to build a curriculum.`
+            });
 
     const { userInput, inputType } = req.body;
-    if (!userInput || !inputType) return res.status(400).json({ error: 'Missing userInput or inputType' });
+    if (!userInput || !inputType)
+        return res.status(400).json({ error: 'Missing userInput or inputType' });
 
     try {
         // Fetch vault context
@@ -43,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
 
         if (knowledgeNodes) {
-            knowledgeNodes.forEach(n => {
+            knowledgeNodes.forEach((n) => {
                 const mastery = (n.current_mastery || '').toLowerCase();
                 if (mastery.includes('strong') || mastery === 'solid') {
                     vaultContext.strongConcepts.push({ name: n.canonical_name });
@@ -67,7 +79,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
 
         // Generate curriculum
-        const curriculumData = await generateCurriculum(userInput, inputType, vaultContext, userProfile);
+        const curriculumData = await generateCurriculum(
+            userInput,
+            inputType,
+            vaultContext,
+            userProfile
+        );
 
         // Deduct sparks
         const deduction = await deductSparks(user.id, sparkCost, 'curriculum_generation');
@@ -106,8 +123,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Create concept progress rows
         let progressRows: any[] = [];
-        curriculumData.units.forEach(unit => {
-            unit.concepts.forEach(concept => {
+        curriculumData.units.forEach((unit) => {
+            unit.concepts.forEach((concept) => {
                 progressRows.push({
                     curriculum_id: savedCurriculum.id,
                     user_id: user.id,
@@ -119,7 +136,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
         if (progressRows.length > 0) {
-            const { error: progressError } = await supabaseWithAuth.from('curriculum_concept_progress').insert(progressRows);
+            const { error: progressError } = await supabaseWithAuth
+                .from('curriculum_concept_progress')
+                .insert(progressRows);
             if (progressError) {
                 console.error('Error saving curriculum progress rows:', progressError);
                 // Non-fatal if we saved the top-level curriculum, but ideally we should retry or fail

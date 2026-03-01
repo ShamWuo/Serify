@@ -15,24 +15,24 @@ export const getSparkAdminClient = () => {
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
         if (!supabaseServiceKey) {
-            console.warn('⚠️ WARNING: SUPABASE_SERVICE_ROLE_KEY is missing. Admin operations will fail.');
+            console.warn(
+                '⚠️ WARNING: SUPABASE_SERVICE_ROLE_KEY is missing. Admin operations will fail.'
+            );
         }
 
         internalAdminClient = createClient(supabaseUrl, supabaseServiceKey, {
             auth: {
                 persistSession: false,
-                autoRefreshToken: false,
+                autoRefreshToken: false
             }
         });
     }
     return internalAdminClient;
 };
 
-
 const getClient = () => (typeof window !== 'undefined' ? browserClient : getSparkAdminClient());
 
 export const DEMO_USER_ID = 'd3300000-0000-0000-0000-000000000000';
-
 
 export async function getSparkBalance(userId: string): Promise<SparkBalance | null> {
     const client = getSparkAdminClient();
@@ -43,10 +43,8 @@ export async function getSparkBalance(userId: string): Promise<SparkBalance | nu
         .single();
 
     if (error) {
-
         if (error.code === 'PGRST116') {
             console.log(`Spark balance row missing for ${userId}. Attempting auto-initialization.`);
-
 
             const { data: newData, error: initError } = await client
                 .from('spark_balances')
@@ -64,7 +62,6 @@ export async function getSparkBalance(userId: string): Promise<SparkBalance | nu
                 return null;
             }
 
-
             await client.from('spark_transactions').insert({
                 user_id: userId,
                 amount: 15,
@@ -73,7 +70,6 @@ export async function getSparkBalance(userId: string): Promise<SparkBalance | nu
                 action: 'auto_initialization',
                 balance_after: 15
             });
-
 
             await client.from('spark_grants').insert({
                 user_id: userId,
@@ -125,7 +121,6 @@ export async function deductSparks(
 }
 
 export const SPARK_COSTS = {
-
     SESSION_INGESTION: 2,
     CURRICULUM_GENERATION: 2,
     QUESTION_GENERATION: 1,
@@ -148,7 +143,7 @@ export const SPARK_COSTS = {
     FLOW_MODE_EVAL: 0,
 
     VAULT_SYNTHESIS: 1,
-    KNOWLEDGE_REPORT_CARD: 1,
+    KNOWLEDGE_REPORT_CARD: 1
 };
 
 export async function hasEnoughSparks(userId: string, requiredAmount: number): Promise<boolean> {
@@ -158,9 +153,23 @@ export async function hasEnoughSparks(userId: string, requiredAmount: number): P
     return balance.total_sparks >= requiredAmount;
 }
 
-export async function authenticateApiRequest(req: NextApiRequest): Promise<string | null> {
-    const authHeader = req.headers.authorization;
-    const isDemoHeader = req.headers['x-serify-demo'] === 'true';
+export async function authenticateApiRequest(
+    req: NextApiRequest | Request
+): Promise<string | null> {
+    let authHeader: string | undefined | null;
+    let isDemoHeader: boolean;
+
+    if ('headers' in req && typeof req.headers.get === 'function') {
+        // Edge Runtime (Request)
+        const fetchReq = req as Request;
+        authHeader = fetchReq.headers.get('authorization');
+        isDemoHeader = fetchReq.headers.get('x-serify-demo') === 'true';
+    } else {
+        // Node.js Runtime (NextApiRequest)
+        const nodeReq = req as NextApiRequest;
+        authHeader = nodeReq.headers.authorization;
+        isDemoHeader = nodeReq.headers['x-serify-demo'] === 'true';
+    }
 
     if (!authHeader) {
         return isDemoHeader ? DEMO_USER_ID : null;
@@ -172,8 +181,8 @@ export async function authenticateApiRequest(req: NextApiRequest): Promise<strin
         return DEMO_USER_ID;
     }
 
-
-
-    const { data: { user } } = await getClient().auth.getUser(token);
+    const {
+        data: { user }
+    } = await getClient().auth.getUser(token);
     return user?.id || null;
 }

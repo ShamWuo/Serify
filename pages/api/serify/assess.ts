@@ -26,12 +26,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
             headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        },
+                Authorization: `Bearer ${token}`
+            }
+        }
     });
 
-    const { data: { user }, error: authError } = await supabaseWithAuth.auth.getUser(token);
+    const {
+        data: { user },
+        error: authError
+    } = await supabaseWithAuth.auth.getUser(token);
 
     if (authError) {
         console.error('Assess API: Auth error:', authError);
@@ -70,7 +73,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (!session) {
-            console.log('Assess API: Session not found for sessionId:', sessionId, 'userId:', user.id);
+            console.log(
+                'Assess API: Session not found for sessionId:',
+                sessionId,
+                'userId:',
+                user.id
+            );
             return res.status(404).json({ error: 'Session not found' });
         }
 
@@ -107,11 +115,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (existingQuestions && existingQuestions.length > 0) {
             return res.status(200).json({
-                questions: existingQuestions.map(q => ({
+                questions: existingQuestions.map((q) => ({
                     id: q.id,
                     type: q.type,
                     text: q.text,
-                    relatedConcepts: q.related_concept_ids ?? [],
+                    relatedConcepts: q.related_concept_ids ?? []
                 }))
             });
         }
@@ -128,34 +136,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const preferences = profile?.preferences ?? { tone: 'supportive', questionCount: 6 };
 
-        const concepts: Concept[] = conceptRows.map(c => ({
+        const concepts: Concept[] = conceptRows.map((c) => ({
             id: c.id,
             name: c.name,
             description: c.description ?? '',
             importance: c.importance ?? 'medium',
-            relatedConcepts: c.related_concept_names ?? [],
+            relatedConcepts: c.related_concept_names ?? []
         }));
 
         const sparkCost = SPARK_COSTS.QUESTION_GENERATION;
         const hasSparks = await hasEnoughSparks(user.id, sparkCost);
         if (!hasSparks) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to generate questions.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to generate questions.`
+                });
         }
 
         const deduction = await deductSparks(user.id, sparkCost, 'question_generation', sessionId);
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to generate questions.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to generate questions.`
+                });
         }
 
         console.log('Assess API: Generating questions via Gemini...');
         const questions = await generateAssessment(concepts, preferences);
         console.log('Assess API: Generated', questions.length, 'questions');
 
-        const questionRows = questions.map(q => ({
+        const questionRows = questions.map((q) => ({
             session_id: sessionId,
             type: q.type,
             text: q.text,
-            related_concept_ids: [],
+            related_concept_ids: []
         }));
 
         const { data: savedQuestions, error: saveError } = await supabaseWithAuth
@@ -175,7 +193,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id: q.id,
             type: q.type,
             text: q.text,
-            relatedConcepts: questions[i]?.relatedConcepts ?? [],
+            relatedConcepts: questions[i]?.relatedConcepts ?? []
         }));
 
         return res.status(200).json({ questions: responseQuestions });

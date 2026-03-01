@@ -6,17 +6,16 @@ import { parseJSON } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId, conceptId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-    if (!conceptId || typeof conceptId !== 'string') return res.status(400).json({ error: 'Missing or invalid conceptId' });
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
+    if (!conceptId || typeof conceptId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid conceptId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) {
@@ -51,7 +50,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.CONCEPT_DEEP_DIVE;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks for a Concept Deep Dive.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Sparks for a Concept Deep Dive.`
+            });
     }
 
     try {
@@ -83,7 +87,12 @@ Generate the deep dive JSON.
 
         const deduction = await deductSparks(userId, sparkCost, 'concept_deep_dive', conceptId);
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks for a Concept Deep Dive.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Sparks for a Concept Deep Dive.`
+                });
         }
 
         const result = await model.generateContent(promptText);
@@ -93,7 +102,7 @@ Generate the deep dive JSON.
         try {
             generatedLesson = parseJSON<any>(text);
         } catch (parseError) {
-            console.error("Failed to parse Gemini Deep Dive output:", text);
+            console.error('Failed to parse Gemini Deep Dive output:', text);
             return res.status(500).json({ error: 'Failed to parse AI response' });
         }
 
@@ -112,7 +121,6 @@ Generate the deep dive JSON.
 
         if (error) throw error;
         return res.status(200).json(newDeepDive);
-
     } catch (error: any) {
         console.error('Error generating deep dive:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

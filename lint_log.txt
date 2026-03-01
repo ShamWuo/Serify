@@ -1,5 +1,0 @@
-
-> ai-quiz-generator@1.0.0 lint
-> next lint --dir pages --dir components --dir lib --dir contexts
-
-error: unknown option '--dir'

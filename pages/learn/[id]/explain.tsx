@@ -34,21 +34,27 @@ export default function ExplainMode() {
 
                 const parsed = JSON.parse(stored);
 
-                const wk = (parsed.report?.strength_map || []).filter(
-                    (item: any) => ['revisit', 'shaky', 'skipped', 'developing'].includes(item.mastery_state)
-                ).map((item: any) => ({
-                    id: item.concept_id,
-                    name: parsed.concepts?.find((c: any) => c.id === item.concept_id)?.name || 'Concept',
-                    masteryState: item.mastery_state,
-                    feedbackNote: item.feedback_text
-                }));
+                const wk = (parsed.report?.strength_map || [])
+                    .filter((item: any) =>
+                        ['revisit', 'shaky', 'skipped', 'developing'].includes(item.mastery_state)
+                    )
+                    .map((item: any) => ({
+                        id: item.concept_id,
+                        name:
+                            parsed.concepts?.find((c: any) => c.id === item.concept_id)?.name ||
+                            'Concept',
+                        masteryState: item.mastery_state,
+                        feedbackNote: item.feedback_text
+                    }));
 
-                const st = (parsed.report?.strength_map || []).filter(
-                    (item: any) => ['solid'].includes(item.mastery_state)
-                ).map((item: any) => ({
-                    id: item.concept_id,
-                    name: parsed.concepts?.find((c: any) => c.id === item.concept_id)?.name || 'Concept'
-                }));
+                const st = (parsed.report?.strength_map || [])
+                    .filter((item: any) => ['solid'].includes(item.mastery_state))
+                    .map((item: any) => ({
+                        id: item.concept_id,
+                        name:
+                            parsed.concepts?.find((c: any) => c.id === item.concept_id)?.name ||
+                            'Concept'
+                    }));
 
                 setSessionData({
                     userId: user?.id || 'placeholder-user-id',
@@ -64,7 +70,6 @@ export default function ExplainMode() {
                 } else {
                     generateExplanation(wk[0], st);
                 }
-
             } catch (err) {
                 console.error(err);
             } finally {
@@ -73,25 +78,30 @@ export default function ExplainMode() {
         };
 
         initDeck();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, router]);
 
     const generateExplanation = async (concept: any, strong: any[]) => {
         setGenerating(true);
         setCurrentExplanation(null);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const {
+                data: { session }
+            } = await supabase.auth.getSession();
             const token = session?.access_token;
             const headers: any = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
             const isRegenerating = router.query.regenerate === 'true';
 
-
-            const res = await fetch(`/api/sessions/${id}/explanations/${concept.id}/generate${isRegenerating ? '?regenerate=true' : ''}`, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ concept, strongConcepts: strong })
-            });
+            const res = await fetch(
+                `/api/sessions/${id}/explanations/${concept.id}/generate${isRegenerating ? '?regenerate=true' : ''}`,
+                {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ concept, strongConcepts: strong })
+                }
+            );
 
             if (res.ok) {
                 const data = await res.json();
@@ -114,7 +124,12 @@ export default function ExplainMode() {
         if (sessionData) {
             fetch('/api/learn/mastery-update', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...(sessionData.authToken ? { 'Authorization': `Bearer ${sessionData.authToken}` } : {}) },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(sessionData.authToken
+                        ? { Authorization: `Bearer ${sessionData.authToken}` }
+                        : {})
+                },
                 body: JSON.stringify({
                     conceptId: currentConcept.id,
                     mode: 'explain',
@@ -145,12 +160,20 @@ export default function ExplainMode() {
         return (
             <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
                 <div className="max-w-[600px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24">
-                    <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6 text-3xl">✓</div>
-                    <h2 className="text-3xl font-display mb-4">You've reviewed all your gaps</h2>
+                    <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6 text-3xl">
+                        ✓
+                    </div>
+                    <h2 className="text-3xl font-display mb-4">
+                        You&apos;ve reviewed all your gaps
+                    </h2>
                     <p className="text-[var(--muted)] text-center mb-8 text-lg">
-                        The Concept Vault has been updated. If you still have shaky concepts, the AI Tutor can help you drill down further.
+                        The Concept Vault has been updated. If you still have shaky concepts, the AI
+                        Tutor can help you drill down further.
                     </p>
-                    <Link href={`/session/${id}/feedback`} className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-medium hover:-translate-y-0.5 transition-all">
+                    <Link
+                        href={`/session/${id}/feedback`}
+                        className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-medium hover:-translate-y-0.5 transition-all"
+                    >
                         Return to Report &rarr;
                     </Link>
                 </div>
@@ -166,19 +189,23 @@ export default function ExplainMode() {
                 <title>Explain It To Me | Serify</title>
             </Head>
 
-            { }
+            {}
             <header className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-                <Link href={`/session/${id}/feedback`} className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2">
+                <Link
+                    href={`/session/${id}/feedback`}
+                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2"
+                >
                     &larr; Back to Report
                 </Link>
                 <div className="font-medium text-sm text-[var(--text)]">
-                    <span className="text-[var(--muted)]">Concept {currentIndex + 1} of {weakConcepts.length}</span>
+                    <span className="text-[var(--muted)]">
+                        Concept {currentIndex + 1} of {weakConcepts.length}
+                    </span>
                 </div>
             </header>
 
-            { }
+            {}
             <main className="flex-1 w-full max-w-[700px] mx-auto p-6 md:p-12 pb-32">
-
                 <h1 className="text-3xl md:text-4xl font-display mb-8 text-[var(--text)]">
                     {currentConcept?.name}
                 </h1>
@@ -232,7 +259,6 @@ export default function ExplainMode() {
                         </button>
                     </div>
                 )}
-
             </main>
         </div>
     );

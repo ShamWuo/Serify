@@ -11,25 +11,35 @@ const PLAN_FEATURES: Record<string, any> = {
         sharing: false,
         weeklyDigest: false,
         batchPdfUpload: false,
-        aiTutor: false,
+        aiTutor: false
     },
     pro: {
         sessionsPerMonth: Infinity,
         sessionHistory: Infinity,
         learningModes: ['flashcards', 'explain', 'feynman', 'tutor', 'quiz', 'deepdive'],
-        feedbackSections: ['strength_map', 'cognitive_analysis', 'misconceptions', 'focus_suggestions'],
+        feedbackSections: [
+            'strength_map',
+            'cognitive_analysis',
+            'misconceptions',
+            'focus_suggestions'
+        ],
         methods: ['standard', 'feynman', 'spaced_repetition', 'socratic', 'practice'],
         knowledgeVault: true,
         sharing: true,
         weeklyDigest: true,
         batchPdfUpload: true,
-        aiTutor: true,
+        aiTutor: true
     },
     teams: {
         sessionsPerMonth: Infinity,
         sessionHistory: Infinity,
         learningModes: ['flashcards', 'explain', 'feynman', 'tutor', 'quiz', 'deepdive'],
-        feedbackSections: ['strength_map', 'cognitive_analysis', 'misconceptions', 'focus_suggestions'],
+        feedbackSections: [
+            'strength_map',
+            'cognitive_analysis',
+            'misconceptions',
+            'focus_suggestions'
+        ],
         methods: ['standard', 'feynman', 'spaced_repetition', 'socratic', 'practice'],
         knowledgeVault: true,
         sharing: true,
@@ -40,11 +50,15 @@ const PLAN_FEATURES: Record<string, any> = {
         teamWorkspace: true,
         adminDashboard: true,
         contentAssignment: true,
-        teamAnalytics: true,
+        teamAnalytics: true
     }
 };
 
-export async function canAccess(userId: string, featureGroupName: string, featureValue?: string): Promise<boolean> {
+export async function canAccess(
+    userId: string,
+    featureGroupName: string,
+    featureValue?: string
+): Promise<boolean> {
     const { data: user } = await supabase
         .from('profiles')
         .select('subscription_tier')

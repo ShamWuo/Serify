@@ -5,17 +5,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     if (!sessionId) {
         return res.status(400).json({ error: 'Missing sessionId' });
@@ -34,7 +31,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to continue chatting.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Spark to continue chatting.`
+            });
     }
 
     const authHeader = req.headers.authorization;
@@ -54,7 +56,9 @@ export default async function handler(
             .single();
 
         if (fetchError || !conversation) {
-            return res.status(404).json({ error: 'Tutor conversation not found. Call start first.' });
+            return res
+                .status(404)
+                .json({ error: 'Tutor conversation not found. Call start first.' });
         }
 
         const model = genAI.getGenerativeModel({
@@ -74,12 +78,17 @@ Role:
 
         const deduction = await deductSparks(userId, sparkCost, 'ai_tutor_message');
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to continue chatting.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to continue chatting.`
+                });
         }
 
-
         const historyLimit = 10;
-        const prunedMessages = messages.length > historyLimit ? messages.slice(-historyLimit) : messages;
+        const prunedMessages =
+            messages.length > historyLimit ? messages.slice(-historyLimit) : messages;
 
         const chat = model.startChat({
             history: prunedMessages.slice(0, -1).map((m: any) => ({
@@ -110,7 +119,6 @@ Role:
         if (updateError) throw updateError;
 
         return res.status(200).json({ reply: replyText, conversation: updatedDoc });
-
     } catch (error: any) {
         console.error('Error in tutor chat:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

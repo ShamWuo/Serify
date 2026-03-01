@@ -6,7 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false, autoRefreshToken: false }
@@ -25,10 +26,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sparkCost = SPARK_COSTS.FLOW_MODE_PLAN || 1;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to start Flow Mode.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Spark to start Flow Mode.`
+            });
     }
 
-    const { targetConcepts, strongConcepts, feedbackSummary, sourceType, sourceSessionId } = req.body;
+    const { targetConcepts, strongConcepts, feedbackSummary, sourceType, sourceSessionId } =
+        req.body;
 
     if (!targetConcepts || targetConcepts.length === 0) {
         return res.status(400).json({ error: 'Missing target concepts' });
@@ -67,7 +74,9 @@ Rules:
 
         const promptText = `
 TARGET CONCEPTS (what to teach):
-${targetConcepts.map((c: any) => `
+${targetConcepts
+    .map(
+        (c: any) => `
   - ${c.name || c.display_name} (ID: ${c.id || 'none'})
     Current mastery: ${c.currentMastery || c.current_mastery || 'Not started'}
     Definition: ${c.definition || 'none'}
@@ -75,7 +84,9 @@ ${targetConcepts.map((c: any) => `
     Known misconceptions: ${c.misconceptions?.join(', ') || 'none detected'}
     Sessions covered: ${c.sessionCount || c.session_count || 0}
     Hint requested previously: ${c.hintRequestCount || c.hint_request_count || 0} times
-`).join('\n')}
+`
+    )
+    .join('\n')}
 
 WHAT THIS LEARNER UNDERSTANDS WELL (use as bridges):
 ${(strongConcepts || []).map((c: any) => `- ${c.name || c.display_name}`).join('\n') || 'None provided'}
@@ -86,39 +97,48 @@ ${feedbackSummary || 'No prior session context'}
 
         const deduction = await deductSparks(userId, sparkCost, 'flow_mode_plan');
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to start Flow Mode.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to start Flow Mode.`
+                });
         }
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();
 
-        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const cleanedText = text
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim();
         const plan = JSON.parse(cleanedText);
 
-
         plan.concepts = plan.concepts.map((c: any, i: number) => {
-            const original = targetConcepts.find((tc: any) => tc.id === c.conceptId || tc.name === c.conceptName || tc.display_name === c.conceptName);
+            const original = targetConcepts.find(
+                (tc: any) =>
+                    tc.id === c.conceptId ||
+                    tc.name === c.conceptName ||
+                    tc.display_name === c.conceptName
+            );
             return {
                 ...c,
                 conceptId: original?.id || uuidv4()
             };
         });
 
-
         const sessionId = uuidv4();
-        const { error: dbError } = await supabaseAdmin
-            .from('flow_sessions')
-            .insert({
-                id: sessionId,
-                user_id: userId,
-                source_type: sourceType || 'standalone',
-                source_session_id: sourceSessionId || null,
-                initial_plan: plan,
-                concepts_completed: [],
-                concepts_in_progress: [],
-                status: 'active',
-                total_sparks_spent: sparkCost
-            });
+        const { error: dbError } = await supabaseAdmin.from('flow_sessions').insert({
+            id: sessionId,
+            user_id: userId,
+            source_type: sourceType || 'standalone',
+            source_session_id: sourceSessionId || null,
+            initial_plan: plan,
+            concepts_completed: [],
+            concepts_in_progress: [],
+            status: 'active',
+            total_sparks_spent: sparkCost
+        });
 
         if (dbError) {
             console.error('Error inserting flow session:', dbError);
@@ -126,7 +146,6 @@ ${feedbackSummary || 'No prior session context'}
         }
 
         return res.status(200).json({ plan, sessionId, total_sparks_spent: sparkCost });
-
     } catch (error: any) {
         console.error('Error in flow mode plan generation:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

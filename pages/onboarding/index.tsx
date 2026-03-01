@@ -9,7 +9,7 @@ const USER_TYPES = [
     { id: 'student', label: 'Student' },
     { id: 'professional', label: 'Professional' },
     { id: 'self_directed', label: 'Self-directed learner' },
-    { id: 'educator', label: 'Educator' },
+    { id: 'educator', label: 'Educator' }
 ];
 
 export default function OnboardingPersonalization() {
@@ -46,10 +46,7 @@ export default function OnboardingPersonalization() {
                 if (selectedType) updates.user_type = selectedType;
                 if (learningContext) updates.learning_context = learningContext;
 
-                const { error } = await supabase
-                    .from('profiles')
-                    .update(updates)
-                    .eq('id', user.id);
+                const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
 
                 if (error) {
                     console.error('Error saving personalization:', error);
@@ -84,26 +81,42 @@ export default function OnboardingPersonalization() {
                 </div>
 
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-sm">
-                    <h1 className="text-2xl font-display font-medium text-[var(--text)] mb-2">Tell us about yourself</h1>
-                    <p className="text-[var(--muted)] mb-8">Serify will personalize your experience.</p>
+                    <h1 className="text-2xl font-display font-medium text-[var(--text)] mb-2">
+                        Tell us about yourself
+                    </h1>
+                    <p className="text-[var(--muted)] mb-8">
+                        Serify will personalize your experience.
+                    </p>
 
                     <form onSubmit={handleProceed} className="space-y-8">
                         <div>
-                            <label className="block text-sm font-medium text-[var(--text)] mb-4">I am a...</label>
+                            <label className="block text-sm font-medium text-[var(--text)] mb-4">
+                                I am a...
+                            </label>
                             <div className="space-y-3">
                                 {USER_TYPES.map((type) => (
                                     <label
                                         key={type.id}
-                                        className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${selectedType === type.id
-                                            ? 'border-[var(--accent)] bg-[var(--accent)]/5'
-                                            : 'border-[var(--border)] hover:border-[var(--border)]/80 hover:bg-black/5'
-                                            }`}
+                                        className={`flex items-center p-4 rounded-xl border cursor-pointer transition-all ${
+                                            selectedType === type.id
+                                                ? 'border-[var(--accent)] bg-[var(--accent)]/5'
+                                                : 'border-[var(--border)] hover:border-[var(--border)]/80 hover:bg-black/5'
+                                        }`}
                                     >
-                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-3 flex-shrink-0 ${selectedType === type.id ? 'border-[var(--accent)]' : 'border-[var(--border)]'
-                                            }`}>
-                                            {selectedType === type.id && <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />}
+                                        <div
+                                            className={`w-5 h-5 rounded-full border flex items-center justify-center mr-3 flex-shrink-0 ${
+                                                selectedType === type.id
+                                                    ? 'border-[var(--accent)]'
+                                                    : 'border-[var(--border)]'
+                                            }`}
+                                        >
+                                            {selectedType === type.id && (
+                                                <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
+                                            )}
                                         </div>
-                                        <span className="font-medium text-[var(--text)]">{type.label}</span>
+                                        <span className="font-medium text-[var(--text)]">
+                                            {type.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -136,7 +149,13 @@ export default function OnboardingPersonalization() {
                                 disabled={isSaving || !user}
                                 className="h-12 px-6 bg-[var(--text)] text-[var(--surface)] rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isSaving ? <Loader2 size={18} className="animate-spin" /> : <>Continue <ArrowRight size={18} /></>}
+                                {isSaving ? (
+                                    <Loader2 size={18} className="animate-spin" />
+                                ) : (
+                                    <>
+                                        Continue <ArrowRight size={18} />
+                                    </>
+                                )}
                             </button>
                         </div>
                     </form>

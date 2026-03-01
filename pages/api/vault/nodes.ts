@@ -12,7 +12,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-
     const supabaseAdmin = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -21,10 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { tab = 'all', sort = 'last_seen' } = req.query;
 
     try {
-        let query = supabaseAdmin
-            .from('knowledge_nodes')
-            .select('*')
-            .eq('user_id', userId);
+        let query = supabaseAdmin.from('knowledge_nodes').select('*').eq('user_id', userId);
 
         if (tab === 'needs_work') {
             query = query.in('current_mastery', ['shaky', 'revisit']);
@@ -38,8 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw error;
         }
 
-        console.log(`[vault/nodes] userId=${userId} tab=${tab} sort=${sort} found=${nodes?.length ?? 0}`);
-
+        console.log(
+            `[vault/nodes] userId=${userId} tab=${tab} sort=${sort} found=${nodes?.length ?? 0}`
+        );
 
         const sorted = (nodes || []).sort((a, b) => {
             if (sort === 'alpha') {
@@ -47,12 +44,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } else if (sort === 'session_count') {
                 return (b.session_count || 0) - (a.session_count || 0);
             } else if (sort === 'mastery') {
-                return (MASTERY_ORDER[a.current_mastery] || 0) - (MASTERY_ORDER[b.current_mastery] || 0);
+                return (
+                    (MASTERY_ORDER[a.current_mastery] || 0) -
+                    (MASTERY_ORDER[b.current_mastery] || 0)
+                );
             }
 
-            return new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime();
+            return (
+                new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime()
+            );
         });
-
 
         const { data: topics } = await supabaseAdmin
             .from('concept_topics')

@@ -6,17 +6,14 @@ import { parseJSON } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export default async function handler(
-    req: NextApiRequest,
-    res: NextApiResponse
-) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) {
@@ -31,7 +28,12 @@ export default async function handler(
     const sparkCost = SPARK_COSTS.PRACTICE_QUIZ_EVAL;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to evaluate this answer.` });
+        return res
+            .status(403)
+            .json({
+                error: 'out_of_sparks',
+                message: `You need ${sparkCost} Spark to evaluate this answer.`
+            });
     }
 
     const authHeader = req.headers.authorization;
@@ -85,7 +87,12 @@ Student's Answer: ${answerText}
 
         const deduction = await deductSparks(userId, sparkCost, 'quiz_answer_evaluation');
         if (!deduction.success) {
-            return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to evaluate this answer.` });
+            return res
+                .status(403)
+                .json({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark to evaluate this answer.`
+                });
         }
 
         const result = await model.generateContent(promptText);
@@ -95,28 +102,30 @@ Student's Answer: ${answerText}
         try {
             evaluation = parseJSON<any>(text);
         } catch (parseError) {
-            console.error("Failed to parse Gemini Answer Eval output:", text);
+            console.error('Failed to parse Gemini Answer Eval output:', text);
             return res.status(500).json({ error: 'Failed to parse AI response' });
         }
-
 
         const updatedQuestions = quiz.questions.map((q: any) => {
             if (q.id !== questionId) return q;
             return {
                 ...q,
-                attempts: [...(q.attempts || []), {
-                    attemptNumber: (q.attempts?.length || 0) + 1,
-                    answerText,
-                    submittedAt: new Date().toISOString(),
-                    evaluation
-                }]
+                attempts: [
+                    ...(q.attempts || []),
+                    {
+                        attemptNumber: (q.attempts?.length || 0) + 1,
+                        answerText,
+                        submittedAt: new Date().toISOString(),
+                        evaluation
+                    }
+                ]
             };
         });
 
-
         const latestAttempt = quiz.attempts[quiz.attempts.length - 1];
         if (latestAttempt) {
-            latestAttempt.results[evaluation.outcome] = (latestAttempt.results[evaluation.outcome] || 0) + 1;
+            latestAttempt.results[evaluation.outcome] =
+                (latestAttempt.results[evaluation.outcome] || 0) + 1;
         }
 
         const { error: updateError } = await supabase
@@ -130,7 +139,6 @@ Student's Answer: ${answerText}
         if (updateError) throw updateError;
 
         return res.status(200).json({ evaluation });
-
     } catch (error: any) {
         console.error('Error recording quiz answer:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

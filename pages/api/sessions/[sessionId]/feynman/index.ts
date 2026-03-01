@@ -8,9 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { sessionId } = req.query;
-    if (!sessionId || typeof sessionId !== 'string') return res.status(400).json({ error: 'Missing or invalid sessionId' });
-
-
+    if (!sessionId || typeof sessionId !== 'string')
+        return res.status(400).json({ error: 'Missing or invalid sessionId' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });

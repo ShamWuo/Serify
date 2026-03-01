@@ -1,9 +1,0 @@
-﻿pages/api/analyze-answer.ts(22,17): error TS2353: Object literal may only specify known properties, and 'responseMimeType' does not exist in type 'GenerationConfig'.
-pages/api/generate-questions.ts(22,17): error TS2353: Object literal may only specify known properties, and 'responseMimeType' does not exist in type 'GenerationConfig'.
-pages/api/process-content.ts(22,17): error TS2353: Object literal may only specify known properties, and 'responseMimeType' does not exist in type 'GenerationConfig'.
-pages/api/synthesize-feedback.ts(22,17): error TS2353: Object literal may only specify known properties, and 'responseMimeType' does not exist in type 'GenerationConfig'.
-pages/dashboard.tsx(9,28): error TS2307: Cannot find module '@/components/EmptyState' or its corresponding type declarations.
-pages/dashboard.tsx(10,27): error TS2307: Cannot find module '@/components/Toast' or its corresponding type declarations.
-pages/dashboard.tsx(11,29): error TS2307: Cannot find module '@/components/FlowDiagram' or its corresponding type declarations.
-pages/dashboard.tsx(12,33): error TS2307: Cannot find module '@/components/ExampleAnalysis' or its corresponding type declarations.
-pages/dashboard.tsx(13,34): error TS2307: Cannot find module '@/components/PhilosophyBanner' or its corresponding type declarations.

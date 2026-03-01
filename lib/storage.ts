@@ -17,7 +17,7 @@ export const storage = {
         try {
             return JSON.parse(stored);
         } catch (e) {
-            console.error("Failed to parse history", e);
+            console.error('Failed to parse history', e);
             return [];
         }
     },
@@ -25,7 +25,7 @@ export const storage = {
     saveSession: (session: SessionSummary) => {
         if (typeof window === 'undefined') return;
         const history = storage.getHistory();
-        const index = history.findIndex(s => s.id === session.id);
+        const index = history.findIndex((s) => s.id === session.id);
 
         let newHistory;
         if (index >= 0) {
@@ -41,7 +41,7 @@ export const storage = {
     removeSession: (id: string) => {
         if (typeof window === 'undefined') return;
         const history = storage.getHistory();
-        const newHistory = history.filter(s => s.id !== id);
+        const newHistory = history.filter((s) => s.id !== id);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(newHistory));
     }
 };

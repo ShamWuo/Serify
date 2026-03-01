@@ -33,10 +33,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         if (!user) return;
 
         // Prevent non-onboarded users from accessing dashboard pages
-        if (
-            user.onboardingCompleted === false &&
-            !router.pathname.startsWith('/onboarding')
-        ) {
+        if (user.onboardingCompleted === false && !router.pathname.startsWith('/onboarding')) {
             router.push('/onboarding');
         }
 
@@ -45,9 +42,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 const token = session?.access_token;
                 if (!token) return;
                 fetch('/api/vault/stats', { headers: { Authorization: `Bearer ${token}` } })
-                    .then(r => r.ok ? r.json() : null)
-                    .then(d => { if (d) setVaultNeedsWork(d.needsWork || 0); })
-                    .catch(() => { });
+                    .then((r) => (r.ok ? r.json() : null))
+                    .then((d) => {
+                        if (d) setVaultNeedsWork(d.needsWork || 0);
+                    })
+                    .catch(() => {});
             });
         });
     }, [user, router]);
@@ -60,11 +59,24 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     const navItems = [
         { href: '/', label: 'Home', icon: <Home size={20} /> },
         { href: '/analyze', label: 'New Session', icon: <PlusCircle size={20} /> },
-        { href: '/learn', label: '✦ Learn', icon: <Sparkles size={20} className="text-[var(--accent)]" /> },
+        {
+            href: '/learn',
+            label: '✦ Learn',
+            icon: <Sparkles size={20} className="text-[var(--accent)]" />
+        },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
-        { href: '/flow', label: 'Flow Mode', icon: <LibraryBig size={20} className="text-purple-500" /> },
-        { href: '/vault', label: 'Concept Vault', icon: <Archive size={20} />, badge: vaultNeedsWork > 0 ? vaultNeedsWork : undefined },
-        { href: '/settings', label: 'Settings', icon: <Settings size={20} /> },
+        {
+            href: '/flow',
+            label: 'Flow Mode',
+            icon: <LibraryBig size={20} className="text-purple-500" />
+        },
+        {
+            href: '/vault',
+            label: 'Concept Vault',
+            icon: <Archive size={20} />,
+            badge: vaultNeedsWork > 0 ? vaultNeedsWork : undefined
+        },
+        { href: '/settings', label: 'Settings', icon: <Settings size={20} /> }
     ];
 
     return (
@@ -72,24 +84,33 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-40">
                 <div className="px-6 pt-8 pb-8">
                     <Link href="/" className="block">
-                        <div className="text-3xl font-display text-[var(--text)] tracking-tight">Serify</div>
-                        <div className="text-xs text-[var(--muted)] mt-1 tracking-wide uppercase font-medium">Reflection Engine</div>
+                        <div className="text-3xl font-display text-[var(--text)] tracking-tight">
+                            Serify
+                        </div>
+                        <div className="text-xs text-[var(--muted)] mt-1 tracking-wide uppercase font-medium">
+                            Reflection Engine
+                        </div>
                     </Link>
                 </div>
 
                 <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
                     {navItems.map((item) => {
-                        const isActive = router.pathname.startsWith(item.href) && (item.href !== '/' || router.pathname === '/');
+                        const isActive =
+                            router.pathname.startsWith(item.href) &&
+                            (item.href !== '/' || router.pathname === '/');
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive
-                                    ? 'bg-[var(--accent-light)] text-[var(--accent)]'
-                                    : 'text-[var(--text)] hover:bg-black/5'
-                                    }`}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                                    isActive
+                                        ? 'bg-[var(--accent-light)] text-[var(--accent)]'
+                                        : 'text-[var(--text)] hover:bg-black/5'
+                                }`}
                             >
-                                <div className={`${isActive ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}>
+                                <div
+                                    className={`${isActive ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}
+                                >
                                     {item.icon}
                                 </div>
                                 <span className="font-medium text-[15px] flex-1">{item.label}</span>
@@ -106,10 +127,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <div className="p-3 relative border-t border-[var(--border)]">
                     {isProfileOpen && (
                         <div className="absolute bottom-full mb-2 left-3 right-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-fade-in z-50">
-                            <Link href="/settings" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm">
+                            <Link
+                                href="/settings"
+                                onClick={() => setIsProfileOpen(false)}
+                                className="flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm"
+                            >
                                 <Settings size={16} className="text-[var(--muted)]" /> Settings
                             </Link>
-                            <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm text-left border-t border-[var(--border)]">
+                            <button
+                                onClick={handleLogout}
+                                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm text-left border-t border-[var(--border)]"
+                            >
                                 <LogOut size={16} className="text-[var(--muted)]" /> Sign Out
                             </button>
                         </div>
@@ -126,17 +154,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                                 {user?.displayName?.charAt(0) || 'U'}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-[var(--text)] truncate">{user?.displayName || 'User'}</p>
-                                <p className="text-xs text-[var(--muted)] truncate capitalize">{user?.subscriptionTier || 'free'} Plan</p>
+                                <p className="text-sm font-medium text-[var(--text)] truncate">
+                                    {user?.displayName || 'User'}
+                                </p>
+                                <p className="text-xs text-[var(--muted)] truncate capitalize">
+                                    {user?.subscriptionTier || 'free'} Plan
+                                </p>
                             </div>
                         </div>
-                        <ChevronUp size={16} className={`text-[var(--muted)] transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                        <ChevronUp
+                            size={16}
+                            className={`text-[var(--muted)] transition-transform ${isProfileOpen ? 'rotate-180' : ''}`}
+                        />
                     </button>
                 </div>
             </aside>
 
             <div className="md:hidden sticky top-0 z-40 bg-[var(--surface)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
-                <Link href="/" className="text-2xl font-display text-[var(--text)]">Serify</Link>
+                <Link href="/" className="text-2xl font-display text-[var(--text)]">
+                    Serify
+                </Link>
                 <div className="flex items-center gap-3">
                     <SparkBalance />
                     <div
@@ -150,10 +187,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {isProfileOpen && (
                 <div className="md:hidden fixed top-14 right-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-fade-in z-50 w-48">
-                    <Link href="/settings" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm border-b border-[var(--border)]">
+                    <Link
+                        href="/settings"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm border-b border-[var(--border)]"
+                    >
                         <Settings size={16} className="text-[var(--muted)]" /> Settings
                     </Link>
-                    <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm text-left">
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm text-left"
+                    >
                         <LogOut size={16} className="text-[var(--muted)]" /> Sign Out
                     </button>
                 </div>
@@ -165,13 +209,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around pb-safe">
                 {navItems.slice(0, 5).map((item) => {
-                    const isActive = router.pathname.startsWith(item.href) && (item.href !== '/' || router.pathname === '/');
+                    const isActive =
+                        router.pathname.startsWith(item.href) &&
+                        (item.href !== '/' || router.pathname === '/');
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center py-2 px-1 w-full gap-1 transition-colors ${isActive ? 'text-[var(--accent)]' : 'text-[var(--muted)] hover:text-[var(--text)]'
-                                }`}
+                            className={`flex flex-col items-center justify-center py-2 px-1 w-full gap-1 transition-colors ${
+                                isActive
+                                    ? 'text-[var(--accent)]'
+                                    : 'text-[var(--muted)] hover:text-[var(--text)]'
+                            }`}
                         >
                             {item.icon}
                             <span className="text-[10px] font-medium">{item.label}</span>

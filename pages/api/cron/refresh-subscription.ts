@@ -4,7 +4,7 @@ import { getSparkAdminClient } from '@/lib/sparks';
 const PLAN_SPARK_ALLOWANCE: Record<string, number> = {
     free: 20,
     pro: 150,
-    teams: 150,
+    teams: 150
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -35,7 +35,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let totalForfeited = 0;
 
         for (const balance of balances) {
-
             const { data: profile } = await sparkAdminClient
                 .from('profiles')
                 .select('subscription_tier')
@@ -57,45 +56,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .from('spark_balances')
                 .update({
                     subscription_sparks: newBalance,
-                    updated_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
                 })
                 .eq('user_id', balance.user_id);
 
-            await sparkAdminClient
-                .from('spark_transactions')
-                .insert({
-                    user_id: balance.user_id,
-                    amount: monthlyAllowance,
-                    pool: 'subscription',
-                    transaction_type: 'subscription_refresh',
-                    action: 'monthly_subscription_refresh',
-                    balance_after: newBalance,
-                    created_at: new Date().toISOString(),
-                });
+            await sparkAdminClient.from('spark_transactions').insert({
+                user_id: balance.user_id,
+                amount: monthlyAllowance,
+                pool: 'subscription',
+                transaction_type: 'subscription_refresh',
+                action: 'monthly_subscription_refresh',
+                balance_after: newBalance,
+                created_at: new Date().toISOString()
+            });
 
             if (forfeited > 0) {
-                await sparkAdminClient
-                    .from('spark_transactions')
-                    .insert({
-                        user_id: balance.user_id,
-                        amount: -forfeited,
-                        pool: 'subscription',
-                        transaction_type: 'rollover_cap_forfeiture',
-                        action: 'rollover_cap_exceeded',
-                        balance_after: newBalance,
-                        created_at: new Date().toISOString(),
-                    });
+                await sparkAdminClient.from('spark_transactions').insert({
+                    user_id: balance.user_id,
+                    amount: -forfeited,
+                    pool: 'subscription',
+                    transaction_type: 'rollover_cap_forfeiture',
+                    action: 'rollover_cap_exceeded',
+                    balance_after: newBalance,
+                    created_at: new Date().toISOString()
+                });
                 totalForfeited += forfeited;
             }
 
             processed++;
         }
 
-        console.log(`Subscription refresh: processed ${processed} users, forfeited ${totalForfeited} sparks`);
+        console.log(
+            `Subscription refresh: processed ${processed} users, forfeited ${totalForfeited} sparks`
+        );
         return res.status(200).json({
             message: 'Subscription refresh complete',
             processed,
-            totalForfeited,
+            totalForfeited
         });
     } catch (error) {
         console.error('Subscription refresh job failed:', error);

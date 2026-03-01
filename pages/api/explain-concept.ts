@@ -24,12 +24,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sparkCost = SPARK_COSTS.HINT_REQUEST || 1;
     const hasSparks = await hasEnoughSparks(user, sparkCost);
     if (!hasSparks) {
-        return res.status(403).json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks for a hint.` });
+        return res
+            .status(403)
+            .json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks for a hint.` });
     }
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash'
         });
 
         const prompt = `
