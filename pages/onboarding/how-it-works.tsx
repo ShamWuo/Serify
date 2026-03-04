@@ -8,6 +8,7 @@ export default function OnboardingHowItWorks() {
     const router = useRouter();
     const { user, markOnboardingComplete } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
+    const [transitionMsg, setTransitionMsg] = useState('');
 
     useEffect(() => {
         if (user && user.onboardingCompleted) {
@@ -35,13 +36,22 @@ export default function OnboardingHowItWorks() {
 
     const handleStart = async () => {
         setIsSaving(true);
+        setTransitionMsg('Initializing your Concept Vault...');
         try {
             await markOnboardingComplete();
-            router.push('/'); // Redirecting to '/' means going to DashboardLayout and displaying index.tsx
+
+            // Artificial delay for "Magic Moment" transition
+            setTimeout(() => setTransitionMsg('Calibrating diagnostic engine...'), 800);
+            setTimeout(() => setTransitionMsg('Preparing your 15 Sparks...'), 1600);
+
+            setTimeout(() => {
+                router.push('/');
+            }, 2400);
+
         } catch (err) {
             console.error('Failed to complete onboarding:', err);
-            // Handle error minimally or proceed anyway
             setIsSaving(false);
+            setTransitionMsg('');
         }
     };
 
@@ -123,10 +133,13 @@ export default function OnboardingHowItWorks() {
                     <button
                         onClick={handleStart}
                         disabled={isSaving}
-                        className="w-full h-12 bg-[var(--text)] text-[var(--surface)] rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full h-12 bg-[var(--text)] text-[var(--surface)] rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/80 transition-all disabled:opacity-80 disabled:cursor-not-allowed overflow-hidden relative"
                     >
                         {isSaving ? (
-                            <Loader2 size={18} className="animate-spin" />
+                            <div className="flex items-center gap-2 animate-fade-in-up">
+                                <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
+                                <span className="font-medium text-sm text-[var(--surface)]">{transitionMsg}</span>
+                            </div>
                         ) : (
                             <>
                                 Analyze something now <ArrowRight size={18} />

@@ -46,7 +46,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     .then((d) => {
                         if (d) setVaultNeedsWork(d.needsWork || 0);
                     })
-                    .catch(() => {});
+                    .catch(() => { });
             });
         });
     }, [user, router]);
@@ -80,8 +80,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     ];
 
     return (
-        <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-sans">
-            <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-40">
+        <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-sans relative">
+            {/* Dashboard Premium Aesthetic Blobs */}
+            <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-[var(--accent)] rounded-full filter blur-[120px] opacity-[0.03] pointer-events-none z-0" />
+            <div className="fixed bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] bg-[#7c3d9e] rounded-full filter blur-[120px] opacity-[0.03] pointer-events-none z-0" />
+
+            <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-[var(--surface)]/60 backdrop-blur-xl h-screen sticky top-0 shrink-0 z-40">
                 <div className="px-6 pt-8 pb-8">
                     <Link href="/" className="block">
                         <div className="text-3xl font-display text-[var(--text)] tracking-tight">
@@ -102,23 +106,32 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                                    isActive
-                                        ? 'bg-[var(--accent-light)] text-[var(--accent)]'
-                                        : 'text-[var(--text)] hover:bg-black/5'
-                                }`}
+                                className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${isActive
+                                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
+                                    : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] row-hover-accent'
+                                    }`}
                             >
-                                <div
-                                    className={`${isActive ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}
-                                >
-                                    {item.icon}
-                                </div>
-                                <span className="font-medium text-[15px] flex-1">{item.label}</span>
-                                {(item as any).badge ? (
-                                    <span className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
-                                        {(item as any).badge}
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                                    >
+                                        {item.icon}
+                                    </div>
+                                    <span className="text-sm tracking-wide">
+                                        {item.label}
                                     </span>
-                                ) : null}
+                                </div>
+                                {isActive && <div className="nav-active-bar" />}
+                                {item.badge !== undefined && (
+                                    <span
+                                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
+                                            ? 'bg-[var(--accent)] text-white'
+                                            : 'bg-[var(--border)] text-[var(--muted)] group-hover:bg-[var(--accent)]/20 group-hover:text-[var(--accent)] transition-colors'
+                                            }`}
+                                    >
+                                        {item.badge}
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
@@ -126,7 +139,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
                 <div className="p-3 relative border-t border-[var(--border)]">
                     {isProfileOpen && (
-                        <div className="absolute bottom-full mb-2 left-3 right-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-fade-in z-50">
+                        <div className="absolute bottom-full mb-2 left-3 right-3 glass border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-modal-in z-50">
                             <Link
                                 href="/settings"
                                 onClick={() => setIsProfileOpen(false)}
@@ -216,11 +229,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center py-2 px-1 w-full gap-1 transition-colors ${
-                                isActive
-                                    ? 'text-[var(--accent)]'
-                                    : 'text-[var(--muted)] hover:text-[var(--text)]'
-                            }`}
+                            className={`flex flex-col items-center justify-center py-2 px-1 w-full gap-1 transition-colors ${isActive
+                                ? 'text-[var(--accent)]'
+                                : 'text-[var(--muted)] hover:text-[var(--text)]'
+                                }`}
                         >
                             {item.icon}
                             <span className="text-[10px] font-medium">{item.label}</span>

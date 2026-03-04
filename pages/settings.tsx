@@ -36,7 +36,7 @@ export default function Settings() {
                 <title>Settings | Serify</title>
             </Head>
 
-            <div className="max-w-4xl mx-auto w-full px-6 md:px-10 py-6 space-y-8 pb-24">
+            <div className="max-w-4xl mx-auto w-full px-6 md:px-10 py-6 space-y-8 pb-24 animate-fade-in-up">
                 <header>
                     <h1 className="text-3xl font-display text-[var(--text)]">Settings</h1>
                 </header>
@@ -64,7 +64,7 @@ export default function Settings() {
                                 Change Photo
                             </button>
                         </div>
-                        <div className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-colors">
+                        <div className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-all row-hover-accent">
                             <div className="flex items-center gap-3 font-medium">
                                 <User size={18} className="text-[var(--muted)]" /> Password
                             </div>
@@ -82,7 +82,7 @@ export default function Settings() {
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
                         <Link
                             href="/pricing"
-                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors block"
+                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-all row-hover-accent block"
                         >
                             <div>
                                 <h3 className="font-bold flex items-center gap-3">
@@ -193,14 +193,14 @@ export default function Settings() {
                         Data & Privacy
                     </h2>
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
-                        <div className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-colors">
+                        <div className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-all row-hover-accent">
                             <div className="flex items-center gap-3 font-medium">
                                 <Download size={18} className="text-[var(--text)]" /> Export Session
                                 Data
                             </div>
                             <ChevronRight size={16} className="text-[var(--muted)]" />
                         </div>
-                        <div className="p-4 hover:bg-red-50 cursor-pointer flex items-center justify-between transition-colors group">
+                        <div className="p-4 hover:bg-red-50 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
                             <div className="flex items-center gap-3 font-medium text-red-600">
                                 <Trash2 size={18} /> Delete Account
                             </div>

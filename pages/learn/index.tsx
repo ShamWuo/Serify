@@ -216,9 +216,10 @@ export default function LearnIndex() {
             retryCountRef.current = 0;
 
             try {
+                const token = tokenRef.current || (await supabase.auth.getSession()).data.session?.access_token;
                 const res = await fetch('/api/serify/save-curriculum', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ ...toSave, user_input: lastSubmitRef.current?.userInput ?? '' })
                 });
                 const data = await res.json();

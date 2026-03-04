@@ -225,3 +225,316 @@ body {
     background: var(--surface);
     font-weight: 600;
 }
+
+/* =====================
+   Landing Page Animations
+   ===================== */
+
+/* Hero floating blobs */
+.landing-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+}
+
+.landing-blob-1 {
+    width: 500px;
+    height: 500px;
+    background: var(--accent);
+    top: -120px;
+    right: -100px;
+    animation: blobFloat 18s ease-in-out infinite;
+}
+
+.landing-blob-2 {
+    width: 400px;
+    height: 400px;
+    background: #7c3d9e;
+    bottom: -80px;
+    left: -100px;
+    animation: blobFloat 22s ease-in-out infinite reverse;
+}
+
+.landing-blob-3 {
+    width: 300px;
+    height: 300px;
+    background: #b8860b;
+    top: 40%;
+    left: 50%;
+    animation: blobFloat 15s ease-in-out infinite 3s;
+}
+
+@keyframes blobFloat {
+
+    0%,
+    100% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    25% {
+        transform: translate(30px, -20px) scale(1.05);
+    }
+
+    50% {
+        transform: translate(-20px, 20px) scale(0.95);
+    }
+
+    75% {
+        transform: translate(15px, 10px) scale(1.02);
+    }
+}
+
+
+
+/* Scroll reveal */
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scroll-reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* =====================
+   UI Polish Utilities
+   ===================== */
+
+/* Fade in upward — general entrance */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out both;
+}
+
+/* Staggered children entrance */
+.stagger-children>* {
+    opacity: 0;
+    animation: fadeInUp 0.45s ease-out both;
+}
+
+.stagger-children>*:nth-child(1) {
+    animation-delay: 0ms;
+}
+
+.stagger-children>*:nth-child(2) {
+    animation-delay: 60ms;
+}
+
+.stagger-children>*:nth-child(3) {
+    animation-delay: 120ms;
+}
+
+.stagger-children>*:nth-child(4) {
+    animation-delay: 180ms;
+}
+
+.stagger-children>*:nth-child(5) {
+    animation-delay: 240ms;
+}
+
+.stagger-children>*:nth-child(6) {
+    animation-delay: 300ms;
+}
+
+.stagger-children>*:nth-child(7) {
+    animation-delay: 360ms;
+}
+
+.stagger-children>*:nth-child(8) {
+    animation-delay: 420ms;
+}
+
+/* Card hover lift */
+.card-hover {
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.25s ease;
+}
+
+.card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.08),
+        0 4px 8px -4px rgba(0, 0, 0, 0.04);
+    border-color: var(--accent);
+}
+
+/* Glassmorphism */
+.glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+}
+
+/* Shimmer sweep — for premium accents */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.15) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 3s linear infinite;
+}
+
+/* Pulse glow — accent ring */
+@keyframes pulseGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(42, 92, 69, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 0 8px rgba(42, 92, 69, 0);
+    }
+}
+
+.animate-pulse-glow {
+    animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+
+
+/* Gradient text utility */
+.text-gradient {
+    background: linear-gradient(135deg, var(--accent) 0%, #7c3d9e 50%, var(--shallow) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Nav item active indicator slide-in */
+@keyframes slideInLeft {
+    from {
+        transform: scaleY(0);
+    }
+
+    to {
+        transform: scaleY(1);
+    }
+}
+
+.nav-active-bar {
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--accent);
+    animation: slideInLeft 0.25s ease-out;
+    transform-origin: center;
+}
+
+/* Focus ring for inputs */
+.input-focus-ring {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-focus-ring:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(42, 92, 69, 0.1);
+}
+
+/* Auth page background blobs (muted) */
+.auth-bg-blob {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.08;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Smooth modal entrance */
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.animate-modal-in {
+    animation: modalSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Backdrop fade-in */
+@keyframes backdropFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-backdrop {
+    animation: backdropFadeIn 0.2s ease-out;
+}
+
+/* Scale-in dots for activity */
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Row hover accent border */
+.row-hover-accent {
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+.row-hover-accent::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform 0.2s ease;
+    border-radius: 0 2px 2px 0;
+}
+
+.row-hover-accent:hover::before {
+    transform: scaleY(1);
+}

@@ -27,6 +27,7 @@ import { KnowledgeNode } from '@/types/serify';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+import LandingPage from '@/components/LandingPage';
 
 // ------ Helpers ------
 
@@ -369,29 +370,10 @@ export default function Home() {
 
     if (!user && !isDemo) {
         return (
-            <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col font-sans">
+            <>
                 <Head><title>Serify | Context-Aware Learning Reflection</title></Head>
-                <nav className="w-full p-6 flex justify-between items-center z-10">
-                    <div className="text-2xl font-display tracking-tight">Serify</div>
-                    <div className="space-x-4">
-                        <Link href="/login" className="text-[var(--text)] hover:text-black font-medium">Log in</Link>
-                        <Link href="/?demo=true" className="px-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg font-medium hover:bg-black/5 transition-colors">Try Demo</Link>
-                    </div>
-                </nav>
-                <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="max-w-3xl space-y-6">
-                        <h1 className="text-6xl md:text-8xl font-display leading-none">Master Your <br />Understanding</h1>
-                        <p className="text-xl text-[var(--muted)] max-w-xl mx-auto">
-                            Serify moves beyond simple testing. It analyzes your conceptual depth, identifies misconceptions, and maps your knowledge gaps using context-aware AI.
-                        </p>
-                        <div className="pt-8 flex items-center justify-center gap-4">
-                            <Link href="/signup" className="px-6 py-3 bg-[var(--accent)] text-white rounded-lg font-medium hover:bg-[var(--accent)]/90 transition-colors">
-                                Start Reflection
-                            </Link>
-                        </div>
-                    </div>
-                </main>
-            </div>
+                <LandingPage />
+            </>
         );
     }
 
@@ -571,7 +553,7 @@ export default function Home() {
                                     <p className="text-sm text-[var(--muted)] font-medium text-left">No sessions yet. Analyze something to get started.</p>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
+                                <div className="space-y-2 stagger-children">
                                     {latestSessions.map(session => (
                                         <Link
                                             key={session.id}
@@ -624,7 +606,7 @@ export default function Home() {
                     <div className="space-y-5">
 
                         {/* Spark Balance Card */}
-                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm">
+                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm card-hover">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-[var(--text)] flex items-center gap-2">
                                     <Zap size={16} className="text-amber-500" fill="currentColor" /> Sparks
@@ -663,7 +645,7 @@ export default function Home() {
                         </section>
 
                         {/* Focus On These */}
-                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm">
+                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm card-hover">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-[var(--text)] flex items-center gap-2">
                                     <Target size={16} className="text-[var(--accent)]" /> Focus On These
@@ -698,7 +680,7 @@ export default function Home() {
                         </section>
 
                         {/* Activity Dots + Stats */}
-                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm">
+                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm card-hover">
                             <h3 className="font-bold text-[var(--text)] flex items-center gap-2 mb-4">
                                 <BarChart2 size={16} className="text-[var(--accent)]" /> This Week
                             </h3>
@@ -706,7 +688,7 @@ export default function Home() {
                             <div className="flex items-center justify-between gap-1.5 mb-4">
                                 {activityDays.map((active, i) => (
                                     <div key={i} className="flex flex-col items-center gap-1.5">
-                                        <div className={`w-7 h-7 rounded-full transition-all ${active ? 'bg-[var(--accent)] shadow-sm shadow-[var(--accent)]/40' : 'bg-[var(--border)]'}`} />
+                                        <div className={`w-7 h-7 rounded-full transition-all animate-scale-in ${active ? 'bg-[var(--accent)] shadow-sm shadow-[var(--accent)]/40' : 'bg-[var(--border)]'}`} style={{ animationDelay: `${i * 80}ms` }} />
                                         <span className="text-[9px] text-[var(--muted)] font-medium">{weekDayLabels[i]}</span>
                                     </div>
                                 ))}

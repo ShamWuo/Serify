@@ -136,10 +136,10 @@ export default function Analyze() {
                     conceptData?.title && conceptData.title !== 'New Session'
                         ? conceptData.title
                         : finalConcepts.length > 0
-                          ? finalConcepts[0]?.name
-                          : activeTab === 'pdf'
-                            ? pdfFile?.name || 'New PDF Session'
-                            : 'New Session';
+                            ? finalConcepts[0]?.name
+                            : activeTab === 'pdf'
+                                ? pdfFile?.name || 'New PDF Session'
+                                : 'New Session';
 
                 const contentPayload =
                     activeTab === 'pdf' ? `[PDF File: ${pdfFile?.name}]` : inputValue;
@@ -182,10 +182,10 @@ export default function Analyze() {
                         activeTab === 'youtube'
                             ? 'YouTube Video'
                             : activeTab === 'pdf'
-                              ? 'PDF Upload'
-                              : activeTab === 'article'
-                                ? 'Article URL'
-                                : 'Notes',
+                                ? 'PDF Upload'
+                                : activeTab === 'article'
+                                    ? 'Article URL'
+                                    : 'Notes',
                     date: new Date().toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
@@ -229,7 +229,7 @@ export default function Analyze() {
 
             <div className="flex-1 flex items-center justify-center p-6 md:p-10 min-h-[calc(100vh-64px)]">
                 <div className="w-full max-w-4xl">
-                    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 md:p-12 relative overflow-hidden shadow-sm min-h-[500px] flex items-center justify-center">
+                    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 md:p-12 relative overflow-hidden shadow-sm min-h-[500px] flex items-center justify-center glass animate-scale-in">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
 
                         {isStreaming ? (
@@ -240,8 +240,8 @@ export default function Analyze() {
                                         {isConceptStreaming
                                             ? 'Extracting Concepts...'
                                             : isQuestionStreaming
-                                              ? 'Drafting Questions...'
-                                              : 'Finalizing...'}
+                                                ? 'Drafting Questions...'
+                                                : 'Finalizing...'}
                                     </h2>
                                     <p className="text-[var(--muted)] text-sm mt-1">
                                         {conceptData?.title
@@ -265,7 +265,7 @@ export default function Analyze() {
                                             {conceptData?.concepts?.map((c, i) => (
                                                 <div
                                                     key={i}
-                                                    className="animate-fade-in-up bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm border-l-2 border-l-[var(--accent)]"
+                                                    className="animate-fade-in-up bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm border-l-2 border-l-[var(--accent)] card-hover"
                                                 >
                                                     <strong className="text-[var(--text)] block mb-1">
                                                         {c?.name || '...'}
@@ -300,7 +300,7 @@ export default function Analyze() {
                                                 {questionData?.questions?.map((q, i) => (
                                                     <div
                                                         key={i}
-                                                        className="animate-fade-in-up bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm"
+                                                        className="animate-fade-in-up bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm card-hover"
                                                     >
                                                         <span className="text-xs font-bold text-[var(--accent)]/70 uppercase mb-2 block tracking-wider">
                                                             {q?.type || 'Drafting...'}
@@ -366,11 +366,10 @@ export default function Analyze() {
                                         <button
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as any)}
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                                                activeTab === tab.id
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === tab.id
                                                     ? 'bg-[var(--text)] text-[var(--surface)] shadow-md'
                                                     : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]'
-                                            }`}
+                                                }`}
                                         >
                                             {tab.icon} {tab.label}
                                         </button>
@@ -459,7 +458,7 @@ export default function Analyze() {
                                 </div>
 
                                 {balance && balance.total_sparks < 13 && (
-                                    <div className="mt-8 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-sm text-left">
+                                    <div className="mt-8 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-sm text-left glass animate-fade-in-up">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="bg-amber-100 text-amber-600 p-2 rounded-lg">
                                                 <Zap className="w-5 h-5" fill="currentColor" />
