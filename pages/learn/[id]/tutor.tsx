@@ -5,6 +5,8 @@ import Link from 'next/link';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useSparks } from '@/hooks/useSparks';
+import { Zap } from 'lucide-react';
 
 export default function TutorMode() {
     const router = useRouter();
@@ -18,6 +20,7 @@ export default function TutorMode() {
     const [sending, setSending] = useState(false);
     const [isPro, setIsPro] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const { balance } = useSparks();
 
     useEffect(() => {
         if (!id) return;
@@ -156,6 +159,19 @@ export default function TutorMode() {
             if (res.ok) {
                 const data = await res.json();
                 setMessages((prev) => [...prev, { role: 'model', content: data.reply }]);
+            } else if (res.status === 403) {
+                const data = await res.json();
+                if (data.error === 'out_of_sparks') {
+                    setMessages((prev) => [
+                        ...prev,
+                        { role: 'model', content: 'You are out of Sparks! [Get more Sparks](/sparks) to continue chatting.' }
+                    ]);
+                } else {
+                    setMessages((prev) => [
+                        ...prev,
+                        { role: 'model', content: 'Sorry, I ran into an error.' }
+                    ]);
+                }
             } else {
                 setMessages((prev) => [
                     ...prev,
@@ -301,10 +317,11 @@ export default function TutorMode() {
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                     <span className="font-bold">Serify Tutor</span>
                 </div>
-                <div className="w-24 text-right">
-                    <span className="text-[10px] uppercase tracking-widest text-indigo-600 font-black bg-indigo-50 px-2 py-1 rounded">
-                        PRO
-                    </span>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-[var(--surface)] text-[var(--accent)] border border-[var(--border)] rounded-full text-xs font-semibold whitespace-nowrap">
+                        <Zap className="w-3.5 h-3.5 fill-[var(--accent)] text-[var(--accent)]" />
+                        <span>{balance?.total_sparks || 0}</span>
+                    </div>
                 </div>
             </header>
 
@@ -318,8 +335,8 @@ export default function TutorMode() {
                         >
                             <div
                                 className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${msg.role === 'user'
-                                        ? 'bg-indigo-600 text-white rounded-br-sm'
-                                        : 'bg-white border border-[var(--border)] shadow-sm text-[var(--text)] rounded-bl-sm'
+                                    ? 'bg-indigo-600 text-white rounded-br-sm'
+                                    : 'bg-white border border-[var(--border)] shadow-sm text-[var(--text)] rounded-bl-sm'
                                     }`}
                             >
                                 <div
