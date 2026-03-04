@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
@@ -133,7 +133,7 @@ function OrientStep({ content, onNext }: { content: any; onNext: (response: stri
                 Orientation
             </p>
             <div style={{ lineHeight: 1.8, fontSize: 16 }} className="flow-markdown">
-                <ReactMarkdown>{content.text}</ReactMarkdown>
+                <MarkdownRenderer>{content.text}</MarkdownRenderer>
             </div>
             <div style={{ display: 'flex', marginTop: 20 }}>
                 <ActionButton
@@ -187,7 +187,7 @@ function BuildLayerStep({ content, onNext }: { content: any; onNext: (response: 
                 className={isMechanism ? 'flow-markdown font-mono' : 'flow-markdown'}
             >
                 <div style={textStyle}>
-                    <ReactMarkdown>{content.text}</ReactMarkdown>
+                    <MarkdownRenderer>{content.text}</MarkdownRenderer>
                 </div>
             </div>
             <div style={{ display: 'flex', marginTop: 20 }}>
@@ -206,7 +206,7 @@ function AnchorStep({ content, onNext }: { content: any; onNext: (response: stri
     return (
         <div>
             <div style={{ lineHeight: 1.8, fontSize: 15.5 }} className="flow-markdown">
-                <ReactMarkdown>{content.text}</ReactMarkdown>
+                <MarkdownRenderer>{content.text}</MarkdownRenderer>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
                 <ActionButton label="Makes sense" primary onClick={() => onNext('makes_sense')} />
@@ -262,7 +262,7 @@ function CheckQuestionStep({
                 style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}
                 className="flow-markdown"
             >
-                <ReactMarkdown>{content.questionText}</ReactMarkdown>
+                <MarkdownRenderer>{content.questionText}</MarkdownRenderer>
             </div>
             <textarea
                 value={answer}
@@ -402,7 +402,7 @@ function EvaluationBanner({ evaluation, onContinue }: { evaluation: any; onConti
                 style={{ fontSize: 15, color: textColor, margin: '0 0 16px', lineHeight: 1.6 }}
                 className="flow-markdown"
             >
-                <ReactMarkdown>{evaluation.feedbackText}</ReactMarkdown>
+                <MarkdownRenderer>{evaluation.feedbackText}</MarkdownRenderer>
             </div>
             <ActionButton
                 label="Continue"
@@ -584,7 +584,7 @@ export default function FlowSessionPage() {
                     Authorization: `Bearer ${session?.access_token}`
                 },
                 body: JSON.stringify({ stepId: currentStep.id, userResponse: responseType })
-            }).catch(() => {});
+            }).catch(() => { });
         });
 
         fetchNextStep();
@@ -683,7 +683,7 @@ export default function FlowSessionPage() {
             </Head>
             <DashboardLayout>
                 <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem 1rem' }}>
-                    {}
+                    { }
                     <div style={{ marginBottom: 20 }}>
                         {flowSession && (
                             <ProgressBar
@@ -755,7 +755,7 @@ export default function FlowSessionPage() {
                         </div>
                     )}
 
-                    {}
+                    { }
                     <div
                         style={{
                             background: 'var(--surface)',
@@ -802,7 +802,7 @@ export default function FlowSessionPage() {
                         )}
                     </div>
 
-                    {}
+                    { }
                     {stepHistory.length > 1 && (
                         <div style={{ marginTop: 20, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             {stepHistory.slice(0, -1).map((s, i) => (

@@ -216,8 +216,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (nextStepType === 'completed') {
-            if (sessionData.source_type === 'curriculum' && sessionData.source_id) {
-                const curriculumId = sessionData.source_id;
+            if (sessionData.source_type === 'curriculum' && sessionData.source_session_id) {
+                const curriculumId = sessionData.source_session_id;
 
                 const { data: curr } = await supabaseAdmin
                     .from('curricula')
@@ -249,7 +249,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                 completed_at: new Date().toISOString()
                             })
                             .eq('curriculum_id', curriculumId)
-                            .eq('concept_path_id', conceptId);
+                            .eq('concept_id', conceptId);
                     }
                 }
             }

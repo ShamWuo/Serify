@@ -62,6 +62,17 @@ export default function Analyze() {
         setErrorMsg('');
     }, [activeTab]);
 
+    const conceptInitialValue = {
+        title: '',
+        concepts: [] as Array<{
+            id: string;
+            name: string;
+            definition: string;
+            importance: 'primary' | 'secondary' | 'contextual';
+            misconception_risk: boolean;
+        }>
+    };
+
     const {
         submit: startConceptStream,
         object: conceptData,
@@ -70,6 +81,7 @@ export default function Analyze() {
     } = useObject({
         api: '/api/process-content',
         schema: conceptSchema,
+        initialValue: conceptInitialValue,
         headers: {
             Authorization: `Bearer ${authToken}`
         },
@@ -89,6 +101,15 @@ export default function Analyze() {
         }
     });
 
+    const questionInitialValue = {
+        questions: [] as Array<{
+            id: string;
+            target_concept_id: string;
+            type: 'RETRIEVAL' | 'APPLICATION' | 'MISCONCEPTION PROBE';
+            text: string;
+        }>
+    };
+
     const {
         submit: startQuestionStream,
         object: questionData,
@@ -97,6 +118,7 @@ export default function Analyze() {
     } = useObject({
         api: '/api/generate-questions',
         schema: questionSchema,
+        initialValue: questionInitialValue,
         headers: {
             Authorization: `Bearer ${authToken}`
         },

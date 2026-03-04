@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -289,7 +289,7 @@ export default function TutorMode() {
                 <title>AI Tutor | Serify</title>
             </Head>
 
-            {}
+            { }
             <header className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-white/80 backdrop-blur-md z-10 shrink-0">
                 <button
                     onClick={handleExit}
@@ -308,7 +308,7 @@ export default function TutorMode() {
                 </div>
             </header>
 
-            {}
+            { }
             <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col items-center">
                 <div className="w-full max-w-[800px] flex flex-col gap-6 pb-20">
                     {messages.map((msg, i) => (
@@ -317,16 +317,15 @@ export default function TutorMode() {
                             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                             <div
-                                className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${
-                                    msg.role === 'user'
+                                className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${msg.role === 'user'
                                         ? 'bg-indigo-600 text-white rounded-br-sm'
                                         : 'bg-white border border-[var(--border)] shadow-sm text-[var(--text)] rounded-bl-sm'
-                                }`}
+                                    }`}
                             >
                                 <div
                                     className={`prose prose-sm max-w-none ${msg.role === 'user' ? 'text-white prose-p:text-white' : 'text-[var(--text)]'} prose-p:leading-relaxed`}
                                 >
-                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                    <MarkdownRenderer>{msg.content}</MarkdownRenderer>
                                 </div>
                             </div>
                         </div>
@@ -356,7 +355,7 @@ export default function TutorMode() {
                 </div>
             </main>
 
-            {}
+            { }
             <footer className="p-4 md:p-6 bg-white border-t border-[var(--border)] shrink-0">
                 <div className="max-w-[800px] mx-auto relative flex items-end gap-2">
                     <textarea

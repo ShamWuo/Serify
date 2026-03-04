@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -142,7 +142,7 @@ export default function FeynmanMode() {
                 <title>Feynman Method | Serify</title>
             </Head>
 
-            {}
+            { }
             <header className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
                 <Link
                     href={`/session/${id}/feedback`}
@@ -156,10 +156,10 @@ export default function FeynmanMode() {
                     </span>
                     <span className="font-bold">{targetConcept.name}</span>
                 </div>
-                <div className="w-24"></div> {}
+                <div className="w-24"></div> { }
             </header>
 
-            {}
+            { }
             <main className="flex-1 w-full max-w-[800px] mx-auto p-6 md:p-8 pb-32">
                 {!feedback && !analyzing && (
                     <div className="animate-fade-in">
@@ -216,7 +216,7 @@ export default function FeynmanMode() {
                 {feedback && (
                     <div className="animate-fade-in space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {}
+                            { }
                             <div className="bg-emerald-50/50 border border-emerald-200/50 rounded-2xl p-6">
                                 <h4 className="font-bold text-emerald-700 flex items-center gap-2 mb-4">
                                     <span className="w-5 h-5 rounded-full bg-emerald-200 flex items-center justify-center text-xs">
@@ -225,11 +225,11 @@ export default function FeynmanMode() {
                                     What came through clearly
                                 </h4>
                                 <div className="text-[15px] leading-relaxed text-emerald-900/80">
-                                    <ReactMarkdown>{feedback.clearParts}</ReactMarkdown>
+                                    <MarkdownRenderer>{feedback.clearParts}</MarkdownRenderer>
                                 </div>
                             </div>
 
-                            {}
+                            { }
                             <div className="bg-rose-50/50 border border-rose-200/50 rounded-2xl p-6">
                                 <h4 className="font-bold text-rose-700 flex items-center gap-2 mb-4">
                                     <span className="w-5 h-5 rounded-full bg-rose-200 flex items-center justify-center text-xs">
@@ -238,22 +238,22 @@ export default function FeynmanMode() {
                                     Where the explanation breaks down
                                 </h4>
                                 <div className="text-[15px] leading-relaxed text-rose-900/80">
-                                    <ReactMarkdown>{feedback.breakdownPoints}</ReactMarkdown>
+                                    <MarkdownRenderer>{feedback.breakdownPoints}</MarkdownRenderer>
                                 </div>
                             </div>
                         </div>
 
-                        {}
+                        { }
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 md:p-8">
                             <h4 className="font-bold text-[var(--text)] text-sm uppercase tracking-wider mb-4 border-b border-[var(--border)] pb-4">
                                 A Strong Feynman Explanation
                             </h4>
                             <div className="text-[16px] leading-relaxed text-[var(--text)] prose prose-a:text-[var(--accent)] max-w-none">
-                                <ReactMarkdown>{feedback.strongExample}</ReactMarkdown>
+                                <MarkdownRenderer>{feedback.strongExample}</MarkdownRenderer>
                             </div>
                         </div>
 
-                        {}
+                        { }
                         <div className="flex flex-wrap items-center justify-end gap-4 pt-4">
                             <button
                                 onClick={handleTryAgain}

@@ -76,6 +76,7 @@ body {
 
 /* Shake animation for validation feedback */
 @keyframes shake {
+
     0%,
     100% {
         transform: translateX(0);
@@ -99,4 +100,128 @@ body {
 
 .animate-shake {
     animation: shake 0.5s ease-in-out;
+}
+
+/* =====================
+   Markdown / Prose Styles
+   ===================== */
+.prose-content,
+.flow-markdown {
+    line-height: 1.75;
+    color: var(--text);
+}
+
+.prose-content p,
+.flow-markdown p {
+    margin: 0.6em 0;
+}
+
+.prose-content h1,
+.prose-content h2,
+.prose-content h3,
+.prose-content h4,
+.flow-markdown h1,
+.flow-markdown h2,
+.flow-markdown h3,
+.flow-markdown h4 {
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 1.1em 0 0.5em;
+    color: var(--text);
+}
+
+.prose-content h1,
+.flow-markdown h1 {
+    font-size: 1.5em;
+}
+
+.prose-content h2,
+.flow-markdown h2 {
+    font-size: 1.25em;
+}
+
+.prose-content h3,
+.flow-markdown h3 {
+    font-size: 1.1em;
+}
+
+.prose-content ul,
+.prose-content ol,
+.flow-markdown ul,
+.flow-markdown ol {
+    padding-left: 1.5em;
+    margin: 0.5em 0;
+}
+
+.prose-content li,
+.flow-markdown li {
+    margin: 0.3em 0;
+}
+
+.prose-content ul li {
+    list-style-type: disc;
+}
+
+.prose-content ol li {
+    list-style-type: decimal;
+}
+
+.flow-markdown ul li {
+    list-style-type: disc;
+}
+
+.flow-markdown ol li {
+    list-style-type: decimal;
+}
+
+.prose-content strong,
+.flow-markdown strong {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.prose-content em,
+.flow-markdown em {
+    font-style: italic;
+}
+
+/* KaTeX math — ensure it inherits the right font size */
+.prose-content .katex,
+.flow-markdown .katex {
+    font-size: 1.05em;
+}
+
+/* Inline code */
+.prose-content code:not(pre code),
+.flow-markdown code:not(pre code) {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.88em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Block tables */
+.prose-content table,
+.flow-markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75em 0;
+    font-size: 0.9em;
+}
+
+.prose-content th,
+.prose-content td,
+.flow-markdown th,
+.flow-markdown td {
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    text-align: left;
+}
+
+.prose-content th,
+.flow-markdown th {
+    background: var(--surface);
+    font-weight: 600;
 }

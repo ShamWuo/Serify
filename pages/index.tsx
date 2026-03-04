@@ -24,6 +24,9 @@ import { storage, SessionSummary } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { useSparks } from '@/hooks/useSparks';
 import { KnowledgeNode } from '@/types/serify';
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport, type UIMessage } from 'ai';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 // ------ Helpers ------
 
@@ -101,6 +104,42 @@ export default function Home() {
         "Generating your questions...",
     ];
 
+    const [chatInput, setChatInput] = useState('');
+
+    const { messages, sendMessage, status } = useChat<UIMessage>({
+        // @ts-ignore - Fallback for older SDK patterns even if Types expect transport
+        api: '/api/home-chat',
+        transport: new DefaultChatTransport({ api: '/api/home-chat' }),
+        messages: [
+            { id: '1', role: 'assistant', parts: [{ type: 'text', text: "Hi! I'm Serify. What do you want to learn today? You can give me a subject, or paste a link or notes to analyze." }] }
+        ] as UIMessage[],
+        onFinish: (options) => {
+            const messageText = options.message.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '';
+            const analyzeMatch = messageText.match(/\[ACTION:START_ANALYZE\]([\s\S]*?)\[\/ACTION\]/);
+            if (analyzeMatch) {
+                try {
+                    const data = JSON.parse(analyzeMatch[1]);
+                    setInputValue(data.content);
+                    handleAnalyze(data.content);
+                } catch (e) { }
+            }
+
+            const learnMatch = messageText.match(/\[ACTION:START_LEARN\]([\s\S]*?)\[\/ACTION\]/);
+            if (learnMatch) {
+                try {
+                    const data = JSON.parse(learnMatch[1]);
+                    const query = new URLSearchParams();
+                    if (data.q) query.append('q', data.q);
+                    if (data.priorKnowledge) query.append('priorKnowledge', data.priorKnowledge);
+                    if (data.focusGoal) query.append('focusGoal', data.focusGoal);
+                    if (data.skipTopics) query.append('skipTopics', data.skipTopics);
+                    query.append('autoStart', 'true');
+                    router.push(`/learn?${query.toString()}`);
+                } catch (e) { }
+            }
+        }
+    });
+
     // Detect input type on change
     useEffect(() => {
         if (!pdfFile) {
@@ -134,8 +173,11 @@ export default function Home() {
             .eq('status', 'active')
             .order('last_activity_at', { ascending: false })
             .limit(1)
-            .single()
-            .then(({ data }) => setActiveCurriculum(data));
+            .maybeSingle()
+            .then(({ data, error }) => {
+                if (error) console.error('Error fetching active curriculum:', error);
+                setActiveCurriculum(data);
+            });
 
         // Focus concepts: shaky or revisit
         supabase.from('knowledge_nodes')
@@ -144,12 +186,12 @@ export default function Home() {
             .in('current_mastery', ['shaky', 'revisit'])
             .order('session_count', { ascending: false })
             .limit(3)
-            .then(({ data }) => setFocusConcepts((data as KnowledgeNode[]) || []));
+            .then(({ data }) => setFocusConcepts((data as any) || []));
 
-        // Total concepts
         supabase.from('knowledge_nodes')
-            .select('id', { count: 'exact', head: true })
+            .select('*', { count: 'exact' })
             .eq('user_id', user.id)
+            .limit(0)
             .then(({ count }) => setTotalConceptCount(count || 0));
 
         // Activity dots: last 7 days
@@ -157,7 +199,7 @@ export default function Home() {
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
         sevenDaysAgo.setHours(0, 0, 0, 0);
 
-        supabase.from('sessions')
+        supabase.from('reflection_sessions')
             .select('created_at')
             .eq('user_id', user.id)
             .gte('created_at', sevenDaysAgo.toISOString())
@@ -208,8 +250,11 @@ export default function Home() {
     };
 
     // Analyze flow
-    const handleAnalyze = async () => {
-        if (!inputValue.trim() && !pdfFile) return;
+    const handleAnalyze = async (contentToAnalyze?: string) => {
+        const targetContent = contentToAnalyze || inputValue;
+        const targetType = contentToAnalyze ? detectInputType(contentToAnalyze) : (pdfFile ? 'pdf' : detectedType);
+
+        if (!targetContent.trim() && !pdfFile) return;
         setIsProcessing(true);
         setErrorMsg('');
 
@@ -232,8 +277,8 @@ export default function Home() {
             } else {
                 fetchHeaders['Content-Type'] = 'application/json';
                 body = JSON.stringify({
-                    content: inputValue,
-                    contentType: detectedType === 'youtube' ? 'youtube' : detectedType === 'article' ? 'article' : 'text',
+                    content: targetContent,
+                    contentType: targetType === 'youtube' ? 'youtube' : targetType === 'article' ? 'article' : 'text',
                 });
             }
 
@@ -267,8 +312,8 @@ export default function Home() {
                 headers: { ...headers, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     title: title && title !== 'New Session' ? title : (concepts.length > 0 ? concepts[0].name : 'New Session'),
-                    contentType: detectedType || 'text',
-                    content: inputValue,
+                    contentType: targetType || 'text',
+                    content: targetContent,
                     difficulty: 'medium',
                 }),
             });
@@ -279,10 +324,10 @@ export default function Home() {
             const sessionData = {
                 id: dbSession.id,
                 title: dbSession.title,
-                content: inputValue,
+                content: targetContent,
                 concepts,
                 questions,
-                type: detectedType === 'youtube' ? 'YouTube Video' : detectedType === 'pdf' ? 'PDF Upload' : detectedType === 'article' ? 'Article URL' : 'Notes',
+                type: targetType === 'youtube' ? 'YouTube Video' : targetType === 'pdf' ? 'PDF Upload' : targetType === 'article' ? 'Article URL' : 'Notes',
                 isBasicMode: balance && balance.total_sparks >= 11 && balance.total_sparks < 13,
             };
 
@@ -374,46 +419,46 @@ export default function Home() {
                     {/* ── LEFT COLUMN ── */}
                     <div className="space-y-5">
 
-                        {/* Smart Input Card */}
-                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
+                        {/* Interactive Chat Card */}
+                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm flex flex-col min-h-[400px]">
                             {isProcessing ? (
-                                <div className="h-44 flex flex-col items-center justify-center">
+                                <div className="flex-1 flex flex-col items-center justify-center">
                                     <div className="w-8 h-8 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin mb-4" />
                                     <p className="text-[var(--text)] font-medium animate-pulse">{loadingMessages[loadingMsgIdx]}</p>
                                     <p className="text-xs text-[var(--muted)] mt-1">Step {Math.min(loadingMsgIdx + 1, loadingMessages.length)} of {loadingMessages.length}</p>
                                 </div>
                             ) : (
                                 <>
-                                    {/* Textarea / drop zone */}
-                                    <div
-                                        className={`relative rounded-xl border-2 transition-colors mb-3 ${isDragging ? 'border-[var(--accent)] bg-[var(--accent-light)]' : 'border-[var(--border)] bg-[var(--bg)]'}`}
-                                        onDrop={handleDrop}
-                                        onDragOver={handleDragOver}
-                                        onDragLeave={handleDragLeave}
-                                    >
-                                        <textarea
-                                            value={inputValue}
-                                            onChange={e => { setInputValue(e.target.value); setPdfFile(null); }}
-                                            placeholder="Paste a YouTube link, article URL, or any text you just studied…   or drop a PDF here."
-                                            className="w-full h-24 p-4 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed"
-                                        />
-                                        {/* Detection tag */}
-                                        {detectedType && (
-                                            <div className={`absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${DETECTION_LABELS[detectedType].color}`}>
-                                                {(() => { const L = DETECTION_LABELS[detectedType]; return <L.Icon size={12} />; })()}
-                                                {DETECTION_LABELS[detectedType].label}
+                                    <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+                                        {messages.map(m => {
+                                            // Hide the action blocks from user view
+                                            const messageText = m.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('') || '';
+                                            let displayContent = messageText.replace(/\[ACTION:.*?\][\s\S]*?\[\/ACTION\]/g, '');
+                                            if (!displayContent.trim() && m.role === 'assistant') return null;
+                                            return (
+                                                <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`px-4 py-2 rounded-2xl max-w-[85%] text-sm ${m.role === 'user' ? 'bg-[var(--accent)] text-white font-medium' : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)]'}`}>
+                                                        {m.role === 'assistant' ? (
+                                                            <div className="prose prose-sm max-w-none text-inherit [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                                                                <MarkdownRenderer>{displayContent}</MarkdownRenderer>
+                                                            </div>
+                                                        ) : (
+                                                            displayContent
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {status === 'submitted' || status === 'streaming' ? (
+                                            <div className="flex justify-start">
+                                                <div className="px-4 py-3 rounded-2xl bg-[var(--bg)] border border-[var(--border)] flex gap-1.5 items-center">
+                                                    <div className="w-1.5 h-1.5 bg-[var(--muted)] rounded-full animate-bounce" />
+                                                    <div className="w-1.5 h-1.5 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                    <div className="w-1.5 h-1.5 bg-[var(--muted)] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                                </div>
                                             </div>
-                                        )}
-                                        {/* PDF overlay label */}
-                                        {pdfFile && (
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                <div className="text-purple-600 font-medium text-sm">{pdfFile.name}</div>
-                                            </div>
-                                        )}
+                                        ) : null}
                                     </div>
-
-                                    {/* PDF file input (hidden) */}
-                                    <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileInputChange} />
 
                                     {/* Error */}
                                     {errorMsg && (
@@ -423,65 +468,67 @@ export default function Home() {
                                         </div>
                                     )}
 
-                                    {/* Mode pills + action row */}
-                                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                                        <div className="flex items-center gap-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-full p-1">
-                                            {(['analyze', 'learn'] as const).map(m => (
-                                                <button
-                                                    key={m}
-                                                    onClick={() => setMode(m)}
-                                                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all capitalize ${mode === m ? 'bg-[var(--text)] text-[var(--surface)] shadow' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
-                                                >
-                                                    {m}
+                                    {/* File Input for PDF */}
+                                    <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileInputChange} />
+
+                                    {pdfFile ? (
+                                        <div className="flex items-center justify-between bg-purple-50 border border-purple-200 text-purple-700 px-4 py-3 rounded-xl mb-3">
+                                            <div className="flex items-center gap-2 font-medium text-sm">
+                                                <FileUp size={16} />
+                                                <span className="truncate max-w-[200px]">{pdfFile.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={clearInput} className="text-purple-600 hover:text-purple-800 text-sm px-2 font-medium">Cancel</button>
+                                                <button onClick={() => handleAnalyze()} className="bg-purple-600 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-purple-700 transition-colors">
+                                                    Analyze PDF
                                                 </button>
-                                            ))}
+                                            </div>
                                         </div>
-
-                                        <div className="flex items-center gap-2">
-                                            {/* PDF upload button */}
+                                    ) : (
+                                        <form onSubmit={(e) => {
+                                            e.preventDefault();
+                                            if (!chatInput.trim() || status === 'submitted' || status === 'streaming') return;
+                                            sendMessage({ text: chatInput });
+                                            setChatInput('');
+                                        }} className="relative flex items-end gap-2">
+                                            <div className="flex-1 relative bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-2 transition-colors focus-within:border-[var(--accent)]">
+                                                <textarea
+                                                    value={chatInput}
+                                                    onChange={e => setChatInput(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            if (!chatInput.trim() || status === 'submitted' || status === 'streaming') return;
+                                                            sendMessage({ text: chatInput });
+                                                            setChatInput('');
+                                                        }
+                                                    }}
+                                                    placeholder="Tell Serify what you want to learn, or paste a URL..."
+                                                    className="w-full bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed max-h-32 pt-1"
+                                                    rows={1}
+                                                    style={{ minHeight: '32px' }}
+                                                />
+                                                <div className="flex justify-between items-center mt-1 pt-1 border-t border-[var(--border)]/50">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="text-[var(--muted)] hover:text-[var(--accent)] flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase transition-colors"
+                                                    >
+                                                        <FileUp size={12} /> Drop PDF
+                                                    </button>
+                                                    <div className="text-[10px] opacity-75 flex items-center gap-1 text-[var(--muted)]">
+                                                        <Zap size={10} fill="currentColor" className="text-amber-500" /> Uses Sparks
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm"
-                                                title="Upload PDF"
+                                                type="submit"
+                                                disabled={!chatInput.trim() || status === 'submitted' || status === 'streaming'}
+                                                className="shrink-0 h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--accent)] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--accent)]/90 transition-colors mb-1 shadow-sm"
                                             >
-                                                <FileUp size={15} /> PDF
+                                                <ArrowRight size={18} />
                                             </button>
-
-                                            {/* Clear */}
-                                            {(inputValue || pdfFile) && (
-                                                <button onClick={clearInput} className="text-[var(--muted)] hover:text-[var(--text)] text-sm px-2 py-2">✕</button>
-                                            )}
-
-                                            {/* Primary action */}
-                                            <button
-                                                onClick={handleAction}
-                                                disabled={!canSubmit || (mode === 'analyze' && !hasEnoughSparks)}
-                                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${canSubmit && (mode !== 'analyze' || hasEnoughSparks)
-                                                    ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md shadow-[var(--accent)]/20'
-                                                    : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed'
-                                                    }`}
-                                            >
-                                                {mode === 'analyze' ? (
-                                                    <>Analyze <ArrowRight size={15} /></>
-                                                ) : (
-                                                    <>Learn <ArrowRight size={15} /></>
-                                                )}
-                                                {mode === 'analyze' && canSubmit && hasEnoughSparks && (
-                                                    <span className="text-[10px] opacity-75 flex items-center gap-0.5 ml-0.5">
-                                                        <Zap size={9} fill="currentColor" /> {balance!.total_sparks >= 13 ? '13' : '11'}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Low sparks notice */}
-                                    {mode === 'analyze' && balance && balance.total_sparks < 11 && (
-                                        <div className="mt-4 flex items-center gap-3 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2.5 rounded-xl text-sm">
-                                            <Zap size={15} fill="currentColor" />
-                                            <span>You need at least 11 Sparks to analyze content.</span>
-                                            <Link href="/sparks" className="ml-auto font-semibold underline underline-offset-2 shrink-0">Buy Sparks →</Link>
-                                        </div>
+                                        </form>
                                     )}
                                 </>
                             )}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -220,7 +220,7 @@ export default function ExplainMode() {
                     </div>
                 ) : (
                     <div className="prose prose-lg text-[var(--text)] prose-p:leading-relaxed prose-headings:font-display prose-a:text-[var(--accent)] max-w-none">
-                        <ReactMarkdown>{currentExplanation || ''}</ReactMarkdown>
+                        <MarkdownRenderer>{currentExplanation || ''}</MarkdownRenderer>
                     </div>
                 )}
 
