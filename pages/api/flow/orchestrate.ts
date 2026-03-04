@@ -67,28 +67,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
             generationConfig: { responseMimeType: 'application/json' },
-            systemInstruction: `You are Serify's Flow Mode teaching engine. You are about to teach one concept to a specific learner. Your job is to plan the full teaching arc for this concept before delivering the first step.
+            systemInstruction: `You are Serify's Flow Mode teaching engine. Plan a tight teaching experience for one concept that reads like a coherent lesson page, not a series of disconnected steps.
 
-TEACHING ARC TO FOLLOW:
-Orient → Build (layered) → Anchor → Check → Reinforce (if needed) → Confirm
+TEACHING ARC:
+Teach (one cohesive page) → Quick Checks (2–3 inline MCQ) → Deep Check (open-ended) → Confirm
 
 Generate a complete teaching plan as JSON:
 {
-  "orient": { "text": "string" },
-  "build": {
-    "layers": [
-      {
-        "layerNumber": number,
-        "layerType": "plain_language" | "mechanism" | "worked_example" | "connection",
-        "text": "string"
-      }
-    ]
+  "teach": {
+    "text": "string — full combined lesson. Use markdown headings (## What is X?, ## How it works, ## Example) to break the content into readable sections. Cover definition + mechanism + worked example in one flowing piece."
   },
-  "anchor": {
-    "form": "analogy" | "contrast" | "skip",
-    "text": "string",
-    "alternativeText": "string"
-  },
+  "quickChecks": [
+    {
+      "question": "string — short factual question about what was just taught",
+      "options": ["string", "string", "string", "string"],
+      "correctIndex": number
+    }
+  ],
   "checks": [
     {
       "checkType": "recall" | "mechanism" | "application",
@@ -106,15 +101,38 @@ Generate a complete teaching plan as JSON:
 }
 
 RULES YOU MUST FOLLOW:
-- Application check questions ONLY included if learner level is 'strong' OR unlocksAfter includes both 'recall' and 'mechanism'.
+
+STYLE & TONE:
+- Be concise and precise. No filler sentences, no rhetorical build-up.
+- NO metaphors or analogies.
+- The teach text MUST start with a ## heading that names the concept, then deliver the full explanation.
+  Example structure for "Linearization":
+  ## What is Linearization?
+  Linearization approximates $f(x)$ near $x = a$ using the tangent line at that point.
+
+  ## The Formula
+  $$L(x) = f(a) + f'(a)(x - a)$$
+
+  ## Worked Example
+  To approximate $\\sqrt{4.1}$, let $f(x) = \\sqrt{x}$, $a = 4$...
+- Use ## headings to separate definition, formula, and worked example sections. Do NOT use a single wall of text.
+- NEVER begin with filler like "Let's explore..." or "Think of it like...".
+- NEVER add unsolicited misconception warnings or "some learners think..." commentary.
+
+QUICK CHECKS:
+- Generate exactly 2–3 inline MCQ questions that test recall of what was just taught.
+- Keep questions short (one sentence). Options should be plausible but clearly distinguishable.
+- Questions should test different aspects: e.g., one on definition, one on formula, one on application setup.
+
+LOGIC:
+- Application checks ONLY if learner level is 'strong' OR unlocksAfter includes both 'recall' and 'mechanism'.
 - NEVER write an application check as the first or only check.
-- Build layers must genuinely build on each other.
-- Orient paragraph must not contain jargon from the mechanism layer.
 - Confirm question must be harder than any check question.
-- If a misconception is flagged, Anchor MUST use Form B (contrast) targeting that misconception.
-- Connection layer (layer 4) must reference a concept from the learner's strong concepts list if provided.
-- Minimum 4 angles available. Each must be genuinely different domain or framing.
-- ACCELERATED PATH: If "Current mastery state" is 'solid' or 'developing', keep the build layers completely empty (0 layers) and skip the anchor. Jump straight from orient to checking their knowledge.`
+- ACCELERATED PATH: If mastery state is 'solid' or 'developing', keep teach very short (just the key formula/definition), use only 1 quickCheck, and go straight to confirm.
+
+FORMATTING — MANDATORY:
+1. ALL math must use LaTeX: inline $...$, block $$...$$ on its own line. NEVER write math as plain text.
+2. Do NOT wrap prose in code blocks (triple backticks). Only use code blocks for actual programming code.`
         });
 
         const promptText = `
@@ -135,11 +153,37 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();
+
+        // ── Token / cost logging ──────────────────────────────
+        const usage = result.response.usageMetadata;
+        if (usage) {
+            const inputTokens = usage.promptTokenCount ?? 0;
+            const outputTokens = usage.candidatesTokenCount ?? 0;
+            const costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
+            console.log(
+                `[orchestrate] tokens — in: ${inputTokens}, out: ${outputTokens}` +
+                ` | est. cost: $${costUsd.toFixed(6)} | concept: ${conceptId}`
+            );
+        }
         const cleanedText = text
             .replace(/```json/g, '')
             .replace(/```/g, '')
             .trim();
-        const orchestratorPlan = JSON.parse(cleanedText);
+        let orchestratorPlan: any;
+        try {
+            orchestratorPlan = JSON.parse(cleanedText);
+        } catch (_firstErr) {
+            // LaTeX backslashes (e.g. \frac, \lim) are not valid JSON escapes.
+            // Replace any \ not already part of a valid JSON escape with \\.
+            const reescaped = cleanedText.replace(/\\(?!["\\\/bfnrtu])/g, '\\\\');
+            try {
+                orchestratorPlan = JSON.parse(reescaped);
+            } catch (finalErr: any) {
+                console.error('Failed to parse orchestrator plan JSON:', finalErr.message);
+                console.error('Raw text:', cleanedText.slice(0, 500));
+                return res.status(500).json({ error: 'AI returned malformed JSON. Please try again.' });
+            }
+        }
 
         const { data: existingProgress } = await supabaseAdmin
             .from('flow_concept_progress')

@@ -1,6 +1,14 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { authenticateApiRequest } from '@/lib/sparks';
+import { v4 as uuidv4 } from 'uuid';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false, autoRefreshToken: false }
+});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -13,14 +21,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         // Fetch curriculum
-        const { data: curriculum, error: currErr } = await supabase
+        const { data: curriculum, error: currErr } = await supabaseAdmin
             .from('curricula')
             .select('*')
             .eq('id', curriculumId)
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
-        if (currErr || !curriculum) return res.status(404).json({ error: 'Curriculum not found' });
+        if (currErr || !curriculum) {
+            console.error('Curriculum not found or error:', currErr);
+            return res.status(404).json({ error: 'Curriculum not found' });
+        }
 
         // Get uncompleted concepts
         const allConcepts = curriculum.units.flatMap((u: any) => u.concepts);
@@ -33,13 +44,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const currentConcept = pendingConcepts[0];
 
-        // Fetch the progress row
-        const { data: progress, error: progErr } = await supabase
+        // Fetch the progress row (use maybeSingle to avoid crash when missing)
+        let { data: progress } = await supabaseAdmin
             .from('curriculum_concept_progress')
             .select('*')
             .eq('curriculum_id', curriculumId)
-            .eq('concept_path_id', currentConcept.id)
-            .single();
+            .eq('concept_id', currentConcept.id)
+            .maybeSingle();
+
+        // If no progress row exists, create one now
+        if (!progress) {
+            const newProgressId = uuidv4();
+            const { data: createdProgress } = await supabaseAdmin
+                .from('curriculum_concept_progress')
+                .insert({
+                    id: newProgressId,
+                    curriculum_id: curriculumId,
+                    user_id: userId,
+                    concept_id: currentConcept.id,
+                    concept_name: currentConcept.name,
+                    status: 'not_started'
+                })
+                .select()
+                .single();
+            progress = createdProgress;
+        }
 
         let flowSessionId = progress?.flow_session_id;
 
@@ -47,18 +76,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!flowSessionId) {
             // Build the plan for Flow Mode
             const planNodes = pendingConcepts.map((c: any) => ({
-                conceptId: c.id, // Using the local ID from curriculum UI as pseudo-concept ID
+                conceptId: c.id,
                 conceptName: c.name,
                 prerequisiteCheck: c.definition,
                 currentMastery: c.vaultMasteryState || 'not_started'
             }));
 
-            const { data: flowSession, error: fsErr } = await supabase
+            const sessionId = uuidv4();
+            const { data: flowSession, error: fsErr } = await supabaseAdmin
                 .from('flow_sessions')
                 .insert({
+                    id: sessionId,
                     user_id: userId,
                     source_type: 'curriculum',
-                    source_id: curriculumId,
+                    source_session_id: curriculumId,
                     initial_plan: {
                         concepts: planNodes,
                         overallStrategy: `Curriculum: ${curriculum.title}`
@@ -79,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Update progress row with the session ID
             if (progress) {
-                await supabase
+                await supabaseAdmin
                     .from('curriculum_concept_progress')
                     .update({ flow_session_id: flowSessionId, status: 'in_progress' })
                     .eq('id', progress.id);

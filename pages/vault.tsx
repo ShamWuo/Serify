@@ -134,15 +134,15 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
     const history: any[] = Array.isArray(node.mastery_history) ? node.mastery_history : [];
     const firstSeen = node.first_seen_at
         ? new Date(node.first_seen_at).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric'
-          })
+            month: 'short',
+            day: 'numeric'
+        })
         : '—';
 
     return (
         <div className="flex flex-col h-full overflow-y-auto">
-            {}
-            <div className="sticky top-0 bg-[var(--surface)] z-10 px-6 pt-6 pb-4 border-b border-[var(--border)]">
+            { }
+            <div className="sticky top-0 bg-[var(--surface)] z-10 px-6 pt-6 pb-4 border-b border-[var(--border)] glass">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                         <h2 className="text-xl font-bold text-[var(--text)] leading-snug">
@@ -171,7 +171,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
             </div>
 
             <div className="flex-1 px-6 py-5 space-y-7">
-                {}
+                { }
                 {node.definition && (
                     <div>
                         <p className="text-sm text-[var(--text)] leading-relaxed">
@@ -180,7 +180,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 )}
 
-                {}
+                { }
                 {history.length > 0 && (
                     <div>
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">
@@ -194,11 +194,11 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                                 const prev = history[i - 1];
                                 const improved = prev
                                     ? ['revisit', 'shaky', 'developing', 'solid'].indexOf(
-                                          entry.state
-                                      ) >
-                                      ['revisit', 'shaky', 'developing', 'solid'].indexOf(
-                                          prev.state
-                                      )
+                                        entry.state
+                                    ) >
+                                    ['revisit', 'shaky', 'developing', 'solid'].indexOf(
+                                        prev.state
+                                    )
                                     : false;
                                 return (
                                     <div key={i} className="flex items-center shrink-0">
@@ -226,7 +226,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 )}
 
-                {}
+                { }
                 {node.synthesis ? (
                     <div>
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">
@@ -261,7 +261,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">
                             Synthesized Understanding
                         </h3>
-                        <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
+                        <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl glass">
                             <div className="space-y-2">
                                 <div className="h-3 bg-[var(--border)] rounded animate-pulse" />
                                 <div className="h-3 bg-[var(--border)] rounded animate-pulse w-4/5" />
@@ -274,7 +274,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 ) : null}
 
-                {}
+                { }
                 {sessions.length > 0 && (
                     <div>
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">
@@ -292,7 +292,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                                     <Link
                                         key={s.id}
                                         href={`/session/${s.id}/feedback`}
-                                        className="flex items-center justify-between p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)] transition-colors group"
+                                        className="flex items-center justify-between p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)] transition-colors group card-hover"
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[var(--border)] rounded text-[var(--muted)] shrink-0">
@@ -313,7 +313,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 )}
 
-                {}
+                { }
                 <div>
                     <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">
                         Study This Concept
@@ -324,10 +324,10 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
 
                     <Link
                         href={`/learn?q=${encodeURIComponent(node.display_name || node.canonical_name || '')}`}
-                        className="flex items-center justify-between gap-3 p-3 mb-3 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 rounded-xl transition-colors shadow-sm group"
+                        className="flex items-center justify-between gap-3 p-3 mb-3 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 rounded-xl transition-colors shadow-sm group card-hover"
                     >
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                            <div className="w-10 h-10 bg-[var(--border)] rounded-xl flex items-center justify-center mb-3 animate-fade-in">
                                 <BookOpen size={15} />
                             </div>
                             <div>
@@ -345,33 +345,33 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                         />
                     </Link>
 
-                    {}
+                    { }
                     {(node.current_mastery === 'shaky' ||
                         node.current_mastery === 'revisit' ||
                         node.current_mastery === 'developing') && (
-                        <Link
-                            href={`/flow?focus=${node.id}`}
-                            className="flex items-center justify-between gap-3 p-3 mb-3 bg-gradient-to-r from-[#7c3aed18] to-[#4f46e512] border border-[#7c3aed55] hover:border-[#7c3aed] rounded-xl transition-colors group"
-                        >
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                                    <Zap size={15} />
+                            <Link
+                                href={`/flow?focus=${node.id}`}
+                                className="flex items-center justify-between gap-3 p-3 mb-3 bg-gradient-to-r from-[#7c3aed18] to-[#4f46e512] border border-[#7c3aed55] hover:border-[#7c3aed] rounded-xl transition-colors group card-hover"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                                        <Zap size={15} />
+                                    </div>
+                                    <div>
+                                        <span className="text-[13px] font-bold text-[var(--text)] block">
+                                            Flow Mode
+                                        </span>
+                                        <span className="text-[10px] text-[var(--muted)]">
+                                            AI step-by-step coaching
+                                        </span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="text-[13px] font-bold text-[var(--text)] block">
-                                        Flow Mode
-                                    </span>
-                                    <span className="text-[10px] text-[var(--muted)]">
-                                        AI step-by-step coaching
-                                    </span>
-                                </div>
-                            </div>
-                            <ArrowRight
-                                size={14}
-                                className="text-purple-400 group-hover:text-purple-600 shrink-0 transition-colors"
-                            />
-                        </Link>
-                    )}
+                                <ArrowRight
+                                    size={14}
+                                    className="text-purple-400 group-hover:text-purple-600 shrink-0 transition-colors"
+                                />
+                            </Link>
+                        )}
 
                     <div className="grid grid-cols-2 gap-2">
                         {[
@@ -403,7 +403,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                             <Link
                                 key={mode.label}
                                 href={mode.href}
-                                className="flex flex-col gap-1.5 p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)] transition-colors group"
+                                className="flex flex-col gap-1.5 p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)] transition-colors group card-hover"
                             >
                                 <div className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">
                                     {mode.icon}
@@ -419,7 +419,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                     </div>
                 </div>
 
-                {}
+                { }
                 {(node.hint_request_count > 0 || node.skip_count > 0) && (
                     <div className="border-t border-[var(--border)] pt-5">
                         <h3 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3">
@@ -577,12 +577,12 @@ export default function VaultPage() {
             </Head>
 
             <div className="relative flex h-full">
-                {}
+                { }
                 <div
                     className={`flex-1 min-w-0 transition-all duration-300 ${selectedNodeId ? 'mr-[420px]' : ''}`}
                 >
                     <div className="max-w-[860px] mx-auto px-6 py-8">
-                        {}
+                        { }
                         <div className="flex items-start justify-between gap-4 mb-6">
                             <div>
                                 <h1 className="text-3xl font-display text-[var(--text)]">
@@ -592,24 +592,33 @@ export default function VaultPage() {
                                     Every concept you&apos;ve encountered, tracked over time.
                                 </p>
                             </div>
-                            <div className="relative mt-1">
-                                <Search
-                                    size={15}
-                                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Search concepts…"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-9 pr-4 h-10 w-52 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm outline-none focus:border-[var(--accent)] transition-colors"
-                                />
+                            <div className="flex items-center gap-3">
+                                <Link
+                                    href="/knowledge-map"
+                                    className="h-10 px-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] font-medium flex items-center justify-center gap-2 hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors shadow-sm"
+                                >
+                                    <Zap size={15} />
+                                    Knowledge Map
+                                </Link>
+                                <div className="relative mt-1">
+                                    <Search
+                                        size={15}
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Search concepts…"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        className="pl-9 pr-4 h-10 w-52 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm outline-none focus:border-[var(--accent)] transition-colors"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        {}
+                        { }
                         {hasAnyConcepts && (
-                            <div className="flex flex-wrap items-center gap-4 mb-5 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl">
+                            <div className="flex flex-wrap items-center gap-4 mb-5 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl glass">
                                 {(
                                     ['solid', 'developing', 'shaky', 'revisit'] as MasteryState[]
                                 ).map((state) => (
@@ -620,8 +629,8 @@ export default function VaultPage() {
                                                 state === 'solid'
                                                     ? 'solid'
                                                     : state === 'revisit' || state === 'shaky'
-                                                      ? 'needs_work'
-                                                      : 'all'
+                                                        ? 'needs_work'
+                                                        : 'all'
                                             )
                                         }
                                         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -635,9 +644,9 @@ export default function VaultPage() {
                             </div>
                         )}
 
-                        {}
+                        { }
                         <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-                            <div className="flex items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1">
+                            <div className="flex items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1 glass">
                                 {(
                                     [
                                         ['all', 'All'],
@@ -684,7 +693,7 @@ export default function VaultPage() {
                             </div>
                         </div>
 
-                        {}
+                        { }
                         {loading && (
                             <div className="space-y-3">
                                 {[...Array(4)].map((_, i) => (
@@ -696,7 +705,7 @@ export default function VaultPage() {
                             </div>
                         )}
 
-                        {}
+                        { }
                         {!loading && !hasAnyConcepts && (
                             <div className="flex flex-col items-center justify-center py-24 text-center">
                                 <div className="w-20 h-20 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center mb-6 shadow-sm">
@@ -714,7 +723,7 @@ export default function VaultPage() {
                                             {[0, 1, 2].map((i) => (
                                                 <div
                                                     key={i}
-                                                    className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce"
+                                                    className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse"
                                                     style={{ animationDelay: `${i * 0.15}s` }}
                                                 />
                                             ))}
@@ -772,11 +781,11 @@ export default function VaultPage() {
                             </div>
                         )}
 
-                        {}
+                        { }
                         {!loading &&
                             filteredNodes.length > 0 &&
                             (viewMode === 'flat' ? (
-                                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
+                                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] glass stagger-children">
                                     {filteredNodes.map((node) => (
                                         <ConceptRow
                                             key={node.id}
@@ -862,7 +871,7 @@ export default function VaultPage() {
                                         );
                                     })}
 
-                                    {}
+                                    { }
                                     {uncategorized.length > 0 && (
                                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
                                             <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-2">
@@ -902,7 +911,7 @@ export default function VaultPage() {
                     </div>
                 </div>
 
-                {}
+                { }
                 {selectedNodeId && (
                     <div className="fixed right-0 top-0 md:top-auto md:bottom-0 w-full md:w-[420px] bg-[var(--surface)] border-l border-[var(--border)] shadow-2xl z-50 md:h-screen overflow-hidden flex flex-col">
                         <DetailPanel

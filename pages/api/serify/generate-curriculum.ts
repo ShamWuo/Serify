@@ -86,6 +86,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             userProfile
         );
 
+        // Map AI-generated string IDs to valid UUIDs
+        const { v4: uuidv4 } = await import('uuid');
+        const idMap = new Map<string, string>();
+
+        curriculumData.units.forEach((unit: any) => {
+            unit.concepts.forEach((concept: any) => {
+                const newId = uuidv4();
+                idMap.set(concept.id, newId);
+                concept.id = newId;
+            });
+        });
+
+        curriculumData.units.forEach((unit: any) => {
+            unit.concepts.forEach((concept: any) => {
+                if (concept.prerequisiteFor && Array.isArray(concept.prerequisiteFor)) {
+                    concept.prerequisiteFor = concept.prerequisiteFor.map((oldId: string) => idMap.get(oldId) || oldId);
+                }
+            });
+        });
+
+        // Update original_units to match the mapped IDs
+        curriculumData.original_units = JSON.parse(JSON.stringify(curriculumData.units));
+
         // Deduct sparks
         const deduction = await deductSparks(user.id, sparkCost, 'curriculum_generation');
         if (!deduction.success) return res.status(403).json({ error: 'out_of_sparks' });

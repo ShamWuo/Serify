@@ -159,13 +159,13 @@ export default function SparksShop() {
                 </div>
 
                 { }
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto stagger-children">
                     {SPARK_PACKS.map((pack) => (
                         <div
                             key={pack.id}
-                            className={`relative flex flex-col bg-[var(--surface)] rounded-3xl p-8 transition-transform hover:-translate-y-1 ${pack.popular
-                                    ? 'border-2 border-amber-400 shadow-md shadow-amber-900/5'
-                                    : 'border border-[var(--border)] shadow-sm'
+                            className={`relative flex flex-col bg-[var(--surface)] rounded-3xl p-8 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl ${pack.popular
+                                ? 'border-2 border-amber-400 shadow-md shadow-amber-900/5'
+                                : 'border border-[var(--border)] shadow-sm hover:border-[var(--accent)]'
                                 }`}
                         >
                             {pack.popular && (
@@ -195,8 +195,8 @@ export default function SparksShop() {
                                 onClick={() => handleCheckout(pack.id)}
                                 disabled={isCheckingOut === pack.id}
                                 className={`mt-auto w-full py-3 px-4 rounded-xl font-semibold transition-colors flex items-center justify-center ${pack.popular
-                                        ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'
-                                        : 'bg-[var(--accent-light)] hover:bg-[var(--accent)] hover:text-white text-[var(--accent)]'
+                                    ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'
+                                    : 'bg-[var(--accent-light)] hover:bg-[var(--accent)] hover:text-white text-[var(--accent)]'
                                     }`}
                             >
                                 {isCheckingOut === pack.id ? (
@@ -211,7 +211,7 @@ export default function SparksShop() {
 
                 { }
                 <div className="mt-10 text-center flex flex-col items-center justify-center text-[var(--muted)]">
-                    <ShieldCheck size={32} className="mb-3 opacity-50" />
+                    <ShieldCheck size={32} className="mb-3 opacity-50 animate-soft-float" />
                     <p className="text-sm max-w-md">
                         Payments are processed securely by Stripe. Purchased Sparks never expire.
                     </p>

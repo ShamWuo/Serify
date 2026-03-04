@@ -134,6 +134,18 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
 
         const result = await evaluatorModel.generateContent(promptText);
         const evalText = result.response.text();
+
+        // ── Token / cost logging ──────────────────────────────
+        const evalUsage = result.response.usageMetadata;
+        if (evalUsage) {
+            const i = evalUsage.promptTokenCount ?? 0;
+            const o = evalUsage.candidatesTokenCount ?? 0;
+            console.log(
+                `[evaluate] tokens — in: ${i}, out: ${o}` +
+                ` | est. cost: $${((i / 1_000_000) * 0.075 + (o / 1_000_000) * 0.30).toFixed(6)}` +
+                ` | step: ${stepId}`
+            );
+        }
         const evaluation = JSON.parse(
             evalText
                 .replace(/```json/g, '')
@@ -183,6 +195,17 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
 `;
                 const reinforceResult = await reinforceModel.generateContent(reinforcePromptText);
                 nextReinforceContent = reinforceResult.response.text().trim();
+
+                // ── Token / cost logging (reinforce) ─────────
+                const rUsage = reinforceResult.response.usageMetadata;
+                if (rUsage) {
+                    const i = rUsage.promptTokenCount ?? 0;
+                    const o = rUsage.candidatesTokenCount ?? 0;
+                    console.log(
+                        `[evaluate/reinforce] tokens — in: ${i}, out: ${o}` +
+                        ` | est. cost: $${((i / 1_000_000) * 0.075 + (o / 1_000_000) * 0.30).toFixed(6)}`
+                    );
+                }
 
                 if (evaluation.reinforcementAngle) {
                     learnerProfile.anglesUsed.push({

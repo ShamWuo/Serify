@@ -102,6 +102,7 @@ export interface KnowledgeNode {
 }
 
 export type FlowStepType =
+    | 'teach'
     | 'orient'
     | 'build_layer'
     | 'anchor'

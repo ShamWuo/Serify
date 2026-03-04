@@ -71,58 +71,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let content: any = {};
 
         if (!lastStep) {
-            nextStepType = 'orient';
-            content = plan.orient;
-        } else if (lastStep.step_type === 'orient') {
-            if (plan.build?.layers && plan.build.layers.length > 0) {
-                nextStepType = 'build_layer';
-                content = plan.build.layers[0];
-            } else {
-                // Skip build layers and anchor if accelerated path
-                nextStepType = 'check';
-                content = plan.checks?.[0] || {
-                    questionText: 'How would you summarize this?',
-                    checkType: 'recall'
-                };
-            }
-        } else if (lastStep.step_type === 'build_layer') {
-            const currentLayerNum = lastStep.content.layerNumber || 1;
-            const nextLayer = plan.build?.layers?.find((l: any) => l.layerNumber > currentLayerNum);
-
-            if (nextLayer) {
-                nextStepType = 'build_layer';
-                content = nextLayer;
-            } else {
-                if (!plan.anchor || plan.anchor.form === 'skip') {
-                    nextStepType = 'check';
-                    content = plan.checks?.[0] || {
-                        questionText: 'How would you summarize this?',
-                        checkType: 'recall'
-                    };
-                } else {
-                    nextStepType = 'anchor';
-                    content = { text: plan.anchor.text, form: plan.anchor.form };
-                }
-            }
-        } else if (lastStep.step_type === 'anchor') {
-            if (
-                lastStep.response_type === 'needs_work' &&
-                plan.anchor.alternativeText &&
-                !lastStep.content.isAlternative
-            ) {
-                nextStepType = 'anchor';
-                content = {
-                    text: plan.anchor.alternativeText,
-                    form: plan.anchor.form,
-                    isAlternative: true
-                };
-            } else {
-                nextStepType = 'check';
-                content = plan.checks?.[0] || {
-                    questionText: 'How would you summarize this?',
-                    checkType: 'recall'
-                };
-            }
+            // Always start with the combined teach card
+            nextStepType = 'teach';
+            content = {
+                text: plan.teach?.text || '',
+                quickChecks: plan.quickChecks || []
+            };
+        } else if (lastStep.step_type === 'teach') {
+            // After teach, go to first open-ended check
+            nextStepType = 'check';
+            content = plan.checks?.[0] || {
+                questionText: 'How would you summarize what you just read?',
+                checkType: 'recall'
+            };
         } else if (lastStep.step_type === 'check') {
             if (!lastStep.evaluation)
                 return res.status(400).json({ error: 'Check step not evaluated yet' });
@@ -216,8 +177,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (nextStepType === 'completed') {
-            if (sessionData.source_type === 'curriculum' && sessionData.source_id) {
-                const curriculumId = sessionData.source_id;
+            if (sessionData.source_type === 'curriculum' && sessionData.source_session_id) {
+                const curriculumId = sessionData.source_session_id;
 
                 const { data: curr } = await supabaseAdmin
                     .from('curricula')
@@ -249,7 +210,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                 completed_at: new Date().toISOString()
                             })
                             .eq('curriculum_id', curriculumId)
-                            .eq('concept_path_id', conceptId);
+                            .eq('concept_id', conceptId);
                     }
                 }
             }

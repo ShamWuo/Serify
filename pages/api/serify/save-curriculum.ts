@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const curriculumData = req.body;
 
-        if (!curriculumData || !curriculumData.title || !curriculumData.units) {
+        if (!curriculumData || !curriculumData.title) {
             return res.status(400).json({ error: 'Invalid curriculum data' });
         }
 
@@ -22,15 +22,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const sparkCost = SPARK_COSTS.CURRICULUM_GENERATION || 2;
         await deductSparks(user, sparkCost, 'curriculum_generation');
 
+        const userInput =
+            curriculumData.user_input ?? curriculumData.title ?? '';
+        const units = Array.isArray(curriculumData.units) ? curriculumData.units : [];
+        const originalUnits = Array.isArray(curriculumData.original_units)
+            ? curriculumData.original_units
+            : units;
+        const { v4: uuidv4 } = await import('uuid');
+        const conceptCount = units.reduce(
+            (sum: number, u: { concepts?: unknown[] }) => sum + (u.concepts?.length ?? 0),
+            0
+        );
+
+        // Safety net: remap any non-UUID concept IDs to valid UUIDs
+        const idMap = new Map<string, string>();
+        units.forEach((unit: any) => {
+            (unit.concepts || []).forEach((concept: any) => {
+                if (!concept.id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(concept.id)) {
+                    const newId = uuidv4();
+                    idMap.set(concept.id, newId);
+                    concept.id = newId;
+                }
+            });
+        });
+        units.forEach((unit: any) => {
+            (unit.concepts || []).forEach((concept: any) => {
+                if (concept.prerequisiteFor && Array.isArray(concept.prerequisiteFor)) {
+                    concept.prerequisiteFor = concept.prerequisiteFor.map((oldId: string) => idMap.get(oldId) || oldId);
+                }
+            });
+        });
+
         const { data: savedCurriculum, error: saveError } = await supabase
             .from('curricula')
             .insert({
                 user_id: user,
+                user_input: userInput,
                 title: curriculumData.title,
                 target_description: curriculumData.target_description,
                 scope_note: curriculumData.scope_note || null,
-                outcomes: curriculumData.outcomes,
-                recommended_start_index: curriculumData.recommended_start_index || 0,
+                outcomes: curriculumData.outcomes ?? [],
+                units,
+                original_units: originalUnits,
+                concept_count: conceptCount,
+                recommended_start_index: curriculumData.recommended_start_index ?? 0,
                 status: 'draft'
             })
             .select()
@@ -41,45 +76,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw saveError;
         }
 
-        const unitPromises = curriculumData.units.map(async (unit: any) => {
-            const { data: savedUnit, error: unitError } = await supabase
-                .from('curriculum_units')
-                .insert({
+        // Create curriculum_concept_progress rows for each concept
+        const progressRows: any[] = [];
+        units.forEach((unit: any) => {
+            (unit.concepts || []).forEach((concept: any) => {
+                progressRows.push({
+                    id: uuidv4(),
                     curriculum_id: savedCurriculum.id,
-                    unit_number: unit.unitNumber,
-                    title: unit.unitTitle,
-                    summary: unit.unitSummary
-                })
-                .select()
-                .single();
-
-            if (unitError) throw unitError;
-
-            const nodePromises = unit.concepts.map(async (concept: any) => {
-                let nodeState = concept.vaultMasteryState || 'none';
-                if (nodeState === 'strong') nodeState = 'solid';
-
-                return supabase.from('curriculum_nodes').insert({
-                    curriculum_id: savedCurriculum.id,
-                    unit_id: savedUnit.id,
+                    user_id: user,
+                    concept_id: concept.id,
                     concept_name: concept.name,
-                    definition: concept.definition,
-                    difficulty: concept.difficulty,
-                    estimated_minutes: concept.estimatedMinutes,
-                    is_prerequisite: concept.isPrerequisite,
-                    prerequisite_for: concept.prerequisiteFor || [],
-                    why_included: concept.whyIncluded,
-                    warning_note:
-                        concept.misconceptionRisk === 'high' ? 'High misconception risk' : null,
-                    order_index: concept.orderIndex,
-                    status: nodeState === 'solid' ? 'mastered' : 'pending'
+                    status: 'not_started'
                 });
             });
-
-            await Promise.all(nodePromises);
         });
 
-        await Promise.all(unitPromises);
+        if (progressRows.length > 0) {
+            const { error: progressError } = await supabase
+                .from('curriculum_concept_progress')
+                .insert(progressRows);
+            if (progressError) {
+                console.error('Error creating progress rows:', progressError);
+                // Non-fatal: the curriculum itself was saved, progress rows can be recovered
+            }
+        }
 
         res.status(200).json({ curriculumId: savedCurriculum.id });
     } catch (error: any) {

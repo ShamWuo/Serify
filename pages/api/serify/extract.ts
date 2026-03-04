@@ -117,6 +117,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const targetContent = content ?? url;
 
+        let cachedConcepts = null;
+
         const { data: existingSession, error: checkErr } = await supabaseWithAuth
             .from('reflection_sessions')
             .select('id, status')
@@ -126,6 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .limit(1)
             .maybeSingle();
 
+        // 1. Check if we have a viable cache hit
         if (existingSession && !checkErr) {
             console.log('Found existing session for this content:', existingSession.id);
 
@@ -136,12 +139,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .eq('session_id', existingSession.id);
 
                 if (existingConcepts && existingConcepts.length > 0) {
-                    console.log('Reusing concepts from session:', existingSession.id);
-                    return res.status(200).json({
-                        sessionId: existingSession.id,
-                        concepts: existingConcepts,
-                        reused: true
-                    });
+                    console.log('CACHE HIT: Sourced exact concepts from session:', existingSession.id);
+                    cachedConcepts = existingConcepts;
                 }
             }
         }
@@ -185,21 +184,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
         }
 
-        console.log('Extracting concepts via Gemini...');
+        // 3. Either clone cached concepts or call Gemini
+        let conceptsToSave = [];
+        let finalConcepts = [];
 
-        const concepts = await extractConcepts(contentSource);
-        console.log('Concepts extracted:', concepts.length);
-
-        const conceptRows = concepts.map((c) => ({
-            session_id: session.id,
-            name: c.name,
-            description: c.description,
-            importance: c.importance,
-            related_concept_names: c.relatedConcepts
-        }));
+        if (cachedConcepts) {
+            console.log('Cloning cached concepts...');
+            finalConcepts = cachedConcepts;
+            conceptsToSave = cachedConcepts.map((c: any) => ({
+                session_id: session.id, // attach to the NEW session
+                name: c.name,
+                description: c.description,
+                importance: c.importance,
+                related_concept_names: c.related_concept_names, // cloned exactly
+                misconception_risk: c.misconception_risk
+            }));
+        } else {
+            console.log('Extracting concepts via Gemini...');
+            const extracted = await extractConcepts(contentSource);
+            console.log('Concepts extracted:', extracted.length);
+            finalConcepts = extracted;
+            conceptsToSave = extracted.map((c: any) => ({
+                session_id: session.id,
+                name: c.name,
+                description: c.description,
+                importance: c.importance,
+                related_concept_names: c.relatedConcepts
+            }));
+        }
 
         console.log('Saving concepts to database...');
-        const { error: conceptError } = await supabaseWithAuth.from('concepts').insert(conceptRows);
+        const { error: conceptError } = await supabaseWithAuth.from('concepts').insert(conceptsToSave);
 
         if (conceptError) {
             console.error('Concept insert error:', conceptError);
@@ -215,7 +230,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('id', session.id);
 
         console.log('Extraction complete, returning sessionId:', session.id);
-        return res.status(200).json({ sessionId: session.id, concepts });
+        return res.status(200).json({ sessionId: session.id, concepts: finalConcepts, cached: !!cachedConcepts });
     } catch (err: any) {
         console.error('Extract error:', err);
         const errorMessage = err.message || 'Failed to extract concepts';

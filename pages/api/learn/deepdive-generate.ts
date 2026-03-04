@@ -1,8 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { getGeminiModel } from '@/lib/serify-ai';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -14,7 +12,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const sparkCost = SPARK_COSTS.CONCEPT_DEEP_DIVE;
+    const { concept, deepDiveText, epicMode } = req.body;
+
+    if (!concept) {
+        return res.status(400).json({ error: 'Missing concept' });
+    }
+
+    const sparkCost = SPARK_COSTS.CONCEPT_DEEP_DIVE * (epicMode ? 5 : 1);
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
         return res
@@ -25,17 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
     }
 
-    const { concept, deepDiveText } = req.body;
 
-    if (!concept) {
-        return res.status(400).json({ error: 'Missing concept' });
-    }
 
     try {
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            generationConfig: { responseMimeType: 'application/json' },
-            systemInstruction: `You are a master teacher generating a comprehensive 'Deep Dive' guide for a single concept a student is struggling to grasp.
+        const model = getGeminiModel(
+            epicMode,
+            `You are a master teacher generating a comprehensive 'Deep Dive' guide for a single concept a student is struggling to grasp.
 
 Structure the response as a JSON object:
 {
@@ -57,7 +56,7 @@ Rules for Sections:
 5. "Step-by-Step" or "Component Breakdown" - Deconstruct it.
 
 Keep the tone expert, engaging, and highly structured.`
-        });
+        );
 
         const promptText = `
 Concept: ${concept.name}

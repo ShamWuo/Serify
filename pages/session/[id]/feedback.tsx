@@ -316,11 +316,16 @@ export default function FeedbackReport() {
                             return (
                                 <div
                                     key={idx}
-                                    className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm"
+                                    className={`bg-[var(--surface)] border ${item.mastery_state === 'solid' ? 'border-[#2A5C45] shadow-[0_4px_24px_-8px_rgba(42,92,69,0.2)] animate-pulse-glow' : 'border-[var(--border)] shadow-sm'
+                                        } rounded-2xl p-6 relative overflow-hidden`}
                                 >
-                                    <div className="flex flex-wrap md:flex-nowrap justify-between items-start gap-4 mb-4">
+                                    {item.mastery_state === 'solid' && (
+                                        <div className="absolute top-0 left-0 w-full h-1 animate-shimmer" />
+                                    )}
+                                    <div className="flex flex-wrap md:flex-nowrap justify-between items-start gap-4 mb-4 relative z-10">
                                         <div>
-                                            <h4 className="font-bold text-lg text-[var(--text)] mb-2">
+                                            <h4 className={`font-bold text-lg mb-2 ${item.mastery_state === 'solid' ? 'text-gradient' : 'text-[var(--text)]'}`}>
+                                                {item.mastery_state === 'solid' && <span className="mr-2 inline-block">✨</span>}
                                                 {getConceptName(item.concept_id)}
                                             </h4>
                                             <div className="w-32 bg-[var(--border)] h-1.5 rounded-full overflow-hidden">
@@ -330,12 +335,12 @@ export default function FeedbackReport() {
                                             </div>
                                         </div>
                                         <div
-                                            className={`shrink-0 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${badgeClass}`}
+                                            className={`shrink-0 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 ${badgeClass}`}
                                         >
-                                            {item.mastery_state}
+                                            {item.mastery_state === 'solid' ? 'Concept Mastered' : item.mastery_state}
                                         </div>
                                     </div>
-                                    <p className="text-[var(--text)] text-[15px] leading-relaxed">
+                                    <p className="text-[var(--text)] text-[15px] leading-relaxed relative z-10">
                                         {item.feedback_text}
                                     </p>
                                 </div>
@@ -1147,8 +1152,8 @@ export default function FeedbackReport() {
                             <button
                                 onClick={handleCopyLink}
                                 className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${isCopied
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90'
                                     }`}
                             >
                                 {isCopied ? <Check size={14} /> : <Copy size={14} />}

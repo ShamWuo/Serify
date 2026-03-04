@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -17,6 +17,8 @@ export default function DeepDiveMode() {
 
     const [deepDive, setDeepDive] = useState<any>(null);
     const [generating, setGenerating] = useState(false);
+    const [hasStarted, setHasStarted] = useState(false);
+    const [epicMode, setEpicMode] = useState(false);
 
     const [answer, setAnswer] = useState('');
     const [evaluating, setEvaluating] = useState(false);
@@ -68,8 +70,7 @@ export default function DeepDiveMode() {
                 });
 
                 setTargetConcept(concept);
-
-                generateDeepDive(concept);
+                setLoading(false);
             } catch (err) {
                 console.error(err);
                 setLoading(false);
@@ -99,7 +100,7 @@ export default function DeepDiveMode() {
                 {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({ concept })
+                    body: JSON.stringify({ concept, epicMode })
                 }
             );
 
@@ -187,6 +188,44 @@ export default function DeepDiveMode() {
         );
     }
 
+    if (!hasStarted && targetConcept) {
+        return (
+            <div className="flex flex-col items-center pt-32 min-h-screen bg-[var(--background)] px-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center mb-6 text-3xl shadow-lg">
+                    🧠
+                </div>
+                <h2 className="text-3xl font-display mb-4 text-center text-[var(--text)]">
+                    Deep Dive: {targetConcept.name}
+                </h2>
+                <p className="text-[var(--muted)] text-center mb-8 text-lg max-w-[500px]">
+                    Let's break down this concept and fix the exact areas you struggled with.
+                </p>
+
+                <div className="flex flex-col items-center gap-6">
+                    <button
+                        onClick={() => {
+                            setHasStarted(true);
+                            generateDeepDive(targetConcept);
+                        }}
+                        className="px-8 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10"
+                    >
+                        Generate Deep Dive
+                    </button>
+
+                    <label className="flex items-center gap-3 cursor-pointer text-sm font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-4 py-2.5 rounded-full shadow-sm border border-[var(--border)]">
+                        <input
+                            type="checkbox"
+                            checked={epicMode}
+                            onChange={(e) => setEpicMode(e.target.checked)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-4 h-4"
+                        />
+                        <span><strong className="text-amber-500">Epic Mode</strong> (5x Sparks)</span>
+                    </label>
+                </div>
+            </div>
+        );
+    }
+
     if (error) {
         return (
             <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
@@ -215,7 +254,7 @@ export default function DeepDiveMode() {
                 <title>Deep Dive | Serify</title>
             </Head>
 
-            {}
+            { }
             <div className="max-w-[800px] w-full mx-auto px-6 mb-8 flex items-center justify-between">
                 <Link
                     href={`/session/${id}/feedback`}
@@ -229,7 +268,7 @@ export default function DeepDiveMode() {
             </div>
 
             <main className="flex-1 w-full max-w-[800px] mx-auto p-6 md:p-8 pb-32">
-                {}
+                { }
                 <div className="mb-16 border-b-2 border-[var(--text)] pb-8">
                     <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-widest rounded-full mb-6 relative">
                         Deep Dive Guide
@@ -239,7 +278,7 @@ export default function DeepDiveMode() {
                     </h1>
                 </div>
 
-                {}
+                { }
                 <div className="space-y-16">
                     {deepDive.sections?.map((section: any, idx: number) => (
                         <section key={idx} className="relative">
@@ -250,13 +289,13 @@ export default function DeepDiveMode() {
                                 {section.heading}
                             </h2>
                             <div className="prose prose-lg prose-indigo prose-a:text-indigo-600 prose-p:leading-relaxed text-[var(--text)] max-w-none ml-0 md:ml-12 bg-white/50 p-6 rounded-2xl border border-[var(--border)] shadow-sm">
-                                <ReactMarkdown>{section.content}</ReactMarkdown>
+                                <MarkdownRenderer>{section.content}</MarkdownRenderer>
                             </div>
                         </section>
                     ))}
                 </div>
 
-                {}
+                { }
                 <div className="mt-24 pt-16 border-t border-[var(--border)]">
                     <div className="max-w-2xl mx-auto bg-white border border-[var(--border)] rounded-3xl p-8 md:p-12 shadow-xl shadow-black/5 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>

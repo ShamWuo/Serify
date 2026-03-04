@@ -50,12 +50,16 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-center items-center p-6 font-sans">
+        <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-center items-center p-6 font-sans relative overflow-hidden">
+            {/* Decorative blobs */}
+            <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] right-[-100px]" />
+            <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] left-[-100px]" />
+            <div className="auth-bg-blob w-[300px] h-[300px] bg-[#b8860b] top-[40%] left-[60%]" />
             <Head>
                 <title>Log In | Serify</title>
             </Head>
 
-            <div className="w-full max-w-sm">
+            <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
                 <div className="mb-10 text-center">
                     <Link
                         href="/"
@@ -68,7 +72,7 @@ export default function Login() {
                     </p>
                 </div>
 
-                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-sm">
+                <div className="glass border border-[var(--border)] rounded-2xl p-8 shadow-lg">
                     {error && (
                         <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 text-sm animate-fade-in">
                             <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -85,7 +89,7 @@ export default function Login() {
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full h-12 px-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-[var(--accent)] transition-colors"
+                                className="w-full h-12 px-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none input-focus-ring transition-all"
                                 required
                                 disabled={isLoading}
                                 placeholder="name@example.com"
@@ -108,7 +112,7 @@ export default function Login() {
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full h-12 px-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-[var(--accent)] transition-colors pr-12"
+                                    className="w-full h-12 px-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none input-focus-ring transition-all pr-12"
                                     required
                                     disabled={isLoading}
                                     placeholder="••••••••"
@@ -126,7 +130,7 @@ export default function Login() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-12 bg-[var(--text)] text-[var(--surface)] rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/80 transition-colors mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full h-12 bg-[var(--text)] text-[var(--surface)] rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/80 hover:-translate-y-0.5 hover:shadow-lg transition-all mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
                         >
                             {isLoading ? (
                                 <Loader2 size={18} className="animate-spin" />

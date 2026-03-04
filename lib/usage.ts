@@ -51,7 +51,7 @@ export async function checkSessionAllowance(userId: string): Promise<{
         usage = { session_count: 0 };
     }
 
-    const sessionLimit = 3;
+    const sessionLimit = 1;
     const remaining = Math.max(0, sessionLimit - (usage.session_count || 0));
 
     if (remaining === 0) {

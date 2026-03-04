@@ -1,9 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
-import { parseJSON } from '@/lib/serify-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { parseJSON, getGeminiModel } from '@/lib/serify-ai';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -15,16 +12,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { messages, sessionContext, isFinalAnalysis } = req.body;
+    const { messages, sessionContext, isFinalAnalysis, epicMode } = req.body;
 
     if (!messages || !sessionContext) {
         return res.status(400).json({ error: 'Missing messages or session context' });
     }
 
     try {
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            systemInstruction: `You are Serify's AI Tutor — an expert, patient, and direct tutor having a one-on-one conversation with a student.
+        const model = getGeminiModel(
+            epicMode,
+            `You are Serify's AI Tutor — an expert, patient, and direct tutor having a one-on-one conversation with a student.
 
 You have full context on this student's recent learning session:
 SOURCE CONTENT: ${sessionContext.sourceContent?.title || 'Unknown'}
@@ -47,7 +44,7 @@ Your role:
 - If they ask you to quiz them, generate a retrieval question and evaluate their answer
 
 Tone: direct, warm, intellectually engaged.`
-        });
+        );
 
         if (isFinalAnalysis) {
             const analysisPrompt = `
@@ -76,7 +73,8 @@ Only include concepts that were actually discussed and demonstrated by the user 
         }
 
         const isOpening = messages.length <= 1;
-        const sparkCost = isOpening ? SPARK_COSTS.AI_TUTOR_OPEN : SPARK_COSTS.AI_TUTOR_MESSAGE;
+        const sparkCostBase = isOpening ? SPARK_COSTS.AI_TUTOR_OPEN : SPARK_COSTS.AI_TUTOR_MESSAGE;
+        const sparkCost = sparkCostBase * (epicMode ? 5 : 1);
         const hasSparks = await hasEnoughSparks(userId, sparkCost);
         if (!hasSparks) {
             return res
