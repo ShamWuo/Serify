@@ -10,12 +10,25 @@ interface MarkdownRendererProps {
 }
 
 /**
- * Shared markdown renderer with:
- * - KaTeX math rendering (inline $...$ and block $$...$$)
- * - GitHub Flavored Markdown (tables, strikethrough, task lists)
- * - Proper prose styling
+ * JSON.parse silently corrupts some LaTeX backslash sequences because they
+ * happen to be valid JSON escape chars:
+ *   \f  → form feed (U+000C)  — kills: \frac, \forall, \fbox
+ *   \b  → backspace (U+0008)  — kills: \begin, \binom, \bar
+ *   \t  → tab (U+0009)        — kills: \text, \times, \to, \theta, \tau
+ *   \r  → carriage return     — kills: \rightarrow, \rangle, \right
+ * Restore them before rendering.
  */
+function fixLatexBackslashes(s: string): string {
+    return s
+        .replace(/\u000C/g, '\\f')   // form feed  → \f  (\frac, \forall …)
+        .replace(/\u0008/g, '\\b')   // backspace  → \b  (\begin, \binom …)
+        .replace(/\t/g, '\\t')       // tab        → \t  (\text, \times, \to …)
+        .replace(/\r/g, '\\r');      // CR         → \r  (\right, \rangle …)
+    // NOTE: \n (newline) is intentionally preserved — it's valid line-break in markdown.
+}
+
 export default function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
+    const safe = fixLatexBackslashes(children ?? '');
     return (
         <div className={`flow-markdown prose-content ${className}`}>
             <ReactMarkdown
@@ -85,7 +98,7 @@ export default function MarkdownRenderer({ children, className = '' }: MarkdownR
                     )
                 }}
             >
-                {children}
+                {safe}
             </ReactMarkdown>
         </div>
     );

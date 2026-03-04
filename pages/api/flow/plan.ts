@@ -75,8 +75,8 @@ Rules:
         const promptText = `
 TARGET CONCEPTS (what to teach):
 ${targetConcepts
-    .map(
-        (c: any) => `
+                .map(
+                    (c: any) => `
   - ${c.name || c.display_name} (ID: ${c.id || 'none'})
     Current mastery: ${c.currentMastery || c.current_mastery || 'Not started'}
     Definition: ${c.definition || 'none'}
@@ -85,8 +85,8 @@ ${targetConcepts
     Sessions covered: ${c.sessionCount || c.session_count || 0}
     Hint requested previously: ${c.hintRequestCount || c.hint_request_count || 0} times
 `
-    )
-    .join('\n')}
+                )
+                .join('\n')}
 
 WHAT THIS LEARNER UNDERSTANDS WELL (use as bridges):
 ${(strongConcepts || []).map((c: any) => `- ${c.name || c.display_name}`).join('\n') || 'None provided'}
@@ -107,6 +107,17 @@ ${feedbackSummary || 'No prior session context'}
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();
+
+        // ── Token / cost logging ──────────────────────────────
+        const usage = result.response.usageMetadata;
+        if (usage) {
+            const i = usage.promptTokenCount ?? 0;
+            const o = usage.candidatesTokenCount ?? 0;
+            console.log(
+                `[plan] tokens — in: ${i}, out: ${o}` +
+                ` | est. cost: $${((i / 1_000_000) * 0.075 + (o / 1_000_000) * 0.30).toFixed(6)}`
+            );
+        }
 
         const cleanedText = text
             .replace(/```json/g, '')

@@ -77,65 +77,85 @@ function ReadOnlyNotice() {
     );
 }
 
-function OrientStep({ content, onNext, readOnly }: { content: any; onNext: (r: string) => void; readOnly?: boolean }) {
+function TeachStep({ content, onNext, readOnly }: { content: any; onNext: (r: string) => void; readOnly?: boolean }) {
+    const quickChecks: any[] = content.quickChecks || [];
+    const [answers, setAnswers] = useState<(number | null)[]>(Array(quickChecks.length).fill(null));
+    const allAnswered = quickChecks.length === 0 || answers.every((a) => a !== null);
+
+    const handleSelect = (qIdx: number, optIdx: number) => {
+        if (readOnly || answers[qIdx] !== null) return;
+        setAnswers((prev) => { const next = [...prev]; next[qIdx] = optIdx; return next; });
+    };
+
     return (
         <div>
-            <p className="text-xs text-[var(--accent)] font-bold uppercase tracking-widest mb-2 flex items-center">
-                <Target size={14} className="mr-1.5" /> Orientation
-            </p>
-            <div className="leading-relaxed text-[15.5px] flow-markdown">
+            {/* Full lesson content */}
+            <div className="flow-markdown leading-relaxed text-[15.5px] mb-8">
                 <MarkdownRenderer>{content.text}</MarkdownRenderer>
             </div>
-            <div className="flex mt-5">
-                {readOnly ? <ReadOnlyNotice /> : (
-                    <ActionButton label="Got it" icon={<ChevronRight size={16} />} primary onClick={() => onNext('got_it')} />
-                )}
-            </div>
-        </div>
-    );
-}
 
-function BuildLayerStep({ content, onNext, readOnly }: { content: any; onNext: (r: string) => void; readOnly?: boolean }) {
-    const isMechanism = content.layerType === 'mechanism';
-    const isExample = content.layerType === 'example';
-    const isConnection = content.layerType === 'connection';
-    let containerClass = 'mb-4 flow-markdown';
-    if (isMechanism) containerClass += ' font-mono bg-[var(--surface-2,var(--surface))] p-4 rounded-xl border border-[var(--border)]';
-    if (isExample) containerClass += ' bg-[var(--accent)]/5 border border-[var(--accent)]/20 p-5 rounded-xl';
-    if (isConnection) containerClass += ' border-l-4 border-[var(--accent)] pl-4';
-    return (
-        <div>
-            <div className={containerClass}>
-                <div className="leading-relaxed text-[15.5px]">
-                    <MarkdownRenderer>{content.text}</MarkdownRenderer>
+            {/* Inline MCQ quick-checks */}
+            {quickChecks.length > 0 && (
+                <div className="space-y-5 border-t border-[var(--border)] pt-6">
+                    <p className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-1">Quick checks</p>
+                    {quickChecks.map((qc: any, qIdx: number) => {
+                        const selected = answers[qIdx];
+                        const correct = qc.correctIndex;
+                        const answered = selected !== null;
+                        return (
+                            <div key={qIdx} className="rounded-xl border border-[var(--border)] overflow-hidden">
+                                <div className="px-4 py-3 text-[14px] font-semibold text-[var(--text)] bg-[var(--surface)]">
+                                    <MarkdownRenderer>{qc.question}</MarkdownRenderer>
+                                </div>
+                                <div className="divide-y divide-[var(--border)]">
+                                    {(qc.options || []).map((opt: string, oIdx: number) => {
+                                        const isSelected = selected === oIdx;
+                                        const isCorrect = oIdx === correct;
+                                        let bg = 'transparent';
+                                        let textCls = 'text-[var(--text)]';
+                                        let icon = null;
+                                        if (answered) {
+                                            if (isCorrect) { bg = '#22c55e12'; textCls = 'text-emerald-700 font-semibold'; icon = '✓'; }
+                                            else if (isSelected && !isCorrect) { bg = '#ef444412'; textCls = 'text-red-600'; icon = '✗'; }
+                                        }
+                                        return (
+                                            <button key={oIdx} onClick={() => handleSelect(qIdx, oIdx)}
+                                                disabled={answered || readOnly}
+                                                style={{ background: bg }}
+                                                className={`w-full text-left px-4 py-2.5 text-[13.5px] flex items-center gap-2.5 transition-colors ${!answered && !readOnly ? 'hover:bg-[var(--accent)]/5 cursor-pointer' : 'cursor-default'} ${textCls}`}
+                                            >
+                                                <span className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[11px] shrink-0"
+                                                    style={answered && isCorrect ? { background: '#22c55e', borderColor: '#22c55e', color: 'white' } : answered && isSelected ? { background: '#ef4444', borderColor: '#ef4444', color: 'white' } : {}}
+                                                >
+                                                    {answered ? (isCorrect ? '✓' : isSelected ? '✗' : String.fromCharCode(65 + oIdx)) : String.fromCharCode(65 + oIdx)}
+                                                </span>
+                                                <MarkdownRenderer>{opt}</MarkdownRenderer>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-            </div>
-            <div className="flex mt-5">
+            )}
+
+            <div className="flex mt-6">
                 {readOnly ? <ReadOnlyNotice /> : (
-                    <ActionButton label="Continue" icon={<ChevronRight size={16} />} primary onClick={() => onNext('continue')} />
+                    <ActionButton
+                        label={allAnswered ? 'Continue' : `Answer all questions to continue`}
+                        icon={<ChevronRight size={16} />}
+                        primary
+                        onClick={() => onNext('completed_teach')}
+                        disabled={!allAnswered}
+                    />
                 )}
             </div>
         </div>
     );
 }
 
-function AnchorStep({ content, onNext, readOnly }: { content: any; onNext: (r: string) => void; readOnly?: boolean }) {
-    return (
-        <div>
-            <div className="leading-relaxed text-[15.5px] flow-markdown">
-                <MarkdownRenderer>{content.text}</MarkdownRenderer>
-            </div>
-            <div className="flex gap-2.5 mt-6">
-                {readOnly ? <ReadOnlyNotice /> : (
-                    <>
-                        <ActionButton label="Makes sense" primary onClick={() => onNext('makes_sense')} />
-                        <ActionButton label="That doesn't help" secondary onClick={() => onNext('needs_work')} />
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
+
 
 function CheckQuestionStep({ content, stepId, isEvaluated, onEvaluated, readOnly, savedAnswer }: {
     content: any; stepId: string; isEvaluated: boolean;
@@ -335,6 +355,21 @@ export default function CurriculumFlowSessionPage() {
                 setSessionDone(true);
             }
             setLoading(false);
+
+            // Kick off background orchestration for the next 3 concepts immediately
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+            const allConcepts = data.initial_plan?.concepts || [];
+            const completed: string[] = data.concepts_completed || [];
+            const toPreload = allConcepts
+                .filter((c: any) => !completed.includes(c.conceptId))
+                .slice(0, 3);
+            toPreload.forEach((c: any) => {
+                fetch('/api/flow/orchestrate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ sessionId: data.id, conceptId: c.conceptId }),
+                }).catch(() => { /* silently ignore prefetch failures */ });
+            });
         })();
     }, [flowSessionId]);
 
@@ -425,12 +460,32 @@ export default function CurriculumFlowSessionPage() {
 
     // ── Concept-complete advancement ────────────────────────
     const handleAdvanceConcept = () => {
-        if (currentConceptIndex + 1 < totalConcepts) {
-            setCurrentConceptIndex((i) => i + 1);
+        const nextIdx = currentConceptIndex + 1;
+        if (nextIdx < totalConcepts) {
+            setCurrentConceptIndex(nextIdx);
             setStepHistory([]);
             setViewingStepIndex(-1);
             setPendingEvaluation(null);
             setConceptJustCompleted(false);
+
+            // Prefetch orchestration for the 3 concepts after the one we're moving to
+            if (flowSession) {
+                const completed = (flowSession.concepts_completed || []).concat(
+                    currentConcept?.conceptId ? [currentConcept.conceptId] : []
+                );
+                const upcoming = (flowSession.initial_plan?.concepts || [])
+                    .filter((c: any) => !completed.includes(c.conceptId))
+                    .slice(1, 4); // skip the one we just moved to (already being loaded), grab next 3
+                supabase.auth.getSession().then(({ data: { session: s } }) => {
+                    upcoming.forEach((c: any) => {
+                        fetch('/api/flow/orchestrate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token}` },
+                            body: JSON.stringify({ sessionId: flowSession.id, conceptId: c.conceptId }),
+                        }).catch(() => { });
+                    });
+                });
+            }
         } else {
             setSessionDone(true);
             setConceptJustCompleted(false);
@@ -479,9 +534,7 @@ export default function CurriculumFlowSessionPage() {
         const { step_type, content, user_response } = displayStep;
         const savedAnswer = user_response || '';
 
-        if (step_type === 'orient') return <OrientStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
-        if (step_type === 'build_layer') return <BuildLayerStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
-        if (step_type === 'anchor') return <AnchorStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
+        if (step_type === 'teach') return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
         if (step_type === 'check' || step_type === 'confirm')
             return (
                 <CheckQuestionStep content={content} stepId={displayStep.id} isEvaluated={!!pendingEvaluation || isReadOnly}
