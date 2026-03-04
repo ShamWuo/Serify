@@ -19,6 +19,7 @@ export default function TutorMode() {
     const [inputStr, setInputStr] = useState('');
     const [sending, setSending] = useState(false);
     const [isPro, setIsPro] = useState(false);
+    const [epicMode, setEpicMode] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const { balance } = useSparks();
 
@@ -152,7 +153,8 @@ export default function TutorMode() {
                 headers,
                 body: JSON.stringify({
                     messages: newMessages,
-                    sessionContext: sessionData
+                    sessionContext: sessionData,
+                    epicMode
                 })
             });
 
@@ -374,34 +376,47 @@ export default function TutorMode() {
 
             { }
             <footer className="p-4 md:p-6 bg-white border-t border-[var(--border)] shrink-0">
-                <div className="max-w-[800px] mx-auto relative flex items-end gap-2">
-                    <textarea
-                        value={inputStr}
-                        onChange={(e) => setInputStr(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                sendMessage();
-                            }
-                        }}
-                        placeholder="Message your tutor..."
-                        className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-5 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none min-h-[60px] max-h-[200px]"
-                        rows={1}
-                    />
-                    <button
-                        onClick={sendMessage}
-                        disabled={!inputStr.trim() || sending}
-                        className="absolute right-3 bottom-3 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            className="w-5 h-5"
+                <div className="max-w-[800px] mx-auto relative flex flex-col gap-2">
+                    <div className="flex justify-end pr-2">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-3 py-1.5 rounded-full shadow-sm border border-[var(--border)]">
+                            <input
+                                type="checkbox"
+                                checked={epicMode}
+                                onChange={(e) => setEpicMode(e.target.checked)}
+                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-3.5 h-3.5"
+                            />
+                            <span><strong className="text-amber-500">Epic Mode</strong> (5x Sparks)</span>
+                        </label>
+                    </div>
+                    <div className="relative flex items-end gap-2">
+                        <textarea
+                            value={inputStr}
+                            onChange={(e) => setInputStr(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    sendMessage();
+                                }
+                            }}
+                            placeholder="Message your tutor..."
+                            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-5 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none min-h-[60px] max-h-[200px]"
+                            rows={1}
+                        />
+                        <button
+                            onClick={sendMessage}
+                            disabled={!inputStr.trim() || sending}
+                            className="absolute right-3 bottom-3 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                         >
-                            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-                        </svg>
-                    </button>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="w-5 h-5"
+                            >
+                                <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div className="text-center mt-3 text-[11px] text-[var(--muted)]">
                     Tutor mode analyzes your conversation to automatically update the Concept Vault

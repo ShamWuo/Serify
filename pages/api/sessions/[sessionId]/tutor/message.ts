@@ -1,9 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
 import { createClient } from '@supabase/supabase-js';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+import { getGeminiModel } from '@/lib/serify-ai';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -23,12 +21,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { messages, sessionContext } = req.body;
+    const { messages, sessionContext, epicMode } = req.body;
     if (!messages || !sessionContext) {
         return res.status(400).json({ error: 'Missing messages or session context' });
     }
 
-    const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE;
+    const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE * (epicMode ? 5 : 1);
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
         return res
@@ -61,9 +59,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .json({ error: 'Tutor conversation not found. Call start first.' });
         }
 
-        const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
-            systemInstruction: `You are Serify's AI Tutor.
+        const model = getGeminiModel(
+            epicMode,
+            `You are Serify's AI Tutor.
 Source: ${sessionContext.sourceContent?.title || 'Unknown'}
 Strong: ${sessionContext.strongConcepts?.map((c: any) => c.name).join(', ') || 'None'}
 Weak: ${sessionContext.weakConcepts?.map((c: any) => `${c.name}: ${c.feedbackNote || ''}`).join('; ') || 'None'}
@@ -74,7 +72,7 @@ Role:
 - Correct misconceptions, don't just lecture
 - Conversational, 2-4 sentences max
 - If asked, generate a retrieval question to check understanding`
-        });
+        );
 
         const deduction = await deductSparks(userId, sparkCost, 'ai_tutor_message');
         if (!deduction.success) {

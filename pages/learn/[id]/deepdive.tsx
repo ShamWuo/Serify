@@ -17,6 +17,8 @@ export default function DeepDiveMode() {
 
     const [deepDive, setDeepDive] = useState<any>(null);
     const [generating, setGenerating] = useState(false);
+    const [hasStarted, setHasStarted] = useState(false);
+    const [epicMode, setEpicMode] = useState(false);
 
     const [answer, setAnswer] = useState('');
     const [evaluating, setEvaluating] = useState(false);
@@ -68,8 +70,7 @@ export default function DeepDiveMode() {
                 });
 
                 setTargetConcept(concept);
-
-                generateDeepDive(concept);
+                setLoading(false);
             } catch (err) {
                 console.error(err);
                 setLoading(false);
@@ -99,7 +100,7 @@ export default function DeepDiveMode() {
                 {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({ concept })
+                    body: JSON.stringify({ concept, epicMode })
                 }
             );
 
@@ -183,6 +184,44 @@ export default function DeepDiveMode() {
                     Cross-referencing your specific gaps to build a customized guide for <br />
                     <strong>{targetConcept?.name}</strong>.
                 </p>
+            </div>
+        );
+    }
+
+    if (!hasStarted && targetConcept) {
+        return (
+            <div className="flex flex-col items-center pt-32 min-h-screen bg-[var(--background)] px-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center mb-6 text-3xl shadow-lg">
+                    🧠
+                </div>
+                <h2 className="text-3xl font-display mb-4 text-center text-[var(--text)]">
+                    Deep Dive: {targetConcept.name}
+                </h2>
+                <p className="text-[var(--muted)] text-center mb-8 text-lg max-w-[500px]">
+                    Let's break down this concept and fix the exact areas you struggled with.
+                </p>
+
+                <div className="flex flex-col items-center gap-6">
+                    <button
+                        onClick={() => {
+                            setHasStarted(true);
+                            generateDeepDive(targetConcept);
+                        }}
+                        className="px-8 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10"
+                    >
+                        Generate Deep Dive
+                    </button>
+
+                    <label className="flex items-center gap-3 cursor-pointer text-sm font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-4 py-2.5 rounded-full shadow-sm border border-[var(--border)]">
+                        <input
+                            type="checkbox"
+                            checked={epicMode}
+                            onChange={(e) => setEpicMode(e.target.checked)}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-4 h-4"
+                        />
+                        <span><strong className="text-amber-500">Epic Mode</strong> (5x Sparks)</span>
+                    </label>
+                </div>
             </div>
         );
     }
