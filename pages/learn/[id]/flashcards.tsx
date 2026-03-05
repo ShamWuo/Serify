@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function FlashcardsMode() {
     const router = useRouter();
@@ -246,48 +248,83 @@ export default function FlashcardsMode() {
     if (!currentCard) return null;
 
     return (
-        <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col">
+        <DashboardLayout
+            backLink={`/session/${id}/feedback`}
+            sidebarContent={
+                <div className="space-y-4">
+                    <div className="px-3 mb-2">
+                        <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                            Flashcard Progress
+                        </h3>
+                    </div>
+                    <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-250px)] pr-2 custom-scrollbar">
+                        {cards.map((c: any, idx: number) => {
+                            const isCurrent = currentIndex === idx;
+                            const isPast = idx < currentIndex;
+                            return (
+                                <div
+                                    key={idx}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-default ${isCurrent
+                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold border border-[var(--accent)]/20'
+                                        : 'text-[var(--muted)]'
+                                        }`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${isPast
+                                        ? 'bg-green-500 border-green-500 text-white'
+                                        : isCurrent
+                                            ? 'border-[var(--accent)] text-[var(--accent)]'
+                                            : 'border-[var(--border)]'
+                                        }`}>
+                                        {isPast ? (
+                                            <CheckCircle2 size={12} />
+                                        ) : (
+                                            <span className="text-[10px]">{idx + 1}</span>
+                                        )}
+                                    </div>
+                                    <span className="text-sm truncate">Card {idx + 1}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            }
+        >
             <Head>
                 <title>Flashcards | Serify</title>
             </Head>
 
-            {}
-            <header className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10 hidden md:flex">
-                <Link
-                    href={`/session/${id}/feedback`}
-                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                    &larr; Back to Report
-                </Link>
-                <div className="font-medium text-sm text-[var(--text)]">
-                    <span className="font-bold">{getConceptName(currentCard.conceptId)}</span>{' '}
-                    <span className="text-[var(--muted)] mx-2">|</span> Card {currentIndex + 1} of{' '}
-                    {cards.length}
-                </div>
-                <div className="w-24"></div> {}
-            </header>
-
-            {}
-            <main className="flex-1 flex flex-col items-center justify-center p-6 pb-32">
-                {}
-                <div className="md:hidden text-center mb-8">
-                    <div className="font-bold text-lg">{getConceptName(currentCard.conceptId)}</div>
-                    <div className="text-[var(--muted)] text-sm">
-                        Card {currentIndex + 1} of {cards.length}
+            <main className="max-w-[800px] mx-auto p-6 md:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
+                { }
+                <div className="w-full mb-12 flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest mb-1">
+                            Current Concept
+                        </span>
+                        <h2 className="text-xl font-display font-medium text-[var(--text)]">
+                            {getConceptName(currentCard.conceptId)}
+                        </h2>
+                    </div>
+                    <div className="text-right">
+                        <span className="text-xs font-bold text-[var(--muted)] block mb-1">
+                            Progress
+                        </span>
+                        <span className="text-sm font-black text-[var(--text)]">
+                            {currentIndex + 1} / {cards.length}
+                        </span>
                     </div>
                 </div>
 
-                {}
+                { }
                 <div
-                    className={`relative w-full max-w-[600px] aspect-[4/3] rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-sm transition-all duration-300 transform-gpu cursor-pointer group`}
+                    className={`relative w-full max-w-[600px] aspect-[4/3] rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-lg transition-all duration-300 transform-gpu cursor-pointer group`}
                     style={{ perspective: '1000px' }}
                     onClick={() => !isFlipped && setIsFlipped(true)}
                 >
                     <div
                         className={`absolute inset-0 w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateX(180deg)]' : ''}`}
                     >
-                        {}
-                        <div className="absolute inset-0 w-full h-full backface-hidden p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl">
+                        { }
+                        <div className="absolute inset-0 w-full h-full backface-hidden p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl shadow-sm">
                             <h2 className="text-2xl md:text-[32px] font-display mb-6 text-[var(--text)] leading-tight">
                                 {currentCard.front}
                             </h2>
@@ -296,10 +333,10 @@ export default function FlashcardsMode() {
                             </p>
                         </div>
 
-                        {}
-                        <div className="absolute inset-0 w-full h-full backface-hidden p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl pt-16 [transform:rotateX(180deg)] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] border-2 border-[var(--accent)]">
+                        { }
+                        <div className="absolute inset-0 w-full h-full backface-hidden p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl pt-16 [transform:rotateX(180deg)] border-2 border-[var(--accent)] shadow-sm">
                             <div className="absolute top-6 left-0 right-0 flex justify-center">
-                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent-light)] px-3 py-1 rounded-full">
+                                <span className="text-xs font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 rounded-full">
                                     Answer
                                 </span>
                             </div>
@@ -310,7 +347,7 @@ export default function FlashcardsMode() {
                     </div>
                 </div>
 
-                {}
+                { }
                 <div className="mt-12 h-16 w-full max-w-[600px] flex items-center justify-center gap-4">
                     {!isFlipped ? (
                         <button
@@ -337,6 +374,6 @@ export default function FlashcardsMode() {
                     )}
                 </div>
             </main>
-        </div>
+        </DashboardLayout>
     );
 }

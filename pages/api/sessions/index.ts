@@ -22,7 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .from('reflection_sessions')
                     .select('id, title, content_type, status, created_at, completed_at, session_type')
                     .eq('user_id', userId)
-                    .or('session_type.eq.analysis,session_type.is.null')
                     .order('created_at', { ascending: false }),
                 supabaseAdmin
                     .from('flow_sessions')

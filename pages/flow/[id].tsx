@@ -414,6 +414,64 @@ function EvaluationBanner({ evaluation, onContinue }: { evaluation: any; onConti
     );
 }
 
+function PhaseSelector({
+    activePhase,
+    onPhaseChange
+}: {
+    activePhase: 'teach' | 'check';
+    onPhaseChange: (phase: 'teach' | 'check') => void;
+}) {
+    return (
+        <div
+            style={{
+                display: 'inline-flex',
+                background: 'var(--surface)',
+                borderRadius: 12,
+                padding: 4,
+                border: '1.5px solid var(--border)',
+                gap: 4
+            }}
+        >
+            <button
+                onClick={() => onPhaseChange('teach')}
+                style={{
+                    padding: '6px 16px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: activePhase === 'teach' ? 'var(--accent)' : 'transparent',
+                    color: activePhase === 'teach' ? 'white' : 'var(--text-muted)',
+                    transition: 'all 0.2s',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5
+                }}
+            >
+                Teach
+            </button>
+            <button
+                onClick={() => onPhaseChange('check')}
+                style={{
+                    padding: '6px 16px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: activePhase === 'check' ? 'var(--accent)' : 'transparent',
+                    color: activePhase === 'check' ? 'white' : 'var(--text-muted)',
+                    transition: 'all 0.2s',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5
+                }}
+            >
+                Check
+            </button>
+        </div>
+    );
+}
+
 export default function FlowSessionPage() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -683,7 +741,7 @@ export default function FlowSessionPage() {
 
     if (loading)
         return (
-            <DashboardLayout>
+            <DashboardLayout backLink="/flow">
                 <div
                     style={{
                         display: 'flex',
@@ -702,7 +760,7 @@ export default function FlowSessionPage() {
 
     if (sessionDone)
         return (
-            <DashboardLayout>
+            <DashboardLayout backLink="/flow">
                 <div
                     style={{
                         maxWidth: 600,
@@ -743,7 +801,48 @@ export default function FlowSessionPage() {
             <Head>
                 <title>Flow Mode — {currentConcept?.conceptName || 'Loading'}</title>
             </Head>
-            <DashboardLayout>
+            <DashboardLayout
+                backLink="/flow"
+                sidebarContent={
+                    <div className="space-y-4">
+                        <div className="px-3 mb-2">
+                            <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                                Session Progress
+                            </h3>
+                        </div>
+                        <div className="space-y-1">
+                            {flowSession?.initial_plan?.concepts?.map((c: any, idx: number) => {
+                                const isCurrent = currentConcept?.conceptId === c.conceptId;
+                                const status = conceptStatuses[c.conceptId] || 'not_started';
+                                return (
+                                    <div
+                                        key={c.conceptId}
+                                        onClick={() => !stepping && setCurrentConceptIndex(idx)}
+                                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${isCurrent
+                                            ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold border border-[var(--accent)]/20'
+                                            : 'text-[var(--muted)] hover:bg-black/5'
+                                            }`}
+                                    >
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${status === 'completed'
+                                            ? 'bg-green-500 border-green-500 text-white'
+                                            : isCurrent
+                                                ? 'border-[var(--accent)] text-[var(--accent)]'
+                                                : 'border-[var(--border)]'
+                                            }`}>
+                                            {status === 'completed' ? (
+                                                <CheckCircle2 size={12} />
+                                            ) : (
+                                                <span className="text-[10px]">{idx + 1}</span>
+                                            )}
+                                        </div>
+                                        <span className="text-sm truncate">{c.conceptName}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                }
+            >
                 <div style={{ maxWidth: 720, margin: '0 auto', padding: '1.5rem 1rem' }}>
                     { }
                     <div style={{ marginBottom: 20 }}>
@@ -791,8 +890,8 @@ export default function FlowSessionPage() {
                         <PhaseSelector
                             activePhase={
                                 currentStep?.step_type === 'teach' ||
-                                currentStep?.step_type === 'build_layer' ||
-                                currentStep?.step_type === 'orient'
+                                    currentStep?.step_type === 'build_layer' ||
+                                    currentStep?.step_type === 'orient'
                                     ? 'teach'
                                     : 'check'
                             }

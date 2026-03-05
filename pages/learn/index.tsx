@@ -185,6 +185,7 @@ export default function LearnIndex() {
         },
         onFinish: async ({ object, error }) => {
             if (isSavingRef.current) return;
+            isSavingRef.current = true;
 
             const hasValid = (o: typeof curriculumInitialValue) =>
                 o && typeof o.title === 'string' && o.title.trim() !== '' &&

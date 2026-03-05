@@ -4,6 +4,8 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function PracticeMode() {
     const router = useRouter();
@@ -209,37 +211,70 @@ export default function PracticeMode() {
     const currentQ = questions[currentIndex];
 
     return (
-        <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col">
+        <DashboardLayout
+            backLink={`/session/${id}/feedback`}
+            sidebarContent={
+                <div className="space-y-4">
+                    <div className="px-3 mb-2">
+                        <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                            Practice Progress
+                        </h3>
+                    </div>
+                    <div className="space-y-1">
+                        {questions.map((q: any, idx: number) => {
+                            const isCurrent = currentIndex === idx;
+                            const isPast = idx < currentIndex;
+                            return (
+                                <div
+                                    key={idx}
+                                    onClick={() => !isAnswered && setCurrentIndex(idx)}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${isCurrent
+                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold border border-[var(--accent)]/20'
+                                        : 'text-[var(--muted)] hover:bg-black/5'
+                                        }`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${isPast
+                                        ? 'bg-green-500 border-green-500 text-white'
+                                        : isCurrent
+                                            ? 'border-[var(--accent)] text-[var(--accent)]'
+                                            : 'border-[var(--border)]'
+                                        }`}>
+                                        {isPast ? (
+                                            <CheckCircle2 size={12} />
+                                        ) : (
+                                            <span className="text-[10px]">{idx + 1}</span>
+                                        )}
+                                    </div>
+                                    <span className="text-sm truncate">Question {idx + 1}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            }
+        >
             <Head>
                 <title>Practice Quiz | Serify</title>
             </Head>
 
-            {}
-            <header className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-                <Link
-                    href={`/session/${id}/feedback`}
-                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                    &larr; Back to Report
-                </Link>
-                <div className="font-medium text-sm text-[var(--text)] flex items-center gap-4">
-                    <span className="hidden sm:inline text-[var(--muted)] font-bold">
-                        {getConceptName(currentQ.conceptId)}
-                    </span>
-                    <span className="px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-bold tracking-wider">
-                        {currentIndex + 1} / {questions.length}
-                    </span>
+            <main className="max-w-[700px] mx-auto p-6 md:p-8 pb-32 flex flex-col min-h-[calc(100vh-120px)]">
+                <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-bold tracking-wider text-[var(--accent)]">
+                            {getConceptName(currentQ.conceptId)}
+                        </span>
+                        <span className="text-xs font-bold text-[var(--muted)]">
+                            {currentIndex + 1} / {questions.length}
+                        </span>
+                    </div>
+                    <div className="w-full bg-[var(--border)] h-1.5 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-[var(--accent)] transition-all duration-500"
+                            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+                        />
+                    </div>
                 </div>
-                <div className="w-24 border-b-2 border-[var(--border)] h-1 relative rounded-full overflow-hidden self-center">
-                    <div
-                        className="absolute top-0 left-0 h-full bg-[var(--accent)] transition-all duration-300"
-                        style={{ width: `${(currentIndex / questions.length) * 100}%` }}
-                    />
-                </div>
-            </header>
 
-            {}
-            <main className="flex-1 w-full max-w-[700px] mx-auto p-6 md:p-8 pb-32 flex flex-col">
                 <h2 className="text-2xl md:text-[28px] font-display mb-8 text-[var(--text)] leading-snug">
                     {currentQ.question}
                 </h2>
@@ -276,15 +311,14 @@ export default function PracticeMode() {
                                 className={`w-full text-left p-5 rounded-2xl border-2 transition-all ${stateClass} ${ringClass} group flex items-start gap-4`}
                             >
                                 <div
-                                    className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mt-0.5 transition-colors ${
-                                        isAnswered && idx === currentQ.correctIndex
-                                            ? 'border-emerald-500 bg-emerald-500 text-white'
-                                            : isAnswered && idx === selectedOption
-                                              ? 'border-rose-500 bg-rose-500 text-white'
-                                              : selectedOption === idx
+                                    className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mt-0.5 transition-colors ${isAnswered && idx === currentQ.correctIndex
+                                        ? 'border-emerald-500 bg-emerald-500 text-white'
+                                        : isAnswered && idx === selectedOption
+                                            ? 'border-rose-500 bg-rose-500 text-white'
+                                            : selectedOption === idx
                                                 ? 'border-blue-500 bg-blue-500 text-white'
                                                 : 'border-[var(--muted)] text-transparent'
-                                    }`}
+                                        }`}
                                 >
                                     {isAnswered && idx === currentQ.correctIndex && <span>✓</span>}
                                     {isAnswered &&
@@ -329,6 +363,6 @@ export default function PracticeMode() {
                     )}
                 </div>
             </main>
-        </div>
+        </DashboardLayout>
     );
 }
