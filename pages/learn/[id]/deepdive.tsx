@@ -18,7 +18,7 @@ export default function DeepDiveMode() {
     const [deepDive, setDeepDive] = useState<any>(null);
     const [generating, setGenerating] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
-    const [epicMode, setEpicMode] = useState(false);
+    const [proMode, setProMode] = useState(false);
 
     const [answer, setAnswer] = useState('');
     const [evaluating, setEvaluating] = useState(false);
@@ -100,7 +100,7 @@ export default function DeepDiveMode() {
                 {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({ concept, epicMode })
+                    body: JSON.stringify({ concept, proMode })
                 }
             );
 
@@ -215,11 +215,11 @@ export default function DeepDiveMode() {
                     <label className="flex items-center gap-3 cursor-pointer text-sm font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-4 py-2.5 rounded-full shadow-sm border border-[var(--border)]">
                         <input
                             type="checkbox"
-                            checked={epicMode}
-                            onChange={(e) => setEpicMode(e.target.checked)}
+                            checked={proMode}
+                            onChange={(e) => setProMode(e.target.checked)}
                             className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-4 h-4"
                         />
-                        <span><strong className="text-amber-500">Epic Mode</strong> (5x Sparks)</span>
+                        <span><strong className="text-amber-500">Pro Mode</strong> (5x Sparks)</span>
                     </label>
                 </div>
             </div>

@@ -87,6 +87,7 @@ export default function Home() {
 
     // Processing
     const [isProcessing, setIsProcessing] = useState(false);
+    const processingRef = useRef(false);
     const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -161,11 +162,44 @@ export default function Home() {
 
     // Fetch all dashboard data
     useEffect(() => {
-        const history = storage.getHistory();
-        setLatestSessions(history.slice(0, 5));
-        setTotalSessionCount(history.length);
+        if (!user) {
+            const history = storage.getHistory();
+            setLatestSessions(history.slice(0, 5));
+            setTotalSessionCount(history.length);
+            return;
+        }
 
-        if (!user) return;
+        // Fetch sessions from DB
+        supabase.from('reflection_sessions')
+            .select('id, title, content_type, created_at, status, depth_score')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(10)
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('Error fetching sessions:', error);
+                    // Fallback to local storage if DB fails or for guest
+                    const history = storage.getHistory();
+                    setLatestSessions(history.slice(0, 5));
+                    setTotalSessionCount(history.length);
+                } else if (data) {
+                    const mappedSessions: SessionSummary[] = data.map(s => ({
+                        id: s.id,
+                        title: s.title && s.title !== 'No Learning Material Provided' ? s.title : 'Untitled Analysis',
+                        type: s.content_type === 'youtube' ? 'YouTube Video' : s.content_type === 'pdf' ? 'PDF Upload' : s.content_type === 'article' ? 'Article URL' : 'Notes',
+                        date: new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        status: s.status === 'feedback' || s.status === 'complete' ? 'Completed' : 'In Progress',
+                        result: s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found'
+                    }));
+                    setLatestSessions(mappedSessions.slice(0, 5));
+                    
+                    // Total session count from DB
+                    supabase.from('reflection_sessions')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('user_id', user.id)
+                        .then(({ count }) => setTotalSessionCount(count || 0));
+                }
+            });
 
         // Active curriculum
         supabase.from('curricula')
@@ -190,9 +224,8 @@ export default function Home() {
             .then(({ data }) => setFocusConcepts((data as any) || []));
 
         supabase.from('knowledge_nodes')
-            .select('*', { count: 'exact' })
+            .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id)
-            .limit(0)
             .then(({ count }) => setTotalConceptCount(count || 0));
 
         // Activity dots: last 7 days
@@ -252,11 +285,13 @@ export default function Home() {
 
     // Analyze flow
     const handleAnalyze = async (contentToAnalyze?: string) => {
+        if (isProcessing || processingRef.current) return;
         const targetContent = contentToAnalyze || inputValue;
         const targetType = contentToAnalyze ? detectInputType(contentToAnalyze) : (pdfFile ? 'pdf' : detectedType);
 
         if (!targetContent.trim() && !pdfFile) return;
         setIsProcessing(true);
+        processingRef.current = true;
         setErrorMsg('');
 
         try {
@@ -274,12 +309,14 @@ export default function Home() {
                 const fd = new FormData();
                 fd.append('file', pdfFile);
                 fd.append('contentType', 'pdf');
+                fd.append('stream', 'false');
                 body = fd;
             } else {
                 fetchHeaders['Content-Type'] = 'application/json';
                 body = JSON.stringify({
                     content: targetContent,
                     contentType: targetType === 'youtube' ? 'youtube' : targetType === 'article' ? 'article' : 'text',
+                    stream: false,
                 });
             }
 
@@ -299,7 +336,7 @@ export default function Home() {
             const reqRes = await fetch('/api/generate-questions', {
                 method: 'POST',
                 headers: { ...headers, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ concepts, method: 'standard' }),
+                body: JSON.stringify({ concepts, method: 'standard', stream: false }),
             });
             if (!reqRes.ok) {
                 const errData = await reqRes.json();
@@ -316,6 +353,7 @@ export default function Home() {
                     contentType: targetType || 'text',
                     content: targetContent,
                     difficulty: 'medium',
+                    session_type: 'analysis',
                 }),
             });
             const initData = await initRes.json();
@@ -346,6 +384,7 @@ export default function Home() {
             console.error(error);
             setErrorMsg(error instanceof Error ? error.message : 'Failed to analyze content. Please try again.');
             setIsProcessing(false);
+            processingRef.current = false;
         }
     };
 
@@ -366,7 +405,28 @@ export default function Home() {
     const canSubmit = (inputValue.trim() || !!pdfFile) && !isProcessing;
     const hasEnoughSparks = balance && balance.total_sparks >= 11;
 
-    if (loading) return <div className="min-h-screen bg-[var(--bg)]" />;
+    if (loading || (user && latestSessions.length === 0 && totalSessionCount > 0)) {
+        return (
+            <DashboardLayout>
+                <div className="max-w-[1160px] mx-auto w-full px-5 md:px-10 py-8 pb-24 animate-pulse">
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+                        <div className="space-y-5">
+                            <div className="h-[400px] bg-[var(--surface)] border border-[var(--border)] rounded-2xl" />
+                            <div className="h-20 bg-[var(--accent)] rounded-2xl" />
+                            <div className="space-y-2">
+                                <div className="h-14 bg-[var(--surface)] border border-[var(--border)] rounded-xl" />
+                                <div className="h-14 bg-[var(--surface)] border border-[var(--border)] rounded-xl" />
+                            </div>
+                        </div>
+                        <div className="space-y-5">
+                            <div className="h-40 bg-[var(--surface)] border border-[var(--border)] rounded-2xl" />
+                            <div className="h-56 bg-[var(--surface)] border border-[var(--border)] rounded-2xl" />
+                        </div>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     if (!user && !isDemo) {
         return (

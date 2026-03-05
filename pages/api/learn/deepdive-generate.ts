@@ -12,13 +12,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { concept, deepDiveText, epicMode } = req.body;
+    const { concept, deepDiveText, proMode } = req.body;
 
     if (!concept) {
         return res.status(400).json({ error: 'Missing concept' });
     }
 
-    const sparkCost = SPARK_COSTS.CONCEPT_DEEP_DIVE * (epicMode ? 5 : 1);
+    const sparkCost = SPARK_COSTS.CONCEPT_DEEP_DIVE * (proMode ? 5 : 1);
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
         return res
@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = getGeminiModel(
-            epicMode,
+            proMode,
             `You are a master teacher generating a comprehensive 'Deep Dive' guide for a single concept a student is struggling to grasp.
 
 Structure the response as a JSON object:

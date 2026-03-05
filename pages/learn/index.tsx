@@ -165,6 +165,7 @@ export default function LearnIndex() {
     const curriculumDataRef = useRef<z.infer<typeof curriculumSchema>>(curriculumInitialValue);
     const lastSubmitRef = useRef<any>(null);
     const retryCountRef = useRef(0);
+    const isSavingRef = useRef(false);
 
     const { submit, object: curriculumData, isLoading: isStreaming, error: streamError } = useObject({
         api: '/api/serify/stream-curriculum',
@@ -183,6 +184,8 @@ export default function LearnIndex() {
             setStep('context');
         },
         onFinish: async ({ object, error }) => {
+            if (isSavingRef.current) return;
+
             const hasValid = (o: typeof curriculumInitialValue) =>
                 o && typeof o.title === 'string' && o.title.trim() !== '' &&
                 Array.isArray(o.units) && o.units.length > 0;
@@ -214,6 +217,7 @@ export default function LearnIndex() {
                 return;
             }
             retryCountRef.current = 0;
+            isSavingRef.current = true;
 
             try {
                 const token = tokenRef.current || (await supabase.auth.getSession()).data.session?.access_token;
@@ -234,6 +238,7 @@ export default function LearnIndex() {
                 setErrorMsg(err?.message || 'Failed to save curriculum to database.');
                 setIsGenerating(false);
                 setStep('context');
+                isSavingRef.current = false;
             }
         }
     });
@@ -259,6 +264,7 @@ export default function LearnIndex() {
         setIsGenerating(true);
         setStep('generating');
         retryCountRef.current = 0;
+        isSavingRef.current = false;
 
         const inputType = guessInputType(inputValue);
         const payload = {

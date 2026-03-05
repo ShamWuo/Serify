@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { sessionId, conceptId } = req.body;
+    const { sessionId, conceptId, forcePhase } = req.body;
     if (!sessionId || !conceptId)
         return res.status(400).json({ error: 'Missing sessionId or conceptId' });
 
@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ? previousSteps[previousSteps.length - 1]
                 : null;
 
-        if (lastStep && !lastStep.user_response && lastStep.step_type !== 'completed') {
+        if (lastStep && !lastStep.user_response && lastStep.step_type !== 'completed' && !forcePhase) {
             return res.status(200).json({
                 step: lastStep,
                 stepHistory: previousSteps
@@ -70,7 +70,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let nextStepType = '';
         let content: any = {};
 
-        if (!lastStep) {
+        if (forcePhase === 'teach') {
+            nextStepType = 'teach';
+            content = {
+                text: plan.teach?.text || '',
+                quickChecks: plan.quickChecks || []
+            };
+        } else if (forcePhase === 'check') {
+            nextStepType = 'check';
+            content = plan.checks?.[0] || {
+                questionText: 'How would you summarize what you just read?',
+                checkType: 'recall'
+            };
+        } else if (!lastStep) {
             // Always start with the combined teach card
             nextStepType = 'teach';
             content = {

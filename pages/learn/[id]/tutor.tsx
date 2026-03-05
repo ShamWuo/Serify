@@ -19,7 +19,7 @@ export default function TutorMode() {
     const [inputStr, setInputStr] = useState('');
     const [sending, setSending] = useState(false);
     const [isPro, setIsPro] = useState(false);
-    const [epicMode, setEpicMode] = useState(false);
+    const [proMode, setProMode] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const { balance } = useSparks();
 
@@ -154,7 +154,7 @@ export default function TutorMode() {
                 body: JSON.stringify({
                     messages: newMessages,
                     sessionContext: sessionData,
-                    epicMode
+                    proMode
                 })
             });
 
@@ -381,11 +381,11 @@ export default function TutorMode() {
                         <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-3 py-1.5 rounded-full shadow-sm border border-[var(--border)]">
                             <input
                                 type="checkbox"
-                                checked={epicMode}
-                                onChange={(e) => setEpicMode(e.target.checked)}
+                                checked={proMode}
+                                onChange={(e) => setProMode(e.target.checked)}
                                 className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-3.5 h-3.5"
                             />
-                            <span><strong className="text-amber-500">Epic Mode</strong> (5x Sparks)</span>
+                            <span><strong className="text-amber-500">Pro Mode</strong> (5x Sparks)</span>
                         </label>
                     </div>
                     <div className="relative flex items-end gap-2">

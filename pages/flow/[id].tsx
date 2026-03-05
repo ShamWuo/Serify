@@ -429,8 +429,27 @@ export default function FlowSessionPage() {
     >({});
     const [loading, setLoading] = useState(true);
     const [stepping, setStepping] = useState(false);
+    const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [sessionDone, setSessionDone] = useState(false);
+
+    const orchestrationMessages = [
+        "Orchestrating the next connection...",
+        "Structuring the core lesson...",
+        "Generating quick checks...",
+        "Building practice scenarios...",
+        "Finishing up your personalized path..."
+    ];
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (stepping) {
+            interval = setInterval(() => {
+                setLoadingMsgIdx(prev => (prev + 1) % orchestrationMessages.length);
+            }, 3000);
+        }
+        return () => clearInterval(interval);
+    }, [stepping, orchestrationMessages.length]);
 
     const currentConcept = flowSession?.initial_plan?.concepts?.[currentConceptIndex];
     const totalConcepts = flowSession?.initial_plan?.concepts?.length || 0;
@@ -566,6 +585,49 @@ export default function FlowSessionPage() {
             setStepping(false);
         }
     }, [flowSession, currentConcept, currentConceptIndex, totalConcepts, stepping]);
+
+    const fetchSpecificPhase = useCallback(
+        async (phase: 'teach' | 'check') => {
+            if (!flowSession || !currentConcept || stepping) return;
+            setStepping(true);
+            setPendingEvaluation(null);
+            setError(null);
+
+            try {
+                const {
+                    data: { session: authSession }
+                } = await supabase.auth.getSession();
+
+                const res = await fetch('/api/flow/step', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${authSession?.access_token}`
+                    },
+                    body: JSON.stringify({
+                        sessionId: flowSession.id,
+                        conceptId: currentConcept.conceptId,
+                        forcePhase: phase
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Phase switch failed');
+
+                setCurrentStep(data.step);
+                if (data.stepHistory) {
+                    setStepHistory(data.stepHistory);
+                } else {
+                    setStepHistory((prev) => [...prev, data.step]);
+                }
+            } catch (err: any) {
+                setError(err.message);
+            } finally {
+                setStepping(false);
+            }
+        },
+        [flowSession, currentConcept, stepping]
+    );
 
     useEffect(() => {
         if (flowSession && !currentStep && !stepping && currentConcept && !sessionDone) {
@@ -725,6 +787,19 @@ export default function FlowSessionPage() {
                         </div>
                     </div>
 
+                    <div style={{ marginBottom: 12 }}>
+                        <PhaseSelector
+                            activePhase={
+                                currentStep?.step_type === 'teach' ||
+                                currentStep?.step_type === 'build_layer' ||
+                                currentStep?.step_type === 'orient'
+                                    ? 'teach'
+                                    : 'check'
+                            }
+                            onPhaseChange={(p) => fetchSpecificPhase(p as any)}
+                        />
+                    </div>
+
                     {error && (
                         <div
                             style={{
@@ -786,7 +861,7 @@ export default function FlowSessionPage() {
                                     }}
                                 />
                                 <span style={{ fontSize: 14 }}>
-                                    Orchestrating the next connection…
+                                    {orchestrationMessages[loadingMsgIdx]}
                                 </span>
                             </div>
                         ) : (

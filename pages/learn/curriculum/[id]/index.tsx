@@ -205,7 +205,14 @@ export default function CurriculumView() {
                                                         </div>
 
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="text-[var(--text)] font-medium truncate pr-4 group-hover:text-[var(--accent)] transition-colors inline-block relative">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    // Navigate to the flow with this concept as the starting point (if we can)
+                                                                    // For now, we'll just go to the flow, and the page will find the first uncompleted one
+                                                                    router.push(`/learn/curriculum/${curriculum.id}/flow`);
+                                                                }}
+                                                                className="text-[var(--text)] font-medium truncate pr-4 hover:text-[var(--accent)] transition-colors inline-block relative text-left"
+                                                            >
                                                                 {concept.name}
 
                                                                 {/* Tooltip on hover */}
@@ -218,7 +225,7 @@ export default function CurriculumView() {
                                                                         {concept.whyIncluded}
                                                                     </p>
                                                                 </div>
-                                                            </div>
+                                                            </button>
                                                         </div>
 
                                                         <div className="text-[var(--muted)] text-sm whitespace-nowrap hidden sm:block">

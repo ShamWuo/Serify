@@ -21,12 +21,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { messages, sessionContext, epicMode } = req.body;
+    const { messages, sessionContext, proMode } = req.body;
     if (!messages || !sessionContext) {
         return res.status(400).json({ error: 'Missing messages or session context' });
     }
 
-    const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE * (epicMode ? 5 : 1);
+    const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE * (proMode ? 5 : 1);
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks) {
         return res
@@ -60,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const model = getGeminiModel(
-            epicMode,
+            proMode,
             `You are Serify's AI Tutor.
 Source: ${sessionContext.sourceContent?.title || 'Unknown'}
 Strong: ${sessionContext.strongConcepts?.map((c: any) => c.name).join(', ') || 'None'}
