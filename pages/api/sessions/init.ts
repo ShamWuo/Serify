@@ -15,10 +15,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { title, contentType, content, difficulty = 'medium' } = req.body;
+    let { title, contentType, content, difficulty = 'medium', session_type = 'analysis' } = req.body;
 
-    if (!title || !contentType) {
-        return res.status(400).json({ message: 'Title and content type are required' });
+    if (!contentType) {
+        return res.status(400).json({ message: 'Content type is required' });
+    }
+
+    if (!title || title === 'New Session') {
+        if (content && typeof content === 'string') {
+            title = content.split(' ').slice(0, 4).join(' ') + '...';
+        } else {
+            title = `New ${contentType.charAt(0).toUpperCase() + contentType.slice(1)} Session`;
+        }
     }
 
     const authHeader = req.headers.authorization;
@@ -41,7 +49,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 content_type: contentType,
                 content: content || null,
                 difficulty,
-                status: 'processing'
+                status: 'processing',
+                session_type
             })
             .select()
             .single();

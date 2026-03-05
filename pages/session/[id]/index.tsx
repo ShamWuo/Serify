@@ -131,23 +131,73 @@ export default function ActiveSession() {
         }
     };
 
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
     useEffect(() => {
-        const stored = localStorage.getItem('serify_active_session');
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                if (parsed.id === id || true) {
-                    setSessionData(parsed);
-                    setConcepts(parsed.concepts || []);
-                    setQuestions(parsed.questions || []);
-                    setTitle(parsed.title || 'New Session');
-                    if (parsed.currentIndex) setCurrentIndex(parsed.currentIndex);
-                    if (parsed.assessments) setAssessments(parsed.assessments);
+        const loadSession = async () => {
+            if (!id) return;
+            setLoading(true);
+            setError(null);
+
+            // 1. Try localStorage first for immediate results
+            const stored = localStorage.getItem('serify_active_session');
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (parsed.id === id) {
+                        setSessionData(parsed);
+                        setConcepts(parsed.concepts || []);
+                        setQuestions(parsed.questions || []);
+                        setTitle(parsed.title || 'New Session');
+                        if (parsed.currentIndex) setCurrentIndex(parsed.currentIndex);
+                        if (parsed.assessments) setAssessments(parsed.assessments);
+                        setLoading(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse session data', e);
                 }
-            } catch (e) {
-                console.error('Failed to parse session data', e);
             }
-        }
+
+            // 2. Fallback to DB if not in localStorage or ID mismatch
+            try {
+                const { data: { session: authSession } } = await supabase.auth.getSession();
+                const token = authSession?.access_token;
+                
+                const res = await fetch(`/api/sessions/${id}`, {
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                });
+
+                if (!res.ok) throw new Error('Session not found');
+                const data = await res.json();
+                
+                const sessionData = {
+                    id: data.id,
+                    title: data.title || 'Untitled Session',
+                    concepts: data.concepts || [],
+                    questions: data.questions || [],
+                    type: data.contentType || 'Session'
+                };
+
+                setSessionData(sessionData);
+                setConcepts(sessionData.concepts);
+                setQuestions(sessionData.questions);
+                setTitle(sessionData.title);
+                
+                // Cache it for next time
+                localStorage.setItem('serify_active_session', JSON.stringify(sessionData));
+            } catch (err: any) {
+                console.error('Failed to load session from DB', err);
+                setError('Could not load this session. It may have expired or was deleted.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadSession();
     }, [id]);
 
     useEffect(() => {
@@ -176,6 +226,34 @@ export default function ActiveSession() {
         return () => clearInterval(interval);
     }, [isAnalyzing, loadingMessages.length]);
 
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
+                    <p className="text-[var(--muted)] text-sm animate-pulse">Resuming session...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+                <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 text-center shadow-lg">
+                    <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <X size={32} />
+                    </div>
+                    <h1 className="text-2xl font-bold mb-2">Session Unavailable</h1>
+                    <p className="text-[var(--muted)] mb-8">{error}</p>
+                    <Link href="/" className="inline-block bg-[var(--accent)] text-white font-bold py-3 px-8 rounded-xl hover:bg-[var(--accent)]/90 transition-all">
+                        Back to Dashboard
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
     const currentQuestion = questions[currentIndex];
 
     const handleSubmit = async (isSkip: boolean = false) => {
@@ -183,6 +261,8 @@ export default function ActiveSession() {
 
         const currentAnswer = isSkip ? '' : answer;
         const currentQ = currentQuestion;
+        if (!currentQ) return;
+
         const currentConcept = concepts.find((c) => c.id === currentQ.target_concept_id) || {
             name: 'Concept',
             definition: ''
@@ -371,7 +451,22 @@ export default function ActiveSession() {
         );
     }
 
-    if (!currentQuestion) return null;
+    if (!currentQuestion) {
+        return (
+            <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+                <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 text-center shadow-lg">
+                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Circle size={32} />
+                    </div>
+                    <h1 className="text-2xl font-bold mb-2">Session Finished</h1>
+                    <p className="text-[var(--muted)] mb-8">All questions have been answered or this session is empty.</p>
+                    <Link href="/" className="inline-block bg-[var(--accent)] text-white font-bold py-3 px-8 rounded-xl hover:bg-[var(--accent)]/90 transition-all">
+                        Back to Dashboard
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-sans">

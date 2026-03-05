@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { messages, sessionContext, isFinalAnalysis, epicMode } = req.body;
+    const { messages, sessionContext, isFinalAnalysis, proMode } = req.body;
 
     if (!messages || !sessionContext) {
         return res.status(400).json({ error: 'Missing messages or session context' });
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = getGeminiModel(
-            epicMode,
+            proMode,
             `You are Serify's AI Tutor — an expert, patient, and direct tutor having a one-on-one conversation with a student.
 
 You have full context on this student's recent learning session:
@@ -74,7 +74,7 @@ Only include concepts that were actually discussed and demonstrated by the user 
 
         const isOpening = messages.length <= 1;
         const sparkCostBase = isOpening ? SPARK_COSTS.AI_TUTOR_OPEN : SPARK_COSTS.AI_TUTOR_MESSAGE;
-        const sparkCost = sparkCostBase * (epicMode ? 5 : 1);
+        const sparkCost = sparkCostBase * (proMode ? 5 : 1);
         const hasSparks = await hasEnoughSparks(userId, sparkCost);
         if (!hasSparks) {
             return res

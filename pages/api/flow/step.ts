@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { authenticateApiRequest } from '@/lib/sparks';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import { findOrCreateConceptNode } from '@/lib/vault';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey =
@@ -17,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { sessionId, conceptId } = req.body;
+    const { sessionId, conceptId, forcePhase } = req.body;
     if (!sessionId || !conceptId)
         return res.status(400).json({ error: 'Missing sessionId or conceptId' });
 
@@ -60,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ? previousSteps[previousSteps.length - 1]
                 : null;
 
-        if (lastStep && !lastStep.user_response && lastStep.step_type !== 'completed') {
+        if (lastStep && !lastStep.user_response && lastStep.step_type !== 'completed' && !forcePhase) {
             return res.status(200).json({
                 step: lastStep,
                 stepHistory: previousSteps
@@ -70,7 +71,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let nextStepType = '';
         let content: any = {};
 
-        if (!lastStep) {
+        if (forcePhase === 'teach') {
+            nextStepType = 'teach';
+            content = {
+                text: plan.teach?.text || '',
+                quickChecks: plan.quickChecks || []
+            };
+        } else if (forcePhase === 'check') {
+            nextStepType = 'check';
+            content = plan.checks?.[0] || {
+                questionText: 'How would you summarize what you just read?',
+                checkType: 'recall'
+            };
+        } else if (!lastStep) {
             // Always start with the combined teach card
             nextStepType = 'teach';
             content = {
@@ -212,6 +225,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             .eq('curriculum_id', curriculumId)
                             .eq('concept_id', conceptId);
                     }
+                }
+
+                // PROACTIVE VAULT POPULATION:
+                // Ensure this concept is represented in the knowledge vault immediately.
+                try {
+                    const conceptName = currentConcept?.conceptName || 'Unknown Concept';
+                    await findOrCreateConceptNode(
+                        supabaseAdmin as any,
+                        userId,
+                        conceptName,
+                        sessionId,
+                        `Mastered via Flow session: ${conceptName}`
+                    );
+                } catch (vaultErr) {
+                    console.error('[vault] Proactive creation failed:', vaultErr);
                 }
             }
 

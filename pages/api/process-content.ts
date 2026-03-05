@@ -1,4 +1,4 @@
-import { streamObject } from 'ai';
+import { streamObject, generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
@@ -14,7 +14,7 @@ export default async function handler(req: Request) {
     }
 
     try {
-        const { content, contentType } = await req.json();
+        const { content, contentType, stream = true } = await req.json();
 
         if (!content) {
             return new Response(JSON.stringify({ message: 'Content is required' }), {
@@ -61,24 +61,41 @@ export default async function handler(req: Request) {
     ${processedContent.substring(0, 15000)}
     `;
 
+        const schema = z.object({
+            title: z.string().describe('A short descriptive title (3-5 words)'),
+            concepts: z.array(
+                z.object({
+                    id: z.string().describe("a unique short string like 'c1'"),
+                    name: z.string(),
+                    definition: z.string().describe('a 1-sentence definition'),
+                    importance: z.enum(['primary', 'secondary', 'contextual']),
+                    misconception_risk: z.boolean().describe('true if commonly misunderstood')
+                })
+            )
+        });
+
+        if (!stream) {
+            const { object } = await generateObject({
+                model: google('gemini-2.5-flash'),
+                temperature: 0.1,
+                prompt,
+                schema
+            });
+            
+            if (object) {
+                await deductSparks(user, sparkCost, 'session_ingestion');
+            }
+            
+            return new Response(JSON.stringify(object), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
         const result = await streamObject({
             model: google('gemini-2.5-flash'),
             temperature: 0.1,
-            // @ts-ignore
-            maxTokens: 8192,
             prompt,
-            schema: z.object({
-                title: z.string().describe('A short descriptive title (3-5 words)'),
-                concepts: z.array(
-                    z.object({
-                        id: z.string().describe("a unique short string like 'c1'"),
-                        name: z.string(),
-                        definition: z.string().describe('a 1-sentence definition'),
-                        importance: z.enum(['primary', 'secondary', 'contextual']),
-                        misconception_risk: z.boolean().describe('true if commonly misunderstood')
-                    })
-                )
-            }),
+            schema,
             onFinish: async ({ object }) => {
                 if (object) {
                     await deductSparks(user, sparkCost, 'session_ingestion');

@@ -157,18 +157,17 @@ export async function authenticateApiRequest(
     req: NextApiRequest | Request
 ): Promise<string | null> {
     let authHeader: string | undefined | null;
-    let isDemoHeader: boolean;
+    let isDemoHeader: boolean = false;
 
-    if ('headers' in req && typeof req.headers.get === 'function') {
-        // Edge Runtime (Request)
-        const fetchReq = req as Request;
+    if ('headers' in req && typeof (req.headers as any).get === 'function') {
+        const fetchReq = req as any;
         authHeader = fetchReq.headers.get('authorization');
         isDemoHeader = fetchReq.headers.get('x-serify-demo') === 'true';
     } else {
-        // Node.js Runtime (NextApiRequest)
         const nodeReq = req as NextApiRequest;
         authHeader = nodeReq.headers.authorization;
-        isDemoHeader = nodeReq.headers['x-serify-demo'] === 'true';
+        const demoHeaderStr = String(nodeReq.headers['x-serify-demo'] || '');
+        isDemoHeader = demoHeaderStr === 'true';
     }
 
     if (!authHeader) {
@@ -176,6 +175,9 @@ export async function authenticateApiRequest(
     }
 
     const token = authHeader.replace('Bearer ', '');
+    if (!token || token === 'undefined' || token === 'null') {
+        return isDemoHeader ? DEMO_USER_ID : null;
+    }
 
     if (token === 'demo-token' || isDemoHeader) {
         return DEMO_USER_ID;

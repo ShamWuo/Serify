@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function Settings() {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const [notificationsActive, setNotificationsActive] = useState(true);
     const [aiTutorEnabled, setAiTutorEnabled] = useState(false);
 
@@ -29,6 +29,24 @@ export default function Settings() {
             setAiTutorEnabled(false);
         }
     }, [user?.subscriptionTier]);
+
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="max-w-4xl mx-auto w-full px-6 md:px-10 py-6 space-y-8 pb-24 animate-pulse">
+                    <div className="h-10 w-48 bg-[var(--border)] rounded-xl" />
+                    <div className="space-y-4">
+                        <div className="h-4 w-24 bg-[var(--border)] rounded" />
+                        <div className="h-32 bg-[var(--surface)] border border-[var(--border)] rounded-2xl" />
+                    </div>
+                    <div className="space-y-4">
+                        <div className="h-4 w-48 bg-[var(--border)] rounded" />
+                        <div className="h-64 bg-[var(--surface)] border border-[var(--border)] rounded-2xl" />
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     return (
         <DashboardLayout>

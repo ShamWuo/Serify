@@ -113,62 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const deduction = await deductSparks(user.id, sparkCost, 'curriculum_generation');
         if (!deduction.success) return res.status(403).json({ error: 'out_of_sparks' });
 
-        // Save curriculum
-        const { data: savedCurriculum, error: saveError } = await supabaseWithAuth
-            .from('curricula')
-            .insert({
-                user_id: user.id,
-                title: curriculumData.title,
-                user_input: curriculumData.user_input,
-                input_type: curriculumData.input_type,
-                target_description: curriculumData.target_description,
-                outcomes: curriculumData.outcomes,
-                scope_note: curriculumData.scope_note,
-                units: curriculumData.units,
-                concept_count: curriculumData.concept_count,
-                estimated_minutes: curriculumData.estimated_minutes,
-                original_units: curriculumData.original_units,
-                edit_count: curriculumData.edit_count,
-                status: 'active',
-                recommended_start_index: curriculumData.recommended_start_index,
-                current_concept_index: curriculumData.current_concept_index,
-                completed_concept_ids: curriculumData.completed_concept_ids,
-                skipped_concept_ids: curriculumData.skipped_concept_ids,
-                total_sparks_spent: sparkCost
-            })
-            .select('id')
-            .single();
-
-        if (saveError || !savedCurriculum) {
-            console.error('Error saving curriculum:', saveError);
-            throw saveError || new Error('Failed to save curriculum');
-        }
-
-        // Create concept progress rows
-        let progressRows: any[] = [];
-        curriculumData.units.forEach((unit) => {
-            unit.concepts.forEach((concept) => {
-                progressRows.push({
-                    curriculum_id: savedCurriculum.id,
-                    user_id: user.id,
-                    concept_id: concept.id,
-                    concept_name: concept.name,
-                    status: 'not_started'
-                });
-            });
-        });
-
-        if (progressRows.length > 0) {
-            const { error: progressError } = await supabaseWithAuth
-                .from('curriculum_concept_progress')
-                .insert(progressRows);
-            if (progressError) {
-                console.error('Error saving curriculum progress rows:', progressError);
-                // Non-fatal if we saved the top-level curriculum, but ideally we should retry or fail
-            }
-        }
-
-        return res.status(200).json({ curriculumId: savedCurriculum.id });
+        return res.status(200).json({ curriculum: curriculumData });
     } catch (err: any) {
         console.error('Curriculum generation error:', err);
         return res.status(500).json({ error: err.message || 'Failed to generate curriculum' });

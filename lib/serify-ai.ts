@@ -17,12 +17,12 @@ const defaultModel = genAI.getGenerativeModel({
   }
 });
 
-export function getGeminiModel(epicMode: boolean = false, systemInstruction?: string) {
+export function getGeminiModel(proMode: boolean = false, systemInstruction?: string) {
   return genAI.getGenerativeModel({
-    model: epicMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
+    model: proMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
     systemInstruction,
     generationConfig: {
-      temperature: epicMode ? 0.3 : 0.1, // slightly higher temp for pro reasoning
+      temperature: proMode ? 0.3 : 0.1, // slightly higher temp for pro reasoning
     }
   });
 }

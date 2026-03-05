@@ -5,6 +5,8 @@ import Link from 'next/link';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function ExplainMode() {
     const router = useRouter();
@@ -184,28 +186,53 @@ export default function ExplainMode() {
     const currentConcept = weakConcepts[currentIndex];
 
     return (
-        <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col">
+        <DashboardLayout
+            backLink={`/session/${id}/feedback`}
+            sidebarContent={
+                <div className="space-y-4">
+                    <div className="px-3 mb-2">
+                        <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                            Review Progress
+                        </h3>
+                    </div>
+                    <div className="space-y-1">
+                        {weakConcepts.map((c: any, idx: number) => {
+                            const isCurrent = currentIndex === idx;
+                            const isPast = idx < currentIndex;
+                            return (
+                                <div
+                                    key={c.id}
+                                    onClick={() => setCurrentIndex(idx)}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer ${isCurrent
+                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold border border-[var(--accent)]/20'
+                                        : 'text-[var(--muted)] hover:bg-black/5'
+                                        }`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${isPast
+                                        ? 'bg-green-500 border-green-500 text-white'
+                                        : isCurrent
+                                            ? 'border-[var(--accent)] text-[var(--accent)]'
+                                            : 'border-[var(--border)]'
+                                        }`}>
+                                        {isPast ? (
+                                            <CheckCircle2 size={12} />
+                                        ) : (
+                                            <span className="text-[10px]">{idx + 1}</span>
+                                        )}
+                                    </div>
+                                    <span className="text-sm truncate">{c.name}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            }
+        >
             <Head>
                 <title>Explain It To Me | Serify</title>
             </Head>
 
-            {}
-            <header className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-                <Link
-                    href={`/session/${id}/feedback`}
-                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                    &larr; Back to Report
-                </Link>
-                <div className="font-medium text-sm text-[var(--text)]">
-                    <span className="text-[var(--muted)]">
-                        Concept {currentIndex + 1} of {weakConcepts.length}
-                    </span>
-                </div>
-            </header>
-
-            {}
-            <main className="flex-1 w-full max-w-[700px] mx-auto p-6 md:p-12 pb-32">
+            <main className="max-w-[700px] mx-auto p-6 md:p-12 pb-32">
                 <h1 className="text-3xl md:text-4xl font-display mb-8 text-[var(--text)]">
                     {currentConcept?.name}
                 </h1>
@@ -260,6 +287,6 @@ export default function ExplainMode() {
                     </div>
                 )}
             </main>
-        </div>
+        </DashboardLayout>
     );
 }

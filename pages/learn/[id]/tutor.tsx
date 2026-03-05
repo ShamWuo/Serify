@@ -6,7 +6,8 @@ import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useSparks } from '@/hooks/useSparks';
-import { Zap } from 'lucide-react';
+import { Zap, CheckCircle2 } from 'lucide-react';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
 
 export default function TutorMode() {
     const router = useRouter();
@@ -19,9 +20,10 @@ export default function TutorMode() {
     const [inputStr, setInputStr] = useState('');
     const [sending, setSending] = useState(false);
     const [isPro, setIsPro] = useState(false);
-    const [epicMode, setEpicMode] = useState(false);
+    const [proMode, setProMode] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
     const { balance } = useSparks();
+    const [weakConcepts, setWeakConcepts] = useState<any[]>([]);
 
     useEffect(() => {
         if (!id) return;
@@ -69,6 +71,7 @@ export default function TutorMode() {
                     sourceContent: parsed.report?.overview || 'Recent study session'
                 };
 
+                setWeakConcepts(wk);
                 setSessionData(ctx);
 
                 if (proStatus) {
@@ -154,7 +157,7 @@ export default function TutorMode() {
                 body: JSON.stringify({
                     messages: newMessages,
                     sessionContext: sessionData,
-                    epicMode
+                    proMode
                 })
             });
 
@@ -302,127 +305,146 @@ export default function TutorMode() {
     }
 
     return (
-        <div className="h-screen bg-[var(--background)] text-[var(--text)] flex flex-col overflow-hidden">
+        <DashboardLayout
+            backLink={`/session/${id}/feedback`}
+            sidebarContent={
+                <div className="space-y-4">
+                    <div className="px-3 mb-2">
+                        <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                            Tutoring Session
+                        </h3>
+                    </div>
+                    <div className="space-y-1">
+                        {weakConcepts.map((c: any, idx: number) => {
+                            // In tutor mode, they are all being "addressed" potentially
+                            return (
+                                <div
+                                    key={c.id}
+                                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-default text-[var(--muted)]"
+                                >
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 border border-[var(--border)]">
+                                        <span className="text-[10px]">{idx + 1}</span>
+                                    </div>
+                                    <span className="text-sm truncate">{c.name}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            }
+        >
             <Head>
                 <title>AI Tutor | Serify</title>
             </Head>
 
-            { }
-            <header className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-white/80 backdrop-blur-md z-10 shrink-0">
-                <button
-                    onClick={handleExit}
-                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                    &larr; Exit Tutor
-                </button>
-                <div className="font-medium flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="font-bold">Serify Tutor</span>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-[var(--surface)] text-[var(--accent)] border border-[var(--border)] rounded-full text-xs font-semibold whitespace-nowrap">
-                        <Zap className="w-3.5 h-3.5 fill-[var(--accent)] text-[var(--accent)]" />
-                        <span>{balance?.total_sparks || 0}</span>
+            <div className="h-[calc(100vh-64px)] flex flex-col overflow-hidden bg-[var(--background)]">
+                { }
+                <header className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-white/80 backdrop-blur-md z-10 shrink-0">
+                    <div className="font-medium flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span className="font-bold">Serify Tutor</span>
                     </div>
-                </div>
-            </header>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-[var(--surface)] text-[var(--accent)] border border-[var(--border)] rounded-full text-xs font-semibold whitespace-nowrap">
+                            <Zap className="w-3.5 h-3.5 fill-[var(--accent)] text-[var(--accent)]" />
+                            <span>{balance?.total_sparks || 0}</span>
+                        </div>
+                    </div>
+                </header>
 
-            { }
-            <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col items-center">
-                <div className="w-full max-w-[800px] flex flex-col gap-6 pb-20">
-                    {messages.map((msg, i) => (
-                        <div
-                            key={i}
-                            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
+                { }
+                <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col items-center">
+                    <div className="w-full max-w-[800px] flex flex-col gap-6 pb-20">
+                        {messages.map((msg, i) => (
                             <div
-                                className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${msg.role === 'user'
-                                    ? 'bg-indigo-600 text-white rounded-br-sm'
-                                    : 'bg-white border border-[var(--border)] shadow-sm text-[var(--text)] rounded-bl-sm'
-                                    }`}
+                                key={i}
+                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 <div
-                                    className={`prose prose-sm max-w-none ${msg.role === 'user' ? 'text-white prose-p:text-white' : 'text-[var(--text)]'} prose-p:leading-relaxed`}
+                                    className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${msg.role === 'user'
+                                        ? 'bg-indigo-600 text-white rounded-br-sm'
+                                        : 'bg-white border border-[var(--border)] shadow-sm text-[var(--text)] rounded-bl-sm'
+                                        }`}
                                 >
-                                    <MarkdownRenderer>{msg.content}</MarkdownRenderer>
+                                    <div
+                                        className={`prose prose-sm max-w-none ${msg.role === 'user' ? 'text-white prose-p:text-white' : 'text-[var(--text)]'} prose-p:leading-relaxed`}
+                                    >
+                                        <MarkdownRenderer>{msg.content}</MarkdownRenderer>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
 
-                    {sending && (
-                        <div className="flex justify-start">
-                            <div className="bg-white border border-[var(--border)] shadow-sm rounded-2xl rounded-bl-sm px-5 py-4">
-                                <span className="flex gap-1">
-                                    <span
-                                        className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"
-                                        style={{ animationDelay: '0ms' }}
-                                    ></span>
-                                    <span
-                                        className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"
-                                        style={{ animationDelay: '150ms' }}
-                                    ></span>
-                                    <span
-                                        className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"
-                                        style={{ animationDelay: '300ms' }}
-                                    ></span>
-                                </span>
+                        {sending && (
+                            <div className="flex justify-start">
+                                <div className="bg-white border border-[var(--border)] shadow-sm rounded-2xl rounded-bl-sm px-5 py-4">
+                                    <span className="flex gap-1">
+                                        <span
+                                            className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"
+                                            style={{ animationDelay: '0ms' }}
+                                        ></span>
+                                        <span
+                                            className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"
+                                            style={{ animationDelay: '150ms' }}
+                                        ></span>
+                                        <span
+                                            className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce"
+                                            style={{ animationDelay: '300ms' }}
+                                        ></span>
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                    <div ref={chatEndRef} />
-                </div>
-            </main>
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+                </main>
 
-            { }
-            <footer className="p-4 md:p-6 bg-white border-t border-[var(--border)] shrink-0">
-                <div className="max-w-[800px] mx-auto relative flex flex-col gap-2">
-                    <div className="flex justify-end pr-2">
-                        <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-3 py-1.5 rounded-full shadow-sm border border-[var(--border)]">
-                            <input
-                                type="checkbox"
-                                checked={epicMode}
-                                onChange={(e) => setEpicMode(e.target.checked)}
-                                className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-3.5 h-3.5"
+                { }
+                <footer className="p-4 md:p-6 bg-white border-t border-[var(--border)] shrink-0">
+                    <div className="max-w-[800px] mx-auto relative flex flex-col gap-2">
+                        <div className="flex justify-end pr-2">
+                            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-3 py-1.5 rounded-full shadow-sm border border-[var(--border)]">
+                                <input
+                                    type="checkbox"
+                                    checked={proMode}
+                                    onChange={(e) => setProMode(e.target.checked)}
+                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-3.5 h-3.5"
+                                />
+                                <span><strong className="text-amber-500">Pro Mode</strong> (5x Sparks)</span>
+                            </label>
+                        </div>
+                        <div className="relative flex items-end gap-2">
+                            <textarea
+                                value={inputStr}
+                                onChange={(e) => setInputStr(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        sendMessage();
+                                    }
+                                }}
+                                placeholder="Message your tutor..."
+                                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-5 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none min-h-[60px] max-h-[200px]"
+                                rows={1}
                             />
-                            <span><strong className="text-amber-500">Epic Mode</strong> (5x Sparks)</span>
-                        </label>
-                    </div>
-                    <div className="relative flex items-end gap-2">
-                        <textarea
-                            value={inputStr}
-                            onChange={(e) => setInputStr(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    sendMessage();
-                                }
-                            }}
-                            placeholder="Message your tutor..."
-                            className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-5 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none min-h-[60px] max-h-[200px]"
-                            rows={1}
-                        />
-                        <button
-                            onClick={sendMessage}
-                            disabled={!inputStr.trim() || sending}
-                            className="absolute right-3 bottom-3 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                className="w-5 h-5"
+                            <button
+                                onClick={sendMessage}
+                                disabled={!inputStr.trim() || sending}
+                                className="absolute right-3 bottom-3 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                             >
-                                <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-                            </svg>
-                        </button>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    className="w-5 h-5"
+                                >
+                                    <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div className="text-center mt-3 text-[11px] text-[var(--muted)]">
-                    Tutor mode analyzes your conversation to automatically update the Concept Vault
-                    when you exit.
-                </div>
-            </footer>
-        </div>
+                </footer>
+            </div>
+        </DashboardLayout>
     );
 }

@@ -42,6 +42,8 @@ export default function KnowledgeMap() {
     const [nodes, setNodes] = useState<KnowledgeNode[]>([]);
     const [topics, setTopics] = useState<ConceptTopic[]>([]);
     const [loading, setLoading] = useState(true);
+    const [backfilling, setBackfilling] = useState(false);
+    const [backfillDone, setBackfillDone] = useState(false);
 
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -75,6 +77,42 @@ export default function KnowledgeMap() {
         };
         fetchNodes();
     }, [user]);
+
+    const triggerBackfill = async () => {
+        if (backfilling || backfillDone) return;
+        setBackfilling(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+            const res = await fetch('/api/vault/backfill', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const d = await res.json();
+            if (d.backfilled > 0) {
+                // Refresh nodes
+                const res2 = await fetch(`/api/vault/nodes?tab=all`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res2.ok) {
+                    const d2 = await res2.json();
+                    setNodes(d2.nodes || []);
+                    setTopics(d2.topics || []);
+                }
+            }
+        } catch (e) {
+            console.error('Backfill failed', e);
+        } finally {
+            setBackfilling(false);
+            setBackfillDone(true);
+        }
+    };
+
+    useEffect(() => {
+        if (!loading && nodes.length === 0 && !backfillDone && !backfilling) {
+            triggerBackfill();
+        }
+    }, [loading, nodes.length, backfillDone, backfilling]);
 
     // Calculate layout
     const { mapNodes, mapLinks } = useMemo(() => {

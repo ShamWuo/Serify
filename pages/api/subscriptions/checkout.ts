@@ -85,15 +85,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             allow_promotion_codes: true,
             subscription_data: !isDeepDive
                 ? {
-                      metadata: { userId }
-                  }
+                    metadata: { userId }
+                }
                 : undefined,
             metadata: { userId }
         });
 
         return res.status(200).json({ url: session.url });
     } catch (error: any) {
-        console.error('Stripe checkout error:', error);
-        return res.status(500).json({ error: 'Failed to create checkout session' });
+        console.error('Stripe checkout error:', error?.message || error);
+        return res.status(500).json({
+            error: 'Failed to create checkout session',
+            detail: error?.message || String(error)
+        });
     }
 }

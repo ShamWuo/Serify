@@ -390,7 +390,12 @@ export default function LibraryPage() {
             s.status === 'completed' ||
             (s.type === 'flow' && s.completedCount === s.totalCount)
     ).length;
-    const inProgressCount = sessions.length - completedCount;
+    const inProgressCount = sessions.filter(
+        (s) =>
+            s.status !== 'complete' &&
+            s.status !== 'completed' &&
+            !(s.type === 'flow' && s.completedCount === s.totalCount)
+    ).length;
 
     return (
         <DashboardLayout>

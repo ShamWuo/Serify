@@ -154,7 +154,8 @@ export default function Analyze() {
                         title: finalTitle,
                         contentType: activeTab,
                         content: contentPayload,
-                        difficulty: 'medium'
+                        difficulty: 'medium',
+                        session_type: 'analysis'
                     })
                 });
 
@@ -209,6 +210,7 @@ export default function Analyze() {
     });
 
     const handleAnalyze = () => {
+        if (isProcessing) return;
         if (!inputValue.trim() && activeTab !== 'pdf') return;
         if (activeTab === 'pdf' && !pdfFile) return;
 

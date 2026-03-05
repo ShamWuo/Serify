@@ -4,39 +4,43 @@ import { useRouter } from 'next/router';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSparks } from '@/hooks/useSparks';
-import { Zap, Crown, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Zap, Crown, ShieldCheck, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 const SPARK_PACKS = [
     {
-        id: 'price_1_sparks_50',
+        id: 'price_1T7B2tAVmFT8Icz97GQjiqZ4',
         name: 'Starter Pack',
         sparks: 50,
         price: 4.99,
         popular: false
     },
     {
-        id: 'price_1_sparks_200',
+        id: 'price_1T7B2tAVmFT8Icz9V1N6ypMz',
         name: 'Learner Pack',
-        sparks: 200,
-        price: 14.99,
+        sparks: 150,
+        price: 9.99,
         popular: true
     },
     {
-        id: 'price_1_sparks_500',
-        name: 'Master Pack',
+        id: 'price_1T7B2tAVmFT8Icz9KDwOOdlP',
+        name: 'Power Pack',
         sparks: 500,
-        price: 29.99,
+        price: 24.99,
         popular: false
     }
 ];
 
 export default function SparksShop() {
-    const { user } = useAuth();
-    const { balance, loading } = useSparks();
+    const { user, loading: authLoading } = useAuth();
+    const { balance, loading: sparksLoading } = useSparks();
     const router = useRouter();
     const [isCheckingOut, setIsCheckingOut] = useState<string | null>(null);
+    const { success, canceled, amount } = router.query;
 
-    const handleCheckout = async (priceId: string) => {
+    const loading = authLoading || (sparksLoading && !balance);
+
+    const handleCheckout = async (priceId: string, sparkAmount: number) => {
         if (!user) {
             router.push('/signup?intent=sparks');
             return;
@@ -44,15 +48,20 @@ export default function SparksShop() {
 
         setIsCheckingOut(priceId);
         try {
-            const res = await fetch('/api/sparks/checkout', {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            const token = authSession?.access_token;
+
+            const res = await fetch('/api/billing/buy-sparks', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ priceId })
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ priceId, sparkAmount })
             });
 
             if (!res.ok) {
-                const errorText = await res.text();
-                console.error('Checkout failed:', errorText);
+                console.error('Checkout failed:', await res.text());
                 alert('Checkout failed. Please try again later.');
                 setIsCheckingOut(null);
                 return;
@@ -72,6 +81,26 @@ export default function SparksShop() {
         }
     };
 
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="mx-auto max-w-5xl py-10 px-4 sm:px-6 lg:px-8 space-y-12 animate-pulse">
+                    <div className="flex flex-col items-center space-y-4">
+                        <div className="w-12 h-12 bg-amber-100 rounded-2xl" />
+                        <div className="h-10 w-64 bg-[var(--border)] rounded-xl" />
+                        <div className="h-4 w-96 bg-[var(--border)] rounded" />
+                    </div>
+                    <div className="max-w-3xl mx-auto h-24 bg-[var(--surface)] border border-[var(--border)] rounded-2xl" />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-80 bg-[var(--surface)] border border-[var(--border)] rounded-3xl" />
+                        ))}
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     return (
         <DashboardLayout>
             <Head>
@@ -79,7 +108,22 @@ export default function SparksShop() {
             </Head>
 
             <div className="mx-auto max-w-5xl py-10 px-4 sm:px-6 lg:px-8">
-                { }
+
+                {/* Success / Cancel banners */}
+                {success === 'true' && (
+                    <div className="mb-6 max-w-3xl mx-auto flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl px-5 py-4">
+                        <CheckCircle size={20} className="shrink-0" />
+                        <p className="font-medium">Payment successful! <strong>{amount} Sparks</strong> have been added to your balance.</p>
+                    </div>
+                )}
+                {canceled === 'true' && (
+                    <div className="mb-6 max-w-3xl mx-auto flex items-center gap-3 bg-red-50 border border-red-200 text-red-800 rounded-2xl px-5 py-4">
+                        <XCircle size={20} className="shrink-0" />
+                        <p className="font-medium">Payment canceled. No charges were made.</p>
+                    </div>
+                )}
+
+                {/* Header */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-100 text-amber-500 mb-4">
                         <Zap size={24} fill="currentColor" />
@@ -192,7 +236,7 @@ export default function SparksShop() {
                             </div>
 
                             <button
-                                onClick={() => handleCheckout(pack.id)}
+                                onClick={() => handleCheckout(pack.id, pack.sparks)}
                                 disabled={isCheckingOut === pack.id}
                                 className={`mt-auto w-full py-3 px-4 rounded-xl font-semibold transition-colors flex items-center justify-center ${pack.popular
                                     ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'

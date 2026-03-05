@@ -2,7 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
 import { createClient } from '@supabase/supabase-js';
-import { SessionLearnerProfile } from '@/types/serify';
+import { SessionLearnerProfile, MasteryState } from '@/types/serify';
+import { findOrCreateConceptNode, updateConceptMastery } from '@/lib/vault';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -251,6 +252,36 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
             .eq('id', sessionId);
 
         await supabaseAdmin.from('flow_steps').update({ evaluation }).eq('id', stepId);
+
+        // PROACTIVE MASTERY UPDATE:
+        // Record this mastery signal in the knowledge vault in real-time.
+        try {
+            const masteryState: MasteryState = evaluation.masterySignal || 'revisit';
+            const conceptName = currentConcept?.conceptName || 'Unknown Concept';
+
+            // 1. Ensure node exists
+            const node = await findOrCreateConceptNode(
+                supabaseAdmin as any,
+                userId,
+                conceptName,
+                sessionId,
+                `Identified via Flow session: ${conceptName}`
+            );
+
+            if (node) {
+                // 2. Record this specific mastery event
+                await updateConceptMastery(
+                    supabaseAdmin as any,
+                    userId,
+                    node.id,
+                    masteryState,
+                    'session', // Treated as a session event for history
+                    sessionId
+                );
+            }
+        } catch (vaultErr) {
+            console.error('[vault] Proactive mastery update failed:', vaultErr);
+        }
 
         return res.status(200).json({ evaluation, total_sparks_spent: totalSparksSpent });
     } catch (error: any) {

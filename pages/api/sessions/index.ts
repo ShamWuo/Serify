@@ -12,6 +12,7 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userId = await authenticateApiRequest(req);
+    console.log('[api/sessions] userId:', userId);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     if (req.method === 'GET') {
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const [reflectionRes, flowRes] = await Promise.all([
                 supabaseAdmin
                     .from('reflection_sessions')
-                    .select('id, title, content_type, status, created_at, completed_at')
+                    .select('id, title, content_type, status, created_at, completed_at, session_type')
                     .eq('user_id', userId)
                     .order('created_at', { ascending: false }),
                 supabaseAdmin
@@ -34,11 +35,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const reflectionSessions = (reflectionRes.data || []).map((s: any) => ({
                 id: s.id,
                 type: 'reflection' as const,
-                title: s.title || 'Untitled Session',
+                title: s.title && s.title !== 'No Learning Material Provided' ? s.title : 'Untitled Analysis',
                 contentType: s.content_type,
                 status: s.status,
                 createdAt: s.created_at,
-                completedAt: s.completed_at
+                completedAt: s.completed_at,
+                session_type: s.session_type || 'analysis'
             }));
 
             const flowSessions = (flowRes.data || []).map((s: any) => {

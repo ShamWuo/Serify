@@ -5,6 +5,7 @@ import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Zap, Brain, CheckCircle2, Loader2, PlayCircle, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 
 interface Concept {
     id: string;
@@ -168,15 +169,22 @@ export default function FlowModePage() {
                         <div
                             style={{
                                 textAlign: 'center',
-                                padding: '4rem',
-                                color: 'var(--text-muted)'
+                                padding: '3rem 2rem',
+                                color: 'var(--text-primary)',
+                                background: 'var(--surface)',
+                                border: '1px border-[var(--border)]',
+                                borderRadius: '24px',
                             }}
                         >
-                            <Brain size={40} style={{ margin: '0 auto 16px', opacity: 0.4 }} />
-                            <p>
-                                All your concepts are looking solid! Start a new session to get more
-                                concepts to practice.
+                            <Brain size={48} className="mx-auto mb-6 text-[var(--accent)] opacity-40" />
+                            <h3 className="text-xl font-bold mb-3">No Concepts to Practice Yet</h3>
+                            <p className="text-[var(--text-muted)] max-w-sm mx-auto mb-8">
+                                Flow Mode coaches you through concepts you&apos;ve struggled with.
+                                Start a new session from the dashboard to identify concepts for your Vault.
                             </p>
+                            <Link href="/" className="inline-flex items-center gap-2 bg-[var(--accent)] text-white px-6 py-3 rounded-xl font-bold transition-all hover:scale-105">
+                                <PlayCircle size={18} /> Start a Session
+                            </Link>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

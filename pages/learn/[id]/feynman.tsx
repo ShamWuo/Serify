@@ -5,6 +5,7 @@ import Link from 'next/link';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
 
 export default function FeynmanMode() {
     const router = useRouter();
@@ -13,6 +14,7 @@ export default function FeynmanMode() {
     const [loading, setLoading] = useState(true);
     const [sessionData, setSessionData] = useState<any>(null);
     const [targetConcept, setTargetConcept] = useState<any>(null);
+    const [weakConcepts, setWeakConcepts] = useState<any[]>([]);
     const [explanation, setExplanation] = useState('');
     const [analyzing, setAnalyzing] = useState(false);
     const [feedback, setFeedback] = useState<any>(null);
@@ -61,6 +63,13 @@ export default function FeynmanMode() {
                     sessionId: id as string,
                     concepts: parsed.concepts || []
                 });
+
+                setWeakConcepts(strengthMap.filter((item: any) =>
+                    ['revisit', 'shaky', 'skipped', 'developing'].includes(item.mastery_state)
+                ).map((item: any) => ({
+                    id: item.concept_id,
+                    name: parsed.concepts?.find((c: any) => c.id === item.concept_id)?.name || 'Concept',
+                })));
 
                 setTargetConcept(concept);
             } catch (err) {
@@ -137,30 +146,45 @@ export default function FeynmanMode() {
     if (!targetConcept) return null;
 
     return (
-        <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col">
+        <DashboardLayout
+            backLink={`/session/${id}/feedback`}
+            sidebarContent={
+                <div className="space-y-4">
+                    <div className="px-3 mb-2">
+                        <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                            Feynman Progress
+                        </h3>
+                    </div>
+                    <div className="space-y-1">
+                        {weakConcepts.map((c: any, idx: number) => {
+                            const isCurrent = targetConcept?.id === c.id;
+                            return (
+                                <div
+                                    key={c.id}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-default ${isCurrent
+                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold border border-[var(--accent)]/20'
+                                        : 'text-[var(--muted)]'
+                                        }`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${isCurrent
+                                        ? 'border-[var(--accent)] text-[var(--accent)]'
+                                        : 'border-[var(--border)]'
+                                        }`}>
+                                        <span className="text-[10px]">{idx + 1}</span>
+                                    </div>
+                                    <span className="text-sm truncate">{c.name}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            }
+        >
             <Head>
                 <title>Feynman Method | Serify</title>
             </Head>
 
-            { }
-            <header className="px-6 py-5 border-b border-[var(--border)] flex items-center justify-between bg-white/50 backdrop-blur-sm sticky top-0 z-10">
-                <Link
-                    href={`/session/${id}/feedback`}
-                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                    &larr; Back to Report
-                </Link>
-                <div className="font-medium text-sm text-[var(--text)]">
-                    <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs uppercase tracking-wider font-bold mr-2">
-                        Feynman Method
-                    </span>
-                    <span className="font-bold">{targetConcept.name}</span>
-                </div>
-                <div className="w-24"></div> { }
-            </header>
-
-            { }
-            <main className="flex-1 w-full max-w-[800px] mx-auto p-6 md:p-8 pb-32">
+            <main className="max-w-[800px] mx-auto p-6 md:p-8 pb-32">
                 {!feedback && !analyzing && (
                     <div className="animate-fade-in">
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 mb-8 border-l-4 border-l-purple-500 shadow-sm">
@@ -271,6 +295,6 @@ export default function FeynmanMode() {
                     </div>
                 )}
             </main>
-        </div>
+        </DashboardLayout>
     );
 }

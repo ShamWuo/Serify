@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authenticateApiRequest, deductSparks, SPARK_COSTS } from '@/lib/sparks';
 import { createClient } from '@supabase/supabase-js';
+import { findOrCreateConceptNode } from '@/lib/vault';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
@@ -53,6 +54,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         });
 
+        const totalEstimatedMinutes = units.reduce(
+            (sum: number, u: { concepts?: any[] }) => sum + (u.concepts?.reduce((s, c) => s + (c.estimated_minutes || 15), 0) ?? 0),
+            0
+        );
+
         const { data: savedCurriculum, error: saveError } = await supabase
             .from('curricula')
             .insert({
@@ -65,6 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 units,
                 original_units: originalUnits,
                 concept_count: conceptCount,
+                estimated_minutes: totalEstimatedMinutes,
                 recommended_start_index: curriculumData.recommended_start_index ?? 0,
                 status: 'draft'
             })
@@ -99,6 +106,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.error('Error creating progress rows:', progressError);
                 // Non-fatal: the curriculum itself was saved, progress rows can be recovered
             }
+        }
+
+        // --- POPULATE CONCEPT VAULT (KNOWLEDGE NODES) ---
+        try {
+            for (const unit of units) {
+                for (const concept of (unit.concepts || [])) {
+                    await findOrCreateConceptNode(
+                        supabase, 
+                        user, 
+                        concept.name, 
+                        savedCurriculum.id, 
+                        concept.definition || ''
+                    );
+                }
+            }
+        } catch (vaultErr) {
+            console.error('Error populating vault from curriculum:', vaultErr);
+            // Non-fatal
         }
 
         res.status(200).json({ curriculumId: savedCurriculum.id });

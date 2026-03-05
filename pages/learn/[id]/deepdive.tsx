@@ -5,6 +5,8 @@ import Link from 'next/link';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { CheckCircle2 } from 'lucide-react';
 
 export default function DeepDiveMode() {
     const router = useRouter();
@@ -14,11 +16,12 @@ export default function DeepDiveMode() {
     const [error, setError] = useState<string | null>(null);
     const [sessionData, setSessionData] = useState<any>(null);
     const [targetConcept, setTargetConcept] = useState<any>(null);
+    const [weakConcepts, setWeakConcepts] = useState<any[]>([]);
 
     const [deepDive, setDeepDive] = useState<any>(null);
     const [generating, setGenerating] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
-    const [epicMode, setEpicMode] = useState(false);
+    const [proMode, setProMode] = useState(false);
 
     const [answer, setAnswer] = useState('');
     const [evaluating, setEvaluating] = useState(false);
@@ -69,6 +72,14 @@ export default function DeepDiveMode() {
                     concepts: parsed.concepts || []
                 });
 
+                setWeakConcepts(strengthMap.filter((item: any) =>
+                    ['revisit', 'shaky', 'skipped', 'developing'].includes(item.mastery_state)
+                ).map((item: any) => ({
+                    id: item.concept_id,
+                    name: parsed.concepts?.find((c: any) => c.id === item.concept_id)?.name || 'Concept',
+                    isComplete: false // Deep dive is active
+                })));
+
                 setTargetConcept(concept);
                 setLoading(false);
             } catch (err) {
@@ -100,7 +111,7 @@ export default function DeepDiveMode() {
                 {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({ concept, epicMode })
+                    body: JSON.stringify({ concept, proMode })
                 }
             );
 
@@ -215,11 +226,11 @@ export default function DeepDiveMode() {
                     <label className="flex items-center gap-3 cursor-pointer text-sm font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-4 py-2.5 rounded-full shadow-sm border border-[var(--border)]">
                         <input
                             type="checkbox"
-                            checked={epicMode}
-                            onChange={(e) => setEpicMode(e.target.checked)}
+                            checked={proMode}
+                            onChange={(e) => setProMode(e.target.checked)}
                             className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-4 h-4"
                         />
-                        <span><strong className="text-amber-500">Epic Mode</strong> (5x Sparks)</span>
+                        <span><strong className="text-amber-500">Pro Mode</strong> (5x Sparks)</span>
                     </label>
                 </div>
             </div>
@@ -249,37 +260,57 @@ export default function DeepDiveMode() {
     if (!deepDive) return null;
 
     return (
-        <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-16 md:pt-20">
+        <DashboardLayout
+            backLink={`/session/${id}/feedback`}
+            sidebarContent={
+                <div className="space-y-4">
+                    <div className="px-3 mb-2">
+                        <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                            Deep Dive Progress
+                        </h3>
+                    </div>
+                    <div className="space-y-1">
+                        {weakConcepts.map((c: any, idx: number) => {
+                            const isCurrent = targetConcept?.id === c.id;
+                            return (
+                                <div
+                                    key={c.id}
+                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-default ${isCurrent
+                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold border border-[var(--accent)]/20'
+                                        : 'text-[var(--muted)]'
+                                        }`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${isCurrent
+                                        ? 'border-[var(--accent)] text-[var(--accent)]'
+                                        : 'border-[var(--border)]'
+                                        }`}>
+                                        <span className="text-[10px]">{idx + 1}</span>
+                                    </div>
+                                    <span className="text-sm truncate">{c.name}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            }
+        >
             <Head>
                 <title>Deep Dive | Serify</title>
             </Head>
 
-            { }
-            <div className="max-w-[800px] w-full mx-auto px-6 mb-8 flex items-center justify-between">
-                <Link
-                    href={`/session/${id}/feedback`}
-                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium flex items-center gap-2"
-                >
-                    &larr; Exit Deep Dive
-                </Link>
-                <span className="text-[10px] uppercase tracking-widest text-[var(--muted)] font-black">
-                    Serify Intelligence
-                </span>
-            </div>
-
-            <main className="flex-1 w-full max-w-[800px] mx-auto p-6 md:p-8 pb-32">
+            <main className="max-w-[800px] mx-auto p-6 md:p-8 pb-32">
                 { }
-                <div className="mb-16 border-b-2 border-[var(--text)] pb-8">
+                <div className="mb-12 border-b-2 border-[var(--text)] pb-8">
                     <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-widest rounded-full mb-6 relative">
                         Deep Dive Guide
                     </div>
-                    <h1 className="text-4xl md:text-6xl font-display font-bold leading-tight tracking-tight text-[var(--text)]">
+                    <h1 className="text-4xl md:text-5xl font-display font-bold leading-tight tracking-tight text-[var(--text)]">
                         {deepDive.title}
                     </h1>
                 </div>
 
                 { }
-                <div className="space-y-16">
+                <div className="space-y-12">
                     {deepDive.sections?.map((section: any, idx: number) => (
                         <section key={idx} className="relative">
                             <h2 className="text-2xl font-display font-medium text-[var(--text)] mb-6 flex items-center gap-4">
@@ -288,7 +319,7 @@ export default function DeepDiveMode() {
                                 </span>
                                 {section.heading}
                             </h2>
-                            <div className="prose prose-lg prose-indigo prose-a:text-indigo-600 prose-p:leading-relaxed text-[var(--text)] max-w-none ml-0 md:ml-12 bg-white/50 p-6 rounded-2xl border border-[var(--border)] shadow-sm">
+                            <div className="prose prose-lg prose-indigo prose-a:text-indigo-600 prose-p:leading-relaxed text-[var(--text)] max-w-none bg-white/50 p-6 rounded-2xl border border-[var(--border)] shadow-sm">
                                 <MarkdownRenderer>{section.content}</MarkdownRenderer>
                             </div>
                         </section>
@@ -364,6 +395,6 @@ export default function DeepDiveMode() {
                     </div>
                 </div>
             </main>
-        </div>
+        </DashboardLayout>
     );
 }

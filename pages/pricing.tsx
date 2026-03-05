@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { Check, X, Zap, Users, BrainCircuit, ArrowRight } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 
@@ -16,9 +17,14 @@ export default function PricingPage() {
         }
 
         try {
+            const { data: authData } = await supabase.auth.getSession();
+            const token = authData.session?.access_token;
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             const res = await fetch('/api/subscriptions/checkout', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ userId: user.id, priceId })
             });
 
@@ -64,9 +70,8 @@ export default function PricingPage() {
                             className="relative inline-flex h-7 w-14 items-center rounded-full bg-accent transition-colors"
                         >
                             <span
-                                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                                    isAnnual ? 'translate-x-8' : 'translate-x-1'
-                                }`}
+                                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-8' : 'translate-x-1'
+                                    }`}
                             />
                         </button>
                         <span
@@ -81,7 +86,7 @@ export default function PricingPage() {
                 </div>
 
                 <div className="grid gap-8 lg:grid-cols-3 md:grid-cols-2 lg:gap-8 mx-auto xl:max-w-none xl:mx-0 max-w-5xl">
-                    {}
+                    { }
                     <div className="flex flex-col rounded-3xl border border-border bg-surface p-8 shadow-sm">
                         <div className="mb-6">
                             <h3 className="text-2xl font-semibold text-text mb-1">Free</h3>
@@ -140,7 +145,7 @@ export default function PricingPage() {
                         </div>
                     </div>
 
-                    {}
+                    { }
                     <div className="flex flex-col rounded-3xl border-2 border-accent bg-surface p-8 shadow-md relative translate-y-[-10px]">
                         <div className="absolute top-0 right-8 transform -translate-y-1/2">
                             <span className="bg-accent text-white text-xs font-bold uppercase tracking-wide py-1 px-3 rounded-full">
@@ -217,7 +222,7 @@ export default function PricingPage() {
                         </div>
                     </div>
 
-                    {}
+                    { }
                     <div className="flex flex-col rounded-3xl border border-border bg-surface p-8 shadow-sm lg:col-span-1 md:col-span-2 md:mt-8 lg:mt-0 xl:max-w-md xl:mx-auto">
                         <div className="mb-6">
                             <h3 className="text-2xl font-semibold text-text mb-1 flex items-center gap-2">
@@ -274,7 +279,7 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {}
+                { }
                 <div className="mt-16 max-w-3xl mx-auto">
                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-8 text-center">
                         <Zap
@@ -296,7 +301,7 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                {}
+                { }
                 <div className="mt-20 max-w-3xl mx-auto border-t border-border pt-12">
                     <h3 className="text-2xl font-semibold text-center mb-8">
                         Frequently Asked Questions
