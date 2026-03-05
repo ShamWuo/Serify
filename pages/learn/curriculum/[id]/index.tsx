@@ -152,7 +152,7 @@ export default function CurriculumView() {
                                     <div className="text-2xl font-light text-[var(--text)]">
                                         {Math.round(
                                             (currentIndex / Math.max(1, curriculum.concept_count)) *
-                                                100
+                                            100
                                         )}
                                         %
                                     </div>
@@ -205,7 +205,7 @@ export default function CurriculumView() {
                                                         </div>
 
                                                         <div className="flex-1 min-w-0">
-                                                            <button 
+                                                            <button
                                                                 onClick={() => {
                                                                     // Navigate to the flow with this concept as the starting point (if we can)
                                                                     // For now, we'll just go to the flow, and the page will find the first uncompleted one
@@ -285,8 +285,10 @@ export default function CurriculumView() {
                                         <Clock size={16} className="mr-3" />
                                         <span>
                                             ~
-                                            {Math.round((curriculum.estimated_minutes / 60) * 10) /
-                                                10}{' '}
+                                            {curriculum.estimated_minutes
+                                                ? Math.round((curriculum.estimated_minutes / 60) * 10) / 10
+                                                : Math.round((curriculum.concept_count * 15 / 60) * 10) / 10
+                                            }{' '}
                                             hours total at your pace
                                         </span>
                                     </div>

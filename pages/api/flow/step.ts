@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { authenticateApiRequest } from '@/lib/sparks';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import { findOrCreateConceptNode } from '@/lib/vault';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey =
@@ -224,6 +225,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             .eq('curriculum_id', curriculumId)
                             .eq('concept_id', conceptId);
                     }
+                }
+
+                // PROACTIVE VAULT POPULATION:
+                // Ensure this concept is represented in the knowledge vault immediately.
+                try {
+                    const conceptName = currentConcept?.conceptName || 'Unknown Concept';
+                    await findOrCreateConceptNode(
+                        supabaseAdmin as any,
+                        userId,
+                        conceptName,
+                        sessionId,
+                        `Mastered via Flow session: ${conceptName}`
+                    );
+                } catch (vaultErr) {
+                    console.error('[vault] Proactive creation failed:', vaultErr);
                 }
             }
 

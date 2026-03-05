@@ -74,6 +74,9 @@ export default function LearnIndex() {
     const [curricula, setCurricula] = useState<any[]>([]);
     const [loadingCurricula, setLoadingCurricula] = useState(true);
     const [authToken, setAuthToken] = useState<string>('');
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [curriculumToDelete, setCurriculumToDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const { balance, loading: sparksLoading } = useSparks();
 
@@ -143,10 +146,24 @@ export default function LearnIndex() {
         setLoadingCurricula(false);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this curriculum?')) return;
-        await supabase.from('curricula').delete().eq('id', id);
-        setCurricula((prev) => prev.filter((c) => c.id !== id));
+    const handleDelete = async (curriculum: any) => {
+        setCurriculumToDelete(curriculum);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!curriculumToDelete) return;
+        setIsDeleting(true);
+        try {
+            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
+            setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
+            setDeleteModalOpen(false);
+            setCurriculumToDelete(null);
+        } catch (err) {
+            console.error('Error deleting curriculum:', err);
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     function guessInputType(text: string) {
@@ -325,7 +342,7 @@ export default function LearnIndex() {
                         {isCompleted ? 'Review' : 'Continue'} →
                     </Link>
                     <button
-                        onClick={() => handleDelete(curriculum.id)}
+                        onClick={() => handleDelete(curriculum)}
                         className="p-2 text-[var(--muted)] hover:text-red-500 rounded-xl border border-[var(--border)] hover:border-red-200 hover:bg-red-50 transition-colors"
                         title="Delete"
                     >
@@ -341,6 +358,48 @@ export default function LearnIndex() {
     return (
         <DashboardLayout>
             <Head><title>Learn Mode | Serify</title></Head>
+
+            {/* Delete Modal */}
+            {deleteModalOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
+                        onClick={() => !isDeleting && setDeleteModalOpen(false)}
+                    />
+                    <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6">
+                            <AlertTriangle className="text-red-600" size={32} />
+                        </div>
+                        <h3 className="text-2xl font-display text-[var(--text)] mb-2">Delete Curriculum?</h3>
+                        <p className="text-[var(--muted)] mb-8">
+                            Are you sure you want to delete &quot;{curriculumToDelete?.title}&quot;? This will permanently remove all your progress within this learning path. This action cannot be undone.
+                        </p>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setDeleteModalOpen(false)}
+                                disabled={isDeleting}
+                                className="flex-1 px-6 py-3 rounded-xl border border-[var(--border)] font-medium hover:bg-[var(--bg)] transition-colors disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={isDeleting}
+                                className="flex-1 px-6 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-red-200"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <Loader2 size={18} className="animate-spin" />
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    'Delete Path'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="p-6 md:p-10 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
 

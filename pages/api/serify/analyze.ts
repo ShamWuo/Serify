@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { analyzeAnswers } from '@/lib/serify-ai';
-import { ReflectionSession } from '@/types/serify';
+import { ReflectionSession, MasteryState } from '@/types/serify';
 import { canAccess } from '@/lib/gates';
 import { deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { findOrCreateConceptNode, updateConceptMastery, updateTopicClusters } from '@/lib/vault';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -221,6 +222,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (updateError) {
             console.error('Analyze API: Failed to update session:', updateError);
+        }
+
+        // --- UPDATE CONCEPT VAULT (KNOWLEDGE NODES) ---
+        console.log('Analyze API: Updating Concept Vault...');
+        try {
+            // 1. Process strong concepts
+            for (const conceptName of analysis.strengthMap.strong || []) {
+                const conceptDef = conceptRows.find(c => c.name === conceptName)?.description || '';
+                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, conceptDef);
+                if (node) {
+                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, 'solid', 'session', sessionId);
+                }
+            }
+
+            // 2. Process weak concepts (mapped to shaky or revisit)
+            for (const conceptName of analysis.strengthMap.weak || []) {
+                const conceptDef = conceptRows.find(c => c.name === conceptName)?.description || '';
+                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, conceptDef);
+                if (node) {
+                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, 'shaky', 'session', sessionId);
+                }
+            }
+
+            // 3. Process missing concepts
+            for (const conceptName of analysis.strengthMap.missing || []) {
+                const conceptDef = conceptRows.find(c => c.name === conceptName)?.description || '';
+                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, conceptDef);
+                if (node) {
+                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, 'revisit', 'session', sessionId);
+                }
+            }
+
+            // Optional: update clusters
+            await updateTopicClusters(supabaseWithAuth, user.id);
+        } catch (vaultErr) {
+            console.error('Analyze API: Failed to update Vault:', vaultErr);
+            // Non-fatal, we still return the analysis
         }
 
         console.log('Analyze API: Complete, returning results');

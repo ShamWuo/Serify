@@ -17,26 +17,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     try {
+        // 1. Fetch Reflection Sessions concepts
         const { data: sessions, error: sessErr } = await supabaseAdmin
             .from('reflection_sessions')
             .select('id')
             .eq('user_id', userId);
 
-        if (sessErr) throw sessErr;
-        if (!sessions || sessions.length === 0) {
-            return res.status(200).json({ backfilled: 0, message: 'No sessions found' });
+        let reflectionConcepts: any[] = [];
+        if (!sessErr && sessions && sessions.length > 0) {
+            const sessionIds = sessions.map((s: any) => s.id);
+            const { data: rConcepts, error: rConceptErr } = await supabaseAdmin
+                .from('concepts')
+                .select('id, session_id, name, description')
+                .in('session_id', sessionIds);
+            if (!rConceptErr && rConcepts) {
+                reflectionConcepts = rConcepts;
+            }
         }
 
-        const sessionIds = sessions.map((s: any) => s.id);
+        // 2. Fetch Flow Sessions concepts
+        const { data: flowSessions, error: flowErr } = await supabaseAdmin
+            .from('flow_sessions')
+            .select('id, initial_plan, concepts_completed')
+            .eq('user_id', userId);
 
-        const { data: concepts, error: conceptErr } = await supabaseAdmin
-            .from('concepts')
-            .select('id, session_id, name, description')
-            .in('session_id', sessionIds);
+        let flowConcepts: any[] = [];
+        if (!flowErr && flowSessions) {
+            flowSessions.forEach((fs: any) => {
+                const completedIds = fs.concepts_completed || [];
+                const allConcepts = fs.initial_plan?.concepts || [];
+                allConcepts.forEach((c: any) => {
+                    if (completedIds.includes(c.conceptId)) {
+                        flowConcepts.push({
+                            id: c.conceptId,
+                            session_id: fs.id,
+                            name: c.conceptName,
+                            description: c.definition || ''
+                        });
+                    }
+                });
+            });
+        }
 
-        if (conceptErr) throw conceptErr;
-        if (!concepts || concepts.length === 0) {
-            return res.status(200).json({ backfilled: 0, message: 'No concepts found' });
+        const allAvailableConcepts = [...reflectionConcepts, ...flowConcepts];
+
+        if (allAvailableConcepts.length === 0) {
+            return res.status(200).json({ backfilled: 0, message: 'No concepts found in sessions' });
         }
 
         const { data: existingNodes } = await supabaseAdmin
@@ -47,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const existingNames = new Set((existingNodes || []).map((n: any) => n.canonical_name));
 
         const now = new Date().toISOString();
-        const toInsert = concepts
+        const toInsert = allAvailableConcepts
             .filter((c: any) => !existingNames.has(c.name.toLowerCase()))
             .map((c: any) => ({
                 id: crypto.randomUUID(),

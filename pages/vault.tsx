@@ -591,6 +591,10 @@ export default function VaultPage() {
                                 <p className="text-[var(--muted)] text-sm mt-1">
                                     Every concept you&apos;ve encountered, tracked over time.
                                 </p>
+                                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-[var(--accent)]/5 border border-[var(--accent)]/10 rounded-lg text-[11px] font-medium text-[var(--accent)]">
+                                    <Brain size={12} />
+                                    <span>Syncs automatically from Reflection & Flow sessions</span>
+                                </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Link
