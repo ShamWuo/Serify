@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { format, parseISO } from 'date-fns';
-import { CheckCircle2, ChevronRight, Zap } from 'lucide-react';
+import { CheckCircle2, Zap, ArrowRight, ExternalLink } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 
 export default function BillingSettings() {
@@ -12,9 +13,10 @@ export default function BillingSettings() {
     const { user } = useAuth();
     const [loading, setLoading] = useState(true);
     const [plan, setPlan] = useState('free');
-    const [usage, setUsage] = useState({ count: 0, limit: 3 });
     const [subscription, setSubscription] = useState<any>(null);
+    const [usage, setUsage] = useState({ count: 0, limit: 3 });
     const [passes, setPasses] = useState<any[]>([]);
+    const [portalLoading, setPortalLoading] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -27,9 +29,10 @@ export default function BillingSettings() {
                     .eq('id', user!.id)
                     .single();
 
-                setPlan(userData?.subscription_tier || 'free');
+                const tier = userData?.subscription_tier || 'free';
+                setPlan(tier);
 
-                if (userData?.subscription_tier && userData.subscription_tier !== 'free') {
+                if (tier && tier !== 'free') {
                     const { data: subData } = await supabase
                         .from('subscriptions')
                         .select('*')
@@ -37,9 +40,7 @@ export default function BillingSettings() {
                         .in('status', ['active', 'trialing'])
                         .single();
                     setSubscription(subData);
-                }
-
-                if (!userData || userData.subscription_tier === 'free') {
+                } else {
                     const currentMonth = format(new Date(), 'yyyy-MM');
                     const { data: usageData } = await supabase
                         .from('usage')
@@ -47,7 +48,6 @@ export default function BillingSettings() {
                         .eq('user_id', user!.id)
                         .eq('month', currentMonth)
                         .single();
-
                     setUsage({ count: usageData?.session_count || 0, limit: 3 });
                 }
 
@@ -70,23 +70,22 @@ export default function BillingSettings() {
         fetchData();
     }, [user]);
 
-    const handleCheckout = async (priceId: string) => {
+    const handleManageBilling = async () => {
+        setPortalLoading(true);
         try {
             const { data: authData } = await supabase.auth.getSession();
             const token = authData.session?.access_token;
             const headers: Record<string, string> = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const res = await fetch('/api/subscriptions/checkout', {
+            const res = await fetch('/api/subscriptions/portal', {
                 method: 'POST',
-                headers,
-                body: JSON.stringify({ priceId })
+                headers
             });
 
             if (!res.ok) {
-                const errorText = await res.text();
-                console.error('Checkout failed:', errorText);
-                alert('Checkout failed. Please try again later.');
+                console.error('Portal error:', await res.text());
+                alert('Could not open billing portal. Please try again.');
                 return;
             }
 
@@ -95,12 +94,11 @@ export default function BillingSettings() {
                 window.location.href = data.url;
             }
         } catch (err) {
-            console.error('Checkout error:', err);
+            console.error('Portal error:', err);
+            alert('An error occurred. Please try again.');
+        } finally {
+            setPortalLoading(false);
         }
-    };
-
-    const handleManageBilling = async () => {
-        alert('Managing billing requires Stripe Customer Portal setup.');
     };
 
     if (!user || loading) {
@@ -116,104 +114,101 @@ export default function BillingSettings() {
     return (
         <DashboardLayout>
             <Head>
-                <title>Billing Settings | Serify</title>
+                <title>Billing & Subscription | Serify</title>
             </Head>
 
-            <div className="mx-auto max-w-4xl py-8">
-                <h1 className="mb-8 text-3xl font-bold text-text">Billing & Subscription</h1>
+            <div className="mx-auto max-w-4xl py-8 px-4">
+                <h1 className="mb-8 text-3xl font-bold text-text">Billing &amp; Subscription</h1>
 
                 {router.query.success && (
                     <div className="mb-8 rounded-lg bg-green-500/10 p-4 text-green-500 border border-green-500/20 flex items-center gap-3">
-                        <CheckCircle2 className="h-5 w-5" />
-                        <p className="font-medium">
-                            Thanks for your purchase! Your account has been updated.
-                        </p>
+                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        <p className="font-medium">Thanks for your purchase! Your account has been updated.</p>
                     </div>
                 )}
 
                 <div className="grid gap-8 md:grid-cols-2">
-                    {}
+                    {/* Left column — Plan */}
                     <div className="flex flex-col gap-6">
                         <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
                             <h2 className="mb-4 text-lg font-semibold text-text">Current Plan</h2>
 
                             {plan === 'free' ? (
+                                /* Free user — point them to /pricing, no inline checkout */
                                 <div>
                                     <div className="mb-6">
                                         <div className="flex items-end gap-2 mb-1">
-                                            <span className="text-3xl font-bold text-text">
-                                                Free
-                                            </span>
+                                            <span className="text-3xl font-bold text-text">Free</span>
                                         </div>
-                                        <p className="text-text/60">
-                                            3 sessions/month · Basic feedback only
-                                        </p>
+                                        <p className="text-text/60">20 Sparks/month · Basic features</p>
                                     </div>
 
-                                    <div className="flex flex-col gap-3">
-                                        <button
-                                            onClick={() =>
-                                                handleCheckout(
-                                                    process.env
-                                                        .NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY!
-                                                )
-                                            }
-                                            className="w-full rounded-lg bg-accent py-3 px-4 font-medium text-white transition-colors hover:bg-accent/90"
-                                        >
-                                            Upgrade to Pro — $12/month
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleCheckout(
-                                                    process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY!
-                                                )
-                                            }
-                                            className="w-full rounded-lg bg-surface py-3 px-4 font-medium text-accent border border-accent/20 transition-colors hover:bg-accent/5"
-                                        >
-                                            Upgrade to Pro Annual — $96/year (save 33%)
-                                        </button>
-                                    </div>
+                                    <Link
+                                        href="/pricing"
+                                        className="w-full rounded-lg bg-accent py-3 px-4 font-medium text-white transition-colors hover:bg-accent/90 flex items-center justify-center gap-2"
+                                    >
+                                        Upgrade to Pro <ArrowRight size={16} />
+                                    </Link>
                                 </div>
                             ) : (
+                                /* Subscribed user — show details + portal */
                                 <div>
                                     <div className="mb-6">
-                                        <div className="flex items-end gap-2 mb-1">
+                                        <div className="flex items-center gap-3 mb-1">
                                             <span className="text-3xl font-bold text-text capitalize">
                                                 Serify {plan}
+                                            </span>
+                                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20">
+                                                Active
                                             </span>
                                         </div>
                                         {subscription && (
                                             <p className="text-text/60">
-                                                {subscription.cancel_at_period_end
-                                                    ? 'Ends'
-                                                    : 'Renews'}{' '}
+                                                {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}{' '}
                                                 on{' '}
                                                 {format(
                                                     parseISO(subscription.current_period_end),
                                                     'MMMM d, yyyy'
                                                 )}
+                                                {subscription.cancel_at_period_end && (
+                                                    <span className="ml-2 text-amber-500 text-xs font-medium">
+                                                        (Cancels at period end)
+                                                    </span>
+                                                )}
                                             </p>
                                         )}
                                     </div>
 
-                                    <div className="flex gap-3">
+                                    <div className="flex flex-col gap-3">
                                         <button
                                             onClick={handleManageBilling}
-                                            className="rounded-lg bg-surface py-2 px-4 font-medium text-text border border-border transition-colors hover:bg-border/50"
+                                            disabled={portalLoading}
+                                            className="w-full rounded-lg bg-surface py-2.5 px-4 font-medium text-text border border-border transition-colors hover:bg-border/50 disabled:opacity-60 flex items-center justify-center gap-2"
                                         >
-                                            Manage Billing
+                                            {portalLoading ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-text/30 border-t-text rounded-full animate-spin" />
+                                                    Opening portal…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ExternalLink size={15} />
+                                                    Manage Billing
+                                                </>
+                                            )}
                                         </button>
+                                        <p className="text-xs text-text/40 text-center">
+                                            Cancel, update payment method, or view invoices
+                                        </p>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {}
+                        {/* Active Passes */}
                         {passes.length > 0 && (
                             <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
-                                <h2 className="mb-4 text-lg font-semibold text-text">
-                                    Active Passes
-                                </h2>
+                                <h2 className="mb-4 text-lg font-semibold text-text">Active Passes</h2>
                                 <div className="flex flex-col gap-3">
                                     {passes.map((pass) => (
                                         <div
@@ -247,21 +242,19 @@ export default function BillingSettings() {
                         )}
                     </div>
 
-                    {}
+                    {/* Right column — Usage / Features */}
                     <div className="flex flex-col gap-6">
                         {plan === 'free' && (
                             <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
                                 <h2 className="mb-4 text-lg font-semibold text-text">
                                     Usage This Month
                                 </h2>
-
                                 <div className="mb-2 flex justify-between text-sm font-medium">
                                     <span className="text-text">Sessions</span>
                                     <span className="text-text/70">
                                         {usage.count} / {usage.limit} used
                                     </span>
                                 </div>
-
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-border">
                                     <div
                                         className={`h-full rounded-full transition-all ${usage.count >= usage.limit ? 'bg-red-500' : 'bg-accent'}`}
@@ -270,7 +263,6 @@ export default function BillingSettings() {
                                         }}
                                     />
                                 </div>
-
                                 <p className="mt-3 text-sm text-text/50">
                                     Resets on the 1st of next month
                                 </p>
@@ -278,42 +270,38 @@ export default function BillingSettings() {
                         )}
 
                         <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
-                            <h2 className="mb-4 text-lg font-semibold text-text">Features</h2>
+                            <h2 className="mb-4 text-lg font-semibold text-text">
+                                {plan === 'free' ? 'What You Get' : 'Pro Features'}
+                            </h2>
                             <ul className="flex flex-col gap-3 text-sm text-text/80">
                                 <li className="flex items-center gap-3">
                                     <div
-                                        className={`p-1 rounded-full ${plan === 'free' ? 'bg-border' : 'bg-accent/20 text-accent'}`}
+                                        className={`p-1 rounded-full ${plan === 'free' ? 'bg-border text-text/40' : 'bg-accent/20 text-accent'}`}
                                     >
                                         <CheckCircle2 className="w-4 h-4" />
                                     </div>
                                     <span>
-                                        {plan === 'free'
-                                            ? '3 sessions per month'
-                                            : 'Unlimited sessions'}
+                                        {plan === 'free' ? '20 Spark allowance/month' : '150 Sparks/month (rolls over)'}
                                     </span>
                                 </li>
                                 <li className="flex items-center gap-3">
                                     <div
-                                        className={`p-1 rounded-full ${plan === 'free' ? 'bg-border' : 'bg-accent/20 text-accent'}`}
+                                        className={`p-1 rounded-full ${plan === 'free' ? 'bg-border text-text/40' : 'bg-accent/20 text-accent'}`}
                                     >
                                         <CheckCircle2 className="w-4 h-4" />
                                     </div>
                                     <span>
-                                        {plan === 'free'
-                                            ? 'Standard reports'
-                                            : 'Full Cognitive Analysis'}
+                                        {plan === 'free' ? 'Standard reports' : 'Full Cognitive Analysis'}
                                     </span>
                                 </li>
                                 <li className="flex items-center gap-3">
                                     <div
-                                        className={`p-1 rounded-full ${plan === 'free' ? 'bg-border' : 'bg-accent/20 text-accent'}`}
+                                        className={`p-1 rounded-full ${plan === 'free' ? 'bg-border text-text/40' : 'bg-accent/20 text-accent'}`}
                                     >
                                         <CheckCircle2 className="w-4 h-4" />
                                     </div>
                                     <span>
-                                        {plan === 'free'
-                                            ? '2 learning modes'
-                                            : 'All 6 learning modes + AI Tutor'}
+                                        {plan === 'free' ? '3 learning modes' : 'All 6 learning modes + AI Tutor'}
                                     </span>
                                 </li>
                             </ul>

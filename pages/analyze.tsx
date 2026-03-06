@@ -1,5 +1,14 @@
+/**
+ * analyze.tsx
+ * Purpose: Handles the initiation of content analysis sessions from various sources.
+ * Key Logic: Supports YouTube, URLs, PDFs, and manual notes. Uses @ai-sdk/react's 
+ * useObject for streaming concept extraction and question generation, then 
+ * initializes a reflection session in Supabase.
+ */
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
 import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import {
@@ -45,21 +54,18 @@ const questionSchema = z.object({
 });
 
 export default function Analyze() {
+    const { token } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'youtube' | 'article' | 'pdf' | 'notes'>('youtube');
     const [inputValue, setInputValue] = useState('');
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const [authToken, setAuthToken] = useState<string>('');
     const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
 
     const { balance, loading: sparksLoading } = useSparks();
 
     useEffect(() => {
-        supabase.auth
-            .getSession()
-            .then(({ data }) => setAuthToken(data.session?.access_token || ''));
         setInputValue('');
         setErrorMsg('');
     }, [activeTab]);
@@ -85,7 +91,7 @@ export default function Analyze() {
         schema: conceptSchema,
         initialValue: conceptInitialValue,
         headers: {
-            Authorization: `Bearer ${authToken}`
+            Authorization: `Bearer ${token}`
         },
         onFinish: ({ object, error }) => {
             if (error || !object || !object.concepts || object.concepts.length === 0) {
@@ -93,19 +99,15 @@ export default function Analyze() {
                 setIsProcessing(false);
                 return;
             }
-            // Determine if we should enter Basic Mode (6 questions) based on sparks
             const isBasic = balance && balance.total_sparks >= 11 && balance.total_sparks < 13;
             startQuestionStream({
                 concepts: object.concepts,
                 method: 'standard',
-                questionCount: isBasic ? 6 : 5 // Standard is 5, Basic is 6 as per user requirement? 
-                // Wait, if Basic is "fixed foundation", maybe it's more questions? 
-                // Usually "Basic" means less, but user said "Standardize 6-question logic for Basic Mode".
+                questionCount: isBasic ? 6 : 5 
             });
         },
 
         onError: (e) => {
-            console.error('Concept stream error:', e);
             setErrorMsg(e.message || 'Failed to extract concepts.');
             setIsProcessing(false);
         }
@@ -130,7 +132,7 @@ export default function Analyze() {
         schema: questionSchema,
         initialValue: questionInitialValue,
         headers: {
-            Authorization: `Bearer ${authToken}`
+            Authorization: `Bearer ${token}`
         },
         onFinish: async ({ object, error }) => {
             if (error || !object || !object.questions) {
@@ -140,7 +142,6 @@ export default function Analyze() {
             }
 
             try {
-                // Now initialize the session since both streams are complete
                 const finalConcepts = conceptData?.concepts || [];
                 const finalTitle =
                     conceptData?.title && conceptData.title !== 'New Session' && conceptData.title !== ''
@@ -159,7 +160,7 @@ export default function Analyze() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${authToken}`
+                        Authorization: `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         title: finalTitle,
@@ -208,13 +209,11 @@ export default function Analyze() {
 
                 router.push(`/session/${sessionData.id}`);
             } catch (err: any) {
-                console.error(err);
                 setErrorMsg(err.message || 'Failed to finalize session.');
                 setIsProcessing(false);
             }
         },
         onError: (e) => {
-            console.error('Question stream error:', e);
             setErrorMsg(e.message || 'Failed to generate questions.');
             setIsProcessing(false);
         }
@@ -225,7 +224,6 @@ export default function Analyze() {
         if (!inputValue.trim() && activeTab !== 'pdf') return;
         if (activeTab === 'pdf' && !pdfFile) return;
 
-        // Check if user has enough sparks for at least Basic Mode (11 Sparks)
         if (balance && balance.total_sparks < 11) {
             setIsOutOfSparksModalOpen(true);
             return;
@@ -480,7 +478,7 @@ export default function Analyze() {
                                             <div className="bg-amber-100 text-amber-600 p-2 rounded-lg">
                                                 <Zap className="w-5 h-5" fill="currentColor" />
                                             </div>
-                                            <h3 className="text-xl font-semibold text-[var(--text)] m-0">
+                                            <h3 className="text-xl font-display text-[var(--text)] m-0">
                                                 Not enough Sparks for a full session
                                             </h3>
                                         </div>

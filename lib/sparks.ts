@@ -30,7 +30,10 @@ export const getSparkAdminClient = () => {
     return internalAdminClient;
 };
 
-const getClient = () => (typeof window !== 'undefined' ? browserClient : getSparkAdminClient());
+const getClient = (isAdmin: boolean = false) => {
+    if (typeof window !== 'undefined') return browserClient;
+    return isAdmin ? getSparkAdminClient() : browserClient;
+};
 
 export const DEMO_USER_ID = 'd3300000-0000-0000-0000-000000000000';
 
@@ -172,11 +175,14 @@ export async function authenticateApiRequest(
     }
 
     if (!authHeader) {
+        console.log('[authenticateApiRequest] No auth header found. isDemo:', isDemoHeader);
         return isDemoHeader ? DEMO_USER_ID : null;
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    // Case-insensitive Bearer check
+    const token = authHeader.replace(/^Bearer /i, '');
     if (!token || token === 'undefined' || token === 'null') {
+        console.log('[authenticateApiRequest] Token is empty or placeholder string');
         return isDemoHeader ? DEMO_USER_ID : null;
     }
 
@@ -184,8 +190,20 @@ export async function authenticateApiRequest(
         return DEMO_USER_ID;
     }
 
+    // USE NON-ADMIN CLIENT FOR AUTH VERIFICATION
     const {
-        data: { user }
-    } = await getClient().auth.getUser(token);
+        data: { user },
+        error: authError
+    } = await getClient(false).auth.getUser(token);
+
+    if (authError) {
+        console.error('[authenticateApiRequest] Supabase auth error:', authError.message);
+        return null;
+    }
+
+    if (!user) {
+        console.warn('[authenticateApiRequest] No user found for token');
+    }
+
     return user?.id || null;
 }

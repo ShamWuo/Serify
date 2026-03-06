@@ -1,3 +1,10 @@
+/**
+ * explain.tsx
+ * Purpose: Provides a personalized "Explain It To Me" mode for reviewing difficult concepts.
+ * Key Logic: Generates AI-driven explanations for weak concepts using existing knowledge 
+ * as context. Updates concept mastery based on user feedback on the explanation's clarity.
+ */
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -11,7 +18,7 @@ import { CheckCircle2 } from 'lucide-react';
 export default function ExplainMode() {
     const router = useRouter();
     const { id } = router.query;
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [sessionData, setSessionData] = useState<any>(null);
@@ -80,7 +87,6 @@ export default function ExplainMode() {
         };
 
         initDeck();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, router]);
 
     const generateExplanation = async (concept: any, strong: any[]) => {
@@ -113,7 +119,6 @@ export default function ExplainMode() {
                 setError(errorData.error || 'Failed to generate explanation.');
             }
         } catch (e: any) {
-            console.error(e);
             setError(e.message || 'An unexpected error occurred.');
         } finally {
             setGenerating(false);
@@ -128,8 +133,8 @@ export default function ExplainMode() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(sessionData.authToken
-                        ? { Authorization: `Bearer ${sessionData.authToken}` }
+                    ...(token
+                        ? { Authorization: `Bearer ${token}` }
                         : {})
                 },
                 body: JSON.stringify({

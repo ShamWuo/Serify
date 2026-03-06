@@ -1,21 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Check, X, Zap, Users, BrainCircuit, ArrowRight } from 'lucide-react';
+import { Check, X, Zap, Users, BrainCircuit, ArrowRight, CheckCircle2 } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 
 export default function PricingPage() {
     const { user } = useAuth();
+    const router = useRouter();
     const [isAnnual, setIsAnnual] = useState(true);
+    const [userPlan, setUserPlan] = useState<string>('free');
+    const [planLoading, setPlanLoading] = useState(true);
+    const [checkingOut, setCheckingOut] = useState(false);
+
+    useEffect(() => {
+        if (!user) {
+            setPlanLoading(false);
+            return;
+        }
+        async function fetchPlan() {
+            const { data } = await supabase
+                .from('profiles')
+                .select('subscription_tier')
+                .eq('id', user!.id)
+                .single();
+            setUserPlan(data?.subscription_tier || 'free');
+            setPlanLoading(false);
+        }
+        fetchPlan();
+    }, [user]);
 
     const handleCheckout = async (priceId: string) => {
         if (!user) {
-            window.location.href = '/signup?intent=pro';
+            router.push('/signup?intent=pro');
+            return;
+        }
+        // Already subscribed — send to billing management instead
+        if (userPlan !== 'free') {
+            router.push('/settings/billing');
             return;
         }
 
+        setCheckingOut(true);
         try {
             const { data: authData } = await supabase.auth.getSession();
             const token = authData.session?.access_token;
@@ -25,8 +53,14 @@ export default function PricingPage() {
             const res = await fetch('/api/subscriptions/checkout', {
                 method: 'POST',
                 headers,
-                body: JSON.stringify({ userId: user.id, priceId })
+                body: JSON.stringify({ priceId })
             });
+
+            if (res.status === 409) {
+                // Already subscribed — backend confirmed
+                router.push('/settings/billing');
+                return;
+            }
 
             if (!res.ok) {
                 console.error('Checkout failed:', await res.text());
@@ -40,8 +74,12 @@ export default function PricingPage() {
             }
         } catch (err) {
             console.error('Checkout error:', err);
+        } finally {
+            setCheckingOut(false);
         }
     };
+
+    const isPro = !planLoading && userPlan !== 'free';
 
     return (
         <DashboardLayout>
@@ -59,34 +97,39 @@ export default function PricingPage() {
                         the plan that fits how you learn.
                     </p>
 
-                    <div className="flex items-center justify-center gap-4">
-                        <span
-                            className={`text-sm font-medium ${!isAnnual ? 'text-text' : 'text-text/60'}`}
+                    {/* Monthly / Annual Toggle */}
+                    <div className="inline-flex items-center gap-1 bg-surface border border-border rounded-full p-1">
+                        <button
+                            onClick={() => setIsAnnual(false)}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${!isAnnual
+                                    ? 'bg-accent text-white shadow-sm'
+                                    : 'text-text/60 hover:text-text'
+                                }`}
                         >
                             Monthly
-                        </span>
-                        <button
-                            onClick={() => setIsAnnual(!isAnnual)}
-                            className="relative inline-flex h-7 w-14 items-center rounded-full bg-accent transition-colors"
-                        >
-                            <span
-                                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${isAnnual ? 'translate-x-8' : 'translate-x-1'
-                                    }`}
-                            />
                         </button>
-                        <span
-                            className={`text-sm font-medium ${isAnnual ? 'text-text' : 'text-text/60'}`}
+                        <button
+                            onClick={() => setIsAnnual(true)}
+                            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${isAnnual
+                                    ? 'bg-accent text-white shadow-sm'
+                                    : 'text-text/60 hover:text-text'
+                                }`}
                         >
-                            Annual{' '}
-                            <span className="text-accent ml-1 text-xs px-2 py-0.5 rounded-full bg-accent/10">
+                            Annual
+                            <span
+                                className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${isAnnual
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-accent/10 text-accent'
+                                    }`}
+                            >
                                 Save 33%
                             </span>
-                        </span>
+                        </button>
                     </div>
                 </div>
 
                 <div className="grid gap-8 lg:grid-cols-3 md:grid-cols-2 lg:gap-8 mx-auto xl:max-w-none xl:mx-0 max-w-5xl">
-                    { }
+                    {/* Free */}
                     <div className="flex flex-col rounded-3xl border border-border bg-surface p-8 shadow-sm">
                         <div className="mb-6">
                             <h3 className="text-2xl font-semibold text-text mb-1">Free</h3>
@@ -97,9 +140,7 @@ export default function PricingPage() {
                                 Get started with Serify&apos;s core learning loop.
                             </p>
                             <div className="mt-6 flex items-baseline gap-1">
-                                <span className="text-4xl font-bold tracking-tight text-text">
-                                    $0
-                                </span>
+                                <span className="text-4xl font-bold tracking-tight text-text">$0</span>
                                 <span className="text-lg font-semibold text-text/60">/mo</span>
                             </div>
                         </div>
@@ -134,7 +175,7 @@ export default function PricingPage() {
                                     Sparks anytime
                                 </li>
                                 <li className="flex gap-3 items-start text-text/40">
-                                    <X className="h-5 w-5 shrink-0" /> Cognitive Analysis &
+                                    <X className="h-5 w-5 shrink-0" /> Cognitive Analysis &amp;
                                     Misconception Report
                                 </li>
                                 <li className="flex gap-3 items-start text-text/40">
@@ -145,12 +186,18 @@ export default function PricingPage() {
                         </div>
                     </div>
 
-                    { }
+                    {/* Pro */}
                     <div className="flex flex-col rounded-3xl border-2 border-accent bg-surface p-8 shadow-md relative translate-y-[-10px]">
                         <div className="absolute top-0 right-8 transform -translate-y-1/2">
-                            <span className="bg-accent text-white text-xs font-bold uppercase tracking-wide py-1 px-3 rounded-full">
-                                Most Popular
-                            </span>
+                            {isPro ? (
+                                <span className="bg-green-500 text-white text-xs font-bold uppercase tracking-wide py-1 px-3 rounded-full flex items-center gap-1">
+                                    <CheckCircle2 size={12} /> Current Plan
+                                </span>
+                            ) : (
+                                <span className="bg-accent text-white text-xs font-bold uppercase tracking-wide py-1 px-3 rounded-full">
+                                    Most Popular
+                                </span>
+                            )}
                         </div>
                         <div className="mb-6">
                             <h3 className="text-2xl font-semibold text-text mb-1 flex items-center gap-2">
@@ -176,18 +223,35 @@ export default function PricingPage() {
                             </p>
                         </div>
 
-                        <button
-                            onClick={() =>
-                                handleCheckout(
-                                    isAnnual
-                                        ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY!
-                                        : process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY!
-                                )
-                            }
-                            className="mb-8 w-full rounded-xl bg-accent text-white py-3 px-4 font-semibold text-center transition-colors hover:bg-accent/90 shadow-sm shadow-accent/20"
-                        >
-                            Start Pro
-                        </button>
+                        {isPro ? (
+                            <Link
+                                href="/settings/billing"
+                                className="mb-8 w-full rounded-xl bg-green-500/10 border border-green-500/30 text-green-600 py-3 px-4 font-semibold text-center transition-colors hover:bg-green-500/20 flex items-center justify-center gap-2"
+                            >
+                                <CheckCircle2 size={16} /> Manage Subscription
+                            </Link>
+                        ) : (
+                            <button
+                                onClick={() =>
+                                    handleCheckout(
+                                        isAnnual
+                                            ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY!
+                                            : process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY!
+                                    )
+                                }
+                                disabled={checkingOut || planLoading}
+                                className="mb-8 w-full rounded-xl bg-accent text-white py-3 px-4 font-semibold text-center transition-colors hover:bg-accent/90 shadow-sm shadow-accent/20 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {checkingOut ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                        Processing…
+                                    </>
+                                ) : (
+                                    'Start Pro'
+                                )}
+                            </button>
+                        )}
 
                         <div className="flex-1">
                             <p className="font-medium text-sm text-text mb-4">
@@ -200,7 +264,7 @@ export default function PricingPage() {
                                 </li>
                                 <li className="flex gap-3 items-start">
                                     <Check className="h-5 w-5 text-accent shrink-0" /> Full
-                                    Cognitive Analysis & Misconception Report
+                                    Cognitive Analysis &amp; Misconception Report
                                 </li>
                                 <li className="flex gap-3 items-start">
                                     <Check className="h-5 w-5 text-accent shrink-0" /> All 6
@@ -208,7 +272,7 @@ export default function PricingPage() {
                                 </li>
                                 <li className="flex gap-3 items-start">
                                     <Check className="h-5 w-5 text-accent shrink-0" /> Unlimited
-                                    session history & Concept Vault
+                                    session history &amp; Concept Vault
                                 </li>
                                 <li className="flex gap-3 items-start">
                                     <Check className="h-5 w-5 text-accent shrink-0" /> Unused Sparks
@@ -222,7 +286,7 @@ export default function PricingPage() {
                         </div>
                     </div>
 
-                    { }
+                    {/* Teams */}
                     <div className="flex flex-col rounded-3xl border border-border bg-surface p-8 shadow-sm lg:col-span-1 md:col-span-2 md:mt-8 lg:mt-0 xl:max-w-md xl:mx-auto">
                         <div className="mb-6">
                             <h3 className="text-2xl font-semibold text-text mb-1 flex items-center gap-2">
@@ -235,9 +299,7 @@ export default function PricingPage() {
                                 For schools, bootcamps, and corporate training.
                             </p>
                             <div className="mt-6 flex items-baseline gap-1">
-                                <span className="text-4xl font-bold tracking-tight text-text">
-                                    $18
-                                </span>
+                                <span className="text-4xl font-bold tracking-tight text-text">$18</span>
                                 <span className="text-lg font-semibold text-text/60">/seat/mo</span>
                             </div>
                         </div>
@@ -260,7 +322,7 @@ export default function PricingPage() {
                             <ul className="flex flex-col gap-4 text-sm text-text/80">
                                 <li className="flex gap-3 items-start">
                                     <Check className="h-5 w-5 text-text shrink-0" /> Team workspace
-                                    & admin dashboard
+                                    &amp; admin dashboard
                                 </li>
                                 <li className="flex gap-3 items-start">
                                     <Check className="h-5 w-5 text-text shrink-0" /> Analytics
@@ -279,14 +341,10 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                { }
+                {/* Spark Shop CTA */}
                 <div className="mt-16 max-w-3xl mx-auto">
                     <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-8 text-center">
-                        <Zap
-                            size={28}
-                            className="text-amber-500 mx-auto mb-3"
-                            fill="currentColor"
-                        />
+                        <Zap size={28} className="text-amber-500 mx-auto mb-3" fill="currentColor" />
                         <h3 className="text-xl font-bold text-text mb-2">Need More Sparks?</h3>
                         <p className="text-text/70 text-sm mb-5 max-w-lg mx-auto">
                             Every plan lets you buy additional Spark packs anytime. Purchased Sparks
@@ -301,7 +359,7 @@ export default function PricingPage() {
                     </div>
                 </div>
 
-                { }
+                {/* FAQ */}
                 <div className="mt-20 max-w-3xl mx-auto border-t border-border pt-12">
                     <h3 className="text-2xl font-semibold text-center mb-8">
                         Frequently Asked Questions
@@ -321,10 +379,10 @@ export default function PricingPage() {
                                 How many Sparks does a session cost?
                             </h4>
                             <p className="text-text/70 text-sm">
-                                A full session with 7 questions and the complete feedback report
-                                costs 13 Sparks. A basic session (without the Cognitive Analysis and
-                                Misconception Report) costs 11 Sparks. Learning modes like
-                                Flashcards and Explain It cost 1–2 Sparks each.
+                                A full session with 7 questions and the complete feedback report costs
+                                13 Sparks. A basic session (without the Cognitive Analysis and
+                                Misconception Report) costs 11 Sparks. Learning modes like Flashcards
+                                and Explain It cost 1–2 Sparks each.
                             </p>
                         </div>
                         <div>
@@ -344,9 +402,9 @@ export default function PricingPage() {
                             </h4>
                             <p className="text-text/70 text-sm">
                                 You keep access to all Pro features and your remaining Sparks until
-                                the end of your billing cycle. After that, you&apos;ll be on the
-                                Free plan with 20 Sparks/month. Your data is safe — you just lose
-                                access to Pro-only features like AI Tutor and full reports.
+                                the end of your billing cycle. After that, you&apos;ll be on the Free
+                                plan with 20 Sparks/month. Your data is safe — you just lose access
+                                to Pro-only features like AI Tutor and full reports.
                             </p>
                         </div>
                         <div>
@@ -356,8 +414,8 @@ export default function PricingPage() {
                             <p className="text-text/70 text-sm">
                                 Yes! Free users can purchase Spark packs from the Spark Shop at any
                                 time. Purchased Sparks never expire. However, some features (like AI
-                                Tutor and Practice Quiz) are only available on the Pro plan
-                                regardless of Spark balance.
+                                Tutor and Practice Quiz) are only available on the Pro plan regardless
+                                of Spark balance.
                             </p>
                         </div>
                     </div>

@@ -11,6 +11,7 @@ import {
     Layers, Trophy, Lock
 } from 'lucide-react';
 import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
+import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
 
 // ────────────────────────────────────────────────────────────
 // Small utilities
@@ -294,6 +295,7 @@ export default function CurriculumFlowSessionPage() {
 
     const [loading, setLoading] = useState(true);
     const [stepping, setStepping] = useState(false);
+    const [loadingTime, setLoadingTime] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [sessionDone, setSessionDone] = useState(false);
 
@@ -304,6 +306,21 @@ export default function CurriculumFlowSessionPage() {
     const displayStep = viewingStepIndex >= 0 ? stepHistory[viewingStepIndex] : null;
     const isReadOnly = viewingStepIndex >= 0 && viewingStepIndex < stepHistory.length - 1;
     const currentLiveStep = stepHistory[stepHistory.length - 1] ?? null;
+
+    // ── Timer for loading states ────────────────────────────
+    useEffect(() => {
+        let timer: any;
+        if (stepping) {
+            timer = setInterval(() => {
+                setLoadingTime((t) => t + 1);
+            }, 1000);
+        } else {
+            setLoadingTime(0);
+        }
+        return () => {
+            if (timer) clearInterval(timer);
+        };
+    }, [stepping]);
 
     // ── 1. Initialize flow session ──────────────────────────
     useEffect(() => {
@@ -414,8 +431,16 @@ export default function CurriculumFlowSessionPage() {
 
             if (data.action === 'concept_complete') {
                 // Mark completed locally and in DB
-                const updatedCompleted = [...(flowSession.concepts_completed || []), currentConcept.conceptId];
+                const updatedCompleted = [...new Set([...(flowSession.concepts_completed || []), currentConcept.conceptId])];
+
+                // 1. Update Flow session
                 await supabase.from('flow_sessions').update({ concepts_completed: updatedCompleted }).eq('id', flowSession.id);
+
+                // 2. Sync back to main Curriculum (Source of Truth for other loaders)
+                const { data: curriculum } = await supabase.from('curricula').select('completed_concept_ids').eq('id', flowSession.source_session_id).single();
+                const currCompleted = [...new Set([...(curriculum?.completed_concept_ids || []), currentConcept.conceptId])];
+                await supabase.from('curricula').update({ completed_concept_ids: currCompleted }).eq('id', flowSession.source_session_id);
+
                 setConceptStatuses((prev) => ({ ...prev, [currentConcept.conceptId]: 'completed' }));
                 setConceptJustCompleted(true); // show interstitial — do NOT auto-advance
             } else {
@@ -534,7 +559,17 @@ export default function CurriculumFlowSessionPage() {
         const { step_type, content, user_response } = displayStep;
         const savedAnswer = user_response || '';
 
-        if (step_type === 'teach') return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
+        if (step_type === 'teach') {
+            if (!content?.text) return (
+                <div className="flex flex-col items-center justify-center p-8 text-center bg-red-50/50 rounded-xl border border-red-100">
+                    <ShieldAlert className="text-red-400 mb-2" size={24} />
+                    <p className="text-sm font-medium text-red-600">Lesson content missing</p>
+                    <p className="text-xs text-red-500/80 mt-1">Serify failed to generate the lesson text for this step.</p>
+                    <button onClick={() => fetchNextStep()} className="mt-4 text-xs font-bold text-red-700 underline">Try Re-generating</button>
+                </div>
+            );
+            return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
+        }
         if (step_type === 'check' || step_type === 'confirm')
             return (
                 <CheckQuestionStep content={content} stepId={displayStep.id} isEvaluated={!!pendingEvaluation || isReadOnly}
@@ -542,7 +577,12 @@ export default function CurriculumFlowSessionPage() {
             );
         if (step_type === 'reinforce') return <ReinforceStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
 
-        return null;
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-[var(--muted)]">
+                <Replace size={32} className="opacity-20 mb-3" />
+                <p className="text-sm">Unknown step type: {step_type}</p>
+            </div>
+        );
     };
 
     // ────────────────────────────────────────────────────────
@@ -580,7 +620,21 @@ export default function CurriculumFlowSessionPage() {
     return (
         <>
             <Head><title>Flow Mode — {currentConcept?.conceptName || 'Loading'}</title></Head>
-            <DashboardLayout>
+            <DashboardLayout
+                backLink={`/learn/curriculum/${curriculumId}`}
+                sidebarContent={
+                    <CurriculumSidebar
+                        concepts={concepts}
+                        currentIndex={currentConceptIndex}
+                        conceptStatuses={concepts.reduce((acc: any, c: any) => {
+                            acc[c.conceptId] = conceptStatuses[c.conceptId] || 'not_started';
+                            return acc;
+                        }, {})}
+                        onConceptClick={handleSidebarConceptClick}
+                        title={flowSession?.initial_plan?.overallStrategy?.replace('Curriculum: ', '')}
+                    />
+                }
+            >
                 <div className="max-w-5xl mx-auto px-4 py-6">
 
                     {/* Top bar */}
@@ -608,37 +662,6 @@ export default function CurriculumFlowSessionPage() {
                     </div>
 
                     <div className="flex gap-6 items-start">
-                        {/* Concept sidebar */}
-                        <div className="hidden lg:block w-44 shrink-0">
-                            <div className="sticky top-6 space-y-1">
-                                {concepts.map((c, i) => {
-                                    const status = conceptStatuses[c.conceptId] || 'not_started';
-                                    const isCurrent = i === currentConceptIndex;
-                                    const isClickable = status === 'completed' || (status === 'in_progress' && !isCurrent);
-                                    return (
-                                        <div
-                                            key={c.conceptId}
-                                            onClick={() => handleSidebarConceptClick(i)}
-                                            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${isCurrent
-                                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
-                                                : status === 'completed'
-                                                    ? 'text-emerald-600 hover:bg-emerald-50 cursor-pointer'
-                                                    : 'text-[var(--muted)] cursor-not-allowed opacity-60'
-                                                }`}
-                                        >
-                                            {status === 'completed'
-                                                ? <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                                                : status === 'not_started'
-                                                    ? <Lock size={12} className="shrink-0 opacity-40" />
-                                                    : <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--accent)]" />
-                                            }
-                                            <span className="truncate">{c.conceptName}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
                         {/* Main step card */}
                         <div className="flex-1 min-w-0">
                             {error && (
@@ -650,9 +673,36 @@ export default function CurriculumFlowSessionPage() {
 
                             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 md:p-8 min-h-[280px] shadow-sm">
                                 {stepping ? (
-                                    <div className="flex flex-col items-center justify-center min-h-[200px] gap-3 text-[var(--muted)]">
-                                        <Loader2 size={28} className="animate-spin text-[var(--accent)]" />
-                                        <span className="text-sm">Thinking…</span>
+                                    <div className="flex flex-col items-center justify-center min-h-[240px] gap-6 text-[var(--muted)]">
+                                        <div className="relative">
+                                            <Loader2 size={40} className="animate-spin text-[var(--accent)]" />
+                                            {loadingTime > 8 && (
+                                                <div className="absolute -inset-4 border-2 border-[var(--accent)]/20 rounded-full animate-ping" />
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col items-center gap-2 text-center max-w-sm">
+                                            <span className="text-base font-medium text-[var(--text)] animate-pulse">
+                                                {loadingTime < 3 ? 'Preparing session…' :
+                                                    loadingTime < 6 ? 'Deeply analyzing concept…' :
+                                                        loadingTime < 10 ? 'Generating personalized checks…' :
+                                                            loadingTime < 15 ? 'Structuring your path…' :
+                                                                loadingTime < 25 ? 'Finalizing active recall steps…' :
+                                                                    'Building deep context…'}
+                                            </span>
+                                            {loadingTime >= 8 && (
+                                                <span className="text-xs opacity-70 animate-fade-in">
+                                                    Don&apos;t worry, Serify is busy building your custom learning path.
+                                                </span>
+                                            )}
+                                            {loadingTime >= 15 && (
+                                                <button
+                                                    onClick={() => fetchNextStep()}
+                                                    className="mt-4 px-4 py-2 bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 rounded-xl text-xs font-bold hover:bg-[var(--accent)]/20 transition-all flex items-center gap-2"
+                                                >
+                                                    <Zap size={14} /> Retry Request
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : conceptJustCompleted ? (
                                     /* If reviewing a completed concept from sidebar, show history review + complete card */

@@ -69,11 +69,11 @@ export default function KnowledgeMiniMap({ userId }: KnowledgeMiniMapProps) {
 
     return (
         <Link href="/knowledge-map" className="block group">
-            <div className="premium-card p-5 rounded-3xl overflow-hidden relative">
+            <div className="premium-card p-5 rounded-2xl overflow-hidden relative">
                 <div className="absolute top-[-20%] right-[-10%] w-32 h-32 bg-[var(--accent)] opacity-[0.03] blur-2xl rounded-full" />
 
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Knowledge Map</h3>
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)]">Knowledge Map</h3>
                     <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full text-[10px] font-bold">
                         {stats.total} Nodes
                     </div>

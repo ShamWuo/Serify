@@ -1,3 +1,10 @@
+/**
+ * AuthContext.tsx
+ * Purpose: Manages user authentication state and profile data across the application.
+ * Key Logic: Utilizes Supabase Auth for session management, handles profile loading and 
+ * creation, manages onboarding status, and provides auth-related methods via React Context.
+ */
+
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
@@ -16,6 +23,7 @@ interface UserProfile {
 
 interface AuthContextType {
     user: UserProfile | null;
+    token: string | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, password: string, displayName: string) => Promise<void>;
@@ -31,7 +39,6 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
     let profile = null;
 
     try {
-        console.log(`AuthContext: Call started for ${userId}`);
         const { data, error: profileError } = await supabase
             .from('profiles')
             .select(
@@ -39,32 +46,17 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
             )
             .eq('id', userId)
             .single();
-        console.log(
-            `AuthContext: Call completed for ${userId}. Data exist: ${!!data}, Error: ${profileError?.message || 'none'}`
-        );
 
         if (profileError) {
-            console.error('Error loading profile from profiles table:', {
-                message: profileError.message,
-                details: profileError.details,
-                code: profileError.code
-            });
-
             if (profileError.code === 'PGRST116') {
-                console.warn('Profile not found in profiles table for:', userId);
             }
         } else {
             profile = data;
-            console.log('✅ AuthContext: Profile loaded successfully for:', userId);
         }
     } catch (err: any) {
-        console.error('Exception while loading profile:', err);
     }
 
     if (!profile) {
-        console.warn(
-            `Creating fallback profile for ${userId} because profiles table returned null`
-        );
         const fallbackName = email
             ? email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1)
             : 'User';
@@ -114,6 +106,7 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(null);
+    const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     const state = useRef({
@@ -155,7 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const profile = await loadProfile(userId, email);
                 syncUser(profile);
             } catch (err) {
-                console.error('AuthContext: Profile fetch failed', err);
                 syncUser(null);
             } finally {
                 if (state.current.fetchingFor === userId) {
@@ -177,13 +169,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const isOAuth =
                 typeof window !== 'undefined' &&
                 (window.location.hash.includes('access_token=') ||
+                    window.location.hash.includes('type=recovery') ||
                     window.location.search.includes('code='));
 
             if (isOAuth) {
-                console.log(
-                    'AuthContext: Detected OAuth callback. Waiting for AuthStateChange to fire...'
-                );
-
+                setTimeout(async () => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user && !state.current.currentUser) {
+                        setToken(session.access_token);
+                        await ensureProfile(session.user.id, session.user.email || '');
+                    }
+                }, 1500);
                 return;
             }
 
@@ -195,14 +191,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (error) throw error;
 
                 if (session?.user) {
+                    setToken(session.access_token);
                     await ensureProfile(session.user.id, session.user.email || '');
                 } else {
                     syncUser(null);
+                    setToken(null);
                     syncLoading(false);
                 }
             } catch (err) {
-                console.error('AuthContext: Initialization failed', err);
                 syncUser(null);
+                setToken(null);
                 syncLoading(false);
             }
         };
@@ -212,14 +210,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const {
             data: { subscription }
         } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('AuthContext: Auth event:', event);
             if (!state.current.isMounted) return;
 
             if (event === 'SIGNED_OUT') {
                 syncUser(null);
+                setToken(null);
                 syncLoading(false);
             } else if (session?.user) {
+                setToken(session.access_token);
                 await ensureProfile(session.user.id, session.user.email || '');
+            } else if (event === 'SIGNED_IN' && !session) {
+                syncLoading(false);
             }
         });
 
@@ -228,7 +229,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             currentState.isMounted = false;
             subscription.unsubscribe();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const login = async (email: string, password: string) => {
@@ -252,12 +252,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
 
             if (error) {
-                console.error('Login error:', {
-                    message: error.message,
-                    status: (error as any).status,
-                    name: error.name
-                });
-
                 const errorMessage = error.message || '';
                 const errorStatus = (error as any).status;
 
@@ -294,6 +288,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data?.user) {
+                setToken(data.session?.access_token || null);
                 await ensureProfile(data.user.id, data.user.email || '');
             }
         } catch (err: any) {
@@ -313,6 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw new Error(error.message);
 
         if (data?.user) {
+            setToken(data.session?.access_token || null);
             await new Promise((resolve) => setTimeout(resolve, 500));
             await ensureProfile(data.user.id, email);
         }
@@ -342,6 +338,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const logout = async () => {
         await supabase.auth.signOut();
         syncUser(null);
+        setToken(null);
     };
 
     const updatePreferences = async (prefs: Partial<UserProfile['preferences']>) => {
@@ -364,20 +361,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .eq('id', user.id);
 
             if (updateError) {
-                console.error('Failed to update onboarding status:', updateError);
                 throw updateError;
             }
 
             const updatedProfile = await loadProfile(user.id, user.email);
             if (updatedProfile) {
                 syncUser(updatedProfile);
-                console.log('Onboarding marked complete, profile reloaded');
             } else {
                 syncUser({ ...user, onboardingCompleted: true });
-                console.warn('Profile reload failed, using local state update');
             }
         } catch (err) {
-            console.error('Failed to mark onboarding complete:', err);
             throw err;
         }
     };
@@ -386,6 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         <AuthContext.Provider
             value={{
                 user,
+                token,
                 loading,
                 login,
                 register,

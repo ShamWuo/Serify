@@ -607,6 +607,13 @@ export default function VaultPage() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <Link
+                                    href="/vault/drill"
+                                    className="h-10 px-4 rounded-xl bg-[var(--accent)] text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-lg shadow-[var(--accent)]/20"
+                                >
+                                    <Brain size={15} />
+                                    Drill All Concepts
+                                </Link>
+                                <Link
                                     href="/knowledge-map"
                                     className="h-10 px-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] font-medium flex items-center justify-center gap-2 hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors shadow-sm"
                                 >

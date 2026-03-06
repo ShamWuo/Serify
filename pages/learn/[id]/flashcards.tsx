@@ -1,3 +1,10 @@
+/**
+ * flashcards.tsx
+ * Purpose: Provides an interactive flashcard review mode for session-specific concepts.
+ * Key Logic: Generates or retrieves flashcards for weak concepts, manages card 
+ * flipping state, and tracks user mastery updates in the database.
+ */
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -10,7 +17,7 @@ import { CheckCircle2 } from 'lucide-react';
 export default function FlashcardsMode() {
     const router = useRouter();
     const { id } = router.query;
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [cards, setCards] = useState<any[]>([]);
@@ -19,7 +26,6 @@ export default function FlashcardsMode() {
     const [sessionData, setSessionData] = useState<any>(null);
     const [stats, setStats] = useState({ gotIt: 0, shaky: 0 });
     const [isComplete, setIsComplete] = useState(false);
-    const [authToken, setAuthToken] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -39,13 +45,8 @@ export default function FlashcardsMode() {
                     concepts: parsed.concepts || []
                 });
 
-                const {
-                    data: { session }
-                } = await supabase.auth.getSession();
-                const token = session?.access_token;
                 const headers: any = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
-                if (token) setAuthToken(token);
 
                 const isRegenerating = router.query.regenerate === 'true';
 
@@ -94,7 +95,6 @@ export default function FlashcardsMode() {
                     setError(errorData.error || 'Failed to generate flashcards.');
                 }
             } catch (err: any) {
-                console.error(err);
                 setError(err.message || 'An unexpected error occurred.');
             } finally {
                 setLoading(false);
@@ -104,8 +104,7 @@ export default function FlashcardsMode() {
         if (id) {
             initDeck();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id, router]);
+    }, [id, router, token]);
 
     const handleGotIt = async () => {
         const currentCard = cards[currentIndex];
@@ -115,7 +114,7 @@ export default function FlashcardsMode() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     conceptId: currentCard.conceptId,
@@ -138,7 +137,7 @@ export default function FlashcardsMode() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     conceptId: currentCard.conceptId,
@@ -294,7 +293,6 @@ export default function FlashcardsMode() {
             </Head>
 
             <main className="max-w-[800px] mx-auto p-6 md:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
-                { }
                 <div className="w-full mb-12 flex items-center justify-between">
                     <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest mb-1">
@@ -314,7 +312,6 @@ export default function FlashcardsMode() {
                     </div>
                 </div>
 
-                { }
                 <div
                     className={`relative w-full max-w-[600px] aspect-[4/3] rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-lg transition-all duration-300 transform-gpu cursor-pointer group`}
                     style={{ perspective: '1000px' }}
@@ -323,7 +320,6 @@ export default function FlashcardsMode() {
                     <div
                         className={`absolute inset-0 w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateX(180deg)]' : ''}`}
                     >
-                        { }
                         <div className="absolute inset-0 w-full h-full backface-hidden p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl shadow-sm">
                             <h2 className="text-2xl md:text-[32px] font-display mb-6 text-[var(--text)] leading-tight">
                                 {currentCard.front}
@@ -333,7 +329,6 @@ export default function FlashcardsMode() {
                             </p>
                         </div>
 
-                        { }
                         <div className="absolute inset-0 w-full h-full backface-hidden p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl pt-16 [transform:rotateX(180deg)] border-2 border-[var(--accent)] shadow-sm">
                             <div className="absolute top-6 left-0 right-0 flex justify-center">
                                 <span className="text-xs font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent)]/10 px-3 py-1 rounded-full">
@@ -347,7 +342,6 @@ export default function FlashcardsMode() {
                     </div>
                 </div>
 
-                { }
                 <div className="mt-12 h-16 w-full max-w-[600px] flex items-center justify-center gap-4">
                     {!isFlipped ? (
                         <button

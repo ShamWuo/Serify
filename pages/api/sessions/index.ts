@@ -12,23 +12,28 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const userId = await authenticateApiRequest(req);
-    console.log('[api/sessions] userId:', userId);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Use a user-scoped client for fetching to respect RLS
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+    const supabaseUser = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+    });
 
     if (req.method === 'GET') {
         try {
             const [reflectionRes, flowRes] = await Promise.all([
-                supabaseAdmin
+                supabaseUser
                     .from('reflection_sessions')
                     .select('id, title, content_type, status, created_at, completed_at, session_type')
-                    .eq('user_id', userId)
                     .order('created_at', { ascending: false }),
-                supabaseAdmin
+                supabaseUser
                     .from('flow_sessions')
                     .select(
                         'id, status, initial_plan, started_at, completed_at, created_at, total_sparks_spent, concepts_completed'
                     )
-                    .eq('user_id', userId)
                     .order('created_at', { ascending: false })
             ]);
 

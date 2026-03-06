@@ -14,9 +14,10 @@ body {
         --surface: #ffffff;
         --border: #eceae3;
         --text: #1a1a18;
-        --muted: #757470;
+        --muted: #656460;
         --accent: #1e4d38;
         --accent-soft: #f0f7f4;
+        --accent-light: #e8f2ee;
 
         /* Secondary - Deep Indigo/Purple */
         --missing: #533483;
@@ -41,6 +42,7 @@ body {
 body {
     color: var(--text);
     background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -53,7 +55,7 @@ body {
     }
 
     .font-display {
-        font-family: 'Outfit', sans-serif;
+        font-family: 'Instrument Serif', serif;
     }
 }
 
@@ -574,7 +576,6 @@ body {
 }
 
 .premium-card:hover {
-    transform: translateY(-2px);
     box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
     border-color: rgba(42, 92, 69, 0.2);
 }
@@ -620,4 +621,21 @@ body {
 
 .focus-ring-premium:focus-visible {
     box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+/* Chat bubble entrance */
+@keyframes chatBubbleIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.chat-bubble-in {
+    animation: chatBubbleIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
