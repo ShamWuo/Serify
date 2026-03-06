@@ -13,7 +13,7 @@ export default async function handler(req: Request) {
     }
 
     try {
-        const { concepts, method = 'standard', stream = true } = await req.json();
+        const { concepts, method = 'standard', questionCount, stream = true } = await req.json();
 
         if (!concepts || !Array.isArray(concepts)) {
             return new Response(JSON.stringify({ message: 'Concepts array is required' }), {
@@ -38,6 +38,7 @@ export default async function handler(req: Request) {
             );
         }
 
+        const count = questionCount || Math.min(concepts.length, 5);
         const prompt = `
     You are an expert tutor. I am giving you a Concept Map extracted from learning material.
     I need you to generate a set of open-ended free-text questions to diagnose a student's true understanding.
@@ -45,11 +46,12 @@ export default async function handler(req: Request) {
     The learning method selected is: ${method}
     (If standard: balanced mix. If socratic: deep probing. If feynman: ask them to explain simply).
 
-    Generate exactly ${Math.min(concepts.length, 5)} questions, focusing on the primary concepts.
+    Generate exactly ${count} questions, focusing on the primary concepts.
 
     Concept Map:
     ${JSON.stringify(concepts, null, 2)}
     `;
+
 
         const schema = z.object({
             questions: z.array(
@@ -73,11 +75,11 @@ export default async function handler(req: Request) {
                 prompt,
                 schema
             });
-            
+
             if (object) {
                 await deductSparks(user, sparkCost, 'question_generation');
             }
-            
+
             return new Response(JSON.stringify(object), {
                 headers: { 'Content-Type': 'application/json' }
             });

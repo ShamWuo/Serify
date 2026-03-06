@@ -184,6 +184,13 @@ export default function LearnIndex() {
     const retryCountRef = useRef(0);
     const isSavingRef = useRef(false);
 
+    // Reset saving guard on unmount or navigation
+    useEffect(() => {
+        return () => {
+            isSavingRef.current = false;
+        };
+    }, []);
+
     const { submit, object: curriculumData, isLoading: isStreaming, error: streamError } = useObject({
         api: '/api/serify/stream-curriculum',
         schema: curriculumSchema,
@@ -247,6 +254,7 @@ export default function LearnIndex() {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || data.message || 'Failed to save curriculum');
                 if (data.curriculumId) {
+                    isSavingRef.current = false;
                     router.push(`/learn/curriculum/${data.curriculumId}`);
                 } else {
                     throw new Error('Invalid response while saving.');

@@ -93,10 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json({ url: session.url });
     } catch (error: any) {
-        console.error('Stripe checkout error:', error?.message || error);
-        return res.status(500).json({
-            error: 'Failed to create checkout session',
-            detail: error?.message || String(error)
-        });
+        console.error('Stripe checkout error:', error);
+        return res.status(500).json({ error: 'Failed to create checkout session' });
     }
 }

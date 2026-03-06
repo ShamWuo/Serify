@@ -91,9 +91,17 @@ export default function Analyze() {
                 setIsProcessing(false);
                 return;
             }
-            // Once concepts finish, stream the questions
-            startQuestionStream({ concepts: object.concepts, method: 'standard' });
+            // Determine if we should enter Basic Mode (6 questions) based on sparks
+            const isBasic = balance && balance.total_sparks >= 11 && balance.total_sparks < 13;
+            startQuestionStream({
+                concepts: object.concepts,
+                method: 'standard',
+                questionCount: isBasic ? 6 : 5 // Standard is 5, Basic is 6 as per user requirement? 
+                // Wait, if Basic is "fixed foundation", maybe it's more questions? 
+                // Usually "Basic" means less, but user said "Standardize 6-question logic for Basic Mode".
+            });
         },
+
         onError: (e) => {
             console.error('Concept stream error:', e);
             setErrorMsg(e.message || 'Failed to extract concepts.');
@@ -133,13 +141,14 @@ export default function Analyze() {
                 // Now initialize the session since both streams are complete
                 const finalConcepts = conceptData?.concepts || [];
                 const finalTitle =
-                    conceptData?.title && conceptData.title !== 'New Session'
+                    conceptData?.title && conceptData.title !== 'New Session' && conceptData.title !== ''
                         ? conceptData.title
                         : finalConcepts.length > 0
                             ? finalConcepts[0]?.name
                             : activeTab === 'pdf'
                                 ? pdfFile?.name || 'New PDF Session'
                                 : 'New Session';
+
 
                 const contentPayload =
                     activeTab === 'pdf' ? `[PDF File: ${pdfFile?.name}]` : inputValue;
@@ -369,8 +378,8 @@ export default function Analyze() {
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as any)}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${activeTab === tab.id
-                                                    ? 'bg-[var(--text)] text-[var(--surface)] shadow-md'
-                                                    : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]'
+                                                ? 'bg-[var(--text)] text-[var(--surface)] shadow-md'
+                                                : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]'
                                                 }`}
                                         >
                                             {tab.icon} {tab.label}

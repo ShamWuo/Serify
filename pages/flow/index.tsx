@@ -111,7 +111,7 @@ export default function FlowModePage() {
             </Head>
             <DashboardLayout>
                 <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1rem' }}>
-                    {}
+                    { }
                     <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
                         <div
                             style={{
@@ -172,7 +172,7 @@ export default function FlowModePage() {
                                 padding: '3rem 2rem',
                                 color: 'var(--text-primary)',
                                 background: 'var(--surface)',
-                                border: '1px border-[var(--border)]',
+                                border: '1px solid var(--border)',
                                 borderRadius: '24px',
                             }}
                         >
@@ -270,7 +270,7 @@ export default function FlowModePage() {
                         </div>
                     )}
 
-                    {}
+                    { }
                     {selectedConcepts.length > 0 && (
                         <div
                             style={{

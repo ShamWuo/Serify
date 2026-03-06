@@ -53,26 +53,30 @@ export default async function handler(req: Request) {
             }
         }
 
-        const prompt = `
-    You are an expert tutor extracting a concept map from the following learning material.
-    Read the material and identify the core concepts. Also determine a short, descriptive title (3-5 words) for this material.
+        const prompt = `You are an expert knowledge analyst. Your task is to extract a concept map from the following material.
+        
+        Identify the most important 4-6 concepts that form the foundation of this content. For each concept, provide a clear, 1-2 sentence definition that is accurate and educational.
+        
+        Also determine a concise, professional title (3-5 words) for this material.
+        
+        Learning Material (${contentType}):
+        ${processedContent.substring(0, 15000)}
+        `;
 
-    Learning Material:
-    ${processedContent.substring(0, 15000)}
-    `;
 
         const schema = z.object({
             title: z.string().describe('A short descriptive title (3-5 words)'),
             concepts: z.array(
                 z.object({
                     id: z.string().describe("a unique short string like 'c1'"),
-                    name: z.string(),
-                    definition: z.string().describe('a 1-sentence definition'),
+                    name: z.string().describe('The canonical name of the concept'),
+                    definition: z.string().describe('A clear, standalone definition (1-2 sentences).'),
                     importance: z.enum(['primary', 'secondary', 'contextual']),
-                    misconception_risk: z.boolean().describe('true if commonly misunderstood')
+                    misconception_risk: z.boolean().describe('True if beginners often misunderstand this specific point')
                 })
             )
         });
+
 
         if (!stream) {
             const { object } = await generateObject({
@@ -81,11 +85,11 @@ export default async function handler(req: Request) {
                 prompt,
                 schema
             });
-            
+
             if (object) {
                 await deductSparks(user, sparkCost, 'session_ingestion');
             }
-            
+
             return new Response(JSON.stringify(object), {
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -94,6 +98,7 @@ export default async function handler(req: Request) {
         const result = await streamObject({
             model: google('gemini-2.5-flash'),
             temperature: 0.1,
+            system: "You are an expert knowledge extraction agent. You excel at distilling complex material into its constituent concepts. Ensure definitions are high-quality and standalone.",
             prompt,
             schema,
             onFinish: async ({ object }) => {
@@ -102,6 +107,7 @@ export default async function handler(req: Request) {
                 }
             }
         });
+
 
         return result.toTextStreamResponse();
     } catch (error) {
