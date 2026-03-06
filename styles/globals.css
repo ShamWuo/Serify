@@ -14,9 +14,10 @@ body {
         --surface: #ffffff;
         --border: #eceae3;
         --text: #1a1a18;
-        --muted: #757470;
+        --muted: #656460;
         --accent: #1e4d38;
         --accent-soft: #f0f7f4;
+        --accent-light: #e8f2ee;
 
         /* Secondary - Deep Indigo/Purple */
         --missing: #533483;
@@ -41,6 +42,7 @@ body {
 body {
     color: var(--text);
     background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
@@ -53,7 +55,7 @@ body {
     }
 
     .font-display {
-        font-family: 'Outfit', sans-serif;
+        font-family: 'Instrument Serif', serif;
     }
 }
 

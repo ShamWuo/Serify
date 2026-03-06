@@ -520,49 +520,56 @@ export default function LibraryPage() {
                             </tbody>
                         </table>
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-10 text-center px-6">
-                            <div className="w-10 h-10 bg-[var(--border)] rounded-xl flex items-center justify-center mb-3 animate-breathe">
-                                <Search size={18} className="text-[var(--muted)]" />
+                        <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+                            <div className="relative mb-8">
+                                <div className="w-16 h-16 bg-[var(--accent)]/10 rounded-2xl flex items-center justify-center animate-breathe relative z-10 border border-[var(--accent)]/20">
+                                    <BookOpen size={28} className="text-[var(--accent)] opacity-80" />
+                                </div>
+                                <div className="absolute -inset-4 bg-[var(--accent)]/5 rounded-full animate-ping opacity-20" />
                             </div>
-                            <h3 className="text-lg font-bold text-[var(--text)] mb-1">
+
+                            <h3 className="text-xl font-display font-medium text-[var(--text)] mb-2">
                                 {search
-                                    ? 'No sessions found'
+                                    ? 'No sessions match your search'
                                     : filterTab === 'reflection'
                                         ? 'No Analysis Sessions'
                                         : filterTab === 'flow'
                                             ? 'No Flow Sessions'
                                             : filterTab === 'completed'
-                                                ? 'Nothing finished yet'
+                                                ? 'No Completed Sessions'
                                                 : filterTab === 'in_progress'
-                                                    ? 'All caught up'
-                                                    : 'Your Library is empty'}
+                                                    ? 'No Active Sessions'
+                                                    : 'Your learning library is clear'}
                             </h3>
-                            <p className="text-[var(--muted)] text-sm max-w-xs mx-auto">
+
+                            <p className="text-[var(--muted)] text-sm max-w-sm mx-auto leading-relaxed mb-10">
                                 {search
-                                    ? `No sessions match "${search}".`
+                                    ? `Try searching for different keywords or checking all sessions.`
                                     : filterTab === 'reflection'
-                                        ? 'Start analyzing content to create your first analysis session.'
+                                        ? 'Transform notes, videos, or PDFs into structured knowledge and active recall sessions.'
                                         : filterTab === 'flow'
-                                            ? 'Step into Flow Mode to start creating concept connections.'
+                                            ? 'The most immersive way to study. Select challenge areas from your Vault to start a Flow session.'
                                             : filterTab === 'completed'
-                                                ? 'Finish a study session or Flow to see it here.'
+                                                ? 'Sessions will appear here once you finish all steps in an analysis or Flow.'
                                                 : filterTab === 'in_progress'
-                                                    ? 'No active sessions found. Why not start something new?'
-                                                    : 'Start analyzing content or try a Flow Mode session to see your work here.'}
+                                                    ? 'Ready to dive back in? Any unfinished sessions will be tracked right here.'
+                                                    : 'Start your next adventure. Choose a study method to begin mapping your understanding.'}
                             </p>
+
                             {!search && (
-                                <div className="flex gap-3 mt-6">
+                                <div className="flex flex-col sm:flex-row gap-4">
                                     <Link
-                                        href="/analyze"
-                                        className="px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:bg-[var(--accent)]/90 transition-colors shadow-md shadow-[var(--accent)]/20"
+                                        href="/"
+                                        className="h-11 px-8 bg-[var(--accent)] text-white rounded-xl text-sm font-bold hover:bg-[var(--accent)]/90 transition-all shadow-lg shadow-[var(--accent)]/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
                                     >
-                                        Analyze Content
+                                        <Zap size={16} fill="currentColor" />
+                                        Start Learning
                                     </Link>
                                     <Link
                                         href="/flow"
-                                        className="px-5 py-2.5 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-sm font-medium hover:border-purple-300 hover:text-purple-600 transition-colors flex items-center gap-1.5"
+                                        className="h-11 px-8 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-sm font-bold hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/5 transition-all flex items-center justify-center gap-2"
                                     >
-                                        <Zap size={14} /> Flow Mode
+                                        Try Flow Mode
                                     </Link>
                                 </div>
                             )}

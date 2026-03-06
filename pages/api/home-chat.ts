@@ -1,5 +1,6 @@
 import { streamText, convertToModelMessages } from 'ai';
 import { google } from '@ai-sdk/google';
+import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
 
 export const config = {
     runtime: 'edge',
@@ -15,6 +16,23 @@ export default async function handler(req: Request) {
 
         if (!messages) {
             return new Response(JSON.stringify({ error: 'Missing messages' }), { status: 400 });
+        }
+
+        const user = await authenticateApiRequest(req);
+        if (!user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+
+        const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE || 1;
+        const hasSparks = await hasEnoughSparks(user, sparkCost);
+        if (!hasSparks) {
+            return new Response(
+                JSON.stringify({
+                    error: 'out_of_sparks',
+                    message: `You need ${sparkCost} Spark for this interaction.`
+                }),
+                { status: 403 }
+            );
         }
 
         const result = await streamText({
@@ -44,6 +62,9 @@ If the user wants to LEARN a topic (e.g., "help me learn related rates"):
 
 Tone: Friendly, helpful, concise, probing. Do not be overly chatty.`,
             messages: await convertToModelMessages(messages),
+            onFinish: async () => {
+                await deductSparks(user, sparkCost, 'ai_tutor_message');
+            }
         });
 
         return result.toUIMessageStreamResponse();

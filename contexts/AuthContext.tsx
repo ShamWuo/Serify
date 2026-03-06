@@ -177,13 +177,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const isOAuth =
                 typeof window !== 'undefined' &&
                 (window.location.hash.includes('access_token=') ||
+                    window.location.hash.includes('type=recovery') ||
                     window.location.search.includes('code='));
 
             if (isOAuth) {
                 console.log(
-                    'AuthContext: Detected OAuth callback. Waiting for AuthStateChange to fire...'
+                    'AuthContext: Detected OAuth or specialized callback. Waiting for AuthStateChange...'
                 );
-
+                // In some cases (Google OAuth), we might want to proactively check if there's a session 
+                // after a short delay if the event hasn't fired.
+                setTimeout(async () => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user && !state.current.currentUser) {
+                        console.log('AuthContext: Proactive OAuth session check success');
+                        await ensureProfile(session.user.id, session.user.email || '');
+                    }
+                }, 1500);
                 return;
             }
 
@@ -220,6 +229,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 syncLoading(false);
             } else if (session?.user) {
                 await ensureProfile(session.user.id, session.user.email || '');
+            } else if (event === 'SIGNED_IN' && !session) {
+                // Unexpected case but handle it
+                syncLoading(false);
             }
         });
 

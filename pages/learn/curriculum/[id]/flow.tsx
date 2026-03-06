@@ -294,6 +294,7 @@ export default function CurriculumFlowSessionPage() {
 
     const [loading, setLoading] = useState(true);
     const [stepping, setStepping] = useState(false);
+    const [loadingTime, setLoadingTime] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [sessionDone, setSessionDone] = useState(false);
 
@@ -304,6 +305,21 @@ export default function CurriculumFlowSessionPage() {
     const displayStep = viewingStepIndex >= 0 ? stepHistory[viewingStepIndex] : null;
     const isReadOnly = viewingStepIndex >= 0 && viewingStepIndex < stepHistory.length - 1;
     const currentLiveStep = stepHistory[stepHistory.length - 1] ?? null;
+
+    // ── Timer for loading states ────────────────────────────
+    useEffect(() => {
+        let timer: any;
+        if (stepping) {
+            timer = setInterval(() => {
+                setLoadingTime((t) => t + 1);
+            }, 1000);
+        } else {
+            setLoadingTime(0);
+        }
+        return () => {
+            if (timer) clearInterval(timer);
+        };
+    }, [stepping]);
 
     // ── 1. Initialize flow session ──────────────────────────
     useEffect(() => {
@@ -650,9 +666,34 @@ export default function CurriculumFlowSessionPage() {
 
                             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 md:p-8 min-h-[280px] shadow-sm">
                                 {stepping ? (
-                                    <div className="flex flex-col items-center justify-center min-h-[200px] gap-3 text-[var(--muted)]">
-                                        <Loader2 size={28} className="animate-spin text-[var(--accent)]" />
-                                        <span className="text-sm">Thinking…</span>
+                                    <div className="flex flex-col items-center justify-center min-h-[240px] gap-6 text-[var(--muted)]">
+                                        <div className="relative">
+                                            <Loader2 size={40} className="animate-spin text-[var(--accent)]" />
+                                            {loadingTime > 8 && (
+                                                <div className="absolute -inset-4 border-2 border-[var(--accent)]/20 rounded-full animate-ping" />
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col items-center gap-2 text-center max-w-sm">
+                                            <span className="text-base font-medium text-[var(--text)] animate-pulse">
+                                                {loadingTime < 4 ? 'Thinking…' :
+                                                    loadingTime < 8 ? 'Analyzing your response…' :
+                                                        loadingTime < 15 ? 'Connecting concepts…' :
+                                                            'Taking longer than usual…'}
+                                            </span>
+                                            {loadingTime >= 8 && (
+                                                <span className="text-xs opacity-70 animate-fade-in">
+                                                    Don&apos;t worry, Serify is busy building your custom learning path.
+                                                </span>
+                                            )}
+                                            {loadingTime >= 15 && (
+                                                <button
+                                                    onClick={() => fetchNextStep()}
+                                                    className="mt-4 px-4 py-2 bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/30 rounded-xl text-xs font-bold hover:bg-[var(--accent)]/20 transition-all flex items-center gap-2"
+                                                >
+                                                    <Zap size={14} /> Retry Request
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ) : conceptJustCompleted ? (
                                     /* If reviewing a completed concept from sidebar, show history review + complete card */

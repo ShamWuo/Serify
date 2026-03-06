@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { ChevronLeft, Maximize2, ZoomIn, ZoomOut, Zap } from 'lucide-react';
+import { ChevronLeft, Maximize2, ZoomIn, ZoomOut, Zap, Network, PlayCircle, Brain } from 'lucide-react';
 import { KnowledgeNode, ConceptTopic, MasteryState } from '@/types/serify';
 
 const MASTERY_COLORS: Record<MasteryState, string> = {
@@ -294,14 +294,26 @@ export default function KnowledgeMap() {
                             </div>
                         </div>
                     ) : nodes.length === 0 ? (
-                        <div className="w-full h-full flex items-center justify-center">
-                            <div className="text-center bg-[var(--surface)] p-8 rounded-3xl border border-[var(--border)] shadow-sm max-w-sm">
-                                <h3 className="text-lg font-bold mb-2">Your map is empty</h3>
-                                <p className="text-[var(--muted)] text-sm mb-6">Complete learning sessions to watch your knowledge constellation grow.</p>
-                                <Link href="/learn" className="inline-flex h-10 items-center justify-center px-6 bg-[var(--accent)] text-white rounded-xl font-bold text-sm">
-                                    Start Learning
-                                </Link>
+                        <div className="flex flex-col items-center justify-center min-h-[500px] text-center px-6 max-w-lg mx-auto">
+                            <div className="relative mb-10">
+                                <div className="w-24 h-24 bg-[var(--accent)]/5 rounded-[40px] flex items-center justify-center animate-breathe relative z-10 border border-[var(--accent)]/10">
+                                    <Network size={40} className="text-[var(--accent)] opacity-60" />
+                                </div>
+                                <div className="absolute -inset-6 bg-[var(--accent)]/5 rounded-full animate-pulse opacity-30" />
                             </div>
+
+                            <h2 className="text-3xl font-display font-medium text-[var(--text)] mb-4 tracking-tight">Your Knowledge Map starts here.</h2>
+                            <p className="text-[var(--muted)] text-lg mb-10 leading-relaxed">
+                                Serify maps your conceptual understanding as you learn. Start a session to see your growth and identify connections between concepts.
+                            </p>
+
+                            <Link
+                                href="/"
+                                className="h-12 px-10 bg-[var(--accent)] text-white rounded-2xl text-base font-bold hover:bg-[var(--accent)]/90 transition-all shadow-xl shadow-[var(--accent)]/20 flex items-center justify-center gap-3 hover:scale-105 active:scale-95"
+                            >
+                                <PlayCircle size={22} fill="currentColor" />
+                                Begin First Session
+                            </Link>
                         </div>
                     ) : (
                         <svg className="w-full h-full">

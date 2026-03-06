@@ -480,7 +480,7 @@ export default function Analyze() {
                                             <div className="bg-amber-100 text-amber-600 p-2 rounded-lg">
                                                 <Zap className="w-5 h-5" fill="currentColor" />
                                             </div>
-                                            <h3 className="text-xl font-semibold text-[var(--text)] m-0">
+                                            <h3 className="text-xl font-display text-[var(--text)] m-0">
                                                 Not enough Sparks for a full session
                                             </h3>
                                         </div>
