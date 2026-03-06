@@ -1,3 +1,10 @@
+/**
+ * pages/learn/index.tsx
+ * Purpose: Entry point for Learn Mode, allowing users to create custom curricula.
+ * Key Logic: Implements a multi-step flow to gather user intent and context, 
+ * streams curriculum generation using AI, and manages saved learning paths.
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -163,7 +170,6 @@ export default function LearnIndex() {
     const retryCountRef = useRef(0);
     const isSavingRef = useRef(false);
 
-    // Reset saving guard on unmount or navigation
     useEffect(() => {
         return () => {
             isSavingRef.current = false;
@@ -178,7 +184,6 @@ export default function LearnIndex() {
             Authorization: `Bearer ${token}`
         },
         onError: (e) => {
-            console.error(e);
             setErrorMsg(e.message || 'Failed to generate curriculum.');
             setIsGenerating(false);
             setStep('context');
@@ -235,7 +240,6 @@ export default function LearnIndex() {
                     throw new Error('Invalid response while saving.');
                 }
             } catch (err: any) {
-                console.error(err);
                 setErrorMsg(err?.message || 'Failed to save curriculum to database.');
                 setIsGenerating(false);
                 setStep('context');
@@ -336,7 +340,6 @@ export default function LearnIndex() {
         <DashboardLayout>
             <Head><title>Learn Mode | Serify</title></Head>
 
-            {/* Delete Modal */}
             {deleteModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div
@@ -380,16 +383,13 @@ export default function LearnIndex() {
 
             <div className="p-6 md:p-10 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
 
-                {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-[var(--text)] mb-1">Learn Mode</h1>
                     <p className="text-[var(--muted)] text-sm">Build a tailored curriculum and master it concept by concept.</p>
                 </div>
 
-                {/* Generator Card */}
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm mb-10 overflow-hidden">
 
-                    {/* Step: Topic Input */}
                     {step === 'input' && (
                         <div className="p-6 md:p-8">
                             <label className="block text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-3">
@@ -414,7 +414,6 @@ export default function LearnIndex() {
                                 </button>
                             </div>
 
-                            {/* Suggestions */}
                             <div className="mt-5 flex flex-wrap gap-2">
                                 <span className="text-xs text-[var(--muted)] self-center">Try:</span>
                                 {['Related rates', 'Transformers from scratch', 'Compounding interest', 'How DNS works'].map((sug) => (
@@ -430,7 +429,6 @@ export default function LearnIndex() {
                         </div>
                     )}
 
-                    {/* Step: Context Questions */}
                     {step === 'context' && (
                         <div className="p-6 md:p-8">
                             <div className="flex items-center gap-2 mb-1">
@@ -451,7 +449,6 @@ export default function LearnIndex() {
                             </p>
 
                             <div className="space-y-5">
-                                {/* Prior knowledge */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
                                         <Brain size={15} className="text-[var(--accent)]" />
@@ -469,7 +466,6 @@ export default function LearnIndex() {
                                     </p>
                                 </div>
 
-                                {/* Skip topics */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
                                         <SkipForward size={15} className="text-[var(--accent)]" />
@@ -483,7 +479,6 @@ export default function LearnIndex() {
                                     />
                                 </div>
 
-                                {/* Focus goal */}
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
                                         <Target size={15} className="text-[var(--accent)]" />
@@ -523,7 +518,6 @@ export default function LearnIndex() {
                         </div>
                     )}
 
-                    {/* Step: Generating */}
                     {step === 'generating' && (
                         <div className="p-6 md:p-8">
                             <div className="mb-6 text-center">
@@ -582,7 +576,6 @@ export default function LearnIndex() {
                     )}
                 </div>
 
-                {/* Curricula List */}
                 <div>
                     <h2 className="text-base font-bold text-[var(--text)] mb-4 flex items-center gap-2">
                         <BookOpen size={16} className="text-[var(--muted)]" />

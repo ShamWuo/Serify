@@ -1,3 +1,11 @@
+/**
+ * analyze.tsx
+ * Purpose: Handles the initiation of content analysis sessions from various sources.
+ * Key Logic: Supports YouTube, URLs, PDFs, and manual notes. Uses @ai-sdk/react's 
+ * useObject for streaming concept extraction and question generation, then 
+ * initializes a reflection session in Supabase.
+ */
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,19 +99,15 @@ export default function Analyze() {
                 setIsProcessing(false);
                 return;
             }
-            // Determine if we should enter Basic Mode (6 questions) based on sparks
             const isBasic = balance && balance.total_sparks >= 11 && balance.total_sparks < 13;
             startQuestionStream({
                 concepts: object.concepts,
                 method: 'standard',
-                questionCount: isBasic ? 6 : 5 // Standard is 5, Basic is 6 as per user requirement? 
-                // Wait, if Basic is "fixed foundation", maybe it's more questions? 
-                // Usually "Basic" means less, but user said "Standardize 6-question logic for Basic Mode".
+                questionCount: isBasic ? 6 : 5 
             });
         },
 
         onError: (e) => {
-            console.error('Concept stream error:', e);
             setErrorMsg(e.message || 'Failed to extract concepts.');
             setIsProcessing(false);
         }
@@ -138,7 +142,6 @@ export default function Analyze() {
             }
 
             try {
-                // Now initialize the session since both streams are complete
                 const finalConcepts = conceptData?.concepts || [];
                 const finalTitle =
                     conceptData?.title && conceptData.title !== 'New Session' && conceptData.title !== ''
@@ -206,13 +209,11 @@ export default function Analyze() {
 
                 router.push(`/session/${sessionData.id}`);
             } catch (err: any) {
-                console.error(err);
                 setErrorMsg(err.message || 'Failed to finalize session.');
                 setIsProcessing(false);
             }
         },
         onError: (e) => {
-            console.error('Question stream error:', e);
             setErrorMsg(e.message || 'Failed to generate questions.');
             setIsProcessing(false);
         }
@@ -223,7 +224,6 @@ export default function Analyze() {
         if (!inputValue.trim() && activeTab !== 'pdf') return;
         if (activeTab === 'pdf' && !pdfFile) return;
 
-        // Check if user has enough sparks for at least Basic Mode (11 Sparks)
         if (balance && balance.total_sparks < 11) {
             setIsOutOfSparksModalOpen(true);
             return;

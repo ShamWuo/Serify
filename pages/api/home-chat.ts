@@ -1,3 +1,11 @@
+/**
+ * home-chat.ts
+ * Purpose: Edge API route for the dashboard's AI Tutor chat interface.
+ * Key Logic: Authenticates requests, verifies spark balance, and streams responses from 
+ * Gemini. Uses a specialized system prompt to handle intent classification and trigger 
+ * learning or analysis modes via structured action blocks.
+ */
+
 import { streamText, convertToModelMessages } from 'ai';
 import { google } from '@ai-sdk/google';
 import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
@@ -15,18 +23,14 @@ export default async function handler(req: Request) {
         const body = await req.json();
         const { messages } = body;
 
-        // If no messages, it might be an initialization ping from some transport layers.
-        // We return a 200 OK but don't do anything.
         if (!messages || messages.length === 0) {
             return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
         }
 
         const authHeader = req.headers.get('authorization');
-        console.log('[home-chat] Auth header present:', !!authHeader);
 
         const user = await authenticateApiRequest(req);
         if (!user) {
-            console.error(`[home-chat] Unauthorized request to ${req.url}. Header: ${authHeader ? 'present' : 'missing'}`);
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
@@ -76,7 +80,6 @@ Tone: Friendly, helpful, concise, probing. Do not be overly chatty.`,
 
         return result.toUIMessageStreamResponse();
     } catch (error: any) {
-        console.error('Error in home chat:', error);
         return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), { status: 500 });
     }
 }

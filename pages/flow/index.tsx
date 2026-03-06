@@ -46,7 +46,6 @@ export default function FlowModePage() {
             .from('knowledge_nodes')
             .select('id, display_name, current_mastery, definition, session_count')
             .eq('user_id', user.id)
-            .in('current_mastery', ['revisit', 'shaky', 'developing'])
             .order('current_mastery', { ascending: true });
 
         if (dbError) {
@@ -188,13 +187,13 @@ export default function FlowModePage() {
                                         key={c.id}
                                         onClick={() => toggleConcept(c.id)}
                                         className={`flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all duration-200 text-left group ${isSelected
-                                                ? 'bg-[var(--accent)]/5 border-[var(--accent)] shadow-sm'
-                                                : 'bg-[var(--surface)] border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02]'
+                                            ? 'bg-[var(--accent)]/5 border-[var(--accent)] shadow-sm'
+                                            : 'bg-[var(--surface)] border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/[0.02]'
                                             }`}
                                     >
                                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 shrink-0 ${isSelected
-                                                ? 'bg-[var(--accent)] border-[var(--accent)] scale-110'
-                                                : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'
+                                            ? 'bg-[var(--accent)] border-[var(--accent)] scale-110'
+                                            : 'border-[var(--border)] group-hover:border-[var(--accent)]/50'
                                             }`}>
                                             {isSelected && <CheckCircle2 size={14} className="text-white" />}
                                         </div>
@@ -227,8 +226,8 @@ export default function FlowModePage() {
                                 onClick={launchSession}
                                 disabled={launching}
                                 className={`flex items-center gap-3 px-10 py-5 rounded-[20px] text-lg font-bold text-white transition-all shadow-2xl ${launching
-                                        ? 'bg-[var(--accent)] opacity-80 cursor-not-allowed'
-                                        : 'bg-gradient-to-r from-[var(--accent)] to-[#4f46e5] hover:scale-105 active:scale-95 shadow-[var(--accent)]/30'
+                                    ? 'bg-[var(--accent)] opacity-80 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-[var(--accent)] to-[#4f46e5] hover:scale-105 active:scale-95 shadow-[var(--accent)]/30'
                                     }`}
                             >
                                 {launching ? (

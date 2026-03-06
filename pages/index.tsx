@@ -1,3 +1,11 @@
+/**
+ * index.tsx
+ * Purpose: Main dashboard for authenticated users to access their learning sessions, 
+ * curricula, and interact with the AI Tutor.
+ * Key Logic: Fetches user activity data from Supabase, manages a real-time AI chat 
+ * interface using @ai-sdk/react, and handles navigation to analysis or learning flows.
+ */
+
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,16 +42,12 @@ import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 
-// ─── Types ──────────────────────────────────────────────────────────────────────
-
 type DetectedType = 'youtube' | 'article' | 'text' | 'pdf' | null;
 
 interface ParsedAction {
     type: 'START_ANALYZE' | 'START_LEARN';
     payload: Record<string, string>;
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function detectInputType(value: string): DetectedType {
     if (!value.trim()) return null;
@@ -82,7 +86,6 @@ function parseActionBlocks(text: string): ParsedAction[] {
             const payload = JSON.parse(match[2].trim());
             actions.push({ type: match[1] as ParsedAction['type'], payload });
         } catch {
-            // ignore malformed
         }
     }
     return actions;
@@ -92,16 +95,12 @@ function stripActionBlocks(text: string): string {
     return text.replace(/\[ACTION:(START_ANALYZE|START_LEARN)\][\s\S]*?\[\/ACTION\]/g, '').trim();
 }
 
-// ─── Starter prompts ─────────────────────────────────────────────────────────
-
 const STARTER_PROMPTS = [
     { icon: BookOpen, label: 'Learn a topic', prompt: 'Help me learn how transformers in AI work' },
     { icon: Youtube, label: 'Analyze a video', prompt: 'Analyze this YouTube video: ' },
     { icon: Sparkles, label: 'Deep dive', prompt: 'Help me deeply understand: ' },
     { icon: FileText, label: 'Break down notes', prompt: 'I just read this — help me understand it: ' },
 ];
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
     const { user, loading, token } = useAuth();
@@ -110,13 +109,11 @@ export default function Home() {
     const isDemo = demo === 'true';
     const { balance } = useSparks();
 
-    // Dashboard data
     const [latestSessions, setLatestSessions] = useState<SessionSummary[]>([]);
     const [activeCurriculum, setActiveCurriculum] = useState<any>(null);
     const [focusConcepts, setFocusConcepts] = useState<KnowledgeNode[]>([]);
     const [activityDays, setActivityDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
 
-    // Chat UI state
     const [inputValue, setInputValue] = useState('');
     const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
     const [outOfSparksError, setOutOfSparksError] = useState(false);
@@ -124,9 +121,7 @@ export default function Home() {
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // Build transport with auth headers
     const transport = useMemo(() => {
-        // Only initialize transport when we have a token (or we're in demo mode)
         if (!token && !isDemo) return undefined;
 
         const headers: Record<string, string> = {};
@@ -143,7 +138,6 @@ export default function Home() {
         });
     }, [token, isDemo]);
 
-    // useChat v6 hook
     const { messages, sendMessage, status, error, setMessages } = useChat({
         transport,
         onError: (err: Error) => {
@@ -155,14 +149,12 @@ export default function Home() {
 
     const isLoading = status === 'submitted' || status === 'streaming';
 
-    // Auto-scroll chat on new messages
     useEffect(() => {
         if (chatScrollRef.current) {
             chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
         }
     }, [messages, isLoading]);
 
-    // Fetch dashboard data
     useEffect(() => {
         if (!user) {
             const history = storage.getHistory();
@@ -174,7 +166,7 @@ export default function Home() {
             .select('id, title, content_type, created_at, status, depth_score')
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
-            .limit(6)
+            .limit(8)
             .then(({ data, error }) => {
                 if (!error && data) {
                     const mapped: SessionSummary[] = data.map(s => ({
@@ -226,7 +218,6 @@ export default function Home() {
             });
     }, [user]);
 
-    // Handle send
     const handleSend = useCallback(() => {
         const text = inputValue.trim();
         if (!text || isLoading || (!token && !isDemo)) return;
@@ -242,7 +233,6 @@ export default function Home() {
         }
     };
 
-    // Handle AI action block navigation
     const handleAction = useCallback(async (action: ParsedAction) => {
         if (isNavigating) return;
         setIsNavigating(true);
@@ -300,7 +290,6 @@ export default function Home() {
             const { url } = await res.json();
             if (url) window.location.href = url;
         } catch (error) {
-            console.error('Stripe checkout error:', error);
         }
     };
 
@@ -331,7 +320,6 @@ export default function Home() {
                     </div>
                 )}
 
-                {/* ── TOP ROW: Greeting + Stats ── */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight">
@@ -341,14 +329,12 @@ export default function Home() {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                        {/* Spark pill */}
                         <Link href="/sparks" className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/60 rounded-xl hover:border-amber-300 transition-all shadow-sm">
                             <Zap size={14} className="text-amber-500" fill="currentColor" />
                             <span className="text-sm font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
                             <span className="text-[10px] text-amber-500 font-medium">sparks</span>
                         </Link>
 
-                        {/* Resume curriculum */}
                         {activeCurriculum && (
                             <Link
                                 href={`/learn/curriculum/${activeCurriculum.id}`}
@@ -363,43 +349,18 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* ── MAIN GRID ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10">
 
-                    {/* ── LEFT: AI Chat + Sessions ── */}
                     <div className="flex flex-col gap-12">
 
-                        {/* AI Tutor Chat Panel */}
                         <section
                             className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col"
                             style={{ minHeight: '560px', maxHeight: '720px' }}
                         >
-                            {/* Header */}
-                            <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--border)]/60 shrink-0 bg-[var(--surface)]">
-                                <div className="w-9 h-9 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shadow-lg shadow-[var(--accent)]/25">
-                                    <Brain size={18} />
-                                </div>
-                                <div>
-                                    <h2 className="font-bold text-sm text-[var(--text)]">Serify AI Tutor</h2>
-                                    <p className="text-[10px] text-[var(--muted)] uppercase tracking-wider font-medium">1 Spark/message</p>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setMessages([]);
-                                        setInputValue('');
-                                        setOutOfSparksError(false);
-                                    }}
-                                    className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/30 transition-all text-[10px] font-bold uppercase tracking-wider shadow-sm group"
-                                >
-                                    <Plus size={12} className="group-hover:rotate-90 transition-transform duration-300" />
-                                    New Chat
-                                </button>
-                            </div>
+                            
 
-                            {/* Messages */}
                             <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4 scroll-smooth">
 
-                                {/* Welcome / empty state */}
                                 {!hasMessages && (
                                     <div className="flex flex-col items-center justify-center h-full text-center py-6">
                                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-emerald-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
@@ -410,7 +371,6 @@ export default function Home() {
                                             Tell me what you want to learn, or paste something you&apos;ve been studying. I&apos;ll guide you from there.
                                         </p>
 
-                                        {/* Starter prompts */}
                                         <div className="grid grid-cols-2 gap-2 w-full max-w-lg px-2">
                                             {STARTER_PROMPTS.map((sp, i) => (
                                                 <button
@@ -433,7 +393,6 @@ export default function Home() {
                                     </div>
                                 )}
 
-                                {/* Messages thread */}
                                 {messages.map((msg, idx) => {
                                     const isUser = msg.role === 'user';
                                     const textContent = (msg.parts ?? [])
@@ -466,7 +425,6 @@ export default function Home() {
                                                     </div>
                                                 )}
 
-                                                {/* Action buttons */}
                                                 {actions.map((action, ai) => (
                                                     <button
                                                         key={ai}
@@ -492,7 +450,6 @@ export default function Home() {
                                     );
                                 })}
 
-                                {/* Typing indicator */}
                                 {isLoading && (
                                     <div className="flex gap-3 chat-bubble-in">
                                         <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-md shadow-[var(--accent)]/20">
@@ -506,7 +463,6 @@ export default function Home() {
                                     </div>
                                 )}
 
-                                {/* Error / out of sparks */}
                                 {(outOfSparksError || (error && !outOfSparksError)) && (
                                     <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4 chat-bubble-in">
                                         <Zap size={16} className="text-amber-500 shrink-0 mt-0.5" fill="currentColor" />
@@ -530,7 +486,6 @@ export default function Home() {
                                 )}
                             </div>
 
-                            {/* Input bar */}
                             <div className="px-4 pb-4 pt-3 border-t border-[var(--border)]/50 shrink-0 bg-[var(--surface)]">
                                 <div className="relative flex items-end gap-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-2 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
                                     <textarea
@@ -565,7 +520,6 @@ export default function Home() {
                             </div>
                         </section>
 
-                        {/* Recent Sessions */}
                         {latestSessions.length > 0 && (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
@@ -574,39 +528,39 @@ export default function Home() {
                                         View all <ChevronRight size={13} />
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 stagger-children">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 stagger-children">
                                     {latestSessions.map((session) => (
                                         <Link
                                             key={session.id}
                                             href={session.status === 'Completed' ? `/session/${session.id}/feedback` : `/session/${session.id}`}
-                                            className="group flex flex-col justify-between bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 hover:border-[var(--accent)]/30 hover:shadow-lg transition-all duration-200"
+                                            className="group flex flex-col justify-between bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 hover:border-[var(--accent)]/30 hover:shadow-lg transition-all duration-200"
                                         >
-                                            <div className="flex items-start gap-3 mb-4">
-                                                <div className="w-10 h-10 rounded-xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className="w-9 h-9 rounded-xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                                                     {getSessionIcon(session.type)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <h4 className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
+                                                    <h4 className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
                                                         {session.title}
                                                     </h4>
-                                                    <p className="text-[10px] text-[var(--muted)] mt-0.5 font-medium uppercase tracking-wider">{session.date}</p>
+                                                    <p className="text-[9px] text-[var(--muted)] mt-0.5 font-medium uppercase tracking-wider">{session.date}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between pt-3 border-t border-[var(--border)]/30">
+                                            <div className="flex items-center justify-between pt-2.5 border-t border-[var(--border)]/30">
                                                 {session.status === 'Completed' ? (
                                                     <div className="flex items-center gap-1.5">
-                                                        <CheckCircle2 size={12} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
-                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                        <CheckCircle2 size={10} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
+                                                        <span className={`text-[9px] font-bold uppercase tracking-wider ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
                                                             {session.result === 'Strong' ? 'Mastered' : 'Gaps'}
                                                         </span>
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-1.5">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Active</span>
+                                                        <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
+                                                        <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600">Active</span>
                                                     </div>
                                                 )}
-                                                <ChevronRight size={13} className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors" />
+                                                <ChevronRight size={12} className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors" />
                                             </div>
                                         </Link>
                                     ))}
@@ -614,7 +568,6 @@ export default function Home() {
                             </div>
                         )}
 
-                        {/* Empty sessions prompt */}
                         {latestSessions.length === 0 && hasMessages && (
                             <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-2xl p-10 text-center">
                                 <div className="w-12 h-12 rounded-full bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center mx-auto mb-4 text-[var(--muted)]/50">
@@ -626,9 +579,7 @@ export default function Home() {
                         )}
                     </div>
 
-                    {/* Sidebar */}
                     <div className="space-y-6">
-                        {/* Spark Balance */}
                         <div className="premium-card rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
                             <div className="flex items-center justify-between mb-3">
@@ -661,7 +612,6 @@ export default function Home() {
                             </div>
                         </div>
 
-                        {/* Focus Concepts */}
                         {focusConcepts.length > 0 && (
                             <section className="premium-card rounded-2xl p-5">
                                 <div className="flex items-center justify-between mb-3">
@@ -692,7 +642,6 @@ export default function Home() {
                             </section>
                         )}
 
-                        {/* Tools & Launch */}
                         <div className="premium-card rounded-2xl p-5">
                             <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] mb-3">Tools & Launch</h3>
                             <div className="space-y-1">
@@ -719,7 +668,6 @@ export default function Home() {
                                 ))}
                             </div>
 
-                            {/* Hidden Debug Tool */}
                             {process.env.NODE_ENV === 'development' && (
                                 <button
                                     onClick={handleTestSubscription}

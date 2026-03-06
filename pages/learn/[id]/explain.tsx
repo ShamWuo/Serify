@@ -1,3 +1,10 @@
+/**
+ * explain.tsx
+ * Purpose: Provides a personalized "Explain It To Me" mode for reviewing difficult concepts.
+ * Key Logic: Generates AI-driven explanations for weak concepts using existing knowledge 
+ * as context. Updates concept mastery based on user feedback on the explanation's clarity.
+ */
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -80,7 +87,6 @@ export default function ExplainMode() {
         };
 
         initDeck();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, router]);
 
     const generateExplanation = async (concept: any, strong: any[]) => {
@@ -113,7 +119,6 @@ export default function ExplainMode() {
                 setError(errorData.error || 'Failed to generate explanation.');
             }
         } catch (e: any) {
-            console.error(e);
             setError(e.message || 'An unexpected error occurred.');
         } finally {
             setGenerating(false);

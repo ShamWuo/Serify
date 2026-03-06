@@ -1,26 +1,30 @@
 import { useState } from 'react';
 import { Zap, ChevronRight, ShoppingCart, X } from 'lucide-react';
 import { useSparks } from '@/hooks/useSparks';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
 export default function SparkBalance() {
     const { balance, loading } = useSparks();
+    const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
 
+    const isPro = user?.subscriptionTier === 'pro';
+
     if (loading) return <div className="animate-pulse w-24 h-8 bg-black/5 rounded-full" />;
-    if (!balance) return null;
+    if (!balance && !isPro) return null;
 
     return (
         <>
             <button
                 onClick={() => setIsOpen(true)}
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[var(--muted)] hover:text-[var(--text)] hover:bg-black/5 transition-colors text-xs font-medium"
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[var(--muted)] hover:text-[var(--text)] hover:bg-black/5 transition-colors text-xs font-medium group"
             >
-                <Zap size={14} className="text-amber-500" />
-                <span>{balance.total_sparks} Sparks</span>
+                <Zap size={14} className={isPro ? "text-purple-500 fill-purple-500" : "text-amber-500"} />
+                <span>{isPro ? 'Unlimited' : `${balance?.total_sparks || 0} Sparks`}</span>
             </button>
 
-            {}
+            { }
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex justify-end">
                     <div
@@ -47,10 +51,10 @@ export default function SparkBalance() {
                                     <span className="text-[var(--text)]">Subscription Sparks</span>
                                     <div className="text-right">
                                         <div className="font-medium text-lg">
-                                            {balance.subscription_sparks}
+                                            {isPro ? 'Unlimited' : balance?.subscription_sparks || 0}
                                         </div>
                                         <div className="text-xs text-[var(--muted)]">
-                                            Resets end of period
+                                            {isPro ? 'Pro Benefit' : 'Resets end of period'}
                                         </div>
                                     </div>
                                 </div>
@@ -59,7 +63,7 @@ export default function SparkBalance() {
                                     <span className="text-[var(--text)]">Top-Up Sparks</span>
                                     <div className="text-right">
                                         <div className="font-medium text-lg">
-                                            {balance.topup_sparks}
+                                            {isPro ? 'Unlimited' : balance?.topup_sparks || 0}
                                         </div>
                                         <div className="text-xs text-[var(--muted)]">
                                             Never expires
@@ -73,10 +77,10 @@ export default function SparkBalance() {
                                     </span>
                                     <div className="text-right">
                                         <div className="font-medium text-lg">
-                                            {balance.trial_sparks}
+                                            {isPro ? 'Unlimited' : balance?.trial_sparks || 0}
                                         </div>
                                         <div className="text-xs text-[var(--muted)]">
-                                            Expires in 14 days
+                                            {isPro ? 'N/A' : 'Expires in 14 days'}
                                         </div>
                                     </div>
                                 </div>
@@ -85,21 +89,31 @@ export default function SparkBalance() {
                             <div className="pt-4 flex justify-between items-center">
                                 <span className="font-medium text-lg">Total Available</span>
                                 <span className="text-2xl font-bold text-amber-600 flex items-center gap-1">
-                                    <Zap fill="currentColor" size={24} />
-                                    {balance.total_sparks}
+                                    <Zap fill="currentColor" size={24} className={isPro ? "text-purple-500" : ""} />
+                                    {isPro ? 'Unlimited' : balance?.total_sparks || 0}
                                 </span>
                             </div>
                         </div>
 
                         <div className="p-6 border-t border-[var(--border)] bg-[var(--bg)]">
-                            <Link
-                                href="/sparks"
-                                onClick={() => setIsOpen(false)}
-                                className="w-full py-3 px-4 bg-[var(--accent)] text-white rounded-lg font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                            >
-                                <ShoppingCart size={18} />
-                                Buy More Sparks <ChevronRight size={18} />
-                            </Link>
+                            {isPro ? (
+                                <div className="p-4 bg-purple-50 rounded-xl border border-purple-100 flex items-start gap-3">
+                                    <Zap size={20} className="text-purple-600 mt-1 shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-bold text-purple-900 leading-tight">Pro Plan Active</p>
+                                        <p className="text-xs text-purple-700 mt-1">Enjoy unlimited access to all AI features without worrying about spark costs.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <Link
+                                    href="/sparks"
+                                    onClick={() => setIsOpen(false)}
+                                    className="w-full py-3 px-4 bg-[var(--accent)] text-white rounded-lg font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                >
+                                    <ShoppingCart size={18} />
+                                    Buy More Sparks <ChevronRight size={18} />
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>

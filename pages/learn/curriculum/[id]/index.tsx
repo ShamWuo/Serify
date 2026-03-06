@@ -16,22 +16,28 @@ import {
     Zap,
     ArrowRight,
     ShieldCheck,
-    BookOpen
+    BookOpen,
+    Share2,
+    Check
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
 
 export default function CurriculumView() {
     const router = useRouter();
     const { id } = router.query;
+    const { user } = useAuth();
 
     const [curriculum, setCurriculum] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState('');
     const [isEditing, setIsEditing] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     const { balance } = useSparks();
-    const isProPlus = false; // simplistic check, subscription_tier is not in type
+    const isProPlus = user?.subscriptionTier === 'pro';
 
     useEffect(() => {
         if (id) fetchCurriculum();
@@ -90,6 +96,13 @@ export default function CurriculumView() {
     const totalSparkCost = curriculum.concept_count * sparkCostPerConcept;
     const remainingSparkCost = (curriculum.concept_count - currentIndex) * sparkCostPerConcept;
 
+    const handleShare = () => {
+        const shareUrl = `${window.location.origin}/share/curriculum/${curriculum.id}`;
+        navigator.clipboard.writeText(shareUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     const handleStart = () => {
         router.push(`/learn/curriculum/${curriculum.id}/flow`);
     };
@@ -141,14 +154,30 @@ export default function CurriculumView() {
             </Head>
 
             <div className="max-w-7xl mx-auto p-6 lg:p-12 xl:p-16 min-h-[calc(100vh-64px)] relative">
-                <div className="mb-10 text-center lg:text-left">
+                <div className="flex flex-col md:flex-row items-center gap-4">
                     <h1 className="text-3xl md:text-5xl font-display text-[var(--text)] mb-3 mt-1">
                         {curriculum.title}
                     </h1>
-                    <p className="text-[var(--muted)] text-base md:text-lg">
-                        Generated for you · {curriculum.concept_count} concepts
-                    </p>
+                    <button
+                        onClick={handleShare}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-xs font-bold uppercase tracking-wider ${copied ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--text)]'}`}
+                    >
+                        {copied ? (
+                            <>
+                                <Check size={14} />
+                                Copied!
+                            </>
+                        ) : (
+                            <>
+                                <Share2 size={14} />
+                                Share
+                            </>
+                        )}
+                    </button>
                 </div>
+                <p className="text-[var(--muted)] text-base md:text-lg">
+                    Generated for you · {curriculum.concept_count} concepts
+                </p>
 
                 <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 relative">
                     {/* LEFT COLUMN: THE CURRICULUM */}

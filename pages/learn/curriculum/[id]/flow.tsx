@@ -431,8 +431,16 @@ export default function CurriculumFlowSessionPage() {
 
             if (data.action === 'concept_complete') {
                 // Mark completed locally and in DB
-                const updatedCompleted = [...(flowSession.concepts_completed || []), currentConcept.conceptId];
+                const updatedCompleted = [...new Set([...(flowSession.concepts_completed || []), currentConcept.conceptId])];
+
+                // 1. Update Flow session
                 await supabase.from('flow_sessions').update({ concepts_completed: updatedCompleted }).eq('id', flowSession.id);
+
+                // 2. Sync back to main Curriculum (Source of Truth for other loaders)
+                const { data: curriculum } = await supabase.from('curricula').select('completed_concept_ids').eq('id', flowSession.source_session_id).single();
+                const currCompleted = [...new Set([...(curriculum?.completed_concept_ids || []), currentConcept.conceptId])];
+                await supabase.from('curricula').update({ completed_concept_ids: currCompleted }).eq('id', flowSession.source_session_id);
+
                 setConceptStatuses((prev) => ({ ...prev, [currentConcept.conceptId]: 'completed' }));
                 setConceptJustCompleted(true); // show interstitial — do NOT auto-advance
             } else {
@@ -551,7 +559,17 @@ export default function CurriculumFlowSessionPage() {
         const { step_type, content, user_response } = displayStep;
         const savedAnswer = user_response || '';
 
-        if (step_type === 'teach') return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
+        if (step_type === 'teach') {
+            if (!content?.text) return (
+                <div className="flex flex-col items-center justify-center p-8 text-center bg-red-50/50 rounded-xl border border-red-100">
+                    <ShieldAlert className="text-red-400 mb-2" size={24} />
+                    <p className="text-sm font-medium text-red-600">Lesson content missing</p>
+                    <p className="text-xs text-red-500/80 mt-1">Serify failed to generate the lesson text for this step.</p>
+                    <button onClick={() => fetchNextStep()} className="mt-4 text-xs font-bold text-red-700 underline">Try Re-generating</button>
+                </div>
+            );
+            return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
+        }
         if (step_type === 'check' || step_type === 'confirm')
             return (
                 <CheckQuestionStep content={content} stepId={displayStep.id} isEvaluated={!!pendingEvaluation || isReadOnly}
@@ -559,7 +577,12 @@ export default function CurriculumFlowSessionPage() {
             );
         if (step_type === 'reinforce') return <ReinforceStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
 
-        return null;
+        return (
+            <div className="flex flex-col items-center justify-center p-8 text-[var(--muted)]">
+                <Replace size={32} className="opacity-20 mb-3" />
+                <p className="text-sm">Unknown step type: {step_type}</p>
+            </div>
+        );
     };
 
     // ────────────────────────────────────────────────────────
@@ -659,10 +682,12 @@ export default function CurriculumFlowSessionPage() {
                                         </div>
                                         <div className="flex flex-col items-center gap-2 text-center max-w-sm">
                                             <span className="text-base font-medium text-[var(--text)] animate-pulse">
-                                                {loadingTime < 4 ? 'Thinking…' :
-                                                    loadingTime < 8 ? 'Analyzing your response…' :
-                                                        loadingTime < 15 ? 'Connecting concepts…' :
-                                                            'Taking longer than usual…'}
+                                                {loadingTime < 3 ? 'Preparing session…' :
+                                                    loadingTime < 6 ? 'Deeply analyzing concept…' :
+                                                        loadingTime < 10 ? 'Generating personalized checks…' :
+                                                            loadingTime < 15 ? 'Structuring your path…' :
+                                                                loadingTime < 25 ? 'Finalizing active recall steps…' :
+                                                                    'Building deep context…'}
                                             </span>
                                             {loadingTime >= 8 && (
                                                 <span className="text-xs opacity-70 animate-fade-in">

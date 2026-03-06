@@ -53,35 +53,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const currentConcept = pendingConcepts[0];
 
-        // Fetch the progress row (use maybeSingle to avoid crash when missing)
-        let { data: progress } = await supabaseAdmin
-            .from('curriculum_concept_progress')
-            .select('*')
-            .eq('curriculum_id', curriculumId)
-            .eq('concept_id', currentConcept.id)
+        // STRATEGY: Try to find any EXISTING active flow session for this curriculum 
+        // that the user might have started previously.
+        const { data: existingSession } = await supabaseAdmin
+            .from('flow_sessions')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('source_type', 'curriculum')
+            .eq('source_session_id', curriculumId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
-        // If no progress row exists, create one now
-        if (!progress) {
-            const newProgressId = uuidv4();
-            const { data: createdProgress } = await supabaseAdmin
+        let flowSessionId = existingSession?.id;
+
+        // If no global session for curriculum, check if this specific concept has one
+        if (!flowSessionId) {
+            const { data: conceptProgress } = await supabaseAdmin
                 .from('curriculum_concept_progress')
-                .insert({
-                    id: newProgressId,
-                    curriculum_id: curriculumId,
-                    user_id: userId,
-                    concept_id: currentConcept.id,
-                    concept_name: currentConcept.name,
-                    status: 'not_started'
-                })
-                .select()
-                .single();
-            progress = createdProgress;
+                .select('flow_session_id')
+                .eq('curriculum_id', curriculumId)
+                .eq('concept_id', currentConcept.id)
+                .maybeSingle();
+            flowSessionId = conceptProgress?.flow_session_id;
         }
 
-        let flowSessionId = progress?.flow_session_id;
-
-        // If no flow session exists for this concept, create one!
+        // If we STILL don't have a session ID, create a fresh one
         if (!flowSessionId) {
             // Build the plan for Flow Mode
             const planNodes = pendingConcepts.map((c: any) => ({
@@ -117,15 +115,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             flowSessionId = flowSession.id;
 
-            // Update progress row with the session ID
-            if (progress) {
-                await deductSparks(userId, sparkCost, 'flow_mode_plan');
+            // Deduct sparks once per new session start
+            await deductSparks(userId, sparkCost, 'flow_mode_plan');
 
-                await supabaseAdmin
-                    .from('curriculum_concept_progress')
-                    .update({ flow_session_id: flowSessionId, status: 'in_progress' })
-                    .eq('id', progress.id);
-            }
+            // Link this session to the current concept progress
+            // (Wait, we should ideally link it to ALL concepts in this flow if we wanted total persistence, 
+            // but linking at least the current one is good)
+            await supabaseAdmin
+                .from('curriculum_concept_progress')
+                .upsert({
+                    curriculum_id: curriculumId,
+                    user_id: userId,
+                    concept_id: currentConcept.id,
+                    flow_session_id: flowSessionId,
+                    status: 'in_progress',
+                    concept_name: currentConcept.name
+                }, { onConflict: 'curriculum_id,concept_id' });
         }
 
         return res.status(200).json({ flowSessionId });

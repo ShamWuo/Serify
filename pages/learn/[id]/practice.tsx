@@ -1,3 +1,11 @@
+/**
+ * practice.tsx
+ * Purpose: Provides a multiple-choice practice quiz mode to reinforce concept mastery.
+ * Key Logic: Generates or retrieves a quiz based on weak concepts from a session. 
+ * Handles answer selection, provides instant feedback and explanations, and 
+ * updates the user's concept mastery in the database.
+ */
+
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -100,7 +108,6 @@ export default function PracticeMode() {
                     setError(errorData.error || 'Failed to generate practice quiz.');
                 }
             } catch (err: any) {
-                console.error(err);
                 setError(err.message || 'An unexpected error occurred.');
             } finally {
                 setLoading(false);
@@ -108,7 +115,6 @@ export default function PracticeMode() {
         };
 
         initQuiz();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id, router]);
 
     const handleSelectOption = (index: number) => {
