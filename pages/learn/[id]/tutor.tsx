@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useSparks } from '@/hooks/useSparks';
 import { Zap, CheckCircle2 } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 
 export default function TutorMode() {
     const router = useRouter();
@@ -24,6 +25,7 @@ export default function TutorMode() {
     const chatEndRef = useRef<HTMLDivElement>(null);
     const { balance } = useSparks();
     const [weakConcepts, setWeakConcepts] = useState<any[]>([]);
+    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -116,6 +118,10 @@ export default function TutorMode() {
                         }
                     } else {
                         const errorData = await startRes.json().catch(() => ({}));
+                        if (errorData.error === 'out_of_sparks') {
+                            setIsOutOfSparksModalOpen(true);
+                            throw new Error('You are out of Sparks.');
+                        }
                         throw new Error(errorData.error || 'Could not initialize tutor session');
                     }
                 }
@@ -167,9 +173,10 @@ export default function TutorMode() {
             } else if (res.status === 403) {
                 const data = await res.json();
                 if (data.error === 'out_of_sparks') {
+                    setIsOutOfSparksModalOpen(true);
                     setMessages((prev) => [
                         ...prev,
-                        { role: 'model', content: 'You are out of Sparks! [Get more Sparks](/sparks) to continue chatting.' }
+                        { role: 'model', content: 'You are out of Sparks and cannot continue this specific chat. [Get more Sparks](/sparks) to start a new session or refresh your balance.' }
                     ]);
                 } else {
                     setMessages((prev) => [
@@ -445,6 +452,12 @@ export default function TutorMode() {
                     </div>
                 </footer>
             </div>
+
+            <OutOfSparksModal
+                isOpen={isOutOfSparksModalOpen}
+                onClose={() => setIsOutOfSparksModalOpen(false)}
+                featureName="AI Tutor"
+            />
         </DashboardLayout>
     );
 }

@@ -12,6 +12,7 @@ import {
     AlertTriangle,
     CheckCircle2
 } from 'lucide-react';
+import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import { storage } from '@/lib/storage';
 import { useSparks } from '@/hooks/useSparks';
 import { supabase } from '@/lib/supabase';
@@ -51,6 +52,7 @@ export default function Analyze() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [authToken, setAuthToken] = useState<string>('');
+    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
 
     const { balance, loading: sparksLoading } = useSparks();
 
@@ -222,6 +224,12 @@ export default function Analyze() {
         if (isProcessing) return;
         if (!inputValue.trim() && activeTab !== 'pdf') return;
         if (activeTab === 'pdf' && !pdfFile) return;
+
+        // Check if user has enough sparks for at least Basic Mode (11 Sparks)
+        if (balance && balance.total_sparks < 11) {
+            setIsOutOfSparksModalOpen(true);
+            return;
+        }
 
         setErrorMsg('');
         setIsProcessing(true);
@@ -439,11 +447,9 @@ export default function Analyze() {
                                         onClick={handleAnalyze}
                                         disabled={
                                             sparksLoading ||
-                                            !balance ||
-                                            balance.total_sparks < 11 ||
                                             (activeTab === 'pdf' ? !pdfFile : !inputValue.trim())
                                         }
-                                        className={`w-full h-14 rounded-xl font-medium transition-colors flex flex-col items-center justify-center text-lg ${(activeTab === 'pdf' ? pdfFile : inputValue.trim()) ? (balance && balance.total_sparks >= 11 ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md shadow-[var(--accent)]/20 hover:-translate-y-0.5' : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed') : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed'}`}
+                                        className={`w-full h-14 rounded-xl font-medium transition-colors flex flex-col items-center justify-center text-lg ${(activeTab === 'pdf' ? pdfFile : inputValue.trim()) ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md shadow-[var(--accent)]/20 hover:-translate-y-0.5' : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed'}`}
                                     >
                                         <span className="flex items-center">
                                             {sparksLoading ? (
@@ -505,6 +511,13 @@ export default function Analyze() {
                     </section>
                 </div>
             </div>
+
+            <OutOfSparksModal
+                isOpen={isOutOfSparksModalOpen}
+                onClose={() => setIsOutOfSparksModalOpen(false)}
+                cost={13}
+                featureName="New Learning Session"
+            />
         </DashboardLayout>
     );
 }

@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { CheckCircle2 } from 'lucide-react';
+import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 
 export default function DeepDiveMode() {
     const router = useRouter();
@@ -27,6 +28,7 @@ export default function DeepDiveMode() {
     const [evaluating, setEvaluating] = useState(false);
     const [feedback, setFeedback] = useState<any>(null);
     const [isComplete, setIsComplete] = useState(false);
+    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -120,6 +122,9 @@ export default function DeepDiveMode() {
                 setDeepDive(data.content);
             } else {
                 const errorData = await res.json().catch(() => ({}));
+                if (errorData.error === 'out_of_sparks') {
+                    setIsOutOfSparksModalOpen(true);
+                }
                 setError(errorData.error || 'Failed to generate deep dive.');
             }
         } catch (e: any) {
@@ -395,6 +400,13 @@ export default function DeepDiveMode() {
                     </div>
                 </div>
             </main>
+
+            <OutOfSparksModal
+                isOpen={isOutOfSparksModalOpen}
+                onClose={() => setIsOutOfSparksModalOpen(false)}
+                cost={proMode ? 10 : 2}
+                featureName="Concept Deep Dive"
+            />
         </DashboardLayout>
     );
 }

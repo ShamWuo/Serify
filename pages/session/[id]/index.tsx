@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Pause, X, CheckCircle2, Circle, Zap } from 'lucide-react';
+import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import { storage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
@@ -60,6 +61,7 @@ export default function ActiveSession() {
     const [isFirstSession, setIsFirstSession] = useState(false);
     const [showGuidance1, setShowGuidance1] = useState(false);
     const [showGuidance2, setShowGuidance2] = useState(false);
+    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
     const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const analysisPromises = useRef<Promise<any>[]>([]);
@@ -164,7 +166,7 @@ export default function ActiveSession() {
             try {
                 const { data: { session: authSession } } = await supabase.auth.getSession();
                 const token = authSession?.access_token;
-                
+
                 const res = await fetch(`/api/sessions/${id}`, {
                     headers: {
                         ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -173,7 +175,7 @@ export default function ActiveSession() {
 
                 if (!res.ok) throw new Error('Session not found');
                 const data = await res.json();
-                
+
                 const sessionData = {
                     id: data.id,
                     title: data.title || 'Untitled Session',
@@ -186,7 +188,7 @@ export default function ActiveSession() {
                 setConcepts(sessionData.concepts);
                 setQuestions(sessionData.questions);
                 setTitle(sessionData.title);
-                
+
                 // Cache it for next time
                 localStorage.setItem('serify_active_session', JSON.stringify(sessionData));
             } catch (err: any) {
@@ -210,11 +212,11 @@ export default function ActiveSession() {
     const loadingMessages = isFirstSession
         ? ['Reading your answers carefully...']
         : [
-              'Analyzing your responses...',
-              'Mapping your understanding...',
-              'Identifying gaps...',
-              'Building your feedback report...'
-          ];
+            'Analyzing your responses...',
+            'Mapping your understanding...',
+            'Identifying gaps...',
+            'Building your feedback report...'
+        ];
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -400,7 +402,19 @@ export default function ActiveSession() {
                 })
             });
 
-            if (!res.ok) throw new Error('Failed to fetch explanation');
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                if (data.error === 'out_of_sparks') {
+                    setIsOutOfSparksModalOpen(true);
+                    setExplanations((prev) => ({
+                        ...prev,
+                        [qId]: { requesting: false, text: null }
+                    }));
+                    return;
+                }
+                throw new Error('Failed to fetch explanation');
+            }
+
             const data = await res.json();
 
             setExplanations((prev) => ({
@@ -579,7 +593,7 @@ export default function ActiveSession() {
                                                     explanations[currentQuestion.id].text!.split(
                                                         '\n'
                                                     ).length -
-                                                        1 && <br />}
+                                                    1 && <br />}
                                             </span>
                                         ))}
                                 </div>
@@ -655,10 +669,10 @@ export default function ActiveSession() {
                                             {isAnalyzing && currentIndex < questions.length - 1
                                                 ? 'Analyzing...'
                                                 : currentIndex === questions.length - 1
-                                                  ? concepts.length > questions.length
-                                                      ? 'Submit & Save Remaining Concepts'
-                                                      : 'Submit & Finish Session'
-                                                  : 'Submit Answer \u2192'}
+                                                    ? concepts.length > questions.length
+                                                        ? 'Submit & Save Remaining Concepts'
+                                                        : 'Submit & Finish Session'
+                                                    : 'Submit Answer \u2192'}
                                         </button>
 
                                         {!answer.trim() && !isAnalyzing && (
@@ -676,6 +690,12 @@ export default function ActiveSession() {
                     </div>
                 </div>
             </main>
+
+            <OutOfSparksModal
+                isOpen={isOutOfSparksModalOpen}
+                onClose={() => setIsOutOfSparksModalOpen(false)}
+                featureName="Concept Hints"
+            />
         </div>
     );
 }
