@@ -50,7 +50,7 @@ export async function getSparkBalance(userId: string): Promise<SparkBalance | nu
                 .from('spark_balances')
                 .insert({
                     user_id: userId,
-                    trial_sparks: 15,
+                    trial_sparks: 30,
                     topup_sparks: 0,
                     subscription_sparks: 0
                 })
@@ -64,18 +64,18 @@ export async function getSparkBalance(userId: string): Promise<SparkBalance | nu
 
             await client.from('spark_transactions').insert({
                 user_id: userId,
-                amount: 15,
+                amount: 30,
                 pool: 'trial',
                 transaction_type: 'trial_grant',
                 action: 'auto_initialization',
-                balance_after: 15
+                balance_after: 30
             });
 
             await client.from('spark_grants').insert({
                 user_id: userId,
                 reason: 'auto_initialization',
-                sparks_granted: 15,
-                sparks_remaining: 15,
+                sparks_granted: 30,
+                sparks_remaining: 30,
                 expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
             });
 

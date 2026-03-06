@@ -13,9 +13,11 @@ import {
     CheckCircle2,
     Sparkles,
     ChevronUp,
+    Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import SparkBalance from '@/components/sparks/SparkBalance';
+import CommandPalette from '@/components/Layout/CommandPalette';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -27,10 +29,23 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
     const { user, logout } = useAuth();
     const router = useRouter();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [vaultNeedsWork, setVaultNeedsWork] = useState(0);
 
     useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsCommandPaletteOpen(prev => !prev);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    useEffect(() => {
         setIsProfileOpen(false);
+        setIsCommandPaletteOpen(false);
     }, [router.asPath]);
 
     useEffect(() => {
@@ -111,6 +126,19 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                             </div>
                         </Link>
                     )}
+                </div>
+
+                <div className="px-3 mb-4">
+                    <button
+                        onClick={() => setIsCommandPaletteOpen(true)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)]/50 text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition-all group"
+                    >
+                        <Search size={16} className="group-hover:text-[var(--accent)] transition-colors" />
+                        <span className="text-xs font-medium flex-1 text-left">Search...</span>
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[var(--surface)] border border-[var(--border)] rounded text-[9px] font-bold">
+                            ⌘K
+                        </div>
+                    </button>
                 </div>
 
                 <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
@@ -260,6 +288,11 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                     );
                 })}
             </nav>
+
+            <CommandPalette
+                isOpen={isCommandPaletteOpen}
+                onClose={() => setIsCommandPaletteOpen(false)}
+            />
         </div>
     );
 }

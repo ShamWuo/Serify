@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import {
     Youtube,
     Target,
@@ -53,6 +54,9 @@ export default function FeedbackReport() {
         cost: number;
         name: string;
     } | null>(null);
+    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
+    const [outOfSparksCost, setOutOfSparksCost] = useState(1);
+    const [outOfSparksFeature, setOutOfSparksFeature] = useState('this feature');
 
     // Share state
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -129,9 +133,30 @@ export default function FeedbackReport() {
 
     const handleConfirmRegenerate = () => {
         if (!regenerateTarget) return;
-        setIsRegenerateModalOpen(false);
 
+        // Check balance again just in case
+        if (!balance || balance.total_sparks < regenerateTarget.cost) {
+            setIsRegenerateModalOpen(false);
+            setOutOfSparksCost(regenerateTarget.cost);
+            setOutOfSparksFeature(regenerateTarget.name);
+            setIsOutOfSparksModalOpen(true);
+            return;
+        }
+
+        setIsRegenerateModalOpen(false);
         router.push(`/learn/${id}/${regenerateTarget.type}?regenerate=true`);
+    };
+
+    const handleFeatureClick = (e: React.MouseEvent, type: string, cost: number, name: string, exists: boolean) => {
+        if (exists) return; // If it exists, let the link handle it (navigation)
+
+        if (!balance || balance.total_sparks < cost) {
+            e.preventDefault();
+            e.stopPropagation();
+            setOutOfSparksCost(cost);
+            setOutOfSparksFeature(name);
+            setIsOutOfSparksModalOpen(true);
+        }
     };
 
     const [showRetentionPrompt, setShowRetentionPrompt] = useState(false);
@@ -232,7 +257,7 @@ export default function FeedbackReport() {
                 <title>Feedback Report | Serify</title>
             </Head>
 
-            <div className="max-w-[900px] mx-auto w-full px-6 md:px-8 py-8 space-y-16 pb-24">
+            <div className="max-w-[900px] mx-auto w-full px-6 md:px-8 py-8 space-y-16 pb-24 page-transition">
                 <header className="space-y-6 pt-4">
                     {storage.getHistory().length === 1 && (
                         <p className="text-xs font-medium text-[var(--muted)] mb-2 italic">
@@ -316,8 +341,8 @@ export default function FeedbackReport() {
                             return (
                                 <div
                                     key={idx}
-                                    className={`bg-[var(--surface)] border ${item.mastery_state === 'solid' ? 'border-[#2A5C45] shadow-[0_4px_24px_-8px_rgba(42,92,69,0.2)] animate-pulse-glow' : 'border-[var(--border)] shadow-sm'
-                                        } rounded-2xl p-6 relative overflow-hidden`}
+                                    className={`premium-card border ${item.mastery_state === 'solid' ? 'border-[#2A5C45] shadow-[0_4px_24px_-8px_rgba(42,92,69,0.2)] animate-pulse-glow' : 'border-[var(--border)]'
+                                        } rounded-3xl p-6 relative overflow-hidden`}
                                 >
                                     {item.mastery_state === 'solid' && (
                                         <div className="absolute top-0 left-0 w-full h-1 animate-shimmer" />
@@ -422,7 +447,7 @@ export default function FeedbackReport() {
                         />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-3">
+                            <div className="premium-card p-6 rounded-3xl space-y-3">
                                 <h4 className="font-bold text-[var(--accent)] text-lg flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] opacity-60" />{' '}
                                     What you understand well
@@ -432,7 +457,7 @@ export default function FeedbackReport() {
                                         'You demonstrated solid intuition overall.'}
                                 </p>
                             </div>
-                            <div className="space-y-3">
+                            <div className="premium-card p-6 rounded-3xl space-y-3">
                                 <h4 className="font-bold text-[var(--missing)] text-lg flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--missing)] opacity-60" />{' '}
                                     Where understanding breaks down
@@ -820,7 +845,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.tutorConversation?.exists ? 'opacity-50 pointer-events-none' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.tutorConversation?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -870,6 +895,7 @@ export default function FeedbackReport() {
                                 </div>
                                 <Link
                                     href={`/learn/${id}/tutor`}
+                                    onClick={(e) => handleFeatureClick(e, 'tutor', 1, 'AI Tutor', !!materials?.tutorConversation?.exists)}
                                     className="absolute inset-0 z-0"
                                     aria-label="AI Tutor"
                                 />
@@ -902,7 +928,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.practiceQuiz?.exists ? 'opacity-50 pointer-events-none' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.practiceQuiz?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -954,6 +980,7 @@ export default function FeedbackReport() {
                                 </div>
                                 <Link
                                     href={`/learn/${id}/practice`}
+                                    onClick={(e) => handleFeatureClick(e, 'practice', 1, 'Practice Quiz', !!materials?.practiceQuiz?.exists)}
                                     className="absolute inset-0 z-0"
                                     aria-label="Practice Quiz"
                                 />
@@ -986,7 +1013,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 2) && !materials?.deepDive?.exists ? 'opacity-50 pointer-events-none' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 2) && !materials?.deepDive?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
@@ -1038,6 +1065,7 @@ export default function FeedbackReport() {
                                 </div>
                                 <Link
                                     href={`/learn/${id}/deepdive`}
+                                    onClick={(e) => handleFeatureClick(e, 'deepdive', 2, 'Concept Deep Dive', !!materials?.deepDive?.exists)}
                                     className="absolute inset-0 z-0"
                                     aria-label="Concept Deep Dive"
                                 />
@@ -1238,6 +1266,13 @@ export default function FeedbackReport() {
                     </div>
                 </div>
             )}
+
+            <OutOfSparksModal
+                isOpen={isOutOfSparksModalOpen}
+                onClose={() => setIsOutOfSparksModalOpen(false)}
+                cost={outOfSparksCost}
+                featureName={outOfSparksFeature}
+            />
         </DashboardLayout>
     );
 }

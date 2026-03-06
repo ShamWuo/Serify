@@ -7,21 +7,35 @@ body {
     height: 100%;
 }
 
-:root {
-    --bg: #f7f6f2;
-    --surface: #ffffff;
-    --border: #e8e6df;
-    --text: #1a1916;
-    --muted: #8c8880;
-    --accent: #2a5c45;
-    --accent-light: #eaf2ee;
-    --shallow: #b8860b;
-    --shallow-light: #fdf8e8;
-    --missing: #7c3d9e;
-    --missing-light: #f5eefa;
-    --warn: #c4541a;
-    --warn-light: #fdf0e8;
-    --dark: #1a1916;
+@layer base {
+    :root {
+        /* Primary - Sophisticated Sage/Forest */
+        --bg: #fdfdfc;
+        --surface: #ffffff;
+        --border: #eceae3;
+        --text: #1a1a18;
+        --muted: #757470;
+        --accent: #1e4d38;
+        --accent-soft: #f0f7f4;
+
+        /* Secondary - Deep Indigo/Purple */
+        --missing: #533483;
+        --missing-soft: #f5f2fb;
+
+        /* Tertiary - Burnished Gold/Umber */
+        --shallow: #a67c00;
+        --shallow-soft: #fff9ea;
+
+        /* Semantic */
+        --warn: #bc4a1a;
+        --warn-soft: #fff6f2;
+        --dark: #121211;
+
+        /* Premium Effects */
+        --glass-bg: rgba(255, 255, 255, 0.75);
+        --glass-border: rgba(255, 255, 255, 0.4);
+        --shadow-premium: 0 4px 24px -6px rgba(0, 0, 0, 0.04), 0 8px 16px -8px rgba(0, 0, 0, 0.02);
+    }
 }
 
 body {
@@ -30,11 +44,16 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
 }
 
 @layer utilities {
     .text-balance {
         text-wrap: balance;
+    }
+
+    .font-display {
+        font-family: 'Outfit', sans-serif;
     }
 }
 
@@ -537,4 +556,68 @@ body {
 
 .row-hover-accent:hover::before {
     transform: scaleY(1);
+}
+
+/* Premium UI Utilities */
+.glass-premium {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid var(--glass-border);
+}
+
+.premium-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.08);
+    border-color: rgba(42, 92, 69, 0.2);
+}
+
+/* Page transitions */
+@keyframes pageEnter {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.page-transition {
+    animation: pageEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Command Palette Animations */
+@keyframes cmdEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.animate-cmd-palette {
+    animation: cmdEnter 0.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Improved focus ring */
+.focus-ring-premium {
+    outline: none;
+}
+
+.focus-ring-premium:focus-visible {
+    box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
 }

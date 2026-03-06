@@ -28,6 +28,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage } from 'ai';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import LandingPage from '@/components/LandingPage';
+import KnowledgeMiniMap from '@/components/dashboard/KnowledgeMiniMap';
 
 // ------ Helpers ------
 
@@ -458,7 +459,7 @@ export default function Home() {
         <DashboardLayout>
             <Head><title>Dashboard | Serify</title></Head>
 
-            <div className="max-w-[1160px] mx-auto w-full px-5 md:px-10 py-8 pb-24">
+            <div className="max-w-[1160px] mx-auto w-full px-5 md:px-10 py-8 pb-24 page-transition">
 
                 {isDemo && (
                     <div className="bg-[var(--accent-light)] text-[var(--accent)] px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 mb-6">
@@ -672,109 +673,69 @@ export default function Home() {
 
                     </div>
 
-                    {/* ── RIGHT COLUMN ── */}
-                    <div className="space-y-5">
+                    {/* Sidebar / Stats Area */}
+                    <div className="lg:col-span-4 space-y-6">
+                        {/* Knowledge Map Insight */}
+                        <KnowledgeMiniMap userId={user?.id} />
 
-                        {/* Spark Balance Card */}
-                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm card-hover">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-[var(--text)] flex items-center gap-2">
-                                    <Zap size={16} className="text-amber-500" fill="currentColor" /> Sparks
-                                </h3>
-                                <Link href="/sparks" className="text-xs text-[var(--muted)] hover:text-[var(--accent)] font-medium transition-colors">Buy more →</Link>
+                        {/* Quick Stats Card */}
+                        <div className="premium-card p-6 rounded-3xl">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Learning Pulse</h3>
+                                <Target size={16} className="text-[var(--accent)]" />
                             </div>
 
-                            {sparksLoading ? (
-                                <div className="h-10 bg-[var(--border)] rounded-lg animate-pulse" />
-                            ) : balance ? (
-                                <>
-                                    <div className="flex items-baseline gap-2 mb-3">
-                                        <span className="text-3xl font-display font-bold text-[var(--text)]">{balance.total_sparks}</span>
-                                        <span className="text-xs text-[var(--muted)]">available</span>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        {[
-                                            { type: 'Subscription', amount: balance.subscription_sparks, color: 'bg-[var(--accent)]' },
-                                            { type: 'Top-up', amount: balance.topup_sparks, color: 'bg-amber-400' },
-                                            { type: 'Trial', amount: balance.trial_sparks, color: 'bg-purple-400' },
-                                        ].filter(p => p.amount > 0).map((pool, i) => (
-                                            <div key={i} className="flex items-center justify-between text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`w-2 h-2 rounded-full ${pool.color}`} />
-                                                    <span className="text-[var(--muted)]">{pool.type}</span>
-                                                </div>
-                                                <span className="font-semibold text-[var(--text)]">{pool.amount}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            ) : (
-                                <p className="text-sm text-[var(--muted)]">Could not load balance.</p>
-                            )}
-                        </section>
-
-                        {/* Focus On These */}
-                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm card-hover">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-[var(--text)] flex items-center gap-2">
-                                    <Target size={16} className="text-[var(--accent)]" /> Focus On These
-                                </h3>
-                                <Link href="/vault" className="text-xs text-[var(--muted)] hover:text-[var(--accent)] font-medium transition-colors">View vault →</Link>
-                            </div>
-
-                            {focusConcepts.length === 0 ? (
-                                <div className="flex items-center gap-3 py-2">
-                                    <Brain size={20} className="text-[var(--muted)] shrink-0" />
-                                    <p className="text-xs text-[var(--muted)] font-medium">No shaky concepts yet. Complete sessions to build your vault.</p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <div className="text-2xl font-display font-medium text-[var(--text)]">{totalSessionCount}</div>
+                                    <div className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-tight">Sessions</div>
                                 </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {focusConcepts.map(concept => (
-                                        <div key={concept.id} className="flex items-center gap-3">
-                                            <div className={`w-2 h-2 rounded-full shrink-0 ${getMasteryColor(concept.current_mastery)}`} />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-semibold text-[var(--text)] truncate">{concept.display_name}</p>
-                                                <p className="text-[10px] text-[var(--muted)] capitalize">{concept.current_mastery} · {concept.session_count} session{concept.session_count !== 1 ? 's' : ''}</p>
-                                            </div>
-                                            <Link
-                                                href={`/flow?concept=${encodeURIComponent(concept.canonical_name)}`}
-                                                className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-xs font-semibold text-[var(--text)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
-                                            >
-                                                <Play size={10} /> Practice
-                                            </Link>
-                                        </div>
+                                <div className="space-y-1">
+                                    <div className="text-2xl font-display font-medium text-[var(--text)]">{totalConceptCount}</div>
+                                    <div className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-tight">Concepts</div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-[10px] text-[var(--muted)] font-bold uppercase tracking-tight">Weekly Activity</span>
+                                    <span className="text-[10px] text-[var(--accent)] font-bold">Active</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-1 h-8">
+                                    {activityDays.map((active, i) => (
+                                        <div
+                                            key={i}
+                                            className={`flex-1 h-full rounded-sm transition-all duration-500 ${active ? 'bg-[var(--accent)] opacity-80' : 'bg-[var(--bg)]'
+                                                }`}
+                                        />
                                     ))}
                                 </div>
-                            )}
-                        </section>
-
-                        {/* Activity Dots + Stats */}
-                        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm card-hover">
-                            <h3 className="font-bold text-[var(--text)] flex items-center gap-2 mb-4">
-                                <BarChart2 size={16} className="text-[var(--accent)]" /> This Week
-                            </h3>
-
-                            <div className="flex items-center justify-between gap-1.5 mb-4">
-                                {activityDays.map((active, i) => (
-                                    <div key={i} className="flex flex-col items-center gap-1.5">
-                                        <div className={`w-7 h-7 rounded-full transition-all animate-scale-in ${active ? 'bg-[var(--accent)] shadow-sm shadow-[var(--accent)]/40' : 'bg-[var(--border)]'}`} style={{ animationDelay: `${i * 80}ms` }} />
-                                        <span className="text-[9px] text-[var(--muted)] font-medium">{weekDayLabels[i]}</span>
-                                    </div>
-                                ))}
                             </div>
+                        </div>
 
-                            <div className="grid grid-cols-2 divide-x divide-[var(--border)] pt-3 border-t border-[var(--border)]">
-                                <div className="text-center pr-3">
-                                    <div className="text-2xl font-display font-bold text-[var(--text)]">{totalSessionCount}</div>
-                                    <div className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-wider mt-0.5">Total Sessions</div>
-                                </div>
-                                <div className="text-center pl-3">
-                                    <div className="text-2xl font-display font-bold text-[var(--text)]">{totalConceptCount}</div>
-                                    <div className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-wider mt-0.5">Concepts Tracked</div>
+                        {/* Recent Discoveries */}
+                        {latestSessions.length > 0 && (
+                            <div className="space-y-4">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] ml-2">Recent Discoveries</h3>
+                                <div className="space-y-2">
+                                    {latestSessions.slice(0, 3).map((session) => (
+                                        <Link key={session.id} href={`/sessions/analysis?id=${session.id}`} className="block">
+                                            <div className="premium-card p-4 rounded-2xl group">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-[var(--bg)] flex items-center justify-center shrink-0 transition-colors group-hover:bg-[var(--accent-light)]">
+                                                        {getSessionIcon(session.type)}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <h4 className="text-sm font-bold text-[var(--text)] truncate group-hover:text-[var(--accent)] transition-colors">{session.title}</h4>
+                                                        <p className="text-[10px] text-[var(--muted)] font-medium mt-0.5">{session.date}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
                                 </div>
                             </div>
-                        </section>
+                        )}
 
                     </div>
                 </div>

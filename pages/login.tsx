@@ -50,7 +50,7 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-center items-center p-6 font-sans relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-center items-center p-6 font-sans relative overflow-hidden page-transition">
             {/* Decorative blobs */}
             <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] right-[-100px]" />
             <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] left-[-100px]" />
@@ -72,7 +72,7 @@ export default function Login() {
                     </p>
                 </div>
 
-                <div className="glass border border-[var(--border)] rounded-2xl p-8 shadow-lg">
+                <div className="premium-card border border-[var(--border)] rounded-2xl p-8 shadow-lg">
                     {error && (
                         <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 text-sm animate-fade-in">
                             <AlertCircle size={18} className="shrink-0 mt-0.5" />

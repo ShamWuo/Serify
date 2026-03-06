@@ -55,7 +55,7 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
             }
         } else {
             profile = data;
-            console.log('Profile loaded successfully for:', userId);
+            console.log('✅ AuthContext: Profile loaded successfully for:', userId);
         }
     } catch (err: any) {
         console.error('Exception while loading profile:', err);
@@ -323,8 +323,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const baseUrl = appUrl
             ? appUrl.replace(/\/$/, '')
             : typeof window !== 'undefined'
-              ? window.location.origin
-              : '';
+                ? window.location.origin
+                : '';
 
         const redirectTo = `${baseUrl}/auth/callback`;
 
