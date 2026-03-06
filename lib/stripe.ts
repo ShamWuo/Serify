@@ -9,7 +9,7 @@ if (!stripeKey && typeof window === 'undefined' && process.env.NODE_ENV === 'dev
 }
 
 export const stripe = new Stripe(stripeKey || 'sk_test_placeholder', {
-    apiVersion: '2026-01-28' as any,
+    apiVersion: '2023-10-16' as any,
     appInfo: {
         name: 'Serify',
         version: '0.1.0'
