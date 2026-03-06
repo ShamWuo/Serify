@@ -82,7 +82,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`
             );
 
-        let sparkCost = SPARK_COSTS.FLOW_MODE_EVAL || 1;
+        let sparkCost = SPARK_COSTS.FLOW_MODE_EVAL ?? 0;
         const hasSparks = await hasEnoughSparks(userId, sparkCost);
         if (!hasSparks) return res.status(403).json({ error: 'out_of_sparks' });
         await deductSparks(userId, sparkCost, 'flow_mode_eval');
@@ -147,17 +147,27 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
                 ` | step: ${stepId}`
             );
         }
-        const evaluation = JSON.parse(
-            evalText
-                .replace(/```json/g, '')
-                .replace(/```/g, '')
-                .trim()
-        );
+        const cleanedText = evalText
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim();
+        let evaluation: any;
+        try {
+            evaluation = JSON.parse(cleanedText);
+        } catch (_firstErr) {
+            const reescaped = cleanedText.replace(/\\(?!["\\\/bfnrtu])/g, '\\\\');
+            try {
+                evaluation = JSON.parse(reescaped);
+            } catch (finalErr: any) {
+                console.error('Failed to parse evaluation JSON:', finalErr.message);
+                return res.status(500).json({ error: 'Evaluation engine returned malformed JSON.' });
+            }
+        }
 
         let nextReinforceContent: string | null = null;
 
         if (evaluation.path === 'B' || evaluation.path === 'C') {
-            const reinforceCost = SPARK_COSTS.FLOW_MODE_TEACH_NEW || 1;
+            const reinforceCost = SPARK_COSTS.FLOW_MODE_TEACH_NEW ?? 0;
             const hasSparksForReinforce = await hasEnoughSparks(userId, reinforceCost);
 
             if (hasSparksForReinforce) {

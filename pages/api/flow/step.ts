@@ -230,6 +230,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 // PROACTIVE VAULT POPULATION:
                 // Ensure this concept is represented in the knowledge vault immediately.
                 try {
+                    const planConcepts = sessionData.initial_plan?.concepts || [];
+                    const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId);
                     const conceptName = currentConcept?.conceptName || 'Unknown Concept';
                     await findOrCreateConceptNode(
                         supabaseAdmin as any,

@@ -99,6 +99,14 @@ export default function Home() {
     const [totalSessionCount, setTotalSessionCount] = useState(0);
     const [totalConceptCount, setTotalConceptCount] = useState(0);
 
+    // Reset processing state on unmount or navigation
+    useEffect(() => {
+        return () => {
+            setIsProcessing(false);
+            processingRef.current = false;
+        };
+    }, []);
+
     const loadingMessages = [
         "Extracting content...",
         "Identifying key concepts...",
@@ -192,7 +200,7 @@ export default function Home() {
                         result: s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found'
                     }));
                     setLatestSessions(mappedSessions.slice(0, 5));
-                    
+
                     // Total session count from DB
                     supabase.from('reflection_sessions')
                         .select('*', { count: 'exact', head: true })
@@ -379,6 +387,8 @@ export default function Home() {
                 status: 'In Progress',
             });
 
+            setIsProcessing(false);
+            processingRef.current = false;
             router.push(`/session/${sessionData.id}`);
         } catch (error) {
             console.error(error);

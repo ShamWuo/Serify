@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const sparkCost = SPARK_COSTS.FLOW_MODE_PLAN || 2;
+    const sparkCost = SPARK_COSTS.FLOW_MODE_ORCHESTRATE;
     const hasSparks = await hasEnoughSparks(userId, sparkCost);
     if (!hasSparks)
         return res
@@ -149,7 +149,7 @@ What this learner understands well (use as bridges): ${strongConcepts.join(', ')
 Reinforcements required so far this session: ${learnerProfile.reinforcementsRequired || 0}
 `;
 
-        await deductSparks(userId, sparkCost, 'flow_mode_plan');
+        await deductSparks(userId, sparkCost, 'flow_mode_orchestrate');
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();

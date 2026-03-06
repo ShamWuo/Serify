@@ -113,7 +113,10 @@ export default function SparksShop() {
                 {success === 'true' && (
                     <div className="mb-6 max-w-3xl mx-auto flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl px-5 py-4">
                         <CheckCircle size={20} className="shrink-0" />
-                        <p className="font-medium">Payment successful! <strong>{amount} Sparks</strong> have been added to your balance.</p>
+                        <div className="flex-1">
+                            <p className="font-medium">Payment processed! <strong>{amount} Sparks</strong> will be added to your balance shortly.</p>
+                            <p className="text-sm opacity-80">We&apos;re currently syncing with Stripe. Your new balance will reflect soon.</p>
+                        </div>
                     </div>
                 )}
                 {canceled === 'true' && (

@@ -42,23 +42,25 @@ export function parseJSON<T>(text: string): T {
   }
 }
 
-export async function extractConcepts(content: ContentSource): Promise<Concept[]> {
+export async function extractConcepts(content: ContentSource, transcript?: string): Promise<Concept[]> {
   const contentDescription =
     content.type === 'text'
       ? `Here are the user's notes:\n\n${content.content}`
-      : `The user submitted a ${content.type} from this URL: ${content.url ?? content.content}\n\nBased on the URL and title "${content.title}", infer the likely topic and extract concepts as if you had watched/read the content.`;
+      : transcript
+        ? `The user submitted a ${content.type} (${content.title}).\n\nTRANSCRIPT/CONTENT:\n${transcript}`
+        : `The user submitted a ${content.type} from this URL: ${content.url ?? content.content}\n\nBased on the URL and title "${content.title}", infer the likely topic and extract concepts as if you had watched/read the content.`;
 
   const prompt = `You are an expert knowledge analyst.
 ${contentDescription}
 
-Extract 4 to 6 key concepts. Return a JSON array.
+Extract 4 to 6 key concepts that represent the core pillars of this material. Return a JSON array.
 
 Format:
 [
   {
     "id": "c1",
     "name": "Concept Name",
-    "description": "One or two sentence explanation.",
+    "definition": "A clear, standalone definition (1-2 sentences).",
     "importance": "high" | "medium" | "low",
     "relatedConcepts": ["c2"]
   }
@@ -66,17 +68,35 @@ Format:
 
 Rules:
 - Use concept IDs c1, c2, c3, etc.
-- Importance: high if significant time spent.
-- relatedConcepts: IDs of connected concepts.`;
+- "definition": Provide a high-quality definition even if the source is brief.
+- "importance": "high" for the most central ideas.
+- "relatedConcepts": IDs of other extracted concepts that this one builds upon or connects to.`;
+
 
   const result = await defaultModel.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 800 }
+    generationConfig: { maxOutputTokens: 1000 }
   });
   const text = result.response.text();
 
   const concepts = parseJSON<Concept[]>(text);
   return concepts;
+}
+
+export async function generateSessionTitle(content: string, type: string): Promise<string> {
+  const prompt = `Given the following ${type} content, generate a concise, professional title (3-5 words) that captures the core subject. 
+  
+  CONTENT:
+  ${content.substring(0, 2000)}
+  
+  Return ONLY the title string, no quotes or prefix.`;
+
+  const result = await defaultModel.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 50 }
+  });
+
+  return result.response.text().trim().replace(/^"|"$/g, '');
 }
 
 export async function generateAssessment(

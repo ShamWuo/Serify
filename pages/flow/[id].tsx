@@ -472,6 +472,14 @@ function PhaseSelector({
     );
 }
 
+const orchestrationMessages = [
+    "Orchestrating the next connection...",
+    "Structuring the core lesson...",
+    "Generating quick checks...",
+    "Building practice scenarios...",
+    "Finishing up your personalized path..."
+];
+
 export default function FlowSessionPage() {
     const router = useRouter();
     const { id } = router.query as { id?: string };
@@ -491,14 +499,6 @@ export default function FlowSessionPage() {
     const [error, setError] = useState<string | null>(null);
     const [sessionDone, setSessionDone] = useState(false);
 
-    const orchestrationMessages = [
-        "Orchestrating the next connection...",
-        "Structuring the core lesson...",
-        "Generating quick checks...",
-        "Building practice scenarios...",
-        "Finishing up your personalized path..."
-    ];
-
     useEffect(() => {
         let interval: NodeJS.Timeout;
         if (stepping) {
@@ -507,7 +507,7 @@ export default function FlowSessionPage() {
             }, 3000);
         }
         return () => clearInterval(interval);
-    }, [stepping, orchestrationMessages.length]);
+    }, [stepping]);
 
     const currentConcept = flowSession?.initial_plan?.concepts?.[currentConceptIndex];
     const totalConcepts = flowSession?.initial_plan?.concepts?.length || 0;
@@ -688,10 +688,10 @@ export default function FlowSessionPage() {
     );
 
     useEffect(() => {
-        if (flowSession && !currentStep && !stepping && currentConcept && !sessionDone) {
+        if (flowSession && !currentStep && !stepping && currentConcept && !sessionDone && !error) {
             fetchNextStep();
         }
-    }, [flowSession, currentConcept, sessionDone, currentStep, fetchNextStep, stepping]);
+    }, [flowSession, currentConcept, sessionDone, currentStep, fetchNextStep, stepping, error]);
 
     const handleUserResponse = async (responseType: string) => {
         if (!currentStep) return;

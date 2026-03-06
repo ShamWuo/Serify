@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateApiRequest } from '@/lib/sparks';
+import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
 import { v4 as uuidv4 } from 'uuid';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -16,7 +16,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { curriculumId } = req.body;
+    const sparkCost = SPARK_COSTS.FLOW_MODE_PLAN;
+    const hasSparks = await hasEnoughSparks(userId, sparkCost);
+    if (!hasSparks) {
+        return res.status(403).json({
+            error: 'out_of_sparks',
+            message: `You need ${sparkCost} Sparks to start a learning flow.`
+        });
+    }
+
+    const { curriculumId, conceptId } = req.body;
     if (!curriculumId) return res.status(400).json({ error: 'Missing curriculumId' });
 
     try {
@@ -110,6 +119,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             // Update progress row with the session ID
             if (progress) {
+                await deductSparks(userId, sparkCost, 'flow_mode_plan');
+
                 await supabaseAdmin
                     .from('curriculum_concept_progress')
                     .update({ flow_session_id: flowSessionId, status: 'in_progress' })

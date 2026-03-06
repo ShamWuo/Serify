@@ -18,8 +18,10 @@ import {
     Layers,
     ArrowRight,
     Zap,
-    Archive
+    Archive,
+    Brain
 } from 'lucide-react';
+
 import { KnowledgeNode, ConceptTopic, MasteryState } from '@/types/serify';
 
 const MASTERY_CONFIG: Record<
@@ -146,7 +148,7 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                         <h2 className="text-xl font-bold text-[var(--text)] leading-snug">
-                            {node.display_name}
+                            {node.display_name || node.canonical_name || 'Unknown Concept'}
                         </h2>
                         <p className="text-xs text-[var(--muted)] mt-1">
                             {node.topic_name && (
@@ -172,13 +174,20 @@ function DetailPanel({ nodeId, onClose, sessionId }: DetailPanelProps) {
 
             <div className="flex-1 px-6 py-5 space-y-7">
                 { }
-                {node.definition && (
+                {node.definition ? (
                     <div>
                         <p className="text-sm text-[var(--text)] leading-relaxed">
                             {node.definition}
                         </p>
                     </div>
+                ) : (
+                    <div className="p-4 bg-[var(--bg)] border border-dashed border-[var(--border)] rounded-xl text-center">
+                        <p className="text-sm text-[var(--muted)] italic">
+                            No definition available yet. Complete more sessions to build this concept.
+                        </p>
+                    </div>
                 )}
+
 
                 { }
                 {history.length > 0 && (
