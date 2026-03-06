@@ -11,6 +11,7 @@ import {
     Layers, Trophy, Lock
 } from 'lucide-react';
 import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
+import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
 
 // ────────────────────────────────────────────────────────────
 // Small utilities
@@ -596,7 +597,21 @@ export default function CurriculumFlowSessionPage() {
     return (
         <>
             <Head><title>Flow Mode — {currentConcept?.conceptName || 'Loading'}</title></Head>
-            <DashboardLayout>
+            <DashboardLayout
+                backLink={`/learn/curriculum/${curriculumId}`}
+                sidebarContent={
+                    <CurriculumSidebar
+                        concepts={concepts}
+                        currentIndex={currentConceptIndex}
+                        conceptStatuses={concepts.reduce((acc: any, c: any) => {
+                            acc[c.conceptId] = conceptStatuses[c.conceptId] || 'not_started';
+                            return acc;
+                        }, {})}
+                        onConceptClick={handleSidebarConceptClick}
+                        title={flowSession?.initial_plan?.overallStrategy?.replace('Curriculum: ', '')}
+                    />
+                }
+            >
                 <div className="max-w-5xl mx-auto px-4 py-6">
 
                     {/* Top bar */}
@@ -624,37 +639,6 @@ export default function CurriculumFlowSessionPage() {
                     </div>
 
                     <div className="flex gap-6 items-start">
-                        {/* Concept sidebar */}
-                        <div className="hidden lg:block w-44 shrink-0">
-                            <div className="sticky top-6 space-y-1">
-                                {concepts.map((c, i) => {
-                                    const status = conceptStatuses[c.conceptId] || 'not_started';
-                                    const isCurrent = i === currentConceptIndex;
-                                    const isClickable = status === 'completed' || (status === 'in_progress' && !isCurrent);
-                                    return (
-                                        <div
-                                            key={c.conceptId}
-                                            onClick={() => handleSidebarConceptClick(i)}
-                                            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${isCurrent
-                                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
-                                                : status === 'completed'
-                                                    ? 'text-emerald-600 hover:bg-emerald-50 cursor-pointer'
-                                                    : 'text-[var(--muted)] cursor-not-allowed opacity-60'
-                                                }`}
-                                        >
-                                            {status === 'completed'
-                                                ? <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                                                : status === 'not_started'
-                                                    ? <Lock size={12} className="shrink-0 opacity-40" />
-                                                    : <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--accent)]" />
-                                            }
-                                            <span className="truncate">{c.conceptName}</span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
                         {/* Main step card */}
                         <div className="flex-1 min-w-0">
                             {error && (

@@ -190,6 +190,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (nextStepType === 'completed') {
+            // ── Look up the concept name from the plan ────────────────
+            const planConcepts = sessionData.initial_plan?.concepts || [];
+            const currentConceptMeta = planConcepts.find((c: any) => c.conceptId === conceptId);
+            const conceptName = currentConceptMeta?.conceptName || 'Unknown Concept';
+
             if (sessionData.source_type === 'curriculum' && sessionData.source_session_id) {
                 const curriculumId = sessionData.source_session_id;
 
@@ -214,8 +219,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             })
                             .eq('id', curriculumId);
 
-                        // We also need to update curriculum_concept_progress
-                        // Note: conceptId here maps to the concept's specific ID inside the curriculum
                         await supabaseAdmin
                             .from('curriculum_concept_progress')
                             .update({
@@ -226,23 +229,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             .eq('concept_id', conceptId);
                     }
                 }
+            }
 
-                // PROACTIVE VAULT POPULATION:
-                // Ensure this concept is represented in the knowledge vault immediately.
-                try {
-                    const planConcepts = sessionData.initial_plan?.concepts || [];
-                    const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId);
-                    const conceptName = currentConcept?.conceptName || 'Unknown Concept';
-                    await findOrCreateConceptNode(
-                        supabaseAdmin as any,
-                        userId,
-                        conceptName,
-                        sessionId,
-                        `Mastered via Flow session: ${conceptName}`
-                    );
-                } catch (vaultErr) {
-                    console.error('[vault] Proactive creation failed:', vaultErr);
+            // ── VAULT UPDATE: runs for ALL session types ──────────────
+            // Ensure this concept exists in the vault AND gets promoted to 'solid' mastery.
+            try {
+                const nodeResult = await findOrCreateConceptNode(
+                    supabaseAdmin as any,
+                    userId,
+                    conceptName,
+                    sessionId,
+                    `Mastered via Flow session: ${conceptName}`
+                );
+                // Promote mastery to 'solid' for completed concepts
+                if (nodeResult) {
+                    await supabaseAdmin
+                        .from('knowledge_nodes')
+                        .update({ current_mastery: 'solid' })
+                        .eq('user_id', userId)
+                        .ilike('canonical_name', conceptName);
                 }
+            } catch (vaultErr) {
+                console.error('[vault] Concept mastery update failed:', vaultErr);
             }
 
             return res.status(200).json({

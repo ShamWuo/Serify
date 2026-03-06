@@ -54,6 +54,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: 'User not found' });
         }
 
+        // Guard: block re-subscription if the user already has an active subscription
+        const isDeepDiveCheck = priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_DEEPDIVE;
+        if (!isDeepDiveCheck) {
+            const { data: existingSub } = await supabase
+                .from('subscriptions')
+                .select('id')
+                .eq('user_id', userId)
+                .in('status', ['active', 'trialing'])
+                .maybeSingle();
+
+            if (existingSub) {
+                return res.status(409).json({
+                    error: 'already_subscribed',
+                    message: 'You already have an active subscription. Manage it from your billing settings.'
+                });
+            }
+        }
+
         let customerId = user.stripe_customer_id;
         if (!customerId) {
             const customer = await stripe.customers.create({

@@ -61,6 +61,7 @@ function ProgressBar({
 
 function StepIcon({ type }: { type: FlowStepType }) {
     const MAP: Partial<Record<string, JSX.Element>> = {
+        teach: <BookOpen size={16} />,
         orient: <Target size={16} />,
         build_layer: <Layers size={16} />,
         anchor: <BookOpen size={16} />,
@@ -308,6 +309,94 @@ function CheckQuestionStep({
                     />
                 </div>
             )}
+        </div>
+    );
+}
+
+function TeachStep({ content, onNext }: { content: any; onNext: (response: string) => void }) {
+    const [mcqAnswers, setMcqAnswers] = useState<Record<number, number | null>>({});
+    const quickChecks: any[] = content.quickChecks || [];
+    const allAnswered =
+        quickChecks.length === 0 || quickChecks.every((_, i) => mcqAnswers[i] !== undefined);
+
+    return (
+        <div>
+            {/* Lesson text */}
+            <div style={{ lineHeight: 1.85, fontSize: 15.5, marginBottom: quickChecks.length ? 28 : 24 }} className="flow-markdown">
+                <MarkdownRenderer>{content.text || ''}</MarkdownRenderer>
+            </div>
+
+            {/* Inline MCQ quick-checks */}
+            {quickChecks.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginBottom: 24 }}>
+                    {quickChecks.map((qc: any, qi: number) => {
+                        const chosen = mcqAnswers[qi];
+                        return (
+                            <div
+                                key={qi}
+                                style={{
+                                    background: 'var(--bg, #f7f6f2)',
+                                    border: '1.5px solid var(--border)',
+                                    borderRadius: 12,
+                                    padding: '16px 18px'
+                                }}
+                            >
+                                <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 12 }}>{qc.question}</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {(qc.options || []).map((opt: string, oi: number) => {
+                                        const isCorrect = oi === qc.correctIndex;
+                                        const isChosen = chosen === oi;
+                                        const revealed = chosen !== undefined;
+                                        let bg = 'var(--surface)';
+                                        let border = 'var(--border)';
+                                        let color = 'var(--text)';
+                                        if (revealed && isCorrect) { bg = '#22c55e15'; border = '#22c55e'; color = '#16a34a'; }
+                                        else if (revealed && isChosen && !isCorrect) { bg = '#ef444415'; border = '#ef4444'; color = '#dc2626'; }
+                                        return (
+                                            <button
+                                                key={oi}
+                                                onClick={() => {
+                                                    if (chosen === undefined) {
+                                                        setMcqAnswers(prev => ({ ...prev, [qi]: oi }));
+                                                    }
+                                                }}
+                                                style={{
+                                                    display: 'flex', alignItems: 'center', gap: 10,
+                                                    background: bg, border: `1.5px solid ${border}`,
+                                                    borderRadius: 8, padding: '9px 14px',
+                                                    cursor: chosen !== undefined ? 'default' : 'pointer',
+                                                    textAlign: 'left', fontSize: 13.5, color,
+                                                    fontWeight: revealed && isCorrect ? 600 : 400,
+                                                    transition: 'all 0.15s'
+                                                }}
+                                            >
+                                                <span style={{
+                                                    width: 22, height: 22, borderRadius: '50%',
+                                                    border: `1.5px solid ${border}`, display: 'flex',
+                                                    alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 11, fontWeight: 700, flexShrink: 0, color
+                                                }}>
+                                                    {String.fromCharCode(65 + oi)}
+                                                </span>
+                                                {opt}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            <div style={{ display: 'flex', marginTop: 8 }}>
+                <ActionButton
+                    label={allAnswered ? 'Continue to Check' : 'Skip to Check'}
+                    icon={<ChevronRight size={16} />}
+                    primary
+                    onClick={() => onNext('continue')}
+                />
+            </div>
         </div>
     );
 }
@@ -720,6 +809,10 @@ export default function FlowSessionPage() {
 
         const onSimpleNext = (r: string) => handleUserResponse(r);
 
+        // Primary step type used by the deterministic router
+        if (step_type === 'teach') return <TeachStep content={content} onNext={onSimpleNext} />;
+
+        // Legacy step types kept for backwards compatibility
         if (step_type === 'orient') return <OrientStep content={content} onNext={onSimpleNext} />;
         if (step_type === 'build_layer')
             return <BuildLayerStep content={content} onNext={onSimpleNext} />;
@@ -736,7 +829,12 @@ export default function FlowSessionPage() {
         if (step_type === 'reinforce')
             return <ReinforceStep content={content} onNext={onSimpleNext} />;
 
-        return null;
+        // Fallback: render raw text if step type is unrecognised
+        return (
+            <div className="flow-markdown" style={{ lineHeight: 1.8, fontSize: 15.5 }}>
+                <MarkdownRenderer>{content?.text || JSON.stringify(content)}</MarkdownRenderer>
+            </div>
+        );
     };
 
     if (loading)

@@ -10,7 +10,7 @@ import { CheckCircle2 } from 'lucide-react';
 export default function FlashcardsMode() {
     const router = useRouter();
     const { id } = router.query;
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [cards, setCards] = useState<any[]>([]);
@@ -19,7 +19,6 @@ export default function FlashcardsMode() {
     const [sessionData, setSessionData] = useState<any>(null);
     const [stats, setStats] = useState({ gotIt: 0, shaky: 0 });
     const [isComplete, setIsComplete] = useState(false);
-    const [authToken, setAuthToken] = useState<string | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -39,13 +38,8 @@ export default function FlashcardsMode() {
                     concepts: parsed.concepts || []
                 });
 
-                const {
-                    data: { session }
-                } = await supabase.auth.getSession();
-                const token = session?.access_token;
                 const headers: any = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
-                if (token) setAuthToken(token);
 
                 const isRegenerating = router.query.regenerate === 'true';
 
@@ -105,7 +99,7 @@ export default function FlashcardsMode() {
             initDeck();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id, router]);
+    }, [id, router, token]);
 
     const handleGotIt = async () => {
         const currentCard = cards[currentIndex];
@@ -115,7 +109,7 @@ export default function FlashcardsMode() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     conceptId: currentCard.conceptId,
@@ -138,7 +132,7 @@ export default function FlashcardsMode() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+                    ...(token ? { Authorization: `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     conceptId: currentCard.conceptId,

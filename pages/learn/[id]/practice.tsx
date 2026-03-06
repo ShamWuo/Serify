@@ -11,7 +11,7 @@ import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 export default function PracticeMode() {
     const router = useRouter();
     const { id } = router.query;
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [sessionData, setSessionData] = useState<any>(null);
@@ -133,8 +133,8 @@ export default function PracticeMode() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(sessionData.authToken
-                        ? { Authorization: `Bearer ${sessionData.authToken}` }
+                    ...(token
+                        ? { Authorization: `Bearer ${token}` }
                         : {})
                 },
                 body: JSON.stringify({

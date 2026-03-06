@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
 import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { supabase } from '@/lib/supabase';
@@ -63,6 +64,7 @@ const curriculumSchema = z
 type Step = 'input' | 'context' | 'generating';
 
 export default function LearnIndex() {
+    const { user, token, loading } = useAuth();
     const router = useRouter();
     const [step, setStep] = useState<Step>('input');
     const [inputValue, setInputValue] = useState('');
@@ -73,31 +75,17 @@ export default function LearnIndex() {
     const [errorMsg, setErrorMsg] = useState('');
     const [curricula, setCurricula] = useState<any[]>([]);
     const [loadingCurricula, setLoadingCurricula] = useState(true);
-    const [authToken, setAuthToken] = useState<string>('');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [curriculumToDelete, setCurriculumToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const { balance, loading: sparksLoading } = useSparks();
 
-    const tokenRef = useRef<string>('');
-
     useEffect(() => {
-        fetchCurricula();
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-                const t = session?.access_token || '';
-                tokenRef.current = t;
-                setAuthToken(t);
-            }
-        );
-        supabase.auth.getSession().then(({ data }) => {
-            const t = data.session?.access_token || '';
-            tokenRef.current = t;
-            setAuthToken(t);
-        });
-        return () => { authListener.subscription.unsubscribe(); };
-    }, []);
+        if (!loading && user) {
+            fetchCurricula();
+        }
+    }, [user, loading]);
 
     useEffect(() => {
         if (router.query.q) setInputValue(router.query.q as string);
@@ -105,39 +93,30 @@ export default function LearnIndex() {
         if (router.query.skipTopics) setSkipTopics(router.query.skipTopics as string);
         if (router.query.focusGoal) setFocusGoal(router.query.focusGoal as string);
 
-        if (router.query.autoStart === 'true' && router.query.q) {
-            // Ensure token is fresh before auto-generating
-            supabase.auth.getSession().then(({ data }) => {
-                const freshToken = data.session?.access_token || '';
-                tokenRef.current = freshToken;
-                setAuthToken(freshToken);
+        if (router.query.autoStart === 'true' && router.query.q && token) {
+            const qVal = router.query.q as string;
+            const pkVal = (router.query.priorKnowledge as string) || '';
+            const stVal = (router.query.skipTopics as string) || '';
+            const fgVal = (router.query.focusGoal as string) || '';
 
-                const qVal = router.query.q as string;
-                const pkVal = (router.query.priorKnowledge as string) || '';
-                const stVal = (router.query.skipTopics as string) || '';
-                const fgVal = (router.query.focusGoal as string) || '';
+            const inputType = guessInputType(qVal);
+            const payload = {
+                userInput: qVal,
+                inputType,
+                priorKnowledge: pkVal.trim() || undefined,
+                skipTopics: stVal.trim() || undefined,
+                focusGoal: fgVal.trim() || undefined,
+            };
 
-                const inputType = guessInputType(qVal);
-                const payload = {
-                    userInput: qVal,
-                    inputType,
-                    priorKnowledge: pkVal.trim() || undefined,
-                    skipTopics: stVal.trim() || undefined,
-                    focusGoal: fgVal.trim() || undefined,
-                };
-
-                lastSubmitRef.current = payload;
-                setStep('generating');
-                setIsGenerating(true);
-                submit(payload);
-            });
+            lastSubmitRef.current = payload;
+            setStep('generating');
+            setIsGenerating(true);
+            submit(payload);
         }
-    }, [router.query]);
+    }, [router.query, token]);
 
     const fetchCurricula = async () => {
         setLoadingCurricula(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
         const { data, error } = await supabase
             .from('curricula')
             .select('*')
@@ -195,11 +174,8 @@ export default function LearnIndex() {
         api: '/api/serify/stream-curriculum',
         schema: curriculumSchema,
         initialValue: curriculumInitialValue,
-        fetch: (input, init) => {
-            const headers = new Headers(init?.headers);
-            const token = tokenRef.current;
-            if (token) headers.set('Authorization', `Bearer ${token}`);
-            return fetch(input, { ...init, headers });
+        headers: {
+            Authorization: `Bearer ${token}`
         },
         onError: (e) => {
             console.error(e);
@@ -245,7 +221,6 @@ export default function LearnIndex() {
             isSavingRef.current = true;
 
             try {
-                const token = tokenRef.current || (await supabase.auth.getSession()).data.session?.access_token;
                 const res = await fetch('/api/serify/save-curriculum', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -280,12 +255,6 @@ export default function LearnIndex() {
     const handleBuildCurriculum = async () => {
         if (!inputValue.trim()) return;
         setErrorMsg('');
-
-        // Always fetch a fresh token before submitting to avoid stale auth
-        const { data } = await supabase.auth.getSession();
-        const freshToken = data.session?.access_token || '';
-        tokenRef.current = freshToken;
-        setAuthToken(freshToken);
 
         setIsGenerating(true);
         setStep('generating');

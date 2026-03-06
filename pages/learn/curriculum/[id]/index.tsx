@@ -19,6 +19,7 @@ import {
     BookOpen
 } from 'lucide-react';
 import Link from 'next/link';
+import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
 
 export default function CurriculumView() {
     const router = useRouter();
@@ -114,23 +115,37 @@ export default function CurriculumView() {
     };
 
     return (
-        <DashboardLayout>
+        <DashboardLayout
+            backLink="/learn"
+            sidebarContent={
+                <CurriculumSidebar
+                    concepts={allConcepts}
+                    currentIndex={currentIndex}
+                    conceptStatuses={allConcepts.reduce((acc: any, c: any) => {
+                        acc[c.id || c.conceptId] = curriculum.completed_concept_ids?.includes(c.id || c.conceptId)
+                            ? 'completed'
+                            : (allConcepts.indexOf(c) === currentIndex ? 'in_progress' : 'not_started');
+                        return acc;
+                    }, {})}
+                    title={curriculum.title}
+                    onConceptClick={(idx) => {
+                        if (allConcepts[idx].completed || idx === currentIndex) {
+                            router.push(`/learn/curriculum/${curriculum.id}/flow`);
+                        }
+                    }}
+                />
+            }
+        >
             <Head>
                 <title>{curriculum.title} | Serify</title>
             </Head>
 
-            <div className="max-w-7xl mx-auto p-6 lg:p-10 min-h-[calc(100vh-64px)] relative">
-                <div className="mb-8">
-                    <Link
-                        href="/learn"
-                        className="text-sm font-medium text-[var(--muted)] hover:text-[var(--text)] transition-colors mb-4 inline-flex items-center"
-                    >
-                        &larr; Back to Learn Mode
-                    </Link>
-                    <h1 className="text-3xl md:text-4xl font-display text-[var(--text)] mb-2">
+            <div className="max-w-7xl mx-auto p-6 lg:p-12 xl:p-16 min-h-[calc(100vh-64px)] relative">
+                <div className="mb-10 text-center lg:text-left">
+                    <h1 className="text-3xl md:text-5xl font-display text-[var(--text)] mb-3 mt-1">
                         {curriculum.title}
                     </h1>
-                    <p className="text-[var(--muted)] text-base">
+                    <p className="text-[var(--muted)] text-base md:text-lg">
                         Generated for you · {curriculum.concept_count} concepts
                     </p>
                 </div>
@@ -138,8 +153,8 @@ export default function CurriculumView() {
                 <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 relative">
                     {/* LEFT COLUMN: THE CURRICULUM */}
                     <div className="flex-[0_0_65%] min-w-0">
-                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-6 md:p-8">
-                            <div className="flex justify-between items-center mb-6 pb-6 border-b border-[var(--border)]">
+                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-6 md:p-10">
+                            <div className="flex justify-between items-center mb-8 pb-8 border-b border-[var(--border)]">
                                 <div>
                                     <div className="text-xs uppercase font-bold tracking-widest text-[var(--accent)] mb-1">
                                         Curriculum Map
@@ -162,16 +177,16 @@ export default function CurriculumView() {
                                 </div>
                             </div>
 
-                            <div className="space-y-10">
+                            <div className="space-y-12">
                                 {curriculum.units.map((unit: any, uIdx: number) => (
                                     <div key={uIdx} className="relative">
-                                        <div className="mb-4">
-                                            <h3 className="text-[var(--text)] font-semibold uppercase tracking-wider text-xs bg-[var(--surface)] inline-block px-3 py-1 rounded-full border border-[var(--border)]">
+                                        <div className="mb-5">
+                                            <h3 className="text-[var(--text)] font-semibold uppercase tracking-wider text-xs bg-[var(--surface)] inline-block px-4 py-1.5 rounded-full border border-[var(--border)]">
                                                 UNIT {unit.unitNumber} &mdash; {unit.unitTitle}
                                             </h3>
                                         </div>
 
-                                        <div className="space-y-1">
+                                        <div className="space-y-2">
                                             {unit.concepts.map((concept: any, cIdx: number) => {
                                                 const globalIdx = allConcepts.findIndex(
                                                     (c: any) => c.name === concept.name
@@ -185,13 +200,13 @@ export default function CurriculumView() {
                                                 return (
                                                     <div
                                                         key={concept.id || cIdx}
-                                                        className={`group flex items-center p-3 rounded-xl transition-colors relative cursor-default ${isStartHere ? 'bg-[var(--accent)]/5 border border-[var(--accent)]/20' : 'hover:bg-[var(--surface)]'}`}
+                                                        className={`group flex items-center p-4 rounded-xl transition-colors relative cursor-default ${isStartHere ? 'bg-[var(--accent)]/5 border border-[var(--accent)]/20' : 'hover:bg-[var(--surface)]'}`}
                                                     >
-                                                        <div className="w-6 text-right mr-4 text-[var(--muted)] font-mono text-sm">
+                                                        <div className="w-7 text-right mr-5 text-[var(--muted)] font-mono text-sm">
                                                             {globalIdx + 1}
                                                         </div>
 
-                                                        <div className="mr-4 relative flex items-center justify-center">
+                                                        <div className="mr-5 relative flex items-center justify-center">
                                                             {isCompleted ? (
                                                                 <CheckCircle2
                                                                     size={18}
@@ -211,7 +226,7 @@ export default function CurriculumView() {
                                                                     // For now, we'll just go to the flow, and the page will find the first uncompleted one
                                                                     router.push(`/learn/curriculum/${curriculum.id}/flow`);
                                                                 }}
-                                                                className="text-[var(--text)] font-medium truncate pr-4 hover:text-[var(--accent)] transition-colors inline-block relative text-left"
+                                                                className="text-[var(--text)] font-medium truncate pr-4 hover:text-[var(--accent)] transition-colors inline-block relative text-left text-base"
                                                             >
                                                                 {concept.name}
 
@@ -251,11 +266,10 @@ export default function CurriculumView() {
                                 ))}
                             </div>
 
-                            <div className="mt-10 pt-6 border-t border-[var(--border)] flex justify-between items-center">
+                            <div className="mt-12 pt-8 border-t border-[var(--border)] flex justify-between items-center">
                                 <button
                                     onClick={handleStart}
-                                    className="px-8 py-4 bg-[var(--text)] text-[var(--surface)] rounded-2xl font-medium hover:bg-black/80 transition-all shadow-md flex items-center"
-                                >
+                                    className="px-10 py-4 bg-[var(--text)] text-[var(--surface)] rounded-2xl font-semibold hover:bg-black/80 transition-all shadow-md flex items-center text-base">
                                     {currentIndex === 0
                                         ? 'Start from the beginning'
                                         : `Resume — ${startConcept?.name}`}
@@ -267,21 +281,21 @@ export default function CurriculumView() {
 
                     {/* RIGHT COLUMN: CONTEXT */}
                     <div className="flex-[0_0_35%] min-w-0">
-                        <div className="sticky top-6 space-y-6">
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
-                                <h3 className="font-display text-xl text-[var(--text)] mb-4">
+                        <div className="sticky top-8 space-y-6">
+                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-7 shadow-sm">
+                                <h3 className="font-display text-xl text-[var(--text)] mb-5">
                                     {curriculum.title}
                                 </h3>
 
-                                <div className="space-y-3 mb-6">
-                                    <div className="flex items-center text-[var(--muted)]">
+                                <div className="space-y-4 mb-7">
+                                    <div className="flex items-center text-[var(--muted)] text-sm">
                                         <BookOpen size={16} className="mr-3" />
                                         <span>
                                             {curriculum.concept_count} concepts across{' '}
                                             {curriculum.units.length} units
                                         </span>
                                     </div>
-                                    <div className="flex items-center text-[var(--muted)]">
+                                    <div className="flex items-center text-[var(--muted)] text-sm">
                                         <Clock size={16} className="mr-3" />
                                         <span>
                                             ~
@@ -407,14 +421,13 @@ export default function CurriculumView() {
                             <div className="flex gap-3">
                                 <button
                                     onClick={handleStart}
-                                    className="flex-1 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 py-3 rounded-xl font-medium transition-colors text-center"
+                                    className="flex-1 bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 py-3.5 rounded-xl font-semibold transition-colors text-center"
                                 >
                                     Start &rarr;
                                 </button>
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="flex-1 bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--border)]/20 border border-[var(--border)] py-3 rounded-xl font-medium transition-colors text-center flex items-center justify-center"
-                                >
+                                    className="flex-1 bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--border)]/20 border border-[var(--border)] py-3.5 rounded-xl font-medium transition-colors text-center flex items-center justify-center">
                                     <Edit3 size={16} className="mr-2" /> Edit
                                 </button>
                             </div>

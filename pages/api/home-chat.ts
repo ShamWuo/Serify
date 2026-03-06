@@ -12,14 +12,21 @@ export default async function handler(req: Request) {
     }
 
     try {
-        const { messages } = await req.json();
+        const body = await req.json();
+        const { messages } = body;
 
-        if (!messages) {
-            return new Response(JSON.stringify({ error: 'Missing messages' }), { status: 400 });
+        // If no messages, it might be an initialization ping from some transport layers.
+        // We return a 200 OK but don't do anything.
+        if (!messages || messages.length === 0) {
+            return new Response(JSON.stringify({ status: 'ok' }), { status: 200 });
         }
+
+        const authHeader = req.headers.get('authorization');
+        console.log('[home-chat] Auth header present:', !!authHeader);
 
         const user = await authenticateApiRequest(req);
         if (!user) {
+            console.error(`[home-chat] Unauthorized request to ${req.url}. Header: ${authHeader ? 'present' : 'missing'}`);
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 

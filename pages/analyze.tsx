@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
 import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import {
@@ -45,21 +46,18 @@ const questionSchema = z.object({
 });
 
 export default function Analyze() {
+    const { token } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'youtube' | 'article' | 'pdf' | 'notes'>('youtube');
     const [inputValue, setInputValue] = useState('');
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const [authToken, setAuthToken] = useState<string>('');
     const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
 
     const { balance, loading: sparksLoading } = useSparks();
 
     useEffect(() => {
-        supabase.auth
-            .getSession()
-            .then(({ data }) => setAuthToken(data.session?.access_token || ''));
         setInputValue('');
         setErrorMsg('');
     }, [activeTab]);
@@ -85,7 +83,7 @@ export default function Analyze() {
         schema: conceptSchema,
         initialValue: conceptInitialValue,
         headers: {
-            Authorization: `Bearer ${authToken}`
+            Authorization: `Bearer ${token}`
         },
         onFinish: ({ object, error }) => {
             if (error || !object || !object.concepts || object.concepts.length === 0) {
@@ -130,7 +128,7 @@ export default function Analyze() {
         schema: questionSchema,
         initialValue: questionInitialValue,
         headers: {
-            Authorization: `Bearer ${authToken}`
+            Authorization: `Bearer ${token}`
         },
         onFinish: async ({ object, error }) => {
             if (error || !object || !object.questions) {
@@ -159,7 +157,7 @@ export default function Analyze() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        Authorization: `Bearer ${authToken}`
+                        Authorization: `Bearer ${token}`
                     },
                     body: JSON.stringify({
                         title: finalTitle,

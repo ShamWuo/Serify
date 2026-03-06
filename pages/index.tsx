@@ -23,6 +23,7 @@ import {
     MessageSquare,
     Plus,
     AlertTriangle,
+    Network,
 } from 'lucide-react';
 import { storage, SessionSummary } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -103,7 +104,7 @@ const STARTER_PROMPTS = [
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
-    const { user, loading } = useAuth();
+    const { user, loading, token } = useAuth();
     const router = useRouter();
     const { demo } = router.query;
     const isDemo = demo === 'true';
@@ -115,10 +116,6 @@ export default function Home() {
     const [focusConcepts, setFocusConcepts] = useState<KnowledgeNode[]>([]);
     const [activityDays, setActivityDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
 
-    // Auth token for chat
-    const [authToken, setAuthToken] = useState<string | undefined>(undefined);
-    const tokenLoaded = useRef(false);
-
     // Chat UI state
     const [inputValue, setInputValue] = useState('');
     const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
@@ -127,23 +124,24 @@ export default function Home() {
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // Fetch auth token
-    useEffect(() => {
-        if (loading || !user || tokenLoaded.current) return;
-        tokenLoaded.current = true;
-        supabase.auth.getSession().then(({ data }) => {
-            setAuthToken(data.session?.access_token ?? undefined);
-        });
-    }, [user, loading]);
-
     // Build transport with auth headers
     const transport = useMemo(() => {
-        // Fallback to undefined if no token yet to avoid immediate 401 on some v6 pre-checks
+        // Only initialize transport when we have a token (or we're in demo mode)
+        if (!token && !isDemo) return undefined;
+
+        const headers: Record<string, string> = {};
+        if (token) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+        if (isDemo) {
+            headers['x-serify-demo'] = 'true';
+        }
+
         return new DefaultChatTransport({
             api: '/api/home-chat',
-            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+            headers,
         });
-    }, [authToken]);
+    }, [token, isDemo]);
 
     // useChat v6 hook
     const { messages, sendMessage, status, error, setMessages } = useChat({
@@ -231,11 +229,11 @@ export default function Home() {
     // Handle send
     const handleSend = useCallback(() => {
         const text = inputValue.trim();
-        if (!text || isLoading) return;
+        if (!text || isLoading || (!token && !isDemo)) return;
         setOutOfSparksError(false);
         setInputValue('');
         sendMessage({ text });
-    }, [inputValue, isLoading, sendMessage]);
+    }, [inputValue, isLoading, sendMessage, token, isDemo]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -266,7 +264,7 @@ export default function Home() {
                 formData.append('mode', 'analyze');
                 const res = await fetch('/api/process-content', {
                     method: 'POST',
-                    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
                     body: formData,
                 });
                 if (!res.ok) throw new Error('Failed to process');
@@ -283,7 +281,7 @@ export default function Home() {
             if (action.payload.skipTopics) params.set('skipTopics', action.payload.skipTopics);
             router.push(`/learn?${params.toString()}`);
         }
-    }, [isNavigating, balance, authToken, router]);
+    }, [isNavigating, balance, token, router]);
 
     const handleTestSubscription = async () => {
         try {
@@ -291,7 +289,7 @@ export default function Home() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify({
                     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST || process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY,
@@ -324,7 +322,7 @@ export default function Home() {
         <DashboardLayout>
             <Head><title>Dashboard | Serify</title></Head>
 
-            <div className="max-w-7xl mx-auto w-full px-5 md:px-8 py-8 pb-28 md:pb-12 page-transition">
+            <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-10 pb-28 md:pb-16 page-transition">
 
                 {isDemo && (
                     <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 mb-6 shadow-sm">
@@ -334,7 +332,7 @@ export default function Home() {
                 )}
 
                 {/* ── TOP ROW: Greeting + Stats ── */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight">
                             {getGreeting()}, {user?.displayName?.split(' ')[0] || 'Learner'} 👋
@@ -343,23 +341,8 @@ export default function Home() {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                        {/* 7-day activity dots */}
-                        <div className="hidden sm:flex items-center gap-1.5">
-                            {activityDays.map((active, i) => (
-                                <div key={i} className="flex flex-col items-center gap-1">
-                                    <div
-                                        className={`w-5 h-5 rounded-md transition-all ${active
-                                            ? 'bg-[var(--accent)] shadow-[0_0_6px_rgba(30,77,56,0.35)]'
-                                            : 'bg-[var(--border)] border border-[var(--border)]'
-                                            }`}
-                                    />
-                                    <span className="text-[9px] font-bold text-[var(--muted)] uppercase">{weekDayLabels[i]}</span>
-                                </div>
-                            ))}
-                        </div>
-
                         {/* Spark pill */}
-                        <Link href="/sparks" className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/60 rounded-xl hover:border-amber-300 transition-all">
+                        <Link href="/sparks" className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/60 rounded-xl hover:border-amber-300 transition-all shadow-sm">
                             <Zap size={14} className="text-amber-500" fill="currentColor" />
                             <span className="text-sm font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
                             <span className="text-[10px] text-amber-500 font-medium">sparks</span>
@@ -374,30 +357,22 @@ export default function Home() {
                                 <div className="w-6 h-6 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
                                     <Play size={12} fill="currentColor" />
                                 </div>
-                                <span className="text-xs font-semibold truncate max-w-[120px]">{activeCurriculum.title}</span>
+                                <span className="text-xs font-semibold truncate max-w-[140px]">{activeCurriculum.title}</span>
                             </Link>
-                        )}
-                        {process.env.NODE_ENV === 'development' && (
-                            <button
-                                onClick={handleTestSubscription}
-                                className="px-3.5 py-2 bg-purple-50 border border-purple-200 rounded-xl text-purple-700 text-xs font-bold hover:bg-purple-100 transition-all shadow-sm"
-                            >
-                                Debug: Upgrade to Pro (Test)
-                            </button>
                         )}
                     </div>
                 </div>
 
                 {/* ── MAIN GRID ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10">
 
                     {/* ── LEFT: AI Chat + Sessions ── */}
-                    <div className="flex flex-col gap-8">
+                    <div className="flex flex-col gap-12">
 
                         {/* AI Tutor Chat Panel */}
                         <section
                             className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col"
-                            style={{ minHeight: '520px', maxHeight: '640px' }}
+                            style={{ minHeight: '560px', maxHeight: '720px' }}
                         >
                             {/* Header */}
                             <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--border)]/60 shrink-0 bg-[var(--surface)]">
@@ -406,7 +381,7 @@ export default function Home() {
                                 </div>
                                 <div>
                                     <h2 className="font-bold text-sm text-[var(--text)]">Serify AI Tutor</h2>
-                                    <p className="text-[10px] text-[var(--muted)] uppercase tracking-wider font-medium">Gemini · 1 Spark/message</p>
+                                    <p className="text-[10px] text-[var(--muted)] uppercase tracking-wider font-medium">1 Spark/message</p>
                                 </div>
                                 <button
                                     onClick={() => {
@@ -428,7 +403,7 @@ export default function Home() {
                                 {!hasMessages && (
                                     <div className="flex flex-col items-center justify-center h-full text-center py-6">
                                         <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-emerald-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
-                                            <Brain size={26} />
+                                            <Brain size={34} />
                                         </div>
                                         <h3 className="font-display text-lg text-[var(--text)] mb-1.5">Ask me anything</h3>
                                         <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed mb-6">
@@ -436,7 +411,7 @@ export default function Home() {
                                         </p>
 
                                         {/* Starter prompts */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-lg">
+                                        <div className="grid grid-cols-2 gap-2 w-full max-w-lg px-2">
                                             {STARTER_PROMPTS.map((sp, i) => (
                                                 <button
                                                     key={i}
@@ -444,14 +419,13 @@ export default function Home() {
                                                         setInputValue(sp.prompt);
                                                         setTimeout(() => inputRef.current?.focus(), 50);
                                                     }}
-                                                    className="group flex items-center gap-3 text-left p-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/5 hover:shadow-sm transition-all"
+                                                    className="group flex flex-col gap-2 p-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)]/40 transition-all"
                                                 >
-                                                    <div className="w-7 h-7 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
+                                                    <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
                                                         <sp.icon size={14} className="text-[var(--muted)] group-hover:text-white transition-colors" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
-                                                        <p className="text-xs text-[var(--text)] truncate mt-0.5">{sp.prompt.length > 36 ? sp.prompt.slice(0, 36) + '…' : sp.prompt}</p>
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">{sp.label}</p>
                                                     </div>
                                                 </button>
                                             ))}
@@ -462,7 +436,6 @@ export default function Home() {
                                 {/* Messages thread */}
                                 {messages.map((msg, idx) => {
                                     const isUser = msg.role === 'user';
-                                    // Extract text from parts
                                     const textContent = (msg.parts ?? [])
                                         .filter((p: any) => p.type === 'text')
                                         .map((p: any) => p.text)
@@ -559,7 +532,7 @@ export default function Home() {
 
                             {/* Input bar */}
                             <div className="px-4 pb-4 pt-3 border-t border-[var(--border)]/50 shrink-0 bg-[var(--surface)]">
-                                <div className="relative flex items-end gap-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-3 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
+                                <div className="relative flex items-end gap-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-2 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
                                     <textarea
                                         ref={inputRef}
                                         value={inputValue}
@@ -592,7 +565,7 @@ export default function Home() {
                             </div>
                         </section>
 
-                        {/* ── Recent Sessions ── */}
+                        {/* Recent Sessions */}
                         {latestSessions.length > 0 && (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
@@ -601,36 +574,36 @@ export default function Home() {
                                         View all <ChevronRight size={13} />
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 stagger-children">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 stagger-children">
                                     {latestSessions.map((session) => (
                                         <Link
                                             key={session.id}
                                             href={session.status === 'Completed' ? `/session/${session.id}/feedback` : `/session/${session.id}`}
-                                            className="group flex flex-col justify-between bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 hover:border-[var(--accent)]/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+                                            className="group flex flex-col justify-between bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 hover:border-[var(--accent)]/30 hover:shadow-lg transition-all duration-200"
                                         >
                                             <div className="flex items-start gap-3 mb-4">
-                                                <div className="w-8 h-8 rounded-xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                                <div className="w-10 h-10 rounded-xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                                                     {getSessionIcon(session.type)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <h4 className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-2 leading-snug">
+                                                    <h4 className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
                                                         {session.title}
                                                     </h4>
-                                                    <p className="text-[10px] text-[var(--muted)] mt-1 font-medium">{session.date}</p>
+                                                    <p className="text-[10px] text-[var(--muted)] mt-0.5 font-medium uppercase tracking-wider">{session.date}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between pt-3 border-t border-[var(--border)]/50">
+                                            <div className="flex items-center justify-between pt-3 border-t border-[var(--border)]/30">
                                                 {session.status === 'Completed' ? (
                                                     <div className="flex items-center gap-1.5">
                                                         <CheckCircle2 size={12} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
                                                         <span className={`text-[10px] font-bold uppercase tracking-wider ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                                            {session.result === 'Strong' ? 'Mastered' : 'Developing'}
+                                                            {session.result === 'Strong' ? 'Mastered' : 'Gaps'}
                                                         </span>
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">In Progress</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">Active</span>
                                                     </div>
                                                 )}
                                                 <ChevronRight size={13} className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors" />
@@ -653,9 +626,8 @@ export default function Home() {
                         )}
                     </div>
 
-                    {/* ── RIGHT SIDEBAR ── */}
-                    <div className="space-y-4">
-
+                    {/* Sidebar */}
+                    <div className="space-y-6">
                         {/* Spark Balance */}
                         <div className="premium-card rounded-2xl p-5 relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
@@ -720,15 +692,15 @@ export default function Home() {
                             </section>
                         )}
 
-                        {/* Quick Launch */}
+                        {/* Tools & Launch */}
                         <div className="premium-card rounded-2xl p-5">
-                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] mb-3">Quick Launch</h3>
+                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] mb-3">Tools & Launch</h3>
                             <div className="space-y-1">
                                 {[
-                                    { href: '/analyze', icon: <Brain size={14} />, label: 'Analyze Content', sub: '2 sparks', color: 'text-[var(--accent)]' },
-                                    { href: '/learn', icon: <BookOpen size={14} />, label: 'Learn a Topic', sub: '3 sparks', color: 'text-blue-500' },
+                                    { href: '/knowledge-map', icon: <Network size={14} />, label: 'Knowledge Map', sub: 'viz', color: 'text-[var(--accent)]' },
                                     { href: '/flow', icon: <Sparkles size={14} />, label: 'Flow Mode', sub: '1/Q', color: 'text-purple-500' },
-                                    { href: '/vault', icon: <MessageSquare size={14} />, label: 'Concept Vault', sub: 'free', color: 'text-emerald-500' },
+                                    { href: '/vault', icon: <BookOpen size={14} />, label: 'Concept Vault', sub: 'free', color: 'text-emerald-500' },
+                                    { href: '/sessions', icon: <History size={14} />, label: 'All Sessions', sub: 'history', color: 'text-blue-500' },
                                 ].map(item => (
                                     <Link
                                         key={item.href}
@@ -746,22 +718,17 @@ export default function Home() {
                                     </Link>
                                 ))}
                             </div>
-                        </div>
 
-                        {/* Knowledge Map */}
-                        <Link
-                            href="/knowledge-map"
-                            className="group premium-card rounded-2xl p-4 flex items-center gap-3 hover:border-[var(--accent)]/30 transition-all"
-                        >
-                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--accent)]/10 to-emerald-500/20 border border-[var(--accent)]/20 flex items-center justify-center">
-                                <Brain size={16} className="text-[var(--accent)]" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Knowledge Map</p>
-                                <p className="text-[10px] text-[var(--muted)] mt-0.5">Visualize your mastery graph</p>
-                            </div>
-                            <ChevronRight size={15} className="ml-auto text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:translate-x-0.5 transition-all" />
-                        </Link>
+                            {/* Hidden Debug Tool */}
+                            {process.env.NODE_ENV === 'development' && (
+                                <button
+                                    onClick={handleTestSubscription}
+                                    className="w-full mt-4 flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-purple-200 rounded-xl text-[9px] font-bold uppercase tracking-widest text-purple-400 hover:text-purple-600 hover:border-purple-400 transition-all"
+                                >
+                                    <Zap size={10} fill="currentColor" /> Test Upgrade
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
