@@ -25,20 +25,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     try {
-        const { data: user, error: userError } = await supabase
+        const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('stripe_customer_id')
+            .select('stripe_customer_id, display_name')
             .eq('id', userId)
             .single();
 
-        if (userError || !user?.stripe_customer_id) {
-            return res.status(404).json({ error: 'No billing account found for this user.' });
+        if (profileError || !profile) {
+            console.error('Profile fetch error or not found:', profileError, userId);
+            return res.status(404).json({ error: 'User profile not found.' });
+        }
+
+        // Fetch email from auth since it's not in profiles
+        const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+        const email = user?.email;
+
+        let customerId = profile.stripe_customer_id;
+
+        // Verify if the customer exists in the current Stripe environment
+        if (customerId) {
+            try {
+                await stripe.customers.retrieve(customerId);
+            } catch (stripeError: any) {
+                if (stripeError.code === 'resource_missing' || stripeError.statusCode === 404) {
+                    console.log(`Customer ${customerId} not found in current environment. Creating new one.`);
+                    customerId = null; // Mark for re-creation
+                } else {
+                    throw stripeError; // Re-throw other errors
+                }
+            }
+        }
+
+        // Auto-create customer if missing or invalid for this environment
+        if (!customerId) {
+            const customer = await stripe.customers.create({
+                email: email || undefined,
+                name: profile.display_name || undefined,
+                metadata: { userId }
+            });
+            customerId = customer.id;
+
+            await supabase
+                .from('profiles')
+                .update({ stripe_customer_id: customerId })
+                .eq('id', userId);
         }
 
         const returnUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/settings/billing`;
 
         const session = await stripe.billingPortal.sessions.create({
-            customer: user.stripe_customer_id,
+            customer: customerId,
             return_url: returnUrl
         });
 

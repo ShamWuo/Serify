@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Head from 'next/head';
 import Link from 'next/link';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { formatDistanceToNow } from 'date-fns';
 import {
     Zap,
     History,
@@ -62,8 +63,8 @@ function getMasteryColor(state: string) {
     switch (state) {
         case 'solid': return 'bg-emerald-500';
         case 'developing': return 'bg-blue-400';
-        case 'shaky': return 'bg-amber-400';
-        case 'revisit': return 'bg-red-400';
+        case 'shaky': return 'bg-orange-500';
+        case 'revisit': return 'bg-red-500';
         default: return 'bg-gray-300';
     }
 }
@@ -96,10 +97,10 @@ function stripActionBlocks(text: string): string {
 }
 
 const STARTER_PROMPTS = [
-    { icon: BookOpen, label: 'Learn a topic', prompt: 'Help me learn how transformers in AI work' },
-    { icon: Youtube, label: 'Analyze a video', prompt: 'Analyze this YouTube video: ' },
-    { icon: Sparkles, label: 'Deep dive', prompt: 'Help me deeply understand: ' },
-    { icon: FileText, label: 'Break down notes', prompt: 'I just read this — help me understand it: ' },
+    { icon: BookOpen, label: 'Learn a topic', description: 'I\'ll craft a personalized session', prompt: 'Help me learn how transformers in AI work' },
+    { icon: Youtube, label: 'Analyze a video', description: 'Paste a YouTube URL', prompt: 'Analyze this YouTube video: ' },
+    { icon: Sparkles, label: 'Deep dive', description: 'Go beyond surface-level understanding', prompt: 'Help me deeply understand: ' },
+    { icon: FileText, label: 'Break down notes', description: 'Paste anything you\'ve been studying', prompt: 'I just read this — help me understand it: ' },
 ];
 
 export default function Home() {
@@ -112,6 +113,7 @@ export default function Home() {
     const [latestSessions, setLatestSessions] = useState<SessionSummary[]>([]);
     const [activeCurriculum, setActiveCurriculum] = useState<any>(null);
     const [focusConcepts, setFocusConcepts] = useState<KnowledgeNode[]>([]);
+    const [vaultCount, setVaultCount] = useState<number | null>(null);
     const [activityDays, setActivityDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
 
     const [inputValue, setInputValue] = useState('');
@@ -122,21 +124,21 @@ export default function Home() {
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const transport = useMemo(() => {
-        if (!token && !isDemo) return undefined;
-
-        const headers: Record<string, string> = {};
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        }
-        if (isDemo) {
-            headers['x-serify-demo'] = 'true';
-        }
-
         return new DefaultChatTransport({
             api: '/api/home-chat',
-            headers,
+            headers: () => {
+                const headers: Record<string, string> = {};
+                if (token) {
+                    headers.Authorization = `Bearer ${token}`;
+                }
+                if (isDemo) {
+                    headers['x-serify-demo'] = 'true';
+                }
+                return headers;
+            },
         });
-    }, [token, isDemo]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const { messages, sendMessage, status, error, setMessages } = useChat({
         transport,
@@ -169,17 +171,28 @@ export default function Home() {
             .limit(8)
             .then(({ data, error }) => {
                 if (!error && data) {
-                    const mapped: SessionSummary[] = data.map(s => ({
-                        id: s.id,
-                        title: s.title && s.title !== 'No Learning Material Provided' ? s.title : 'Untitled Analysis',
-                        type: s.content_type === 'youtube' ? 'YouTube Video' : s.content_type === 'pdf' ? 'PDF Upload' : s.content_type === 'article' ? 'Article URL' : 'Notes',
-                        date: new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                        status: s.status === 'feedback' || s.status === 'complete' ? 'Completed' : 'In Progress',
-                        result: s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found',
-                    }));
+                    const mapped: SessionSummary[] = data.map(s => {
+                        const dateObj = new Date(s.created_at);
+                        const isRecent = (new Date().getTime() - dateObj.getTime()) < 24 * 60 * 60 * 1000;
+                        return {
+                            id: s.id,
+                            title: s.title && s.title !== 'No Learning Material Provided' ? s.title : 'Untitled Analysis',
+                            type: s.content_type === 'youtube' ? 'YouTube Video' : s.content_type === 'pdf' ? 'PDF Upload' : s.content_type === 'article' ? 'Article URL' : 'Notes',
+                            date: isRecent
+                                ? `${formatDistanceToNow(dateObj, { addSuffix: true })}`
+                                : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                            status: s.status === 'feedback' || s.status === 'complete' ? 'Completed' : 'In Progress',
+                            result: s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found',
+                        };
+                    });
                     setLatestSessions(mapped);
                 }
             });
+
+        supabase.from('knowledge_nodes')
+            .select('count', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .then(({ count }) => setVaultCount(count));
 
         supabase.from('curricula')
             .select('id, title, status, last_activity_at')
@@ -188,7 +201,24 @@ export default function Home() {
             .order('last_activity_at', { ascending: false })
             .limit(1)
             .maybeSingle()
-            .then(({ data }) => setActiveCurriculum(data));
+            .then(async ({ data: currData }) => {
+                if (currData) {
+                    const { count: total } = await supabase
+                        .from('curriculum_concept_progress')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('curriculum_id', currData.id);
+                    const { count: mastered } = await supabase
+                        .from('curriculum_concept_progress')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('curriculum_id', currData.id)
+                        .eq('status', 'mastered');
+
+                    setActiveCurriculum({
+                        ...currData,
+                        progress: total ? Math.round(((mastered || 0) / (total || 1)) * 100) : 0
+                    });
+                }
+            });
 
         supabase.from('knowledge_nodes')
             .select('id, display_name, current_mastery, session_count')
@@ -248,19 +278,27 @@ export default function Home() {
             }
 
             try {
-                const formData = new FormData();
-                formData.append('content', content);
-                formData.append('type', type || 'text');
-                formData.append('mode', 'analyze');
-                const res = await fetch('/api/process-content', {
+                const res = await fetch('/api/serify/extract', {
                     method: 'POST',
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({
+                        content: type === 'text' ? content : undefined,
+                        url: type !== 'text' ? content : undefined,
+                        contentType: type || 'text',
+                        title: content.substring(0, 50) + (content.length > 50 ? '...' : '')
+                    }),
                 });
-                if (!res.ok) throw new Error('Failed to process');
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.message || 'Failed to process');
+                }
                 const { sessionId } = await res.json();
                 router.push(`/session/${sessionId}`);
-            } catch {
+            } catch (err: any) {
+                console.error('Action processing failed:', err);
                 setIsNavigating(false);
             }
         } else if (action.type === 'START_LEARN') {
@@ -329,21 +367,35 @@ export default function Home() {
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                        <Link href="/sparks" className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/60 rounded-xl hover:border-amber-300 transition-all shadow-sm">
+                        <Link href="/sparks" className="flex items-center gap-2 px-3.5 py-2 hover:bg-amber-50 rounded-xl transition-all group">
                             <Zap size={14} className="text-amber-500" fill="currentColor" />
-                            <span className="text-sm font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
-                            <span className="text-[10px] text-amber-500 font-medium">sparks</span>
+                            <span className="text-base font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
+                            <span className="text-xs text-amber-500 font-medium tracking-tight">sparks</span>
                         </Link>
 
                         {activeCurriculum && (
                             <Link
                                 href={`/learn/curriculum/${activeCurriculum.id}`}
-                                className="group flex items-center gap-2 px-3.5 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/30 transition-all shadow-sm"
+                                className="group flex items-center gap-2 px-3.5 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/30 hover:shadow-md transition-all shadow-sm relative overflow-hidden"
                             >
+                                <div className="absolute bottom-0 left-0 h-0.5 bg-[var(--accent)]/20 transition-all duration-1000" style={{ width: `${activeCurriculum.progress}%` }} />
                                 <div className="w-6 h-6 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
                                     <Play size={12} fill="currentColor" />
                                 </div>
-                                <span className="text-xs font-semibold truncate max-w-[140px]">{activeCurriculum.title}</span>
+                                <div className="flex flex-col min-w-0 pr-1">
+                                    <span className="text-xs font-bold truncate max-w-[140px] leading-tight">{activeCurriculum.title}</span>
+                                    <span className="text-[9px] text-[var(--muted)] font-bold uppercase tracking-widest">{activeCurriculum.progress}% complete</span>
+                                </div>
+                            </Link>
+                        )}
+
+                        {latestSessions.length > 0 && latestSessions[0].status !== 'Completed' && (
+                            <Link
+                                href={`/session/${latestSessions[0].id}`}
+                                className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-[var(--accent)] text-white rounded-xl hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 transition-all shadow-lg shadow-[var(--accent)]/20 active:translate-y-0"
+                            >
+                                <Play size={12} fill="currentColor" />
+                                <span className="text-xs font-bold">Continue Analysis</span>
                             </Link>
                         )}
                     </div>
@@ -357,7 +409,7 @@ export default function Home() {
                             className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col"
                             style={{ minHeight: '560px', maxHeight: '720px' }}
                         >
-                            
+
 
                             <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4 scroll-smooth">
 
@@ -371,7 +423,7 @@ export default function Home() {
                                             Tell me what you want to learn, or paste something you&apos;ve been studying. I&apos;ll guide you from there.
                                         </p>
 
-                                        <div className="grid grid-cols-2 gap-2 w-full max-w-lg px-2">
+                                        <div className="grid grid-cols-2 gap-3 w-full max-w-lg px-2">
                                             {STARTER_PROMPTS.map((sp, i) => (
                                                 <button
                                                     key={i}
@@ -379,13 +431,14 @@ export default function Home() {
                                                         setInputValue(sp.prompt);
                                                         setTimeout(() => inputRef.current?.focus(), 50);
                                                     }}
-                                                    className="group flex flex-col gap-2 p-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)]/40 transition-all"
+                                                    className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:shadow-md hover:-translate-y-0.5 transition-all text-left"
                                                 >
-                                                    <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
-                                                        <sp.icon size={14} className="text-[var(--muted)] group-hover:text-white transition-colors" />
+                                                    <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
+                                                        <sp.icon size={16} className="text-[var(--muted)] group-hover:text-white transition-colors" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">{sp.label}</p>
+                                                        <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
+                                                        <p className="text-[11px] text-[var(--muted)]/60 mt-0.5 leading-snug">{sp.description}</p>
                                                     </div>
                                                 </button>
                                             ))}
@@ -471,7 +524,12 @@ export default function Home() {
                                                 {outOfSparksError ? "You're out of Sparks" : "Something went wrong"}
                                             </p>
                                             <p className="text-xs text-amber-600 mt-0.5">
-                                                {outOfSparksError ? 'Sparks power every AI interaction.' : error?.message}
+                                                {outOfSparksError
+                                                    ? 'Sparks power every AI interaction.'
+                                                    : (error?.message?.startsWith('{')
+                                                        ? (JSON.parse(error.message).error || JSON.parse(error.message).message || "An unexpected error occurred")
+                                                        : (error?.message || "An unexpected error occurred"))
+                                                }
                                             </p>
                                         </div>
                                         {outOfSparksError && (
@@ -493,15 +551,15 @@ export default function Home() {
                                         value={inputValue}
                                         onChange={e => setInputValue(e.target.value)}
                                         onKeyDown={handleKeyDown}
-                                        placeholder="Ask me anything… or paste a YouTube link, URL, or notes"
+                                        placeholder="What would you like to learn?"
                                         rows={1}
                                         className="flex-1 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed max-h-32"
                                         style={{ overflowY: 'auto' }}
                                         disabled={isLoading}
                                     />
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <div className="hidden sm:flex items-center gap-1 text-[10px] text-[var(--muted)]/60 font-medium">
-                                            <Zap size={9} className="text-amber-400" fill="currentColor" />
+                                        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100">
+                                            <Zap size={11} className="text-amber-500" fill="currentColor" />
                                             1 spark
                                         </div>
                                         <button
@@ -513,9 +571,9 @@ export default function Home() {
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-[10px] text-[var(--muted)]/40 text-center mt-2 font-medium">
-                                    <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send ·{' '}
-                                    <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Shift+Enter</kbd> for newline
+                                <p className="text-[10px] text-[var(--muted)]/50 text-center mt-2 font-medium">
+                                    Ask anything, paste a link, or upload notes ·{' '}
+                                    <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send
                                 </p>
                             </div>
                         </section>
@@ -540,24 +598,24 @@ export default function Home() {
                                                     {getSessionIcon(session.type)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <h4 className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
+                                                    <h4 className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
                                                         {session.title}
                                                     </h4>
-                                                    <p className="text-[9px] text-[var(--muted)] mt-0.5 font-medium uppercase tracking-wider">{session.date}</p>
+                                                    <p className="text-xs text-[var(--muted)] mt-0.5 font-medium tracking-tight">{session.date}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between pt-2.5 border-t border-[var(--border)]/30">
                                                 {session.status === 'Completed' ? (
                                                     <div className="flex items-center gap-1.5">
-                                                        <CheckCircle2 size={10} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
-                                                        <span className={`text-[9px] font-bold uppercase tracking-wider ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                                            {session.result === 'Strong' ? 'Mastered' : 'Gaps'}
+                                                        <CheckCircle2 size={12} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
+                                                        <span className={`text-xs font-bold tracking-tight ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                            {session.result === 'Strong' ? 'Mastered' : 'Gaps Found'}
                                                         </span>
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-1.5">
-                                                        <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
-                                                        <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600">Active</span>
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                                                        <span className="text-xs font-bold tracking-tight text-blue-600">Active Session</span>
                                                     </div>
                                                 )}
                                                 <ChevronRight size={12} className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors" />
@@ -580,89 +638,65 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-6">
-                        <div className="premium-card rounded-2xl p-5 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-1.5">
-                                    <Zap size={11} fill="currentColor" /> Spark Balance
-                                </h3>
-                                <Link href="/sparks" className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-colors">
-                                    Refill
-                                </Link>
-                            </div>
-                            <div className="flex items-end gap-1.5 mb-2">
-                                <span className="text-3xl font-display text-[var(--text)]">{balance?.total_sparks ?? '—'}</span>
-                                <span className="text-[var(--muted)] text-sm pb-1 font-medium">sparks</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-[var(--bg)] rounded-full overflow-hidden mb-3 border border-[var(--border)]">
-                                <div
-                                    className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-1000 rounded-full"
-                                    style={{ width: `${sparkPct}%` }}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-[var(--muted)]">Subscription</span>
-                                    <span className="font-bold">{balance?.subscription_sparks ?? 0}</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-[var(--muted)]">Top-up</span>
-                                    <span className="font-bold">{balance?.topup_sparks ?? 0}</span>
-                                </div>
-                            </div>
-                        </div>
-
                         {focusConcepts.length > 0 && (
                             <section className="premium-card rounded-2xl p-5">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
-                                        <ShieldAlert size={11} /> Needs Attention
+                                    <h3 className="text-xs font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
+                                        <ShieldAlert size={12} /> Needs Attention
                                     </h3>
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                                 </div>
-                                <div className="space-y-3.5">
+                                <div className="space-y-5">
                                     {focusConcepts.map(concept => (
-                                        <div key={concept.id}>
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span className="text-xs font-semibold text-[var(--text)] truncate pr-3">{concept.display_name}</span>
-                                                <span className="text-[9px] font-black uppercase text-red-400 tracking-tight shrink-0">Shaky</span>
+                                        <div key={concept.id} className="group cursor-pointer">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${concept.current_mastery === 'revisit' ? 'bg-red-500' : 'bg-orange-500'}`} />
+                                                    <span className="text-xs font-bold text-[var(--text)] truncate">{concept.display_name}</span>
+                                                </div>
+                                                <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-tight shrink-0 px-1.5 py-0.5 rounded-md ${concept.current_mastery === 'revisit' ? 'bg-red-50 text-red-500' : 'bg-orange-50 text-orange-500'}`}>
+                                                    <AlertTriangle size={10} />
+                                                    {concept.current_mastery === 'shaky' ? 'Shaky' : 'Revisit'}
+                                                </div>
                                             </div>
-                                            <div className="h-1 bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
-                                                <div className={`h-full ${getMasteryColor(concept.current_mastery)} rounded-full`} style={{ width: '28%' }} />
+                                            <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)] shadow-inner">
+                                                <div
+                                                    className={`h-full ${getMasteryColor(concept.current_mastery)} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)] transition-all duration-500`}
+                                                    style={{ width: concept.current_mastery === 'revisit' ? '15%' : '35%' }}
+                                                />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                                 <Link
                                     href="/vault"
-                                    className="mt-4 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent)]/40 rounded-xl py-2.5 transition-all"
+                                    className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent)]/40 rounded-xl py-3 transition-all"
                                 >
-                                    Open Concept Vault <ChevronRight size={11} />
+                                    Concept Vault <ChevronRight size={12} />
                                 </Link>
                             </section>
                         )}
 
                         <div className="premium-card rounded-2xl p-5">
-                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] mb-3">Tools & Launch</h3>
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mb-4">Tools & Launch</h3>
                             <div className="space-y-1">
                                 {[
-                                    { href: '/knowledge-map', icon: <Network size={14} />, label: 'Knowledge Map', sub: 'viz', color: 'text-[var(--accent)]' },
-                                    { href: '/flow', icon: <Sparkles size={14} />, label: 'Flow Mode', sub: '1/Q', color: 'text-purple-500' },
-                                    { href: '/vault', icon: <BookOpen size={14} />, label: 'Concept Vault', sub: 'free', color: 'text-emerald-500' },
-                                    { href: '/sessions', icon: <History size={14} />, label: 'All Sessions', sub: 'history', color: 'text-blue-500' },
+                                    { href: '/knowledge-map', icon: <Network size={14} />, label: 'Knowledge Map', sub: 'viz', color: 'bg-indigo-50 text-indigo-500' },
+                                    { href: '/vault', icon: <BookOpen size={14} />, label: 'Concept Vault', sub: vaultCount !== null ? `${vaultCount} items` : 'free', color: 'bg-emerald-50 text-emerald-500' },
+                                    { href: '/sessions', icon: <History size={14} />, label: 'All Sessions', sub: 'history', color: 'bg-blue-50 text-blue-500' },
                                 ].map(item => (
                                     <Link
                                         key={item.href}
                                         href={item.href}
-                                        className="group flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[var(--bg)] transition-all"
+                                        className="group flex items-center justify-between px-3 py-3 rounded-xl hover:bg-[var(--bg)] transition-all border border-transparent hover:border-[var(--border)] active:scale-[0.98]"
                                     >
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`${item.color} group-hover:scale-110 transition-transform`}>{item.icon}</div>
-                                            <span className="text-xs font-semibold text-[var(--text)]">{item.label}</span>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>{item.icon}</div>
+                                            <span className="text-xs font-bold text-[var(--text)]">{item.label}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <span className="text-[9px] text-[var(--muted)] font-medium">{item.sub}</span>
-                                            <ChevronRight size={11} className="text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <span className="text-xs text-[var(--muted)] font-medium">{item.sub}</span>
+                                            <ChevronRight size={13} className="text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
                                     </Link>
                                 ))}
@@ -671,9 +705,9 @@ export default function Home() {
                             {process.env.NODE_ENV === 'development' && (
                                 <button
                                     onClick={handleTestSubscription}
-                                    className="w-full mt-4 flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-purple-200 rounded-xl text-[9px] font-bold uppercase tracking-widest text-purple-400 hover:text-purple-600 hover:border-purple-400 transition-all"
+                                    className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-3 border border-dashed border-purple-200 rounded-xl text-xs font-bold uppercase tracking-widest text-purple-400 hover:text-purple-600 hover:border-purple-400 transition-all active:scale-[0.98]"
                                 >
-                                    <Zap size={10} fill="currentColor" /> Test Upgrade
+                                    <Zap size={10} fill="currentColor" /> Developer: Test Checkout
                                 </button>
                             )}
                         </div>

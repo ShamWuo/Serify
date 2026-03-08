@@ -214,7 +214,7 @@ export default function DeepDiveMode() {
                     Deep Dive: {targetConcept.name}
                 </h2>
                 <p className="text-[var(--muted)] text-center mb-8 text-lg max-w-[500px]">
-                    Let's break down this concept and fix the exact areas you struggled with.
+                    Let&apos;s break down this concept and fix the exact areas you struggled with.
                 </p>
 
                 <div className="flex flex-col items-center gap-6">
@@ -340,9 +340,9 @@ export default function DeepDiveMode() {
                             <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Check Your
                             Understanding
                         </h3>
-                        <p className="text-2xl font-display text-[var(--text)] leading-snug mb-8">
-                            {deepDive.confirmatoryQuestion}
-                        </p>
+                        <div className="text-2xl font-display text-[var(--text)] leading-snug mb-8">
+                            <MarkdownRenderer className="inline-markdown">{deepDive.confirmatoryQuestion}</MarkdownRenderer>
+                        </div>
 
                         {!isComplete ? (
                             <div className="space-y-6">
@@ -372,9 +372,9 @@ export default function DeepDiveMode() {
                                         <h4 className="font-bold text-rose-700 mb-2">
                                             Not quite right...
                                         </h4>
-                                        <p className="text-rose-900 leading-relaxed text-[15px]">
-                                            {feedback.feedback}
-                                        </p>
+                                        <div className="text-rose-900 leading-relaxed text-[15px]">
+                                            <MarkdownRenderer className="inline-markdown">{feedback.feedback}</MarkdownRenderer>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -386,9 +386,9 @@ export default function DeepDiveMode() {
                                 <h4 className="font-display text-3xl mb-4 text-[var(--text)]">
                                     Nailed it.
                                 </h4>
-                                <p className="text-[var(--text)] leading-relaxed mb-10 text-lg opacity-80">
-                                    {feedback?.feedback}
-                                </p>
+                                <div className="text-[var(--text)] leading-relaxed mb-10 text-lg opacity-80">
+                                    <MarkdownRenderer className="inline-markdown">{feedback?.feedback}</MarkdownRenderer>
+                                </div>
                                 <Link
                                     href={`/session/${id}/feedback`}
                                     className="inline-block px-10 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10"

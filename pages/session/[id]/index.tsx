@@ -3,8 +3,9 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { Pause, X, CheckCircle2, Circle, Zap } from 'lucide-react';
+import { Pause, X, CheckCircle2, Circle, Zap, ChevronLeft } from 'lucide-react';
 import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { storage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
@@ -138,7 +139,13 @@ export default function ActiveSession() {
 
     useEffect(() => {
         const loadSession = async () => {
-            if (!id) return;
+            if (!id || id === 'undefined') {
+                if (id === 'undefined') {
+                    setError('Invalid session ID. Please start a new session.');
+                    setLoading(false);
+                }
+                return;
+            }
             setLoading(true);
             setError(null);
 
@@ -154,7 +161,13 @@ export default function ActiveSession() {
                         setTitle(parsed.title || 'New Session');
                         if (parsed.currentIndex) setCurrentIndex(parsed.currentIndex);
                         if (parsed.assessments) setAssessments(parsed.assessments);
-                        setLoading(false);
+
+                        // If we have concepts but no questions, trigger generation
+                        if (parsed.concepts?.length > 0 && (!parsed.questions || parsed.questions.length === 0)) {
+                            generateMissingQuestions(id as string);
+                        } else {
+                            setLoading(false);
+                        }
                         return;
                     }
                 } catch (e) {
@@ -181,7 +194,8 @@ export default function ActiveSession() {
                     title: data.title || 'Untitled Session',
                     concepts: data.concepts || [],
                     questions: data.questions || [],
-                    type: data.contentType || 'Session'
+                    type: data.contentType || 'Session',
+                    status: data.status
                 };
 
                 setSessionData(sessionData);
@@ -191,9 +205,53 @@ export default function ActiveSession() {
 
                 // Cache it for next time
                 localStorage.setItem('serify_active_session', JSON.stringify(sessionData));
+
+                // If no questions, but we have concepts, generate them
+                if (sessionData.concepts.length > 0 && sessionData.questions.length === 0) {
+                    generateMissingQuestions(id as string);
+                } else if (sessionData.concepts.length === 0 && sessionData.status === 'processing') {
+                    // Still processing extraction - poll?
+                    setTimeout(loadSession, 3000);
+                } else {
+                    setLoading(false);
+                }
             } catch (err: any) {
                 console.error('Failed to load session from DB', err);
                 setError('Could not load this session. It may have expired or was deleted.');
+                setLoading(false);
+            }
+        };
+
+        const generateMissingQuestions = async (sid: string) => {
+            try {
+                const { data: { session: authSession } } = await supabase.auth.getSession();
+                const token = authSession?.access_token;
+
+                const res = await fetch(`/api/serify/assess?sessionId=${sid}`, {
+                    headers: {
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                });
+
+                if (res.ok) {
+                    const { questions: newQuestions } = await res.json();
+                    if (newQuestions && newQuestions.length > 0) {
+                        setQuestions(newQuestions);
+                        // Update cache
+                        const stored = localStorage.getItem('serify_active_session');
+                        if (stored) {
+                            const parsed = JSON.parse(stored);
+                            if (parsed.id === sid) {
+                                localStorage.setItem('serify_active_session', JSON.stringify({
+                                    ...parsed,
+                                    questions: newQuestions
+                                }));
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to generate missing questions', err);
             } finally {
                 setLoading(false);
             }
@@ -483,71 +541,91 @@ export default function ActiveSession() {
     }
 
     return (
-        <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-sans">
+        <DashboardLayout
+            backLink="/"
+            sidebarContent={
+                <div className="flex flex-col h-full">
+                    <div className="px-4 py-6 border-b border-[var(--border)]/50">
+                        <div className="text-[10px] text-[var(--muted)] uppercase font-bold tracking-widest mb-2 opacity-50">
+                            Session Map
+                        </div>
+                        <h2 className="text-base font-bold leading-tight text-[var(--text)] line-clamp-2">
+                            {title}
+                        </h2>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                        {concepts.map((concept, idx) => {
+                            const isAnswered = questions.findIndex(q => q.target_concept_id === concept.id) < currentIndex;
+                            const isCurrent = questions[currentIndex]?.target_concept_id === concept.id;
+
+                            return (
+                                <div
+                                    key={concept.id || idx}
+                                    className={`flex items-start gap-3 p-2.5 rounded-xl transition-all ${isCurrent ? 'bg-[var(--accent)]/5 border border-[var(--accent)]/20 shadow-sm' : ''
+                                        }`}
+                                >
+                                    <div className="mt-0.5 shrink-0">
+                                        {isAnswered ? (
+                                            <CheckCircle2 size={14} className="text-emerald-500" />
+                                        ) : isCurrent ? (
+                                            <div className="w-3.5 h-3.5 rounded-full border-2 border-[var(--accent)] flex items-center justify-center animate-pulse">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                                            </div>
+                                        ) : (
+                                            <Circle size={14} className="text-[var(--border)]" />
+                                        )}
+                                    </div>
+                                    <span className={`text-xs leading-snug ${isAnswered ? 'text-[var(--text)] opacity-40 line-through' :
+                                        isCurrent ? 'text-[var(--accent)] font-bold' :
+                                            'text-[var(--muted)] font-medium'
+                                        }`}>
+                                        {concept.name}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            }
+        >
             <Head>
-                <title>Session | Serify</title>
+                <title>{title ? `${title} | Serify` : 'Session | Serify'}</title>
             </Head>
 
-            <aside className="hidden md:flex flex-col w-[260px] border-r border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0">
-                <div className="px-6 py-8 border-b border-[var(--border)]">
-                    <div className="text-xs text-[var(--muted)] uppercase font-bold tracking-wider mb-2">
-                        Content Map
+            <div className="flex-1 flex flex-col min-h-full relative overflow-hidden">
+                {/* Background dynamic elements */}
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--accent)]/5 rounded-full blur-[100px] -mr-64 -mt-64 pointer-events-none" />
+
+                <div className="sticky top-0 z-10 w-full flex items-center justify-between px-6 py-4 md:px-8 bg-[var(--bg)]/80 backdrop-blur-md border-b border-[var(--border)]/50">
+                    <div className="flex items-center gap-4">
+                        <Link href="/" className="md:hidden w-8 h-8 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface)]">
+                            <ChevronLeft size={18} />
+                        </Link>
+                        <div className="flex flex-col md:hidden">
+                            <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{currentIndex + 1} of {questions.length}</span>
+                            <span className="text-xs font-bold text-[var(--text)] truncate max-w-[150px]">{title}</span>
+                        </div>
                     </div>
-                    <div className="text-lg font-bold leading-tight">{title}</div>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                    {concepts.map((concept, idx) => {
-                        const isAnswered =
-                            questions.findIndex((q) => q.target_concept_id === concept.id) <
-                            currentIndex;
-                        const isCurrent = questions[currentIndex]?.target_concept_id === concept.id;
 
-                        return (
-                            <div key={concept.id || idx} className="flex items-start gap-3">
-                                <div className="mt-0.5 shrink-0">
-                                    {isAnswered ? (
-                                        <CheckCircle2 size={16} className="text-[var(--accent)]" />
-                                    ) : isCurrent ? (
-                                        <div className="w-4 h-4 rounded-full border-2 border-[var(--accent)] flex items-center justify-center animate-pulse">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-                                        </div>
-                                    ) : (
-                                        <Circle size={16} className="text-[var(--border)]" />
-                                    )}
-                                </div>
-                                <span
-                                    className={`text-sm ${isAnswered ? 'text-[var(--text)] opacity-60 line-through' : isCurrent ? 'text-[var(--text)] font-semibold' : 'text-[var(--muted)]'}`}
-                                >
-                                    {concept.name}
-                                </span>
-                            </div>
-                        );
-                    })}
-                </div>
-            </aside>
-
-            <main className="flex-1 flex flex-col min-h-screen relative">
-                <div className="absolute top-0 right-0 p-6 flex items-center gap-4 z-10 w-full justify-between md:justify-end bg-gradient-to-b from-[var(--bg)] to-transparent">
-                    <div className="md:hidden text-sm font-bold opacity-50">Serify</div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={handlePause}
                             disabled={isAnalyzing}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--muted)] hover:bg-black/5 hover:text-[var(--text)] transition-colors disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] border border-transparent hover:border-[var(--border)] transition-all disabled:opacity-50"
                         >
-                            <Pause size={14} /> Pause
+                            <Pause size={14} /> <span className="hidden sm:inline">Pause</span>
                         </button>
                         <button
                             onClick={handleAbandon}
                             disabled={isAnalyzing}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-[var(--warn)] hover:bg-[var(--warn-light)] transition-colors disabled:opacity-50"
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 transition-all disabled:opacity-50"
                         >
-                            <X size={14} /> Abandon
+                            <X size={14} /> <span className="hidden sm:inline">Abandon</span>
                         </button>
                     </div>
                 </div>
 
-                <div className="flex-1 flex flex-col justify-center max-w-3xl mx-auto w-full px-6 py-24">
+                <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full px-6 py-12 md:py-20 relative z-0">
                     <div className="animate-slide-up" key={currentQuestion.id || currentIndex}>
                         {isFirstSession && currentIndex === 0 && showGuidance1 && (
                             <div className="mb-8 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm relative animate-fade-in group transition-all">
@@ -689,13 +767,13 @@ export default function ActiveSession() {
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
 
             <OutOfSparksModal
                 isOpen={isOutOfSparksModalOpen}
                 onClose={() => setIsOutOfSparksModalOpen(false)}
                 featureName="Concept Hints"
             />
-        </div>
+        </DashboardLayout>
     );
 }

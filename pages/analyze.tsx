@@ -62,8 +62,17 @@ export default function Analyze() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
     const { balance, loading: sparksLoading } = useSparks();
+
+    useEffect(() => {
+        // Simple delay to prevent immediate flash of content before auth state is fully confirmed
+        const timer = setTimeout(() => {
+            setIsInitialLoading(false);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
 
     useEffect(() => {
         setInputValue('');
@@ -103,7 +112,7 @@ export default function Analyze() {
             startQuestionStream({
                 concepts: object.concepts,
                 method: 'standard',
-                questionCount: isBasic ? 6 : 5 
+                questionCount: isBasic ? 6 : 5
             });
         },
 
@@ -238,6 +247,28 @@ export default function Analyze() {
 
     const isStreaming = isProcessing && (isConceptStreaming || isQuestionStreaming || conceptData);
 
+    if (isInitialLoading) {
+        return (
+            <DashboardLayout>
+                <div className="flex-1 flex items-center justify-center p-6 md:p-10 min-h-[calc(100vh-64px)]">
+                    <div className="w-full max-w-4xl">
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-12 min-h-[500px] flex flex-col items-center justify-center space-y-6 animate-pulse">
+                            <div className="w-16 h-16 bg-[var(--border)] rounded-full mb-4"></div>
+                            <div className="h-8 w-64 bg-[var(--border)] rounded-lg"></div>
+                            <div className="h-4 w-96 bg-[var(--border)] rounded-lg opacity-50"></div>
+                            <div className="grid grid-cols-4 gap-4 w-full max-w-md mt-8">
+                                <div className="h-10 bg-[var(--border)] rounded-full"></div>
+                                <div className="h-10 bg-[var(--border)] rounded-full"></div>
+                                <div className="h-10 bg-[var(--border)] rounded-full"></div>
+                                <div className="h-10 bg-[var(--border)] rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     return (
         <DashboardLayout>
             <Head>
@@ -278,11 +309,11 @@ export default function Analyze() {
                                                 />
                                             )}
                                         </h3>
-                                        <div className="space-y-3">
+                                        <div className="space-y-3 stagger-children">
                                             {conceptData?.concepts?.map((c, i) => (
                                                 <div
                                                     key={i}
-                                                    className="animate-fade-in-up bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm border-l-2 border-l-[var(--accent)] card-hover"
+                                                    className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm border-l-2 border-l-[var(--accent)] card-hover"
                                                 >
                                                     <strong className="text-[var(--text)] block mb-1">
                                                         {c?.name || '...'}
@@ -313,11 +344,11 @@ export default function Analyze() {
                                                         />
                                                     )}
                                             </h3>
-                                            <div className="space-y-3">
+                                            <div className="space-y-3 stagger-children">
                                                 {questionData?.questions?.map((q, i) => (
                                                     <div
                                                         key={i}
-                                                        className="animate-fade-in-up bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm card-hover"
+                                                        className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm card-hover"
                                                     >
                                                         <span className="text-xs font-bold text-[var(--accent)]/70 uppercase mb-2 block tracking-wider">
                                                             {q?.type || 'Drafting...'}
@@ -401,7 +432,7 @@ export default function Analyze() {
                                                 onChange={(e) => setInputValue(e.target.value)}
                                                 type="text"
                                                 placeholder="https://youtube.com/watch?v=..."
-                                                className="w-full h-14 px-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-base"
+                                                className="w-full h-14 px-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none input-focus-ring text-base"
                                             />
                                         )}
                                         {activeTab === 'article' && (
@@ -410,7 +441,7 @@ export default function Analyze() {
                                                 onChange={(e) => setInputValue(e.target.value)}
                                                 type="text"
                                                 placeholder="https://..."
-                                                className="w-full h-14 px-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-base"
+                                                className="w-full h-14 px-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none input-focus-ring text-base"
                                             />
                                         )}
                                         {activeTab === 'pdf' && (
@@ -437,7 +468,7 @@ export default function Analyze() {
                                                 value={inputValue}
                                                 onChange={(e) => setInputValue(e.target.value)}
                                                 placeholder="Paste your notes, highlights, or any text here..."
-                                                className="w-full min-h-[160px] p-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors resize-y text-base"
+                                                className="w-full min-h-[160px] p-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none input-focus-ring resize-y text-base"
                                             />
                                         )}
                                     </div>
@@ -473,7 +504,7 @@ export default function Analyze() {
                                 </div>
 
                                 {balance && balance.total_sparks < 13 && (
-                                    <div className="mt-8 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-6 shadow-sm text-left glass animate-fade-in-up">
+                                    <div className="mt-8 premium-card border border-[var(--border)] rounded-xl p-6 shadow-sm text-left glass animate-fade-in-up animate-shake">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="bg-amber-100 text-amber-600 p-2 rounded-lg">
                                                 <Zap className="w-5 h-5" fill="currentColor" />

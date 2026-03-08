@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
@@ -31,6 +31,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [vaultNeedsWork, setVaultNeedsWork] = useState(0);
+    const [logoError, setLogoError] = useState(false);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -85,11 +86,6 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
         },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
         {
-            href: '/flow',
-            label: 'Flow Mode',
-            icon: <LibraryBig size={20} className="text-purple-500" />
-        },
-        {
             href: '/vault',
             label: 'Concept Vault',
             icon: <Archive size={20} />,
@@ -104,7 +100,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
             <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-[var(--accent)] rounded-full filter blur-[120px] opacity-[0.03] pointer-events-none z-0" />
             <div className="fixed bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] bg-[#7c3d9e] rounded-full filter blur-[120px] opacity-[0.03] pointer-events-none z-0" />
 
-            <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-[var(--surface)]/60 backdrop-blur-xl h-screen sticky top-0 shrink-0 z-40">
+            <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-gradient-to-b from-[var(--surface)] to-[var(--bg)] backdrop-blur-xl h-screen sticky top-0 shrink-0 z-40">
                 <div className="px-6 pt-8 pb-4">
                     {backLink ? (
                         <Link
@@ -117,12 +113,21 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                             Back
                         </Link>
                     ) : (
-                        <Link href="/" className="block">
-                            <div className="text-3xl font-display text-[var(--text)] tracking-tight">
-                                Serify
-                            </div>
-                            <div className="text-xs text-[var(--muted)] mt-1 tracking-wide uppercase font-medium">
-                                Reflection Engine
+                        <Link href="/" className="inline-flex items-center gap-3 group mb-2 text-left">
+                            {!logoError && (
+                                <div className="h-10 w-10 flex items-center justify-center shrink-0">
+                                    <img
+                                        src="/logo.png"
+                                        alt=""
+                                        className="h-full w-full object-contain transition-transform group-hover:scale-110"
+                                        onError={() => setLogoError(true)}
+                                    />
+                                </div>
+                            )}
+                            <div className="flex flex-col">
+                                <div className="text-3xl font-display text-[var(--text)] tracking-tight">
+                                    Serify
+                                </div>
                             </div>
                         </Link>
                     )}
@@ -153,14 +158,18 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${isActive
-                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
-                                        : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] row-hover-accent'
-                                        }`}
+                                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${
+                                        isActive
+                                            ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm'
+                                            : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'
+                                    }`}
                                 >
+                                    {isActive && (
+                                        <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)] animate-fade-in" />
+                                    )}
                                     <div className="flex items-center gap-3">
                                         <div
-                                            className={`transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                                            className={`transition-all duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:text-[var(--accent)]'}`}
                                         >
                                             {item.icon}
                                         </div>
@@ -168,13 +177,13 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                                             {item.label}
                                         </span>
                                     </div>
-                                    {isActive && <div className="nav-active-bar" />}
                                     {item.badge !== undefined && (
                                         <span
-                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
-                                                ? 'bg-[var(--accent)] text-white'
-                                                : 'bg-[var(--border)] text-[var(--muted)] group-hover:bg-[var(--accent)]/20 group-hover:text-[var(--accent)] transition-colors'
-                                                }`}
+                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                isActive
+                                                    ? 'bg-[var(--accent)] text-white'
+                                                    : 'bg-[var(--border)] text-[var(--muted)] group-hover:bg-[var(--accent)]/20 group-hover:text-[var(--accent)] transition-colors'
+                                            }`}
                                         >
                                             {item.badge}
                                         </span>
@@ -208,32 +217,40 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                     </div>
                     <button
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
-                        className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-black/5 transition-colors text-left"
+                        className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[var(--accent)]/5 transition-all text-left group"
                     >
                         <div className="flex items-center gap-2 overflow-hidden">
-                            <div className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-xs font-medium shrink-0">
-                                {user?.displayName?.charAt(0) || 'U'}
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-[var(--accent)]/20 group-hover:scale-105 transition-transform">
+                                {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-[var(--text)] truncate">
+                                <p className="text-sm font-semibold text-[var(--text)] truncate">
                                     {user?.displayName || 'User'}
                                 </p>
-                                <p className="text-xs text-[var(--muted)] truncate capitalize">
-                                    {user?.subscriptionTier || 'free'} Plan
+                                <p className="text-[10px] text-[var(--muted)] truncate capitalize font-medium tracking-wide">
+                                    {user?.subscriptionTier === 'pro' ? '✦ Pro Plan' : 'Free Plan'}
                                 </p>
                             </div>
                         </div>
                         <ChevronUp
                             size={16}
-                            className={`text-[var(--muted)] transition-transform ${isProfileOpen ? 'rotate-180' : ''}`}
+                            className={`text-[var(--muted)] transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`}
                         />
                     </button>
                 </div>
             </aside>
 
             <div className="md:hidden sticky top-0 z-40 bg-[var(--surface)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
-                <Link href="/" className="text-2xl font-display text-[var(--text)]">
-                    Serify
+                <Link href="/" className="flex items-center gap-2">
+                    {!logoError && (
+                        <img
+                            src="/logo.png"
+                            alt=""
+                            className="h-7 w-7 object-contain"
+                            onError={() => setLogoError(true)}
+                        />
+                    )}
+                    <span className="text-2xl font-display text-[var(--text)]">Serify</span>
                 </Link>
                 <div className="flex items-center gap-3">
                     <SparkBalance />
@@ -268,7 +285,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                 {children}
             </main>
 
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around pb-safe">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around pb-safe">
                 {navItems.slice(0, 5).map((item) => {
                     const isActive =
                         router.pathname.startsWith(item.href) &&
@@ -277,13 +294,19 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center py-2 px-1 w-full gap-1 transition-colors ${isActive
-                                ? 'text-[var(--accent)]'
-                                : 'text-[var(--muted)] hover:text-[var(--text)]'
-                                }`}
+                            className={`flex flex-col items-center justify-center py-2.5 px-1 w-full gap-1 transition-all relative ${
+                                isActive
+                                    ? 'text-[var(--accent)]'
+                                    : 'text-[var(--muted)] hover:text-[var(--text)]'
+                            }`}
                         >
-                            {item.icon}
-                            <span className="text-[10px] font-medium">{item.label}</span>
+                            {isActive && (
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-b-full bg-[var(--accent)] shadow-[0_0_6px_var(--accent)]" />
+                            )}
+                            <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
+                                {item.icon}
+                            </div>
+                            <span className={`text-[10px] font-medium ${isActive ? 'font-bold' : ''}`}>{item.label}</span>
                         </Link>
                     );
                 })}

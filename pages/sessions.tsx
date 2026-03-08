@@ -170,11 +170,14 @@ function SessionRow({
                 : 'bg-amber-50 text-amber-600 border-amber-200';
 
     return (
-        <tr className="border-b border-[var(--border)] hover:bg-black/[0.025] transition-colors group row-hover-accent">
+        <tr
+            className="border-b border-[var(--border)] hover:bg-[var(--accent)]/[0.025] transition-colors group row-hover-accent cursor-pointer"
+            onClick={handleRowClick}
+        >
             { }
-            <td className="py-4 px-6 cursor-pointer" onClick={handleRowClick}>
+            <td className="py-4 px-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-[var(--bg)] border border-[var(--border)] rounded-lg flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-center shrink-0 group-hover:border-[var(--accent)]/30 group-hover:bg-[var(--accent)]/5 transition-all">
                         {getIcon(session.contentType)}
                     </div>
                     <div className="min-w-0">
@@ -257,14 +260,11 @@ function SessionRow({
                 </div>
             </td>
             { }
-            <td
-                className="py-4 px-4 text-sm text-[var(--muted)] whitespace-nowrap hidden sm:table-cell cursor-pointer"
-                onClick={handleRowClick}
-            >
+            <td className="py-4 px-4 text-sm text-[var(--muted)] whitespace-nowrap hidden sm:table-cell">
                 {formatDate(session.createdAt)}
             </td>
             { }
-            <td className="py-4 px-4 cursor-pointer" onClick={handleRowClick}>
+            <td className="py-4 px-4">
                 <span
                     className={`inline-flex items-center text-xs font-bold px-2 py-1 rounded-lg border ${statusColor}`}
                 >
@@ -296,10 +296,16 @@ export default function LibraryPage() {
 
     const [sessions, setSessions] = useState<UnifiedSession[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterTab, setFilterTab] = useState<FilterTab>('all');
     const [deleteTarget, setDeleteTarget] = useState<UnifiedSession | null>(null);
     const [deleting, setDeleting] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsInitialLoading(false), 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     const fetchSessions = useCallback(async () => {
         if (!user) return;
@@ -366,6 +372,9 @@ export default function LibraryPage() {
 
     const filtered = sessions.filter((s) => {
         let matchesTab = filterTab === 'all' || s.type === filterTab;
+        if (filterTab === 'reflection') {
+            matchesTab = s.type === 'reflection' || (s as any).session_type === 'analysis';
+        }
         if (filterTab === 'completed') {
             matchesTab =
                 s.status === 'complete' ||
@@ -382,7 +391,7 @@ export default function LibraryPage() {
         return matchesTab && matchesSearch;
     });
 
-    const reflectionCount = sessions.filter((s) => s.type === 'reflection').length;
+    const reflectionCount = sessions.filter((s) => s.type === 'reflection' || (s as any).session_type === 'analysis').length;
     const flowCount = sessions.filter((s) => s.type === 'flow').length;
     const completedCount = sessions.filter(
         (s) =>
@@ -400,182 +409,190 @@ export default function LibraryPage() {
     return (
         <DashboardLayout>
             <Head>
-                <title>Library | Serify</title>
+                <title>Sessions | Serify</title>
             </Head>
 
             <div className="max-w-5xl mx-auto w-full px-6 md:px-10 py-8 pb-24">
-                { }
-                <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-display text-[var(--text)]">Library</h1>
-                        <p className="text-[var(--muted)] text-sm mt-1">
-                            All your sessions and saved learning materials, in one place.
-                        </p>
+                {isInitialLoading && !user ? (
+                    <div className="animate-pulse">
+                        <div className="h-10 w-48 bg-[var(--border)] rounded-lg mb-4"></div>
+                        <div className="h-4 w-96 bg-[var(--border)] rounded-lg mb-8 opacity-50"></div>
+                        <div className="h-64 bg-[var(--surface)] border border-[var(--border)] rounded-2xl"></div>
                     </div>
-                    <div className="flex gap-2">
-                        <div className="relative">
-                            <Search
-                                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-                                size={15}
-                            />
-                            <input
-                                type="text"
-                                placeholder="Search sessions…"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm outline-none focus:border-[var(--accent)] w-full md:w-60 transition-colors"
-                            />
-                            {search && (
-                                <button
-                                    onClick={() => setSearch('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)]"
-                                >
-                                    <X size={13} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </header>
-
-                { }
-                <div className="flex flex-wrap items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1 mb-6 w-fit glass">
-                    {(
-                        [
-                            ['all', 'All', sessions.length],
-                            ['reflection', 'Analysis', reflectionCount],
-                            ['flow', 'Flow Mode', flowCount],
-                            ['in_progress', 'In Progress', inProgressCount],
-                            ['completed', 'Completed', completedCount]
-                        ] as [FilterTab, string, number][]
-                    ).map(([tab, label, count]) => (
-                        <button
-                            key={tab}
-                            onClick={() => setFilterTab(tab)}
-                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${filterTab === tab
-                                ? 'bg-[var(--accent)] text-white shadow-sm'
-                                : 'text-[var(--muted)] hover:text-[var(--text)]'
-                                }`}
-                        >
-                            {tab === 'flow' && <Zap size={12} />}
-                            {tab === 'reflection' && <FlaskConical size={12} />}
-                            {tab === 'in_progress' && <Clock size={12} />}
-                            {tab === 'completed' && (
-                                <CheckCircle2
-                                    size={12}
-                                    className={filterTab === tab ? '' : 'text-emerald-500'}
-                                />
-                            )}
-                            {label}
-                            <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${filterTab === tab ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--muted)]'}`}
-                            >
-                                {count}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-
-                { }
-                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass">
-                    {loading ? (
-                        <div className="space-y-0">
-                            {[...Array(5)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="flex items-center gap-4 px-6 py-4 border-b border-[var(--border)]"
-                                >
-                                    <div className="w-9 h-9 bg-[var(--border)] rounded-lg animate-pulse shrink-0" />
-                                    <div className="flex-1 space-y-2">
-                                        <div className="h-4 bg-[var(--border)] rounded animate-pulse w-1/2" />
-                                        <div className="h-3 bg-[var(--border)] rounded animate-pulse w-1/4" />
-                                    </div>
-                                    <div className="h-6 w-20 bg-[var(--border)] rounded-lg animate-pulse" />
+                ) : (
+                    <>
+                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                            <div>
+                                <h1 className="text-3xl font-display text-[var(--text)]">Sessions</h1>
+                                <p className="text-[var(--muted)] text-sm mt-1">
+                                    All your sessions and saved learning materials, in one place.
+                                </p>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="relative">
+                                    <Search
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+                                        size={15}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Search sessions…"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        className="pl-9 pr-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm outline-none focus:border-[var(--accent)] w-full md:w-60 transition-colors"
+                                    />
+                                    {search && (
+                                        <button
+                                            onClick={() => setSearch('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)]"
+                                        >
+                                            <X size={13} />
+                                        </button>
+                                    )}
                                 </div>
+                            </div>
+                        </header>
+
+                        <div className="flex flex-wrap items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1 mb-6 w-fit glass">
+                            {(
+                                [
+                                    ['all', 'All', sessions.length],
+                                    ['reflection', 'Analysis', reflectionCount],
+                                    ['flow', 'Flow Mode', flowCount],
+                                    ['in_progress', 'In Progress', inProgressCount],
+                                    ['completed', 'Completed', completedCount]
+                                ] as [FilterTab, string, number][]
+                            ).map(([tab, label, count]) => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setFilterTab(tab)}
+                                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${filterTab === tab
+                                        ? 'bg-[var(--accent)] text-white shadow-sm'
+                                        : 'text-[var(--muted)] hover:text-[var(--text)]'
+                                        }`}
+                                >
+                                    {tab === 'flow' && <Zap size={12} />}
+                                    {tab === 'reflection' && <FlaskConical size={12} />}
+                                    {tab === 'in_progress' && <Clock size={12} />}
+                                    {tab === 'completed' && (
+                                        <CheckCircle2
+                                            size={12}
+                                            className={filterTab === tab ? '' : 'text-emerald-500'}
+                                        />
+                                    )}
+                                    {label}
+                                    <span
+                                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${filterTab === tab ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--muted)]'}`}
+                                    >
+                                        {count}
+                                    </span>
+                                </button>
                             ))}
                         </div>
-                    ) : filtered.length > 0 ? (
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-[var(--border)] bg-black/[0.02]">
-                                    <th className="py-3 px-6 font-medium text-xs uppercase text-[var(--muted)] tracking-wider">
-                                        Session
-                                    </th>
-                                    <th className="py-3 px-4 font-medium text-xs uppercase text-[var(--muted)] tracking-wider hidden sm:table-cell">
-                                        Date
-                                    </th>
-                                    <th className="py-3 px-4 font-medium text-xs uppercase text-[var(--muted)] tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="py-3 px-4 text-right" />
-                                </tr>
-                            </thead>
-                            <tbody className="stagger-children">
-                                {filtered.map((session) => (
-                                    <SessionRow
-                                        key={session.id}
-                                        session={session}
-                                        onDelete={setDeleteTarget}
-                                    />
-                                ))}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-                            <div className="relative mb-8">
-                                <div className="w-16 h-16 bg-[var(--accent)]/10 rounded-2xl flex items-center justify-center animate-breathe relative z-10 border border-[var(--accent)]/20">
-                                    <BookOpen size={28} className="text-[var(--accent)] opacity-80" />
+
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass">
+                            {loading && sessions.length === 0 ? (
+                                <div className="animate-pulse">
+                                    <div className="h-12 bg-black/[0.02] border-b border-[var(--border)]"></div>
+                                    {[...Array(6)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center gap-4 px-6 py-4 border-b border-[var(--border)]"
+                                        >
+                                            <div className="w-9 h-9 bg-[var(--border)] rounded-lg shrink-0" />
+                                            <div className="flex-1 space-y-2">
+                                                <div className="h-4 bg-[var(--border)] rounded w-1/2" />
+                                                <div className="h-3 bg-[var(--border)] rounded w-1/4 opacity-50" />
+                                            </div>
+                                            <div className="h-6 w-20 bg-[var(--border)] rounded-lg" />
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="absolute -inset-4 bg-[var(--accent)]/5 rounded-full animate-ping opacity-20" />
-                            </div>
+                            ) : filtered.length > 0 ? (
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-[var(--border)] bg-black/[0.02]">
+                                            <th className="py-3 px-6 font-medium text-xs uppercase text-[var(--muted)] tracking-wider">
+                                                Session
+                                            </th>
+                                            <th className="py-3 px-4 font-medium text-xs uppercase text-[var(--muted)] tracking-wider hidden sm:table-cell">
+                                                Date
+                                            </th>
+                                            <th className="py-3 px-4 font-medium text-xs uppercase text-[var(--muted)] tracking-wider">
+                                                Status
+                                            </th>
+                                            <th className="py-3 px-4 text-right" />
+                                        </tr>
+                                    </thead>
+                                    <tbody className="stagger-children">
+                                        {filtered.map((session) => (
+                                            <SessionRow
+                                                key={session.id}
+                                                session={session}
+                                                onDelete={setDeleteTarget}
+                                            />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-20 text-center px-6 animate-scale-in">
+                                    <div className="relative mb-8">
+                                        <div className="w-16 h-16 bg-[var(--accent)]/10 rounded-2xl flex items-center justify-center animate-breathe relative z-10 border border-[var(--accent)]/20">
+                                            <BookOpen size={28} className="text-[var(--accent)] opacity-80" />
+                                        </div>
+                                        <div className="absolute -inset-4 bg-[var(--accent)]/5 rounded-full animate-ping opacity-20" />
+                                    </div>
 
-                            <h3 className="text-xl font-display font-medium text-[var(--text)] mb-2">
-                                {search
-                                    ? 'No sessions match your search'
-                                    : filterTab === 'reflection'
-                                        ? 'No Analysis Sessions'
-                                        : filterTab === 'flow'
-                                            ? 'No Flow Sessions'
-                                            : filterTab === 'completed'
-                                                ? 'No Completed Sessions'
-                                                : filterTab === 'in_progress'
-                                                    ? 'No Active Sessions'
-                                                    : 'Your learning library is clear'}
-                            </h3>
+                                    <h3 className="text-xl font-display font-medium text-[var(--text)] mb-2">
+                                        {search
+                                            ? 'No sessions match your search'
+                                            : filterTab === 'reflection'
+                                                ? 'No Analysis Sessions'
+                                                : filterTab === 'flow'
+                                                    ? 'No Flow Sessions'
+                                                    : filterTab === 'completed'
+                                                        ? 'No Completed Sessions'
+                                                        : filterTab === 'in_progress'
+                                                            ? 'No Active Sessions'
+                                                            : 'Your learning library is clear'}
+                                    </h3>
 
-                            <p className="text-[var(--muted)] text-sm max-w-sm mx-auto leading-relaxed mb-10">
-                                {search
-                                    ? `Try searching for different keywords or checking all sessions.`
-                                    : filterTab === 'reflection'
-                                        ? 'Transform notes, videos, or PDFs into structured knowledge and active recall sessions.'
-                                        : filterTab === 'flow'
-                                            ? 'The most immersive way to study. Select challenge areas from your Vault to start a Flow session.'
-                                            : filterTab === 'completed'
-                                                ? 'Sessions will appear here once you finish all steps in an analysis or Flow.'
-                                                : filterTab === 'in_progress'
-                                                    ? 'Ready to dive back in? Any unfinished sessions will be tracked right here.'
-                                                    : 'Start your next adventure. Choose a study method to begin mapping your understanding.'}
-                            </p>
+                                    <p className="text-[var(--muted)] text-sm max-w-sm mx-auto leading-relaxed mb-10">
+                                        {search
+                                            ? `Try searching for different keywords or checking all sessions.`
+                                            : filterTab === 'reflection'
+                                                ? 'Transform notes, videos, or PDFs into structured knowledge and active recall sessions.'
+                                                : filterTab === 'flow'
+                                                    ? 'The most immersive way to study. Select challenge areas from your Vault to start a Flow session.'
+                                                    : filterTab === 'completed'
+                                                        ? 'Sessions will appear here once you finish all steps in an analysis or Flow.'
+                                                        : filterTab === 'in_progress'
+                                                            ? 'Ready to dive back in? Any unfinished sessions will be tracked right here.'
+                                                            : 'Start your next adventure. Choose a study method to begin mapping your understanding.'}
+                                    </p>
 
-                            {!search && (
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <Link
-                                        href="/"
-                                        className="h-11 px-8 bg-[var(--accent)] text-white rounded-xl text-sm font-bold hover:bg-[var(--accent)]/90 transition-all shadow-lg shadow-[var(--accent)]/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
-                                    >
-                                        <Zap size={16} fill="currentColor" />
-                                        Start Learning
-                                    </Link>
-                                    <Link
-                                        href="/flow"
-                                        className="h-11 px-8 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-sm font-bold hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/5 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        Try Flow Mode
-                                    </Link>
+                                    {!search && (
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <Link
+                                                href="/"
+                                                className="h-11 px-8 bg-[var(--accent)] text-white rounded-xl text-sm font-bold hover:bg-[var(--accent)]/90 transition-all shadow-lg shadow-[var(--accent)]/20 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+                                            >
+                                                <Zap size={16} fill="currentColor" />
+                                                Start Learning
+                                            </Link>
+                                            <Link
+                                                href="/flow"
+                                                className="h-11 px-8 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-sm font-bold hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/5 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                Try Flow Mode
+                                            </Link>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
 
             { }

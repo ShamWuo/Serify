@@ -43,10 +43,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .select('*')
                 .eq('session_id', sessionId),
             supabase
-                .from('questions')
+                .from('assessment_questions')
                 .select('*')
                 .eq('session_id', sessionId)
-                .order('order_index', { ascending: true })
         ]);
 
         if (sessionRes.error || !sessionRes.data) {
@@ -76,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: q.id,
                 target_concept_id: q.target_concept_id,
                 type: q.type,
-                text: q.question_text
+                text: q.text
             }))
         });
     } catch (error) {

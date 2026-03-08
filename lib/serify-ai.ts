@@ -53,24 +53,34 @@ export async function extractConcepts(content: ContentSource, transcript?: strin
   const prompt = `You are an expert knowledge analyst.
 ${contentDescription}
 
-Extract 4 to 6 key concepts that represent the core pillars of this material. Return a JSON array.
+Extract 3 to 5 broad "Mastery Pillars" that represent the major themes or domains of this material. 
+For each pillar, identify 2 to 4 specific sub-categories (sub-concepts) that fall under it.
+
+Return a JSON array of Mastery Pillars.
 
 Format:
 [
   {
     "id": "c1",
-    "name": "Concept Name",
-    "definition": "A clear, standalone definition (1-2 sentences).",
+    "name": "Pillar Name",
+    "description": "A broad, comprehensive definition of this knowledge pillar (1-2 sentences).",
     "importance": "high" | "medium" | "low",
-    "relatedConcepts": ["c2"]
+    "relatedConcepts": ["c2"],
+    "subConcepts": [
+      {
+        "name": "Sub-concept name",
+        "description": "A concise explanation of how this fits into the pillar."
+      }
+    ]
   }
 ]
 
 Rules:
 - Use concept IDs c1, c2, c3, etc.
-- "definition": Provide a high-quality definition even if the source is brief.
-- "importance": "high" for the most central ideas.
-- "relatedConcepts": IDs of other extracted concepts that this one builds upon or connects to.`;
+- "description": Provide a high-quality definition.
+- "importance": "high" for the most central pillars.
+- "relatedConcepts": IDs of other extracted pillars that this one builds upon or connects to.
+- Focus on breadth for the pillars and depth for the sub-concepts.`;
 
 
   const result = await defaultModel.generateContent({
@@ -105,7 +115,10 @@ export async function generateAssessment(
 ): Promise<AssessmentQuestion[]> {
   const tone = preferences?.tone ?? 'supportive';
   const count = preferences?.questionCount ?? 6;
-  const conceptList = concepts.map((c) => `- ${c.name}: ${c.description}`).join('\n');
+  const conceptList = concepts.map((c) => {
+    const subText = c.subConcepts?.map(sc => `  - ${sc.name}: ${sc.description}`).join('\n') || '';
+    return `- ${c.name}: ${c.description}${subText ? `\n${subText}` : ''}`;
+  }).join('\n');
 
   const toneInstruction =
     tone === 'challenging'

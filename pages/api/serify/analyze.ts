@@ -4,7 +4,7 @@ import { analyzeAnswers } from '@/lib/serify-ai';
 import { ReflectionSession, MasteryState } from '@/types/serify';
 import { canAccess } from '@/lib/gates';
 import { deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
-import { findOrCreateConceptNode, updateConceptMastery, updateTopicClusters } from '@/lib/vault';
+import { findOrCreateConceptNode, updateConceptMastery, updateVaultHierarchy } from '@/lib/vault';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -227,38 +227,80 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // --- UPDATE CONCEPT VAULT (KNOWLEDGE NODES) ---
         console.log('Analyze API: Updating Concept Vault...');
         try {
-            // 1. Process strong concepts
-            for (const conceptName of analysis.strengthMap.strong || []) {
-                const conceptDef = conceptRows.find(c => c.name === conceptName)?.description || '';
-                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, conceptDef);
+            // Collect all concept names from analysis maps
+            const allConceptNames = new Set([
+                ...(analysis.strengthMap.strong || []),
+                ...(analysis.strengthMap.weak || []),
+                ...(analysis.strengthMap.missing || [])
+            ]);
+
+            // 1. Process Pillars First
+            const pillars = conceptRows.filter(c =>
+                allConceptNames.has(c.name) &&
+                (c.relationships as any)?.isPillar
+            );
+
+            const nodeMap = new Map<string, any>();
+
+            for (const pillar of pillars) {
+                const mastery = analysis.strengthMap.strong?.includes(pillar.name) ? 'solid' :
+                    analysis.strengthMap.weak?.includes(pillar.name) ? 'shaky' : 'revisit';
+
+                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, pillar.name, sessionId, pillar.description || '');
                 if (node) {
-                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, 'solid', 'session', sessionId);
+                    nodeMap.set(pillar.name, node);
+                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, mastery, 'session', sessionId);
                 }
             }
 
-            // 2. Process weak concepts (mapped to shaky or revisit)
-            for (const conceptName of analysis.strengthMap.weak || []) {
-                const conceptDef = conceptRows.find(c => c.name === conceptName)?.description || '';
-                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, conceptDef);
+            // 2. Process Sub-concepts and link to parents
+            const subConcepts = conceptRows.filter(c =>
+                allConceptNames.has(c.name) &&
+                (c.relationships as any)?.isSub
+            );
+
+            for (const sub of subConcepts) {
+                const mastery = analysis.strengthMap.strong?.includes(sub.name) ? 'solid' :
+                    analysis.strengthMap.weak?.includes(sub.name) ? 'shaky' : 'revisit';
+
+                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, sub.name, sessionId, sub.description || '');
                 if (node) {
-                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, 'shaky', 'session', sessionId);
+                    const parentName = (sub.relationships as any)?.parentName;
+                    const parentNode = nodeMap.get(parentName);
+
+                    // Link to parent if found
+                    if (parentNode && node.parent_concept_id !== parentNode.id) {
+                        await supabaseWithAuth
+                            .from('knowledge_nodes')
+                            .update({
+                                parent_concept_id: parentNode.id,
+                                is_sub_concept: true
+                            })
+                            .eq('id', node.id);
+                    }
+
+                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, mastery, 'session', sessionId);
                 }
             }
 
-            // 3. Process missing concepts
-            for (const conceptName of analysis.strengthMap.missing || []) {
-                const conceptDef = conceptRows.find(c => c.name === conceptName)?.description || '';
-                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, conceptDef);
+            // 3. Process remaining concepts (not marked as pillar or sub)
+            const processed = new Set([...pillars.map(p => p.name), ...subConcepts.map(s => s.name)]);
+            for (const conceptName of allConceptNames) {
+                if (processed.has(conceptName)) continue;
+
+                const mastery = analysis.strengthMap.strong?.includes(conceptName) ? 'solid' :
+                    analysis.strengthMap.weak?.includes(conceptName) ? 'shaky' : 'revisit';
+                const def = conceptRows.find(c => c.name === conceptName)?.description || '';
+                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, def);
                 if (node) {
-                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, 'revisit', 'session', sessionId);
+                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, mastery, 'session', sessionId);
                 }
             }
 
-            // Optional: update clusters
-            await updateTopicClusters(supabaseWithAuth, user.id);
+            // Update clusters
+            await updateVaultHierarchy(supabaseWithAuth, user.id);
         } catch (vaultErr) {
             console.error('Analyze API: Failed to update Vault:', vaultErr);
-            // Non-fatal, we still return the analysis
         }
 
         console.log('Analyze API: Complete, returning results');

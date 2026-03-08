@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, Maximize2, ZoomIn, ZoomOut, Zap, Network, PlayCircle, Brain } from 'lucide-react';
-import { KnowledgeNode, ConceptTopic, MasteryState } from '@/types/serify';
+import { KnowledgeNode, VaultCategory, MasteryState } from '@/types/serify';
 
 const MASTERY_COLORS: Record<MasteryState, string> = {
     solid: '#2A5C45',      // Accent
@@ -40,8 +40,9 @@ export default function KnowledgeMap() {
     const router = useRouter();
 
     const [nodes, setNodes] = useState<KnowledgeNode[]>([]);
-    const [topics, setTopics] = useState<ConceptTopic[]>([]);
+    const [categories, setCategories] = useState<VaultCategory[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [backfilling, setBackfilling] = useState(false);
     const [backfillDone, setBackfillDone] = useState(false);
 
@@ -76,7 +77,7 @@ export default function KnowledgeMap() {
                 if (res.ok) {
                     const d = await res.json();
                     setNodes(d.nodes || []);
-                    setTopics(d.topics || []);
+                    setCategories(d.categories || []);
                 }
             } catch (e) {
                 console.error(e);
@@ -94,9 +95,9 @@ export default function KnowledgeMap() {
             'root': { x: CENTER_X, y: CENTER_Y }
         };
 
-        topics.forEach((t, i) => {
-            const angle = (i / topics.length) * Math.PI * 2;
-            initial[`topic-${t.id}`] = {
+        categories.forEach((c, i) => {
+            const angle = (i / categories.length) * Math.PI * 2;
+            initial[`category-${c.id}`] = {
                 x: CENTER_X + Math.cos(angle) * 350,
                 y: CENTER_Y + Math.sin(angle) * 350
             };
@@ -112,7 +113,7 @@ export default function KnowledgeMap() {
         });
 
         setNodePositions(initial);
-    }, [nodes, topics]);
+    }, [nodes, categories]);
 
     // Physics Loop
     useEffect(() => {
@@ -155,9 +156,9 @@ export default function KnowledgeMap() {
                 }
 
                 // 2. Attraction (Hierarchy)
-                // Topics to Root
-                topics.forEach(t => {
-                    const id = `topic-${t.id}`;
+                // Categories to Root
+                categories.forEach(c => {
+                    const id = `category-${c.id}`;
                     if (!next[id]) return;
                     const dx = next['root'].x - next[id].x;
                     const dy = next['root'].y - next[id].y;
@@ -165,10 +166,10 @@ export default function KnowledgeMap() {
                     velocities[id].vy += dy * ATTRACTION;
                 });
 
-                // Concepts to Topics
+                // Concepts to Categories
                 nodes.forEach(n => {
                     if (!next[n.id]) return;
-                    const targetId = n.topic_id ? `topic-${n.topic_id}` : 'root';
+                    const targetId = n.category_id ? `category-${n.category_id}` : 'root';
                     const target = next[targetId];
                     if (!target) return;
                     const dx = target.x - next[n.id].x;
@@ -206,7 +207,7 @@ export default function KnowledgeMap() {
 
         animationFrame = requestAnimationFrame(step);
         return () => cancelAnimationFrame(animationFrame);
-    }, [loading, nodes, topics, isDragging, draggedNodeId]);
+    }, [loading, nodes, categories, isDragging, draggedNodeId]);
 
     const triggerBackfill = async () => {
         if (backfilling || backfillDone) return;
@@ -226,7 +227,7 @@ export default function KnowledgeMap() {
                 if (res2.ok) {
                     const d2 = await res2.json();
                     setNodes(d2.nodes || []);
-                    setTopics(d2.topics || []);
+                    setCategories(d2.categories || []);
                 }
             }
         } catch (e) {
@@ -258,18 +259,18 @@ export default function KnowledgeMap() {
             color: 'var(--text)'
         });
 
-        topics.forEach(t => {
-            const pos = nodePositions[`topic-${t.id}`];
+        categories.forEach(c => {
+            const pos = nodePositions[`category-${c.id}`];
             if (!pos) return;
             out.push({
-                id: `topic-${t.id}`,
-                label: t.name,
+                id: `category-${c.id}`,
+                label: c.name,
                 type: 'topic',
                 x: pos.x,
                 y: pos.y,
                 r: 18,
                 color: 'var(--muted)',
-                data: t
+                data: c
             });
         });
 
@@ -289,22 +290,22 @@ export default function KnowledgeMap() {
         });
 
         return out;
-    }, [nodes, topics, nodePositions]);
+    }, [nodes, categories, nodePositions]);
 
     const mapLinks = useMemo(() => {
         const out: MapLink[] = [];
         if (mapNodes.length === 0) return [];
 
-        topics.forEach(t => {
+        categories.forEach(c => {
             const source = nodePositions['root'];
-            const target = nodePositions[`topic-${t.id}`];
+            const target = nodePositions[`category-${c.id}`];
             if (source && target) {
                 out.push({ source, target, color: 'var(--border)' });
             }
         });
 
         nodes.forEach(n => {
-            const sourceId = n.topic_id ? `topic-${n.topic_id}` : 'root';
+            const sourceId = n.category_id ? `category-${n.category_id}` : 'root';
             const source = nodePositions[sourceId];
             const target = nodePositions[n.id];
             if (source && target) {
@@ -313,7 +314,7 @@ export default function KnowledgeMap() {
         });
 
         return out;
-    }, [nodes, topics, nodePositions, mapNodes]);
+    }, [nodes, categories, nodePositions, mapNodes]);
 
     // Handlers
     const handleMouseDown = (e: React.MouseEvent) => {
@@ -379,25 +380,49 @@ export default function KnowledgeMap() {
 
             <div className="flex flex-col h-[calc(100vh-64px)] bg-[var(--bg)] relative overflow-hidden font-sans">
                 {/* Header Overlay */}
-                <div className="absolute top-8 left-8 z-10 p-8 bg-[var(--surface)]/70 backdrop-blur-2xl border border-[var(--border)] rounded-[32px] shadow-2xl shadow-black/10 animate-fade-in group">
-                    <Link href="/vault" className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--accent)] transition-all mb-6 text-xs font-bold uppercase tracking-[0.2em]">
-                        <ChevronLeft size={16} /> Back to Vault
-                    </Link>
-                    <h1 className="text-4xl font-display font-medium text-[var(--text)] tracking-tight mb-2">Knowledge Map</h1>
-                    <p className="text-[var(--muted)] text-sm max-w-[260px] leading-relaxed opacity-80">
-                        A dynamic constellation of your conceptual understanding.
-                    </p>
+                <div
+                    className={`absolute top-4 left-4 md:top-8 md:left-8 z-10 p-6 md:p-8 bg-[var(--surface)]/70 backdrop-blur-2xl border border-[var(--border)] rounded-[24px] md:rounded-[32px] shadow-2xl shadow-black/10 transition-all duration-500 animate-fade-in group
+                    ${isHeaderCollapsed ? 'w-14 h-14 overflow-hidden p-0 rounded-2xl flex items-center justify-center cursor-pointer shadow-none border-none' : 'max-w-md'}
+                    `}
+                    onClick={() => isHeaderCollapsed && setIsHeaderCollapsed(false)}
+                >
+                    {isHeaderCollapsed ? (
+                        <div className="flex items-center justify-center w-full h-full text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white transition-all rounded-2xl">
+                            <Brain size={24} />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex items-center justify-between mb-4">
+                                <Link href="/vault" className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--accent)] transition-all text-[10px] font-bold uppercase tracking-[0.2em]">
+                                    <ChevronLeft size={14} /> Back to Vault
+                                </Link>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setIsHeaderCollapsed(true); }}
+                                    className="p-1.5 rounded-lg hover:bg-[var(--accent)]/10 text-[var(--muted)] hover:text-[var(--accent)] transition-all"
+                                    title="Collapse"
+                                >
+                                    <ChevronLeft size={16} className="-rotate-90" />
+                                </button>
+                            </div>
+                            <h1 className="text-2xl md:text-4xl font-display font-medium text-[var(--text)] tracking-tight mb-2">Knowledge Map</h1>
+                            <p className="text-[var(--muted)] text-xs md:text-sm max-w-[260px] leading-relaxed opacity-80">
+                                A dynamic constellation of your conceptual understanding.
+                            </p>
+                        </>
+                    )}
+                </div>
 
-                    {/* Legend */}
-                    <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 pt-6 border-t border-[var(--border)]">
+                {/* Separate Legend Layer (Bottom Left) */}
+                {!isHeaderCollapsed && (
+                    <div className="absolute bottom-24 left-4 md:bottom-8 md:left-8 z-10 p-4 bg-[var(--surface)]/40 backdrop-blur-md border border-[var(--border)] rounded-2xl flex flex-wrap gap-x-4 gap-y-2 animate-fade-in pointer-events-none md:pointer-events-auto">
                         {Object.entries(MASTERY_COLORS).map(([lvl, color]) => (
                             <div key={lvl} className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">{lvl}</span>
+                                <div className="w-2 rounded-full h-2" style={{ backgroundColor: color }} />
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted)]">{lvl}</span>
                             </div>
                         ))}
                     </div>
-                </div>
+                )}
 
                 {/* Controls overlay */}
                 <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">

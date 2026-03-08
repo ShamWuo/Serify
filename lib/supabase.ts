@@ -33,6 +33,29 @@ const projectRef = supabaseUrl.includes('supabase.co')
     ? supabaseUrl.split('.')[0].split('//')[1]
     : 'local';
 
+// Singleton pattern to prevent multiple instances during Fast Refresh
+const createSupabaseClient = () => {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+            detectSessionInUrl: true,
+            autoRefreshToken: true,
+            persistSession: true,
+            storageKey: `sb-${projectRef}-auth-token`,
+            flowType: 'pkce'
+        }
+    });
+};
+
+const globalForSupabase = globalThis as unknown as {
+    supabase: ReturnType<typeof createSupabaseClient> | undefined;
+};
+
+export const supabase = globalForSupabase.supabase ?? createSupabaseClient();
+
+if (process.env.NODE_ENV !== 'production') {
+    globalForSupabase.supabase = supabase;
+}
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     console.log('Supabase client initialized:', {
         url: supabaseUrl,
@@ -49,13 +72,3 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         );
     }
 }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        detectSessionInUrl: true,
-        autoRefreshToken: true,
-        persistSession: true,
-        storageKey: `sb-${projectRef}-auth-token`,
-        flowType: 'pkce'
-    }
-});

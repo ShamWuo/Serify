@@ -220,14 +220,14 @@ export default function FlowModePage() {
                     )}
 
                     { }
-                    {selectedConcepts.length > 0 && (
+                    {concepts.length > 0 && (
                         <div className="sticky bottom-8 mt-12 flex flex-col items-center gap-4 z-20">
                             <button
                                 onClick={launchSession}
-                                disabled={launching}
-                                className={`flex items-center gap-3 px-10 py-5 rounded-[20px] text-lg font-bold text-white transition-all shadow-2xl ${launching
-                                    ? 'bg-[var(--accent)] opacity-80 cursor-not-allowed'
-                                    : 'bg-gradient-to-r from-[var(--accent)] to-[#4f46e5] hover:scale-105 active:scale-95 shadow-[var(--accent)]/30'
+                                disabled={launching || selectedConcepts.length === 0}
+                                className={`flex items-center gap-3 px-10 py-5 rounded-[20px] text-lg font-bold text-white transition-all shadow-2xl ${(launching || selectedConcepts.length === 0)
+                                        ? 'bg-gray-400 cursor-not-allowed opacity-50'
+                                        : 'bg-gradient-to-r from-[var(--accent)] to-[#4f46e5] hover:scale-105 active:scale-95 shadow-[var(--accent)]/30'
                                     }`}
                             >
                                 {launching ? (
@@ -237,14 +237,18 @@ export default function FlowModePage() {
                                 )}
                                 {launching
                                     ? 'Building your path…'
-                                    : `Master ${selectedConcepts.length} Concept${selectedConcepts.length > 1 ? 's' : ''}`}
-                                {!launching && <ChevronRight size={22} className="ml-2" />}
+                                    : selectedConcepts.length === 0
+                                        ? 'Select concepts to start'
+                                        : `Master ${selectedConcepts.length} Concept${selectedConcepts.length > 1 ? 's' : ''}`}
+                                {!launching && selectedConcepts.length > 0 && <ChevronRight size={22} className="ml-2" />}
                             </button>
 
-                            <div className="flex items-center gap-2 bg-[var(--surface)]/80 backdrop-blur-sm border border-[var(--border)] px-4 py-2 rounded-full text-xs font-semibold text-[var(--muted)] shadow-sm">
-                                <Zap size={12} fill="currentColor" className="text-amber-500" />
-                                Costs 2 Sparks to start
-                            </div>
+                            {selectedConcepts.length > 0 && (
+                                <div className="flex items-center gap-2 bg-[var(--surface)]/80 backdrop-blur-sm border border-[var(--border)] px-4 py-2 rounded-full text-xs font-semibold text-[var(--muted)] shadow-sm animate-fade-in">
+                                    <Zap size={12} fill="currentColor" className="text-amber-500" />
+                                    Costs 2 Sparks to start
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

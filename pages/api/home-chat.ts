@@ -31,6 +31,7 @@ export default async function handler(req: Request) {
 
         const user = await authenticateApiRequest(req);
         if (!user) {
+            console.error('[home-chat] Authentication failed. No user identified.');
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 

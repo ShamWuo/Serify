@@ -78,78 +78,133 @@ function ReadOnlyNotice() {
     );
 }
 
-function TeachStep({ content, onNext, readOnly }: { content: any; onNext: (r: string) => void; readOnly?: boolean }) {
+function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps }: {
+    content: any; onNext: (r: string) => void; readOnly?: boolean;
+    stepNumber?: number; totalSteps?: number;
+}) {
     const quickChecks: any[] = content.quickChecks || [];
     const [answers, setAnswers] = useState<(number | null)[]>(Array(quickChecks.length).fill(null));
+    const [qIdx, setQIdx] = useState(0);
     const allAnswered = quickChecks.length === 0 || answers.every((a) => a !== null);
 
-    const handleSelect = (qIdx: number, optIdx: number) => {
+    const handleSelect = (optIdx: number) => {
         if (readOnly || answers[qIdx] !== null) return;
         setAnswers((prev) => { const next = [...prev]; next[qIdx] = optIdx; return next; });
     };
 
-    return (
-        <div>
-            {/* Full lesson content */}
-            <div className="flow-markdown leading-relaxed text-[15.5px] mb-8">
-                <MarkdownRenderer>{content.text}</MarkdownRenderer>
-            </div>
+    const currentQ = quickChecks[qIdx];
+    const selected = currentQ ? answers[qIdx] : null;
+    const answered = selected !== null;
 
-            {/* Inline MCQ quick-checks */}
-            {quickChecks.length > 0 && (
-                <div className="space-y-5 border-t border-[var(--border)] pt-6">
-                    <p className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-1">Quick checks</p>
-                    {quickChecks.map((qc: any, qIdx: number) => {
-                        const selected = answers[qIdx];
-                        const correct = qc.correctIndex;
-                        const answered = selected !== null;
-                        return (
-                            <div key={qIdx} className="rounded-xl border border-[var(--border)] overflow-hidden">
-                                <div className="px-4 py-3 text-[14px] font-semibold text-[var(--text)] bg-[var(--surface)]">
-                                    <MarkdownRenderer>{qc.question}</MarkdownRenderer>
-                                </div>
-                                <div className="divide-y divide-[var(--border)]">
-                                    {(qc.options || []).map((opt: string, oIdx: number) => {
-                                        const isSelected = selected === oIdx;
-                                        const isCorrect = oIdx === correct;
-                                        let bg = 'transparent';
-                                        let textCls = 'text-[var(--text)]';
-                                        let icon = null;
-                                        if (answered) {
-                                            if (isCorrect) { bg = '#22c55e12'; textCls = 'text-emerald-700 font-semibold'; icon = '✓'; }
-                                            else if (isSelected && !isCorrect) { bg = '#ef444412'; textCls = 'text-red-600'; icon = '✗'; }
-                                        }
-                                        return (
-                                            <button key={oIdx} onClick={() => handleSelect(qIdx, oIdx)}
-                                                disabled={answered || readOnly}
-                                                style={{ background: bg }}
-                                                className={`w-full text-left px-4 py-2.5 text-[13.5px] flex items-center gap-2.5 transition-colors ${!answered && !readOnly ? 'hover:bg-[var(--accent)]/5 cursor-pointer' : 'cursor-default'} ${textCls}`}
-                                            >
-                                                <span className="w-5 h-5 rounded-full border border-[var(--border)] flex items-center justify-center text-[11px] shrink-0"
-                                                    style={answered && isCorrect ? { background: '#22c55e', borderColor: '#22c55e', color: 'white' } : answered && isSelected ? { background: '#ef4444', borderColor: '#ef4444', color: 'white' } : {}}
-                                                >
-                                                    {answered ? (isCorrect ? '✓' : isSelected ? '✗' : String.fromCharCode(65 + oIdx)) : String.fromCharCode(65 + oIdx)}
-                                                </span>
-                                                <MarkdownRenderer>{opt}</MarkdownRenderer>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
+    return (
+        <div className="relative">
+            {stepNumber && totalSteps && (
+                <div className="absolute -top-4 -right-4 bg-[var(--surface)] px-2.5 py-1 rounded-bl-xl border-b border-l border-[var(--border)] text-[10px] font-bold text-[var(--muted)]/60 tracking-widest uppercase shadow-sm z-10">
+                    Step {stepNumber} / {totalSteps}
                 </div>
             )}
 
-            <div className="flex mt-6">
+            <div className="prose-content flow-markdown text-[15.5px] mb-10 px-1">
+                <MarkdownRenderer>{content.text}</MarkdownRenderer>
+            </div>
+
+            {quickChecks.length > 0 && (
+                <div className="border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--accent-soft)]/30 mb-8 shadow-sm">
+                    <div className="px-5 py-4 bg-[var(--surface)] border-b border-[var(--border)] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Brain size={14} className="text-[var(--accent)]" />
+                            <p className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-widest">Knowledge Check</p>
+                        </div>
+                        {quickChecks.length > 1 && (
+                            <div className="flex gap-1">
+                                {quickChecks.map((_: any, i: number) => {
+                                    let dot = 'h-1.5 rounded-full transition-all duration-200 ';
+                                    if (i === qIdx) dot += 'w-4 bg-[var(--accent)]';
+                                    else if (answers[i] !== null) dot += 'w-2 bg-emerald-500';
+                                    else dot += 'w-2 bg-[var(--border)]';
+                                    return <div key={i} className={dot} />;
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-5">
+                        <div className="text-[15px] font-semibold text-[var(--text)] mb-5 leading-snug">
+                            <MarkdownRenderer>{currentQ?.question}</MarkdownRenderer>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {(currentQ?.options || []).map((opt: string, oIdx: number) => {
+                                const isSelected = selected === oIdx;
+                                const isCorrect = answered && oIdx === currentQ.correctIndex;
+                                const isWrong = answered && isSelected && !isCorrect;
+
+                                let cls = 'p-4 rounded-xl border-2 text-left flex items-start gap-3 transition-all duration-200 shadow-sm ';
+                                if (isCorrect) cls += 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10';
+                                else if (isWrong) cls += 'border-rose-500 bg-rose-50 dark:bg-rose-500/10';
+                                else if (isSelected) cls += 'border-[var(--accent)] bg-[var(--accent)]/5 ring-4 ring-[var(--accent)]/10';
+                                else if (answered) cls += 'border-[var(--border)] bg-[var(--surface)] opacity-50';
+                                else cls += 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/5 hover:-translate-y-0.5';
+
+                                return (
+                                    <button
+                                        key={oIdx}
+                                        onClick={() => handleSelect(oIdx)}
+                                        disabled={answered || readOnly}
+                                        className={cls}
+                                    >
+                                        <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center text-[11px] font-black transition-all ${isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                            isWrong ? 'bg-rose-500 border-rose-500 text-white' :
+                                                isSelected ? 'bg-[var(--accent)] border-[var(--accent)] text-white' :
+                                                    'border-[var(--border)] text-[var(--muted)]'
+                                            }`}>
+                                            {isCorrect ? '✓' : isWrong ? '✗' : String.fromCharCode(65 + oIdx)}
+                                        </div>
+                                        <div className="text-[14px] leading-relaxed flex-1 pt-0.5 font-medium">
+                                            <MarkdownRenderer>{opt}</MarkdownRenderer>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {quickChecks.length > 1 && (
+                        <div className="px-4 py-3 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-between">
+                            <button
+                                onClick={() => setQIdx(p => Math.max(0, p - 1))}
+                                disabled={qIdx === 0}
+                                className="w-9 h-9 rounded-xl border border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] transition-all disabled:opacity-30"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <span className="text-[11px] text-[var(--muted)] font-bold tracking-widest uppercase">
+                                Question {qIdx + 1} of {quickChecks.length}
+                            </span>
+                            <button
+                                onClick={() => setQIdx(p => Math.min(quickChecks.length - 1, p + 1))}
+                                disabled={qIdx === quickChecks.length - 1}
+                                className="w-9 h-9 rounded-xl border border-[var(--border)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] transition-all disabled:opacity-30"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            <div className="flex mt-8">
                 {readOnly ? <ReadOnlyNotice /> : (
-                    <ActionButton
-                        label={allAnswered ? 'Continue' : `Answer all questions to continue`}
-                        icon={<ChevronRight size={16} />}
-                        primary
-                        onClick={() => onNext('completed_teach')}
-                        disabled={!allAnswered}
-                    />
+                    <div className="flex items-center gap-4">
+                        <ActionButton
+                            label={allAnswered ? 'Continue' : `Answer all checks`}
+                            icon={<ChevronRight size={16} />}
+                            primary
+                            onClick={() => onNext('completed_teach')}
+                            disabled={!allAnswered}
+                        />
+                        {!allAnswered && <span className="text-[13px] text-[var(--muted)] italic animate-pulse">Verify understanding before moving on</span>}
+                    </div>
                 )}
             </div>
         </div>
@@ -210,18 +265,37 @@ function CheckQuestionStep({ content, stepId, isEvaluated, onEvaluated, readOnly
     );
 }
 
-function ReinforceStep({ content, onNext, readOnly }: { content: any; onNext: (r: string) => void; readOnly?: boolean }) {
+function ReinforceStep({ content, onNext, readOnly, stepNumber, totalSteps }: {
+    content: any; onNext: (r: string) => void; readOnly?: boolean;
+    stepNumber?: number; totalSteps?: number;
+}) {
     const isPathB = content.path === 'B';
-    const bgClass = isPathB ? 'bg-amber-50 border border-amber-500/40 p-5' : '';
+    const isPathC = content.path === 'C';
+
     return (
-        <div className={`rounded-xl ${bgClass}`}>
-            {isPathB && <p className="text-xs font-bold text-amber-500 uppercase mb-2 tracking-wider">Alternative Angle</p>}
-            <div className="flow-markdown leading-relaxed text-[15.5px]">
-                <MarkdownRenderer>{content.text}</MarkdownRenderer>
+        <div className="relative">
+            {stepNumber && totalSteps && (
+                <div className="absolute -top-4 -right-4 bg-[var(--surface)] px-2.5 py-1 rounded-bl-xl border-b border-l border-[var(--border)] text-[10px] font-bold text-[var(--muted)]/60 tracking-widest uppercase shadow-sm z-10">
+                    Step {stepNumber} / {totalSteps}
+                </div>
+            )}
+
+            <div className={`rounded-2xl border-2 transition-all duration-300 ${(isPathB || isPathC) ? 'border-amber-400/40 bg-amber-50/30' : 'border-transparent'}`}>
+                {(isPathB || isPathC) && (
+                    <div className="flex items-center gap-2 px-5 py-3 border-b border-amber-400/20">
+                        <Replace size={14} className="text-amber-600" />
+                        <p className="text-[11px] font-bold text-amber-600 uppercase tracking-widest">Alternative Explanation</p>
+                    </div>
+                )}
+
+                <div className={`prose-content flow-markdown leading-relaxed text-[16px] ${ (isPathB || isPathC) ? 'p-6' : 'px-1' }`}>
+                    <MarkdownRenderer>{content.text}</MarkdownRenderer>
+                </div>
             </div>
-            <div className="flex mt-6">
+
+            <div className="flex mt-8 px-1">
                 {readOnly ? <ReadOnlyNotice /> : (
-                    <ActionButton label="I see now" primary icon={<ChevronRight size={16} />} onClick={() => onNext('got_it')} />
+                    <ActionButton label="Got it" primary icon={<ChevronRight size={16} />} onClick={() => onNext('got_it')} />
                 )}
             </div>
         </div>
@@ -568,14 +642,14 @@ export default function CurriculumFlowSessionPage() {
                     <button onClick={() => fetchNextStep()} className="mt-4 text-xs font-bold text-red-700 underline">Try Re-generating</button>
                 </div>
             );
-            return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
+            return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} stepNumber={displayStep.step_number} totalSteps={stepHistory.length} />;
         }
         if (step_type === 'check' || step_type === 'confirm')
             return (
                 <CheckQuestionStep content={content} stepId={displayStep.id} isEvaluated={!!pendingEvaluation || isReadOnly}
                     onEvaluated={handleEvaluated} readOnly={isReadOnly} savedAnswer={savedAnswer} />
             );
-        if (step_type === 'reinforce') return <ReinforceStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} />;
+        if (step_type === 'reinforce') return <ReinforceStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} stepNumber={displayStep.step_number} totalSteps={stepHistory.length} />;
 
         return (
             <div className="flex flex-col items-center justify-center p-8 text-[var(--muted)]">
@@ -605,7 +679,7 @@ export default function CurriculumFlowSessionPage() {
                     <div className="text-6xl mb-6">🎉</div>
                     <h1 className="text-3xl font-display font-bold mb-3 text-[var(--text)]">Curriculum Complete!</h1>
                     <p className="text-[var(--muted)] mb-8">
-                        You've successfully mastered {totalConcepts} concept{totalConcepts !== 1 ? 's' : ''} in this curriculum path.
+                        You&apos;ve successfully mastered {totalConcepts} concept{totalConcepts !== 1 ? 's' : ''} in this curriculum path.
                     </p>
                     <div className="flex gap-4 justify-center flex-wrap">
                         <ActionButton label="Back to Curriculum" onClick={() => router.push(`/learn/curriculum/${curriculumId}`)} />

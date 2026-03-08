@@ -14,9 +14,18 @@ export default async function handler(req: Request) {
     }
 
     try {
-        const { content, contentType, stream = true } = await req.json();
+        let body;
+        try {
+            body = await req.json();
+        } catch (e) {
+            console.error('Failed to parse request JSON:', e);
+            return new Response(JSON.stringify({ message: 'Invalid JSON payload' }), { status: 400 });
+        }
 
-        if (!content) {
+        const { content, contentType: providedType, type: legacyType, stream = true } = body;
+        const contentType = providedType || legacyType;
+
+        if (!content || !contentType) {
             return new Response(JSON.stringify({ message: 'Content is required' }), {
                 status: 400
             });

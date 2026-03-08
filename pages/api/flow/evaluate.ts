@@ -177,8 +177,14 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
 
                 const reinforceModel = genAI.getGenerativeModel({
                     model: 'gemini-2.5-flash',
-                    systemInstruction: `A learner needs a targeted re-explanation."
-Return the re-explanation text only. No JSON. No preamble.`
+                    systemInstruction: `You are Serify's adaptive reinforcement engine. Provide a targeted re-explanation of a specific concept area where the learner is struggling.
+                    
+                    RULES:
+                    - Return ONLY the re-explanation text. No JSON, no conversational filler.
+                    - MANDATORY: Use LaTeX for ALL math ($...$ for inline, $$...$$ for block).
+                    - STRUCTURE: Use bolding (**concept**) for emphasis and bullet points for lists to improve scannability.
+                    - TONE: Professional, supportive, but extremely concise. 3-5 sentences total.
+                    - No preamble (do not say "Sure", "Let's look at this", etc.).`
                 });
 
                 const { data: progressData } = await supabaseAdmin

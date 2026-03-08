@@ -185,43 +185,79 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // 3. Either clone cached concepts or call Gemini
-        let conceptsToSave = [];
-        let finalConcepts = [];
+        let finalConcepts: any[] = [];
 
         if (cachedConcepts) {
             console.log('Cloning cached concepts...');
             finalConcepts = cachedConcepts;
-            conceptsToSave = cachedConcepts.map((c: any) => ({
+            const conceptsToSave = cachedConcepts.map((c: any) => ({
                 session_id: session.id, // attach to the NEW session
                 name: c.name,
                 description: c.description,
                 importance: c.importance,
                 related_concept_names: c.related_concept_names, // cloned exactly
-                misconception_risk: c.misconception_risk
+                misconception_risk: c.misconception_risk,
+                relationships: c.relationships // Preserve hierarchy metadata
             }));
+
+            console.log('Saving cached concepts...');
+            const { error: conceptError } = await supabaseWithAuth
+                .from('concepts')
+                .insert(conceptsToSave);
+
+            if (conceptError) {
+                console.error('Cached concept save error:', conceptError);
+                // Decide how to handle this error: return 500 or just log and continue?
+                // For now, we'll log and proceed, assuming the session is still valid.
+            }
         } else {
             console.log('Extracting concepts via Gemini...');
             const extracted = await extractConcepts(contentSource);
             console.log('Concepts extracted:', extracted.length);
             finalConcepts = extracted;
-            conceptsToSave = extracted.map((c: any) => ({
-                session_id: session.id,
-                name: c.name,
-                description: c.description,
-                importance: c.importance,
-                related_concept_names: c.relatedConcepts
-            }));
-        }
 
-        console.log('Saving concepts to database...');
-        const { error: conceptError } = await supabaseWithAuth.from('concepts').insert(conceptsToSave);
+            const flattenedConcepts: any[] = [];
+            extracted.forEach((pillar: any) => {
+                // Add the pillar itself
+                flattenedConcepts.push({
+                    session_id: session.id,
+                    name: pillar.name,
+                    description: pillar.description || '',
+                    importance: pillar.importance || 'medium',
+                    related_concept_names: pillar.relatedConcepts || [],
+                    relationships: { isPillar: true }
+                });
 
-        if (conceptError) {
-            console.error('Concept insert error:', conceptError);
-            return res.status(500).json({
-                error: `Failed to save concepts: ${conceptError.message}`,
-                details: conceptError
+                // Add sub-concepts if they exist
+                if (pillar.subConcepts && Array.isArray(pillar.subConcepts)) {
+                    pillar.subConcepts.forEach((sub: any) => {
+                        flattenedConcepts.push({
+                            session_id: session.id,
+                            name: sub.name,
+                            description: sub.description || '',
+                            importance: pillar.importance || 'medium',
+                            related_concept_names: [pillar.name],
+                            relationships: {
+                                isSub: true,
+                                parentName: pillar.name
+                            }
+                        });
+                    });
+                }
             });
+
+            console.log('Saving concepts to database...');
+            const { error: conceptError } = await supabaseWithAuth
+                .from('concepts')
+                .insert(flattenedConcepts);
+
+            if (conceptError) {
+                console.error('Concept insert error:', conceptError);
+                return res.status(500).json({
+                    error: `Failed to save concepts: ${conceptError.message}`,
+                    details: conceptError
+                });
+            }
         }
 
         await supabaseWithAuth
@@ -230,13 +266,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('id', session.id);
 
         console.log('Extraction complete, returning sessionId:', session.id);
-        return res.status(200).json({ sessionId: session.id, concepts: finalConcepts, cached: !!cachedConcepts });
+        return res
+            .status(200)
+            .json({ sessionId: session.id, concepts: finalConcepts, cached: !!cachedConcepts });
     } catch (err: any) {
         console.error('Extract error:', err);
         const errorMessage = err.message || 'Failed to extract concepts';
         return res.status(500).json({
             error: errorMessage,
-            details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            details: err
         });
     }
 }

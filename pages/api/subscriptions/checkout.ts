@@ -50,9 +50,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .single();
 
         if (userError || !user) {
-            console.error('User not found:', userError);
-            return res.status(404).json({ error: 'User not found' });
+            console.error('User profile not found:', userError);
+            return res.status(404).json({ error: 'User profile not found' });
         }
+
+        // Fetch email from auth since it's not in profiles
+        const { data: { user: authUser }, error: authUserError } = await supabase.auth.admin.getUserById(userId);
+        const email = authUser?.email;
 
         // Guard: block re-subscription if the user already has an active subscription
         const isDeepDiveCheck = priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_DEEPDIVE;
@@ -73,9 +77,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         let customerId = user.stripe_customer_id;
+
+        // Verify if the customer exists in the current Stripe environment
+        if (customerId) {
+            try {
+                await stripe.customers.retrieve(customerId);
+            } catch (stripeError: any) {
+                if (stripeError.code === 'resource_missing' || stripeError.statusCode === 404) {
+                    console.log(`Customer ${customerId} not found in current environment. Creating new one.`);
+                    customerId = null; // Mark for re-creation
+                } else {
+                    throw stripeError; // Re-throw other errors
+                }
+            }
+        }
+
         if (!customerId) {
             const customer = await stripe.customers.create({
-                email: user.email || undefined,
+                email: email || undefined,
                 name: user.display_name || undefined,
                 metadata: { userId }
             });

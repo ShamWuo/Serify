@@ -166,51 +166,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         state.current.isMounted = true;
 
         const init = async () => {
+            // Check for OAuth flow tokens/codes in URL
             const isOAuth =
                 typeof window !== 'undefined' &&
                 (window.location.hash.includes('access_token=') ||
                     window.location.hash.includes('type=recovery') ||
                     window.location.search.includes('code='));
 
+            // If OAuth, we wait a bit for the internal Supabase client to process the URL
             if (isOAuth) {
-                setTimeout(async () => {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.user && !state.current.currentUser) {
-                        setToken(session.access_token);
-                        await ensureProfile(session.user.id, session.user.email || '');
-                    }
-                }, 1500);
-                return;
+                syncLoading(true);
+                await new Promise((resolve) => setTimeout(resolve, 1000));
             }
 
             try {
+                // Fetch the initial session
                 const {
                     data: { session },
                     error
                 } = await supabase.auth.getSession();
-                if (error) throw error;
 
-                if (session?.user) {
-                    setToken(session.access_token);
-                    await ensureProfile(session.user.id, session.user.email || '');
-                } else {
+                if (error) {
+                    // Silently ignore lock errors during init as onAuthStateChange will eventually catch up
+                    if (error.message?.includes('LockManager') || error.message?.includes('timeout')) {
+                        console.warn('Supabase lock timeout during init - relying on auth state listener');
+                        return;
+                    }
+                    throw error;
+                }
+
+                if (state.current.isMounted) {
+                    if (session?.user) {
+                        setToken(session.access_token);
+                        await ensureProfile(session.user.id, session.user.email || '');
+                    } else {
+                        syncUser(null);
+                        setToken(null);
+                        syncLoading(false);
+                    }
+                }
+            } catch (err) {
+                console.error('Error during auth init:', err);
+                if (state.current.isMounted) {
                     syncUser(null);
                     setToken(null);
                     syncLoading(false);
                 }
-            } catch (err) {
-                syncUser(null);
-                setToken(null);
-                syncLoading(false);
             }
         };
 
         init();
 
+        // Listen for auth state changes
         const {
             data: { subscription }
         } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!state.current.isMounted) return;
+
+            console.log('Auth state change:', event);
 
             if (event === 'SIGNED_OUT') {
                 syncUser(null);
@@ -219,14 +232,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } else if (session?.user) {
                 setToken(session.access_token);
                 await ensureProfile(session.user.id, session.user.email || '');
+            } else if (event === 'INITIAL_SESSION' && !session) {
+                syncLoading(false);
             } else if (event === 'SIGNED_IN' && !session) {
                 syncLoading(false);
             }
         });
 
-        const currentState = state.current;
         return () => {
-            currentState.isMounted = false;
+            state.current.isMounted = false;
             subscription.unsubscribe();
         };
     }, []);

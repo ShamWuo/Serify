@@ -6,6 +6,8 @@
 
 # testing
 /coverage
+/tests/
+__tests__/
 
 # next.js
 /.next/
@@ -25,6 +27,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 *.log
+*.txt
+build_output.txt
+models_list.json
 
 # local env files — NEVER commit secrets
 .env

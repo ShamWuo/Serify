@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { authenticateApiRequest } from '@/lib/sparks';
-import { updateTopicClusters } from '@/lib/vault';
+import { updateVaultHierarchy } from '@/lib/vault';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
@@ -110,7 +110,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (written > 0) {
-            updateTopicClusters(supabaseAdmin, userId).catch(console.error);
+            updateVaultHierarchy(supabaseAdmin, userId).catch(console.error);
         }
 
         return res.status(200).json({ backfilled: written, total: toInsert.length });

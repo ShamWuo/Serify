@@ -137,6 +137,11 @@ body {
     margin: 0.6em 0;
 }
 
+.inline-markdown p {
+    margin: 0 !important;
+    display: inline;
+}
+
 .prose-content h1,
 .prose-content h2,
 .prose-content h3,
@@ -638,4 +643,51 @@ body {
 
 .chat-bubble-in {
     animation: chatBubbleIn 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Simple fade-in — used for nav active indicator */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out both;
+}
+
+/* Gradient CTA button shimmer pattern:
+   Add overflow-hidden + relative on the button.
+   Inside, add:
+   <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent
+                    -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+*/
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* =====================
+   Vault DnD Robustness
+   ===================== */
+.dragging-active {
+    user-select: none !important;
+}
+
+.dragging-active [draggable="true"] {
+    cursor: grabbing !important;
+}
+
+[draggable="true"] {
+    cursor: grab;
+    user-select: none;
 }

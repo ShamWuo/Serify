@@ -130,8 +130,9 @@ export default function Login() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-12 bg-[var(--text)] text-[var(--surface)] rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black/80 hover:-translate-y-0.5 hover:shadow-lg transition-all mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                            className="relative overflow-hidden w-full h-12 bg-gradient-to-r from-[var(--accent)] to-emerald-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-95 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[var(--accent)]/25 transition-all mt-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none group"
                         >
+                            <span className="absolute inset-0 w-full bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out pointer-events-none" />
                             {isLoading ? (
                                 <Loader2 size={18} className="animate-spin" />
                             ) : (

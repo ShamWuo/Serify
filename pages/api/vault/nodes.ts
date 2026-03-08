@@ -17,10 +17,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { tab = 'all', sort = 'last_seen' } = req.query;
+    const { tab = 'all', sort = 'last_seen', topics: topicsParam } = req.query;
 
     try {
         let query = supabaseAdmin.from('knowledge_nodes').select('*').eq('user_id', userId);
+
+        if (topicsParam && typeof topicsParam === 'string') {
+            const categoryIds = topicsParam.split(',').filter(Boolean);
+            if (categoryIds.length > 0) {
+                query = query.in('category_id', categoryIds);
+            }
+        }
 
         if (tab === 'needs_work') {
             query = query.in('current_mastery', ['shaky', 'revisit']);
@@ -55,13 +62,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             );
         });
 
-        const { data: topics } = await supabaseAdmin
-            .from('concept_topics')
+        const { data: categories } = await supabaseAdmin
+            .from('vault_categories')
             .select('*')
             .eq('user_id', userId)
-            .order('last_updated_at', { ascending: false });
+            .order('display_order', { ascending: true })
+            .order('created_at', { ascending: false });
 
-        return res.status(200).json({ nodes: sorted, topics: topics || [] });
+        const { data: studySets } = await supabaseAdmin
+            .from('study_sets')
+            .select('*')
+            .eq('user_id', userId)
+            .order('last_studied_at', { ascending: false });
+
+        return res.status(200).json({
+            nodes: sorted,
+            categories: categories || [],
+            studySets: studySets || []
+        });
     } catch (error: any) {
         console.error('Error fetching vault nodes:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

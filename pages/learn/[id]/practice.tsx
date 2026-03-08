@@ -13,8 +13,9 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 export default function PracticeMode() {
     const router = useRouter();
@@ -30,6 +31,7 @@ export default function PracticeMode() {
     const [stats, setStats] = useState({ correct: 0, total: 0 });
     const [isComplete, setIsComplete] = useState(false);
     const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
+    const [carouselIndex, setCarouselIndex] = useState(0);
 
     useEffect(() => {
         if (!id) return;
@@ -158,6 +160,7 @@ export default function PracticeMode() {
             setCurrentIndex((prev) => prev + 1);
             setSelectedOption(null);
             setIsAnswered(false);
+            setCarouselIndex(0);
         } else {
             setIsComplete(true);
         }
@@ -269,109 +272,120 @@ export default function PracticeMode() {
             </Head>
 
             <main className="max-w-[700px] mx-auto p-6 md:p-8 pb-32 flex flex-col min-h-[calc(100vh-120px)]">
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                        <span className="px-3 py-1 bg-[var(--surface)] border border-[var(--border)] rounded-full text-xs font-bold tracking-wider text-[var(--accent)]">
-                            {getConceptName(currentQ.conceptId)}
-                        </span>
-                        <span className="text-xs font-bold text-[var(--muted)]">
-                            {currentIndex + 1} / {questions.length}
-                        </span>
+                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[32px] p-6 md:p-10 shadow-xl shadow-black/5 relative overflow-hidden glass-premium">
+                    {/* Progress Background Decoration */}
+                    <div
+                        className="absolute top-0 left-0 h-1 bg-[var(--accent)]/30 transition-all duration-500"
+                        style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+                    />
+
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="px-3 py-1 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full text-[10px] font-bold tracking-widest text-[var(--accent)] uppercase">
+                                {getConceptName(currentQ.conceptId)}
+                            </span>
+                            <span className="text-[10px] uppercase font-bold text-[var(--muted)] tracking-widest">
+                                Step {currentIndex + 1} / {questions.length}
+                            </span>
+                        </div>
+
+                        <div className="text-2xl md:text-[32px] font-display text-[var(--text)] leading-tight">
+                            <MarkdownRenderer className="inline-markdown">{currentQ.question}</MarkdownRenderer>
+                        </div>
                     </div>
-                    <div className="w-full bg-[var(--border)] h-1.5 rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-[var(--accent)] transition-all duration-500"
-                            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-                        />
-                    </div>
-                </div>
 
-                <h2 className="text-2xl md:text-[28px] font-display mb-8 text-[var(--text)] leading-snug">
-                    {currentQ.question}
-                </h2>
+                    {/* All options — 2x2 grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {currentQ.options.map((opt: string, idx: number) => {
+                            const isSelected = selectedOption === idx;
+                            const isCorrect = isAnswered && idx === currentQ.correctIndex;
+                            const isWrong = isAnswered && isSelected && !isCorrect;
 
-                <div className="space-y-3 mb-10">
-                    {currentQ.options.map((opt: string, idx: number) => {
-                        let stateClass =
-                            'border-[var(--border)] bg-white hover:bg-[var(--surface)]';
-                        let ringClass = 'ring-0';
+                            let cls = 'p-5 rounded-2xl border-2 text-left transition-all duration-200 flex items-start gap-3 ';
+                            if (isCorrect) cls += 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 ring-4 ring-emerald-500/10';
+                            else if (isWrong) cls += 'border-rose-500 bg-rose-50 dark:bg-rose-500/10';
+                            else if (isSelected) cls += 'border-[var(--accent)] bg-[var(--accent)]/5 ring-4 ring-[var(--accent)]/10 scale-[1.01]';
+                            else if (isAnswered) cls += 'border-[var(--border)] bg-[var(--surface)] opacity-50';
+                            else cls += 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/5 hover:scale-[1.01]';
 
-                        if (selectedOption === idx) {
-                            stateClass = 'border-blue-500 bg-blue-50/50';
-                            ringClass = 'ring-2 ring-blue-500/20';
-                        }
-
-                        if (isAnswered) {
-                            if (idx === currentQ.correctIndex) {
-                                stateClass = 'border-emerald-500 bg-emerald-50';
-                                ringClass = 'ring-2 ring-emerald-500/30';
-                            } else if (idx === selectedOption) {
-                                stateClass = 'border-rose-500 bg-rose-50 opacity-80';
-                                ringClass = 'ring-0';
-                            } else {
-                                stateClass = 'border-[var(--border)] bg-black/5 opacity-50';
-                                ringClass = 'ring-0';
-                            }
-                        }
-
-                        return (
-                            <button
-                                key={idx}
-                                onClick={() => handleSelectOption(idx)}
-                                disabled={isAnswered}
-                                className={`w-full text-left p-5 rounded-2xl border-2 transition-all ${stateClass} ${ringClass} group flex items-start gap-4`}
-                            >
-                                <div
-                                    className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center mt-0.5 transition-colors ${isAnswered && idx === currentQ.correctIndex
-                                        ? 'border-emerald-500 bg-emerald-500 text-white'
-                                        : isAnswered && idx === selectedOption
-                                            ? 'border-rose-500 bg-rose-500 text-white'
-                                            : selectedOption === idx
-                                                ? 'border-blue-500 bg-blue-500 text-white'
-                                                : 'border-[var(--muted)] text-transparent'
-                                        }`}
+                            return (
+                                <button
+                                    key={idx}
+                                    onClick={() => !isAnswered && handleSelectOption(idx)}
+                                    disabled={isAnswered}
+                                    className={cls}
                                 >
-                                    {isAnswered && idx === currentQ.correctIndex && <span>✓</span>}
-                                    {isAnswered &&
-                                        idx === selectedOption &&
-                                        idx !== currentQ.correctIndex && <span>×</span>}
-                                </div>
-                                <span className="text-lg leading-relaxed pt-px">{opt}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {isAnswered && (
-                    <div className="animate-fade-in bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 md:p-8 mb-8">
-                        <h4
-                            className={`font-bold text-lg mb-2 ${selectedOption === currentQ.correctIndex ? 'text-emerald-600' : 'text-rose-600'}`}
-                        >
-                            {selectedOption === currentQ.correctIndex ? 'Correct!' : 'Not quite.'}
-                        </h4>
-                        <p className="text-[16px] leading-relaxed text-[var(--muted)]">
-                            {currentQ.explanation}
-                        </p>
+                                    <div className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all ${isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                            isWrong ? 'bg-rose-500 border-rose-500 text-white' :
+                                                isSelected ? 'bg-[var(--accent)] border-[var(--accent)] text-white' :
+                                                    'border-[var(--border)] text-[var(--muted)]'
+                                        }`}>
+                                        {isCorrect ? '✓' : isWrong ? '✗' : String.fromCharCode(65 + idx)}
+                                    </div>
+                                    <div className="text-sm leading-relaxed pointer-events-none flex-1 pt-0.5">
+                                        <MarkdownRenderer className="inline-markdown">{opt}</MarkdownRenderer>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
-                )}
 
-                <div className="mt-auto flex justify-end">
-                    {!isAnswered ? (
-                        <button
-                            onClick={handleCheckAnswer}
-                            disabled={selectedOption === null}
-                            className="px-8 py-3.5 bg-[var(--accent)] text-white font-medium rounded-xl transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
-                        >
-                            Check
-                        </button>
-                    ) : (
-                        <button
-                            onClick={nextQuestion}
-                            className="px-8 py-3.5 bg-[var(--text)] text-[var(--background)] font-medium rounded-xl hover:bg-black/90 dark:hover:bg-white/90 transition-all shadow-sm min-w-[140px]"
-                        >
-                            Next &rarr;
-                        </button>
+                    {/* Feedback Inline */}
+                    {isAnswered && (
+                        <div className="mt-6 pt-6 border-t border-[var(--border)] animate-in fade-in slide-in-from-bottom-2">
+                            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-3 ${selectedOption === currentQ.correctIndex ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                {selectedOption === currentQ.correctIndex ? 'Correct' : 'Not quite right'}
+                            </div>
+                            <div className="text-base leading-relaxed text-[var(--muted)]">
+                                <MarkdownRenderer>{currentQ.explanation}</MarkdownRenderer>
+                            </div>
+                        </div>
                     )}
+
+                    {/* Question navigation + action buttons */}
+                    <div className="mt-8 flex items-center justify-between gap-3">
+                        <button
+                            onClick={() => {
+                                if (currentIndex > 0) {
+                                    setCurrentIndex(prev => prev - 1);
+                                    setSelectedOption(null);
+                                    setIsAnswered(false);
+                                }
+                            }}
+                            disabled={currentIndex === 0}
+                            className="w-10 h-10 rounded-full border border-[var(--border)] bg-[var(--bg)] flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/40 transition-all disabled:opacity-30"
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+
+                        {/* Dot indicators */}
+                        <div className="flex gap-1.5 items-center">
+                            {questions.map((_: any, i: number) => {
+                                let dot = 'h-2 rounded-full transition-all duration-200 ';
+                                if (i === currentIndex) dot += 'w-5 bg-[var(--accent)]';
+                                else if (i < currentIndex) dot += 'w-2 bg-emerald-500';
+                                else dot += 'w-2 bg-[var(--border)]';
+                                return <div key={i} className={dot} />;
+                            })}
+                        </div>
+
+                        {!isAnswered ? (
+                            <button
+                                onClick={handleCheckAnswer}
+                                disabled={selectedOption === null}
+                                className="px-6 py-2.5 bg-[var(--accent)] text-white font-bold rounded-2xl transition-all shadow-lg shadow-[var(--accent)]/20 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none text-sm"
+                            >
+                                Check
+                            </button>
+                        ) : (
+                            <button
+                                onClick={nextQuestion}
+                                className="px-6 py-2.5 bg-[var(--text)] text-[var(--background)] font-bold rounded-2xl hover:bg-black/90 dark:hover:bg-white/90 transition-all shadow-lg hover:-translate-y-0.5 active:translate-y-0 text-sm flex items-center gap-1.5"
+                            >
+                                Next <ChevronRight size={16} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </main>
 

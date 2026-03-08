@@ -23,23 +23,30 @@ export default function BillingSettings() {
 
         async function fetchData() {
             try {
-                const { data: userData } = await supabase
+                const { data: userData, error: userDataError } = await supabase
                     .from('profiles')
                     .select('subscription_tier')
                     .eq('id', user!.id)
-                    .single();
+                    .maybeSingle();
 
+                if (userDataError) console.error('Error fetching profile:', userDataError);
                 const tier = userData?.subscription_tier || 'free';
                 setPlan(tier);
 
                 if (tier && tier !== 'free') {
-                    const { data: subData } = await supabase
+                    const { data: subData, error: subError } = await supabase
                         .from('subscriptions')
                         .select('*')
                         .eq('user_id', user!.id)
                         .in('status', ['active', 'trialing'])
-                        .single();
-                    setSubscription(subData);
+                        .maybeSingle();
+
+                    if (subError) {
+                        console.error('Error fetching subscription:', subError);
+                        // Don't throw, just leave subscription as null
+                    } else {
+                        setSubscription(subData);
+                    }
                 } else {
                     const currentMonth = format(new Date(), 'yyyy-MM');
                     const { data: usageData } = await supabase

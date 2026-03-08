@@ -34,7 +34,12 @@ export default function VaultDrillPage() {
             const token = session?.access_token;
             if (!token) return;
 
-            const res = await fetch('/api/vault/nodes?tab=all&sort=mastery', {
+            let url = '/api/vault/nodes?tab=all&sort=mastery';
+            if (router.query.topics) {
+                url += `&topics=${router.query.topics}`;
+            }
+
+            const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.ok) {
@@ -48,7 +53,7 @@ export default function VaultDrillPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [router.query.topics]);
 
     useEffect(() => {
         if (user) fetchNodes();
@@ -96,11 +101,11 @@ export default function VaultDrillPage() {
         return (
             <DashboardLayout>
                 <div className="max-w-2xl mx-auto px-6 py-20 text-center">
-                    <div className="w-20 h-20 bg-[var(--surface)] border border-[var(--border)] rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <div className="w-20 h-20 bg-[var(--surface)] border border-[var(--border)] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-premium">
                         <Brain size={40} className="text-[var(--muted)]" />
                     </div>
-                    <h1 className="text-3xl font-display mb-4">Vault is Empty</h1>
-                    <p className="text-[var(--muted)] mb-8">You need to master some concepts before you can drill them.</p>
+                    <h1 className="text-3xl font-display mb-4">{router.query.topics ? 'No Concepts in Selection' : 'Vault is Empty'}</h1>
+                    <p className="text-[var(--muted)] mb-8">{router.query.topics ? 'None of the selected categories have concepts in your vault.' : 'You need to master some concepts before you can drill them.'}</p>
                     <Link href="/vault" className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-medium shadow-lg hover:opacity-90 transition-all">
                         Back to Vault
                     </Link>
@@ -116,7 +121,7 @@ export default function VaultDrillPage() {
                     <div className="w-24 h-24 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner ring-4 ring-amber-50">
                         <Trophy size={48} />
                     </div>
-                    <h1 className="text-4xl font-display mb-2">Drill Complete!</h1>
+                    <h1 className="text-4xl font-display mb-2 text-gradient">Drill Complete!</h1>
                     <p className="text-[var(--muted)] mb-10">Great job reviewing your concepts.</p>
 
                     <div className="grid grid-cols-2 gap-4 mb-10">
@@ -140,7 +145,7 @@ export default function VaultDrillPage() {
                         </button>
                         <Link
                             href="/vault"
-                            className="flex-1 py-4 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] font-bold rounded-2xl hover:bg-[var(--bg)] transition-all flex items-center justify-center"
+                            className="flex-1 py-4 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] font-bold rounded-2xl hover:bg-[var(--bg)] transition-all flex items-center justify-center premium-card"
                         >
                             Return to Vault
                         </Link>
@@ -181,38 +186,31 @@ export default function VaultDrillPage() {
                 >
                     <div className={`relative w-full h-[450px] transition-transform duration-700 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
                         {/* Front of Card */}
-                        <div className="absolute inset-0 backface-hidden bg-[var(--surface)] border-2 border-[var(--border)] rounded-[2.5rem] shadow-xl flex flex-col items-center justify-center p-12 group-hover:border-[var(--accent)]/50 transition-colors glass">
-                            <div className="p-3 bg-[var(--accent)]/5 rounded-2xl text-[var(--accent)] mb-6">
-                                <Brain size={32} />
-                            </div>
-                            <h2 className="text-3xl md:text-4xl font-display text-center text-[var(--text)]">
+                        <div className="absolute inset-0 backface-hidden bg-[var(--surface)] border-2 border-[var(--border)] rounded-[2rem] shadow-premium flex flex-col items-center justify-center p-8 md:p-12 hover:border-[var(--accent)]/30 transition-colors cursor-pointer select-none">
+                            <h2 className="text-3xl md:text-5xl font-display text-center text-[var(--text)] leading-tight">
                                 {currentNode.display_name || currentNode.canonical_name}
                             </h2>
-                            <p className="mt-8 text-[var(--muted)] text-sm font-medium animate-pulse">
-                                Click to flip
+                            <p className="absolute bottom-8 text-[var(--muted)] text-xs font-bold uppercase tracking-widest opacity-60">
+                                Tap to flip
                             </p>
                         </div>
 
                         {/* Back of Card */}
-                        <div className="absolute inset-0 backface-hidden rotate-y-180 bg-[var(--surface)] border-2 border-[var(--accent)]/30 rounded-[2.5rem] shadow-2xl flex flex-col p-10 glass overflow-y-auto">
-                            <div className="flex items-center gap-2 mb-4">
-                                <span className="text-[10px] font-bold px-2 py-0.5 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full uppercase">
-                                    Explanation
-                                </span>
-                            </div>
-                            <div className="prose prose-invert max-w-none">
-                                <p className="text-lg leading-relaxed text-[var(--text)]">
+                        <div className="absolute inset-0 backface-hidden rotate-y-180 bg-[var(--surface)] border-2 border-[var(--accent)]/20 rounded-[2rem] shadow-premium flex flex-col items-center justify-center p-8 md:p-12 overflow-y-auto cursor-pointer select-none">
+                            <div className="w-full flex-1 flex flex-col items-center justify-center text-center">
+                                <p className="text-xl md:text-2xl leading-relaxed text-[var(--text)] font-medium">
                                     {currentNode.definition || 'No definition available for this concept yet.'}
                                 </p>
-                                {currentNode.synthesis && (
-                                    <div className="mt-6 pt-6 border-t border-[var(--border)]">
-                                        <p className="text-xs font-bold text-[var(--muted)] uppercase mb-2 tracking-widest">Synthesis</p>
-                                        <p className="text-sm italic text-[var(--muted)]">
-                                            "{(currentNode.synthesis as any).summary}"
-                                        </p>
-                                    </div>
-                                )}
                             </div>
+
+                            {currentNode.synthesis && (
+                                <div className="w-full mt-6 pt-6 border-t border-[var(--border)] text-center shrink-0">
+                                    <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-2">Extended Synthesis</p>
+                                    <p className="text-sm italic text-[var(--muted)]">
+                                        &quot;{(currentNode.synthesis as any).summary}&quot;
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -227,7 +225,7 @@ export default function VaultDrillPage() {
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); handleNext('mastered'); }}
-                        className="flex-1 py-4 bg-[var(--accent)] shadow-lg shadow-[var(--accent)]/20 text-white font-bold rounded-2xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
+                        className="flex-1 py-4 bg-[var(--accent)] shadow-lg shadow-[var(--accent)]/20 text-white font-bold rounded-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
                         <CheckCircle2 size={20} />
                         Got It!

@@ -440,7 +440,7 @@ export default function LearnIndex() {
                                 </button>
                                 <div>
                                     <p className="text-xs text-[var(--muted)] font-medium">Learning</p>
-                                    <h2 className="font-bold text-[var(--text)] leading-tight">"{inputValue}"</h2>
+                                    <h2 className="font-bold text-[var(--text)] leading-tight">&quot;{inputValue}&quot;</h2>
                                 </div>
                             </div>
 
@@ -482,7 +482,7 @@ export default function LearnIndex() {
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
                                         <Target size={15} className="text-[var(--accent)]" />
-                                        What's your specific goal?
+                                        What&apos;s your specific goal?
                                     </label>
                                     <input
                                         value={focusGoal}
