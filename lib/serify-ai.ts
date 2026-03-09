@@ -9,23 +9,20 @@ import {
 } from '../types/serify';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const defaultModel = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
-  generationConfig: {
-    temperature: 0.1,
-    responseMimeType: 'application/json'
-  }
-});
 
 export function getGeminiModel(proMode: boolean = false, systemInstruction?: string) {
+  const modelName = proMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
   return genAI.getGenerativeModel({
-    model: proMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
+    model: modelName,
     systemInstruction,
     generationConfig: {
-      temperature: proMode ? 0.3 : 0.1, // slightly higher temp for pro reasoning
+      temperature: proMode ? 0.3 : 0.1,
+      responseMimeType: 'application/json'
     }
   });
 }
+
+const defaultModel = getGeminiModel(false);
 
 export function parseJSON<T>(text: string): T {
   // Try to extract JSON between markdown code blocks if they exist
@@ -38,7 +35,13 @@ export function parseJSON<T>(text: string): T {
     return JSON.parse(cleaned);
   } catch (err) {
     console.error('Failed to parse JSON from AI response:', text);
-    throw err;
+    // If it's a common "AI added a comment" error, try one last aggressive strip
+    try {
+        const aggressive = cleaned.substring(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);
+        return JSON.parse(aggressive);
+    } catch (innerErr) {
+        throw err;
+    }
   }
 }
 
@@ -61,11 +64,11 @@ Return a JSON array of Mastery Pillars.
 Format:
 [
   {
-    "id": "uuid string",
+    "id": "pillar-1", 
     "name": "Pillar Name",
     "description": "A broad, comprehensive definition of this knowledge pillar (1-2 sentences).",
     "importance": "high" | "medium" | "low",
-    "relatedConcepts": ["uuid-of-another-pillar"],
+    "relatedConcepts": ["pillar-2"],
     "subConcepts": [
       {
         "name": "Sub-concept name",
@@ -76,16 +79,16 @@ Format:
 ]
 
 Rules:
-- Generate a unique UUID for each "id". Use standard UUID v4 format.
+- "id": Use short semantic strings like "pillar-1", "pillar-2".
 - "description": Provide a high-quality definition.
 - "importance": "high" for the most central pillars.
-- "relatedConcepts": valid UUIDs of other extracted pillars that this one builds upon or connects to.
+- "relatedConcepts": valid IDs of other extracted pillars that this one builds upon or connects to.
 - Focus on breadth for the pillars and depth for the sub-concepts.`;
 
 
   const result = await defaultModel.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1000 }
+    generationConfig: { maxOutputTokens: 2000 }
   });
   const text = result.response.text();
 
@@ -99,14 +102,15 @@ export async function generateSessionTitle(content: string, type: string): Promi
   CONTENT:
   ${content.substring(0, 2000)}
   
-  Return ONLY the title string, no quotes or prefix.`;
+  Return ONLY the title string as a JSON object: {"title": "The Title Here"}`;
 
   const result = await defaultModel.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 50 }
+    generationConfig: { maxOutputTokens: 100 }
   });
 
-  return result.response.text().trim().replace(/^"|"$/g, '');
+  const parsed = parseJSON<{ title: string }>(result.response.text());
+  return parsed.title.trim().replace(/^"|"$/g, '');
 }
 
 export async function generateAssessment(
@@ -117,7 +121,7 @@ export async function generateAssessment(
   const count = preferences?.questionCount ?? 6;
   const conceptList = concepts.map((c) => {
     const subText = c.subConcepts?.map(sc => `  - ${sc.name}: ${sc.description}`).join('\n') || '';
-    return `- ${c.name}: ${c.description}${subText ? `\n${subText}` : ''}`;
+    return `- ${c.name} (ID: ${c.id}): ${c.description}${subText ? `\n${subText}` : ''}`;
   }).join('\n');
 
   const toneInstruction =
@@ -135,22 +139,22 @@ Tone: ${toneInstruction}
 JSON Format:
 [
   {
-    "id": "uuid string",
+    "id": "q-1",
     "type": "retrieval" | "application" | "misconception",
     "text": "Question text",
-    "relatedConcepts": ["uuid-from-concept-list"]
+    "relatedConcepts": ["pillar-1"]
   }
 ]
 
 Rules:
-- Generate a NEW unique UUID for each question "id".
+- "id": Use short semantic strings like "q-1", "q-2".
 - Retrieval: recall/explain. Application: scenario. Misconception: fix wrong framing.
 - One clear sentence per question.
 - Answers should require a few sentences.`;
 
   const result = await defaultModel.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1200 }
+    generationConfig: { maxOutputTokens: 1500 }
   });
   const text = result.response.text();
 
@@ -237,13 +241,13 @@ USER INPUT: "${userInput}"
 INPUT TYPE: "${inputType}" 
 
 USER'S CURRENT KNOWLEDGE (from Concept Vault):
-Strong concepts: ${strongConcepts.map((c) => c.name).join(', ') || 'none yet'}
-Shaky concepts: ${shakyConcepts.map((c) => c.name).join(', ') || 'none'}
-Revisit concepts: ${revisitConcepts.map((c) => c.name).join(', ') || 'none'}
+Strong: ${strongConcepts.map((c) => c.name).join(', ') || 'none'}
+Shaky: ${shakyConcepts.map((c) => c.name).join(', ') || 'none'}
+Revisit: ${revisitConcepts.map((c) => c.name).join(', ') || 'none'}
 User type: ${userType || 'not specified'}
 Learning context: ${learningContext || 'not specified'}
 
-Generate a complete curriculum as JSON:
+JSON Format:
 {
   "title": string,
   "target_description": string,
@@ -255,13 +259,13 @@ Generate a complete curriculum as JSON:
       "unitSummary": string,
       "concepts": [
         {
-          "id": string,
+          "id": "intro",
           "name": string,
           "definition": string,
           "difficulty": "simple" | "moderate" | "complex",
           "estimatedMinutes": number,
           "isPrerequisite": boolean,
-          "prerequisiteFor": string[],
+          "prerequisiteFor": ["advanced-concept"],
           "alreadyInVault": boolean,
           "vaultMasteryState": string | null,
           "whyIncluded": string,
@@ -275,39 +279,16 @@ Generate a complete curriculum as JSON:
   "scope_note": string | null
 }
 
-CURRICULUM DESIGN RULES:
-- Order concepts from foundational to advanced — never introduce a concept
-  before its prerequisites
-- For a single concept input: include the concept + 2-4 prerequisites if needed
-  + 1-2 natural extensions. Total: 3-7 concepts. One unit, no grouping needed.
-- For a broad topic: break into 3-5 units of 3-5 concepts each. Total: 10-20 concepts.
-- For a goal: include exactly the concepts needed to achieve that goal.
-  No extras. No tangents. Be surgical.
-- For a question: treat the answer as the goal. Build the minimum curriculum
-  that gives the user the conceptual foundation to genuinely understand the answer.
-- Never include a concept the user already has Solid mastery on UNLESS it's a
-  direct prerequisite that needs reinforcement before continuing.
-- estimatedMinutes should reflect Flow Mode pacing: simple concepts 5-8 min,
-  moderate 8-15 min, complex 12-20 min.
-- misconceptionRisk should be high for concepts that are commonly misunderstood
-  or that build on misconception-prone prerequisites.
-- For 'id' inside concepts, ALWAYS generate a valid UUID v4 string.
-- NEVER use short IDs like "c1" or "intro". ALWAYS use UUIDs.
-
-SCOPING RULES:
-- Input "derivatives" → 5-7 concepts (concept + prerequisites + extensions)
-- Input "calculus" → 12-18 concepts (full foundations curriculum)
-- Input "understand how neural networks learn" → 8-12 concepts (targeted)
-- Input "why does compounding interest matter?" → 4-6 concepts (minimum to answer)
-- If the scope would exceed 20 concepts, split into Part 1 and Part 2 and
-  note this in scope_note. Never generate more than 20 concepts in one curriculum.
-
-Return only valid JSON. No preamble.
+RULES:
+- "id": Use short semantic strings (e.g. "unit1-concept1", "foundations").
+- Order concepts foundational to advanced.
+- Max 20 concepts total across all units.
+- estimatedMinutes: simple (5-8), moderate (8-15), complex (12-20).
 `;
 
   const result = await defaultModel.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 8192, responseMimeType: 'application/json' } // curricula can be long, so allowing more tokens
+    generationConfig: { maxOutputTokens: 8000 }
   });
 
   const text = result.response.text();

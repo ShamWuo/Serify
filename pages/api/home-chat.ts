@@ -8,7 +8,7 @@
 
 import { streamText, convertToModelMessages } from 'ai';
 import { google } from '@ai-sdk/google';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 
 export const config = {
     runtime: 'edge',
@@ -34,14 +34,12 @@ export default async function handler(req: Request) {
             console.error('[home-chat] Authentication failed. No user identified.');
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
-
-        const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE || 1;
-        const hasSparks = await hasEnoughSparks(user, sparkCost);
+        const hasSparks = (await checkUsage(user, 'ai_messages')).allowed;
         if (!hasSparks) {
             return new Response(
                 JSON.stringify({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark for this interaction.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 }),
                 { status: 403 }
             );
@@ -75,7 +73,7 @@ If the user wants to LEARN a topic (e.g., "help me learn related rates"):
 Tone: Friendly, helpful, concise, probing. Do not be overly chatty.`,
             messages: await convertToModelMessages(messages),
             onFinish: async () => {
-                await deductSparks(user, sparkCost, 'ai_tutor_message');
+                (await incrementUsage(user, 'ai_messages').then(() => ({ success: true })));
             }
         });
 

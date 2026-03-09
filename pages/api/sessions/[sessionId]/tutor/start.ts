@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -49,24 +49,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(200).json(existing);
         }
 
-        const sparkCost = SPARK_COSTS.AI_TUTOR_OPEN;
-        const hasSparks = await hasEnoughSparks(userId, sparkCost);
+        const hasSparks = (await checkUsage(userId, 'ai_messages')).allowed;
         if (!hasSparks) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to start an AI Tutor session.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 
-        const deduction = await deductSparks(userId, sparkCost, 'ai_tutor_start');
+        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to start an AI Tutor session.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

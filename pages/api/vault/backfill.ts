@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateApiRequest } from '@/lib/sparks';
+import { authenticateApiRequest } from '@/lib/usage';
 import { updateVaultHierarchy } from '@/lib/vault';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

@@ -41,9 +41,39 @@ export default function FeedbackReport() {
     const { balance } = useSparks();
     const { materials, refetch } = useSessionMaterials(id as string);
 
-    const { object, submit, isLoading } = useObject<any>({
+    const feedbackSchema = z.object({
+        summary_sentence: z.string().optional(),
+        overall_counts: z.record(z.number()).optional(),
+        strength_map: z.array(
+            z.object({
+                concept_id: z.string(),
+                mastery_state: z.string(),
+                feedback_text: z.string()
+            })
+        ).optional(),
+        cognitive_analysis: z.object({
+            strong_patterns: z.string().optional(),
+            weak_patterns: z.string().optional()
+        }).optional(),
+        misconception_displayReport: z.array(
+            z.object({
+                concept_id: z.string(),
+                implied_belief: z.string(),
+                actual_reality: z.string(),
+                why_it_matters: z.string().optional()
+            })
+        ).optional(),
+        focus_suggestions: z.array(
+            z.object({
+                title: z.string().optional(),
+                reason: z.string().optional()
+            })
+        ).optional()
+    });
+
+    const { object, submit, isLoading } = useObject({
         api: '/api/synthesize-feedback',
-        schema: z.any()
+        schema: feedbackSchema
     });
 
     const displayReport = report || object;
@@ -272,7 +302,7 @@ export default function FeedbackReport() {
                                 <p className="text-xs text-amber-600 font-medium mb-4">
                                     This is taking longer than expected. The AI might be deep in thought...
                                 </p>
-                                <button 
+                                <button
                                     onClick={() => router.push('/sessions')}
                                     className="px-4 py-2 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold hover:bg-[var(--bg)] transition-all"
                                 >
@@ -608,10 +638,10 @@ export default function FeedbackReport() {
                                         </li>
                                     ))}
                             </ul>
-                            
+
                             <div className="bg-gradient-to-br from-[var(--accent)]/5 to-transparent border border-[var(--accent)]/10 rounded-2xl p-6 space-y-4">
                                 <h4 className="font-bold text-[var(--text)] flex items-center gap-2">
-                                    <Target size={18} className="text-[var(--accent)]" /> 
+                                    <Target size={18} className="text-[var(--accent)]" />
                                     Ready for more?
                                 </h4>
                                 <p className="text-sm text-[var(--muted)] leading-relaxed">

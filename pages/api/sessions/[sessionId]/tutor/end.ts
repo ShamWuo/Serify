@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { parseJSON } from '@/lib/serify-ai';
 
@@ -25,12 +25,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing session context' });
     }
 
-    const sparkCost = SPARK_COSTS.SESSION_ANSWER_ANALYSIS;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
+    const hasSparks = (await checkUsage(userId, 'ai_messages')).allowed;
     if (!hasSparks) {
         return res.status(403).json({
-            error: 'out_of_sparks',
-            message: `You need ${sparkCost} Spark to evaluate this conversation.`
+            error: 'limit_reached',
+            message: 'You have reached your feature limit.'
         });
     }
 
@@ -74,7 +73,7 @@ Return a pure JSON array of mastery updates without markdown formatting. For eac
 Only include concepts that were actually discussed and demonstrated by the user in this conversation.
 `;
 
-        await deductSparks(userId, sparkCost, 'ai_tutor_evaluation');
+        (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
 
         const result = await model.generateContent(analysisPrompt);
         const text = result.response.text();

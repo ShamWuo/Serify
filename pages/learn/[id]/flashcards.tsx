@@ -105,7 +105,7 @@ export default function FlashcardsMode() {
         if (id) {
             initDeck();
         }
-    }, [id, router, token]);
+    }, [id, router, token, user]);
 
     const handleGotIt = async () => {
         const currentCard = cards[currentIndex];

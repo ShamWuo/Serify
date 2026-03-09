@@ -89,94 +89,6 @@ export default function LearnIndex() {
 
     const { balance, loading: sparksLoading } = useSparks();
 
-    useEffect(() => {
-        if (!loading && user) {
-            fetchCurricula();
-        }
-    }, [user, loading]);
-
-    useEffect(() => {
-        if (router.query.q) setInputValue(router.query.q as string);
-        if (router.query.priorKnowledge) setPriorKnowledge(router.query.priorKnowledge as string);
-        if (router.query.skipTopics) setSkipTopics(router.query.skipTopics as string);
-        if (router.query.focusGoal) setFocusGoal(router.query.focusGoal as string);
-
-        if (router.query.autoStart === 'true' && router.query.q && token) {
-            const qVal = router.query.q as string;
-            const pkVal = (router.query.priorKnowledge as string) || '';
-            const stVal = (router.query.skipTopics as string) || '';
-            const fgVal = (router.query.focusGoal as string) || '';
-
-            const inputType = guessInputType(qVal);
-            const payload = {
-                userInput: qVal,
-                inputType,
-                priorKnowledge: pkVal.trim() || undefined,
-                skipTopics: stVal.trim() || undefined,
-                focusGoal: fgVal.trim() || undefined,
-            };
-
-            lastSubmitRef.current = payload;
-            setStep('generating');
-            setIsGenerating(true);
-            submit(payload);
-        }
-    }, [router.query, token]);
-
-    const fetchCurricula = async () => {
-        setLoadingCurricula(true);
-        const { data, error } = await supabase
-            .from('curricula')
-            .select('*')
-            .order('last_activity_at', { ascending: false });
-        if (!error && data) {
-            setCurricula(data);
-        }
-        setLoadingCurricula(false);
-    };
-
-    const sortedCurricula = [...curricula].sort((a, b) => {
-        if (sortBy === 'recent') {
-            return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
-        }
-        if (sortBy === 'title') {
-            return a.title.localeCompare(b.title);
-        }
-        if (sortBy === 'progress') {
-            const getProgress = (c: any) => (c.completed_concept_ids?.length || 0) / (c.concept_count || 1);
-            return getProgress(b) - getProgress(a);
-        }
-        return 0;
-    });
-
-    const handleDelete = async (curriculum: any) => {
-        setCurriculumToDelete(curriculum);
-        setDeleteModalOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!curriculumToDelete) return;
-        setIsDeleting(true);
-        try {
-            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
-            setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
-            setDeleteModalOpen(false);
-            setCurriculumToDelete(null);
-        } catch (err) {
-            console.error('Error deleting curriculum:', err);
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-    function guessInputType(text: string) {
-        const lower = text.toLowerCase();
-        if (lower.includes('?') || lower.startsWith('how') || lower.startsWith('why')) return 'question';
-        if (lower.startsWith('i want to') || lower.includes('understand how') || lower.includes('learn how')) return 'goal';
-        if (text.trim().split(' ').length <= 3) return 'concept';
-        return 'topic';
-    }
-
     const curriculumInitialValue = {
         title: '', target_description: '', outcomes: [] as string[],
         units: [] as any[], recommended_start_index: 0, scope_note: null as string | null
@@ -197,15 +109,21 @@ export default function LearnIndex() {
         api: '/api/serify/stream-curriculum',
         schema: curriculumSchema,
         initialValue: curriculumInitialValue,
-        headers: {
-            Authorization: `Bearer ${token}`
+        fetch: async (url, init) => {
+            return fetch(url, {
+                ...init,
+                headers: {
+                    ...init?.headers,
+                    Authorization: `Bearer ${token}`
+                }
+            });
         },
-        onError: (e) => {
+        onError: (e: Error) => {
             setErrorMsg(e.message || 'Failed to generate curriculum.');
             setIsGenerating(false);
             setStep('context');
         },
-        onFinish: async ({ object, error }) => {
+        onFinish: async ({ object, error }: { object: any; error: Error | undefined }) => {
             if (isSavingRef.current) return;
             isSavingRef.current = true;
 
@@ -266,6 +184,98 @@ export default function LearnIndex() {
     });
 
     curriculumDataRef.current = (curriculumData as any) ?? curriculumInitialValue;
+
+    useEffect(() => {
+        if (!loading && user) {
+            fetchCurricula();
+        }
+    }, [user, loading]);
+
+    useEffect(() => {
+        if (router.query.q) setInputValue(router.query.q as string);
+        if (router.query.priorKnowledge) setPriorKnowledge(router.query.priorKnowledge as string);
+        if (router.query.skipTopics) setSkipTopics(router.query.skipTopics as string);
+        if (router.query.focusGoal) setFocusGoal(router.query.focusGoal as string);
+
+        if (router.query.autoStart === 'true' && router.query.q && token) {
+            const qVal = router.query.q as string;
+            const pkVal = (router.query.priorKnowledge as string) || '';
+            const stVal = (router.query.skipTopics as string) || '';
+            const fgVal = (router.query.focusGoal as string) || '';
+
+            const inputType = guessInputType(qVal);
+            const payload = {
+                userInput: qVal,
+                inputType,
+                priorKnowledge: pkVal.trim() || undefined,
+                skipTopics: stVal.trim() || undefined,
+                focusGoal: fgVal.trim() || undefined,
+            };
+
+            lastSubmitRef.current = payload;
+            setStep('generating');
+            setIsGenerating(true);
+            submit(payload);
+        }
+    }, [router.query, token, submit]);
+
+    const fetchCurricula = async () => {
+        setLoadingCurricula(true);
+        const { data, error } = await supabase
+            .from('curricula')
+            .select('*')
+            .order('last_activity_at', { ascending: false });
+        if (!error && data) {
+            setCurricula(data);
+        }
+        setLoadingCurricula(false);
+    };
+
+    const sortedCurricula = [...curricula].sort((a, b) => {
+        if (sortBy === 'recent') {
+            return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
+        }
+        if (sortBy === 'title') {
+            return a.title.localeCompare(b.title);
+        }
+        if (sortBy === 'progress') {
+            const getProgress = (c: any) => (c.completed_concept_ids?.length || 0) / (c.concept_count || 1);
+            return getProgress(b) - getProgress(a);
+        }
+        return 0;
+    });
+
+    const handleDelete = async (curriculum: any) => {
+        setCurriculumToDelete(curriculum);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!curriculumToDelete) return;
+        setIsDeleting(true);
+        try {
+            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
+            setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
+            setDeleteModalOpen(false);
+            setCurriculumToDelete(null);
+        } catch (err) {
+            console.error('Error deleting curriculum:', err);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    function guessInputType(text: string) {
+        const lower = text.toLowerCase();
+        if (lower.includes('?') || lower.startsWith('how') || lower.startsWith('why')) return 'question';
+        if (lower.startsWith('i want to') || lower.includes('understand how') || lower.includes('learn how')) return 'goal';
+        if (text.trim().split(' ').length <= 3) return 'concept';
+        return 'topic';
+    }
+
+
+
+
 
     const handleNext = () => {
         if (!inputValue.trim()) return;
@@ -568,7 +578,7 @@ export default function LearnIndex() {
                                                     {unit?.unitTitle || 'Drafting...'}
                                                 </span>
                                             </div>
-                                            {unit?.concepts?.length > 0 && (
+                                            {unit?.concepts && unit.concepts.length > 0 && (
                                                 <div className="flex flex-wrap gap-1.5 mt-2">
                                                     {unit.concepts.map((c: any, j: number) => (
                                                         <span key={j} className="text-xs px-2 py-0.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)]">

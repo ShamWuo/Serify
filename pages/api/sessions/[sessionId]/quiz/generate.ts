@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { parseJSON } from '@/lib/serify-ai';
 
@@ -28,14 +28,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const sparkCost = SPARK_COSTS.PRACTICE_QUIZ_GEN;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
+    const hasSparks = (await checkUsage(userId, 'quizzes')).allowed;
     if (!hasSparks) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark to generate practice quizzes.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -87,13 +86,13 @@ Generate MCQs for the following concepts. For each question, you MUST return the
 ${concepts.map((c: any) => `- Concept: ${c.name} (ID: ${c.id})\n  Mastery State: ${c.masteryState}\n  Feedback: ${c.feedbackNote || 'None'}`).join('\n\n')}
 `;
 
-        const deduction = await deductSparks(userId, sparkCost, 'practice_quiz_gen');
+        const deduction = (await incrementUsage(userId, 'quizzes').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to generate practice quizzes.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

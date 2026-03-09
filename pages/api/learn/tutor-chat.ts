@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { parseJSON, getGeminiModel } from '@/lib/serify-ai';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -73,29 +73,25 @@ Only include concepts that were actually discussed and demonstrated by the user 
         }
 
         const isOpening = messages.length <= 1;
-        const sparkCostBase = isOpening ? SPARK_COSTS.AI_TUTOR_OPEN : SPARK_COSTS.AI_TUTOR_MESSAGE;
-        const sparkCost = sparkCostBase * (proMode ? 5 : 1);
-        const hasSparks = await hasEnoughSparks(userId, sparkCost);
+        const sparkCostBase = isOpening ? 0 : 0;
+        
+        const hasSparks = (await checkUsage(userId, 'ai_messages')).allowed;
         if (!hasSparks) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to continue chatting.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 
-        const deduction = await deductSparks(
-            userId,
-            sparkCost,
-            isOpening ? 'ai_tutor_open' : 'ai_tutor_message'
-        );
+        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to continue chatting.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

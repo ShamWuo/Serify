@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { analyzeAnswers } from '@/lib/serify-ai';
 import { ReflectionSession, MasteryState } from '@/types/serify';
 import { canAccess } from '@/lib/gates';
-import { deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { checkUsage, incrementUsage } from '@/lib/usage';
 import { findOrCreateConceptNode, updateConceptMastery, updateVaultHierarchy } from '@/lib/vault';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -57,32 +57,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const reportCost = isBasicMode
-        ? SPARK_COSTS.BASIC_FEEDBACK_REPORT
-        : SPARK_COSTS.BASIC_FEEDBACK_REPORT + SPARK_COSTS.FULL_FEEDBACK_UPGRADE;
-    const sparkCost = answers.length * SPARK_COSTS.SESSION_ANSWER_ANALYSIS + reportCost;
+        ? 0
+        : 0 + 0;
+    const sparkCost = answers.length * 0 + reportCost;
 
-    const hasSparks = await hasEnoughSparks(user.id, sparkCost);
+    const hasSparks = (await checkUsage(user.id, 'sessions')).allowed;
     if (!hasSparks) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Sparks to complete this session.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
-    const deduction = await deductSparks(
-        user.id,
-        sparkCost,
-        isBasicMode ? 'session_basic_analysis' : 'session_full_analysis',
-        sessionId
-    );
+    const deduction = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
     if (!deduction.success) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Sparks to complete this session.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 

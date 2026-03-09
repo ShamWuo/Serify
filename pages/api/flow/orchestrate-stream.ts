@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { findOrCreateConceptNode } from '@/lib/vault';
@@ -42,10 +42,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         sendUpdate({ status: 'Initializing...', progress: 5 });
 
-        const sparkCost = SPARK_COSTS.FLOW_MODE_ORCHESTRATE;
-        const hasSparks = await hasEnoughSparks(userId, sparkCost);
+        const hasSparks = (await checkUsage(userId, 'flow_sessions')).allowed;
         if (!hasSparks) {
-            sendUpdate({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to orchestrate this concept.` });
+            sendUpdate({ error: 'limit_reached', message: 'You have reached your feature limit.' });
             return res.end();
         }
 
@@ -233,7 +232,7 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
 
         sendUpdate({ status: `Generating custom curriculum for ${conceptName}...`, progress: 60 });
 
-        await deductSparks(userId, sparkCost, 'flow_mode_orchestrate');
+        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000);

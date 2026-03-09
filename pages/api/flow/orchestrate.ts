@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { findOrCreateConceptNode } from '@/lib/vault';
@@ -20,14 +20,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const sparkCost = SPARK_COSTS.FLOW_MODE_ORCHESTRATE;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
+    const hasSparks = (await checkUsage(userId, 'flow_sessions')).allowed;
     if (!hasSparks)
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark to orchestrate this concept.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
 
     const { sessionId, conceptId } = req.body;
@@ -162,7 +161,7 @@ What this learner understands well (use as bridges): ${strongConcepts.join(', ')
 Reinforcements required so far this session: ${learnerProfile.reinforcementsRequired || 0}
 `;
 
-        await deductSparks(userId, sparkCost, 'flow_mode_orchestrate');
+        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();

@@ -5,7 +5,7 @@
  * creation, manages onboarding status, and provides auth-related methods via React Context.
  */
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const ensureProfile = async (userId: string, email: string) => {
+    const ensureProfile = useCallback(async (userId: string, email: string) => {
         if (state.current.currentUser?.id === userId) {
             syncLoading(false);
             return;
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         state.current.profilePromise = promise;
         await promise;
-    };
+    }, []);
 
     useEffect(() => {
         state.current.isMounted = true;

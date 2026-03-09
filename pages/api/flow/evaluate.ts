@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { SessionLearnerProfile, MasteryState } from '@/types/serify';
 import { findOrCreateConceptNode, updateConceptMastery } from '@/lib/vault';
@@ -102,10 +102,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`
             );
 
-        let sparkCost = SPARK_COSTS.FLOW_MODE_EVAL ?? 0;
-        const hasSparks = await hasEnoughSparks(userId, sparkCost);
-        if (!hasSparks) return res.status(403).json({ error: 'out_of_sparks' });
-        await deductSparks(userId, sparkCost, 'flow_mode_eval');
+        let sparkCost = 0 ?? 0;
+        const hasSparks = (await checkUsage(userId, 'flow_sessions')).allowed;
+        if (!hasSparks) return res.status(403).json({ error: 'limit_reached' });
+        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
         let totalSparksSpent = sessionData.total_sparks_spent + sparkCost;
 
         const evaluatorModel = genAI.getGenerativeModel({
@@ -187,11 +187,11 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
         let nextReinforceContent: string | null = null;
 
         if (evaluation.path === 'B' || evaluation.path === 'C') {
-            const reinforceCost = SPARK_COSTS.FLOW_MODE_TEACH_NEW ?? 0;
-            const hasSparksForReinforce = await hasEnoughSparks(userId, reinforceCost);
+            const reinforceCost = 0 ?? 0;
+            const hasSparksForReinforce = (await checkUsage(userId, 'flow_sessions')).allowed;
 
             if (hasSparksForReinforce) {
-                await deductSparks(userId, reinforceCost, 'flow_mode_teach_new');
+                (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
                 sparkCost += reinforceCost;
                 totalSparksSpent += reinforceCost;
 

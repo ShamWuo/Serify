@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -42,6 +42,7 @@ export default function KnowledgeMap() {
     const [nodes, setNodes] = useState<KnowledgeNode[]>([]);
     const [categories, setCategories] = useState<VaultCategory[]>([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
     const [backfilling, setBackfilling] = useState(false);
     const [backfillDone, setBackfillDone] = useState(false);
@@ -78,9 +79,12 @@ export default function KnowledgeMap() {
                     const d = await res.json();
                     setNodes(d.nodes || []);
                     setCategories(d.categories || []);
+                } else {
+                    setFetchError('Failed to load knowledge map. Please refresh.');
                 }
             } catch (e) {
                 console.error(e);
+                setFetchError('Failed to load knowledge map. Please refresh.');
             } finally {
                 setLoading(false);
             }
@@ -209,7 +213,7 @@ export default function KnowledgeMap() {
         return () => cancelAnimationFrame(animationFrame);
     }, [loading, nodes, categories, isDragging, draggedNodeId]);
 
-    const triggerBackfill = async () => {
+    const triggerBackfill = useCallback(async () => {
         if (backfilling || backfillDone) return;
         setBackfilling(true);
         try {
@@ -236,13 +240,13 @@ export default function KnowledgeMap() {
             setBackfilling(false);
             setBackfillDone(true);
         }
-    };
+    }, [backfilling, backfillDone]);
 
     useEffect(() => {
         if (!loading && nodes.length === 0 && !backfillDone && !backfilling) {
             triggerBackfill();
         }
-    }, [loading, nodes.length, backfillDone, backfilling]);
+    }, [loading, nodes.length, backfillDone, backfilling, triggerBackfill]);
 
     // Graph Data Helpers
     const mapNodes = useMemo(() => {
@@ -456,6 +460,18 @@ export default function KnowledgeMap() {
                             <div className="flex flex-col items-center">
                                 <Zap className="text-[var(--accent)] animate-pulse mb-4" size={42} />
                                 <p className="text-[var(--muted)] font-bold tracking-[0.2em] uppercase text-[10px]">Projecting Neural Map...</p>
+                            </div>
+                        </div>
+                    ) : fetchError ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-4 text-center px-6">
+                                <p className="text-[var(--warn)] font-semibold">{fetchError}</p>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                                >
+                                    Refresh
+                                </button>
                             </div>
                         </div>
                     ) : nodes.length === 0 ? (

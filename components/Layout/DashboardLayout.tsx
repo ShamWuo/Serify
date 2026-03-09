@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 import {
     Home,
@@ -16,7 +17,6 @@ import {
     Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import SparkBalance from '@/components/sparks/SparkBalance';
 import CommandPalette from '@/components/Layout/CommandPalette';
 
 interface DashboardLayoutProps {
@@ -116,9 +116,11 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                         <Link href="/" className="inline-flex items-center gap-3 group mb-2 text-left">
                             {!logoError && (
                                 <div className="h-10 w-10 flex items-center justify-center shrink-0">
-                                    <img
+                                    <Image
                                         src="/logo.png"
                                         alt=""
+                                        width={40}
+                                        height={40}
                                         className="h-full w-full object-contain transition-transform group-hover:scale-110"
                                         onError={() => setLogoError(true)}
                                     />
@@ -210,9 +212,6 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                             </button>
                         </div>
                     )}
-                    <div className="mb-2 w-full flex justify-center">
-                        <SparkBalance />
-                    </div>
                     {authLoading || !user ? (
                         <div className="w-full flex items-center gap-2 p-2 rounded-xl animate-pulse">
                             <div className="w-8 h-8 rounded-full bg-[var(--border)]" />
@@ -251,9 +250,11 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             <div className="md:hidden sticky top-0 z-40 bg-[var(--surface)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2">
                     {!logoError && (
-                        <img
+                        <Image
                             src="/logo.png"
                             alt=""
+                            width={28}
+                            height={28}
                             className="h-7 w-7 object-contain"
                             onError={() => setLogoError(true)}
                         />
@@ -261,7 +262,6 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     <span className="text-2xl font-display text-[var(--text)]">Serify</span>
                 </Link>
                 <div className="flex items-center gap-3">
-                    <SparkBalance />
                     <div
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
                         className="w-8 h-8 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-xs font-medium cursor-pointer"

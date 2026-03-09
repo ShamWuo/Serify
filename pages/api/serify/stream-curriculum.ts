@@ -1,7 +1,7 @@
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 
 export const config = { runtime: 'edge' };
@@ -72,13 +72,12 @@ export default async function handler(req: Request) {
 
         if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
-        const sparkCost = SPARK_COSTS.CURRICULUM_GENERATION || 2;
-        const hasSparks = await hasEnoughSparks(user, sparkCost);
+        const hasSparks = (await checkUsage(user, 'curricula')).allowed;
         if (!hasSparks) {
             return new Response(
                 JSON.stringify({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 }),
                 { status: 403 }
             );

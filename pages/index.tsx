@@ -41,7 +41,6 @@ import { KnowledgeNode } from '@/types/serify';
 import LandingPage from '@/components/LandingPage';
 import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
 
 type DetectedType = 'youtube' | 'article' | 'text' | 'pdf' | null;
 
@@ -123,25 +122,12 @@ export default function Home() {
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const transport = useMemo(() => {
-        return new DefaultChatTransport({
-            api: '/api/home-chat',
-            headers: () => {
-                const headers: Record<string, string> = {};
-                if (token) {
-                    headers.Authorization = `Bearer ${token}`;
-                }
-                if (isDemo) {
-                    headers['x-serify-demo'] = 'true';
-                }
-                return headers;
-            },
-        });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const { messages, sendMessage, status, error, setMessages } = useChat({
-        transport,
+    const { messages, append, status, error, setMessages } = useChat({
+        api: '/api/home-chat',
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(isDemo ? { 'x-serify-demo': 'true' } : {})
+        },
         onError: (err: Error) => {
             if (err.message?.includes('out_of_sparks') || err.message?.includes('403')) {
                 setOutOfSparksError(true);
@@ -298,8 +284,8 @@ export default function Home() {
         if (!text || isLoading || (!token && !isDemo)) return;
         setOutOfSparksError(false);
         setInputValue('');
-        sendMessage({ text });
-    }, [inputValue, isLoading, sendMessage, token, isDemo]);
+        append({ role: 'user', content: text });
+    }, [inputValue, isLoading, append, token, isDemo]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {

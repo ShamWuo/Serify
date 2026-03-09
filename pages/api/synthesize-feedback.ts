@@ -1,7 +1,7 @@
 import { streamObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { findOrCreateConceptNode, updateVaultHierarchy } from '@/lib/vault';
 
@@ -30,14 +30,14 @@ export default async function handler(req: Request) {
         }
 
         const sparkCost = isBasicMode
-            ? SPARK_COSTS.BASIC_FEEDBACK_REPORT
-            : SPARK_COSTS.BASIC_FEEDBACK_REPORT + (SPARK_COSTS.FULL_FEEDBACK_UPGRADE || 2);
-        const hasSparks = await hasEnoughSparks(user, sparkCost);
+            ? 0
+            : 0 + (0 || 2);
+        const hasSparks = (await checkUsage(user, 'sessions')).allowed;
         if (!hasSparks) {
             return new Response(
                 JSON.stringify({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 }),
                 { status: 403 }
             );
@@ -107,11 +107,7 @@ export default async function handler(req: Request) {
             }),
             onFinish: async ({ object }) => {
                 if (object) {
-                    await deductSparks(
-                        user,
-                        sparkCost,
-                        isBasicMode ? 'session_basic_analysis' : 'session_full_analysis'
-                    );
+                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
 
                     const sessionId = sessionData?.sessionId || sessionData?.id;
                     const conceptsToWrite: { name: string; description: string }[] = (

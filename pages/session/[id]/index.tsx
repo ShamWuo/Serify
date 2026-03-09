@@ -63,6 +63,7 @@ export default function ActiveSession() {
     const [showGuidance1, setShowGuidance1] = useState(false);
     const [showGuidance2, setShowGuidance2] = useState(false);
     const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const analysisPromises = useRef<Promise<any>[]>([]);
@@ -104,7 +105,7 @@ export default function ActiveSession() {
         };
     }, [isFirstSession, currentIndex, answer, isAnalyzing]);
 
-    const handlePause = async () => {
+    const handleSaveAndExit = async () => {
         setIsAnalyzing(true);
         try {
             const resolvedAssessments = await Promise.all(analysisPromises.current);
@@ -123,6 +124,7 @@ export default function ActiveSession() {
             console.error(e);
             alert('Failed to pause safely. Please try again.');
             setIsAnalyzing(false);
+            setIsPaused(false);
         }
     };
 
@@ -612,7 +614,7 @@ export default function ActiveSession() {
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={handlePause}
+                            onClick={() => setIsPaused(true)}
                             disabled={isAnalyzing}
                             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] border border-transparent hover:border-[var(--border)] transition-all disabled:opacity-50"
                         >
@@ -771,6 +773,26 @@ export default function ActiveSession() {
                     </div>
                 </div>
             </div>
+
+            {isPaused && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+                    <div className="bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-3xl w-full max-w-sm p-8 shadow-2xl animate-scale-in text-center relative">
+                        <div className="w-16 h-16 bg-[var(--surface)] border border-[var(--border)] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                            <Pause size={28} className="text-[var(--text)] opacity-80" />
+                        </div>
+                        <h3 className="text-xl font-display mb-3">Session Paused</h3>
+                        <p className="text-sm text-[var(--muted)] mb-8 leading-relaxed">Take a breather. Your progress is saved automatically. You can resume exactly where you left off from your dashboard.</p>
+                        <div className="space-y-3">
+                            <button onClick={() => setIsPaused(false)} className="w-full py-3.5 bg-[var(--accent)] text-white rounded-xl font-bold hover:bg-[var(--accent)]/90 transition-all shadow-md shadow-[var(--accent)]/20 hover:-translate-y-0.5">
+                                Resume Session
+                            </button>
+                            <button onClick={handleSaveAndExit} className="w-full py-3.5 bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-xl font-bold hover:bg-[var(--surface)] transition-all text-sm group">
+                                <span className="opacity-80 group-hover:opacity-100 transition-opacity">Save & Exit to Dashboard</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <OutOfSparksModal
                 isOpen={isOutOfSparksModalOpen}

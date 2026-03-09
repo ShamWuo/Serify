@@ -117,7 +117,7 @@ export default function PracticeMode() {
         };
 
         initQuiz();
-    }, [id, router]);
+    }, [id, router, user]);
 
     const handleSelectOption = (index: number) => {
         if (isAnswered) return;

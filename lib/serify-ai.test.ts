@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseJSON } from './lib/serify-ai';
+import { parseJSON } from './serify-ai';
 
 describe('AI Parser (lib/serify-ai.ts)', () => {
     it('should parse clean JSON correctly', () => {

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSparkAdminClient } from '@/lib/sparks';
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const cronSecret = req.headers['x-cron-secret'];

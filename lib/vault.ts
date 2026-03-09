@@ -1,40 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../types/db_types_new';
 import { MasteryHistoryEntry, MasteryState, ConceptSynthesis } from '../types/serify';
-import { parseJSON } from './serify-ai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-async function callFlashAI(prompt: string, jsonMode: boolean = true): Promise<string> {
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: jsonMode
-            ? {
-                responseMimeType: 'application/json',
-                maxOutputTokens: 1000,
-                temperature: 0.1
-            }
-            : { temperature: 0.1 }
-    });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-}
-
-async function callProAI(prompt: string, jsonMode: boolean = true): Promise<string> {
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: jsonMode
-            ? {
-                responseMimeType: 'application/json',
-                maxOutputTokens: 1000,
-                temperature: 0.1
-            }
-            : { temperature: 0.1 }
-    });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-}
+import { parseJSON, getGeminiModel } from './serify-ai';
 
 type DbClient = SupabaseClient<Database>;
 
@@ -313,9 +280,9 @@ export async function updateVaultHierarchy(db: DbClient, userId: string) {
             ${unclassified.map((c) => `- ${c.display_name} (ID: ${c.id}): ${c.definition}`).join('\n')}
         `;
 
-        const responseString = await callFlashAI(prompt);
-        const cleanJsonString = responseString.replace(/^```json\s*/m, '').replace(/```$/m, '').trim();
-        const hierarchy = JSON.parse(cleanJsonString) as {
+        const model = getGeminiModel(false);
+        const result = await model.generateContent(prompt);
+        const hierarchy = parseJSON<any>(result.response.text()) as {
             categoryName: string;
             parentConcepts: {
                 parentName: string;
@@ -421,13 +388,9 @@ export async function generateConceptSynthesis(
         }
       `;
 
-        // Switch to Flash for cost savings
-        const responseString = await callFlashAI(prompt);
-        const cleanJsonString = responseString
-            .replace(/^```json\s*/m, '')
-            .replace(/```$/m, '')
-            .trim();
-        const synthesisResult = JSON.parse(cleanJsonString);
+        const model = getGeminiModel(false);
+        const result = await model.generateContent(prompt);
+        const synthesisResult = parseJSON<any>(result.response.text());
 
         const synthesis: ConceptSynthesis = {
             ...synthesisResult,

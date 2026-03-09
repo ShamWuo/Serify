@@ -1,7 +1,7 @@
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { YoutubeTranscript } from 'youtube-transcript';
 import { createClient } from '@supabase/supabase-js';
 
@@ -80,10 +80,10 @@ export default async function handler(req: Request) {
                 }
 
                 // Check sparks
-                const sparkCost = (SPARK_COSTS.SESSION_INGESTION || 2) + (SPARK_COSTS.QUESTION_GENERATION || 1);
-                const hasSparks = await hasEnoughSparks(userId, sparkCost);
+                const sparkCost = (0 || 2) + (0 || 1);
+                const hasSparks = (await checkUsage(userId, 'sessions')).allowed;
                 if (!hasSparks) {
-                    send({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks.` });
+                    send({ error: 'limit_reached', message: 'You have reached your feature limit.' });
                     controller.close();
                     return;
                 }
@@ -160,7 +160,7 @@ export default async function handler(req: Request) {
                 send({ progress: 90, status: 'saving', message: 'Finalizing session...' });
 
                 // Deduct sparks first
-                await deductSparks(userId, sparkCost, 'session_full_ingestion');
+                (await incrementUsage(userId, 'sessions').then(() => ({ success: true })));
 
                 // 1. Create the session
                 const { data: session, error: sessionError } = await supabase

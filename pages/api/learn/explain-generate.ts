@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -14,14 +14,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const sparkCost = SPARK_COSTS.EXPLAIN_IT_TO_ME;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
+    const hasSparks = (await checkUsage(userId, 'ai_messages')).allowed;
     if (!hasSparks) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark for this explanation.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -54,13 +53,13 @@ Write a clear, thorough explanation of this concept. Structure it as:
 5. The most common misconception about it and why it's wrong
 `;
 
-        const deduction = await deductSparks(userId, sparkCost, 'explain_it_to_me', concept?.id);
+        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark for this explanation.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

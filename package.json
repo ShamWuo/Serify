@@ -11,14 +11,14 @@
         "test": "vitest run"
     },
     "dependencies": {
-        "@ai-sdk/google": "^3.0.33",
-        "@ai-sdk/react": "^3.0.106",
+        "@ai-sdk/google": "^3.0.43",
+        "@ai-sdk/react": "^3.0.118",
         "@google/generative-ai": "^0.24.1",
         "@supabase/supabase-js": "^2.97.0",
         "@types/node": "^20.8.0",
         "@types/react": "^18.2.0",
         "@types/react-dom": "^18.2.0",
-        "ai": "^4.1.0",
+        "ai": "^6.0.116",
         "autoprefixer": "^10.4.16",
         "date-fns": "^4.1.0",
         "katex": "^0.16.33",
@@ -44,10 +44,10 @@
     "devDependencies": {
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
+        "@vitejs/plugin-react": "^4.3.4",
         "eslint": "^8.51.0",
         "eslint-config-next": "^15.1.6",
-        "vitest": "^3.0.0",
-        "@vitejs/plugin-react": "^4.3.4",
-        "jsdom": "^26.0.0"
+        "jsdom": "^26.0.0",
+        "vitest": "^3.0.0"
     }
 }

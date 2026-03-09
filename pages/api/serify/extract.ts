@@ -2,8 +2,18 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { extractConcepts, generateSessionTitle } from '@/lib/serify-ai';
 import { ContentSource } from '@/types/serify';
-import { deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { checkUsage, incrementUsage } from '@/lib/usage';
 import { YoutubeTranscript } from 'youtube-transcript';
+import { sendError } from '@/lib/api-utils';
+import { z } from 'zod';
+
+const extractRequestSchema = z.object({
+    contentType: z.enum(['youtube', 'article', 'pdf', 'text']),
+    content: z.string().optional(),
+    url: z.string().optional(),
+    title: z.string().optional(),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional()
+});
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -24,25 +34,24 @@ function checkRateLimit(userId: string): boolean {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
-        console.log('Method not allowed:', req.method);
-        return res.status(405).json({ error: 'Method not allowed' });
+        return sendError(res, 'Method not allowed', 405, 'Method Not Allowed');
     }
 
-    console.log('Extract API called');
-
     if (!process.env.GEMINI_API_KEY) {
-        console.error('GEMINI_API_KEY is not set');
-        return res
-            .status(500)
-            .json({
-                error: 'GEMINI_API_KEY is not configured. Please set it in your .env.local file.'
-            });
+        return sendError(res, 'AI service is not configured', 500, 'Configuration Error');
+    }
+
+    const validatedBody = extractRequestSchema.safeParse(req.body);
+    if (!validatedBody.success) {
+        return res.status(400).json({
+            error: 'Invalid request body',
+            details: validatedBody.error.format()
+        });
     }
 
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-        console.log('No authorization header');
-        return res.status(401).json({ error: 'Unauthorized: No authorization header' });
+        return sendError(res, 'Unauthorized', 401, 'Unauthorized');
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -60,33 +69,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error: authError
     } = await supabaseWithAuth.auth.getUser(token);
 
-    if (authError) {
-        console.error('Auth error:', authError);
-        return res.status(401).json({ error: `Unauthorized: ${authError.message}` });
+    if (authError || !user) {
+        return sendError(res, 'Unauthorized', 401, 'Unauthorized');
     }
 
-    if (!user) {
-        console.log('No user found');
-        return res.status(401).json({ error: 'Unauthorized: No user found' });
-    }
-
-    const sparkCost = SPARK_COSTS.SESSION_INGESTION;
-    const hasSparks = await hasEnoughSparks(user.id, sparkCost);
+    const hasSparks = (await checkUsage(user.id, 'sessions')).allowed;
     if (!hasSparks) {
-        return res.status(403).json({
-            error: 'out_of_sparks',
-            message: `You need ${sparkCost} Sparks to extract concepts.`
-        });
+        return sendError(res, `You need ${sparkCost} Sparks.`, 403, 'out_of_sparks');
     }
-
-    console.log('User authenticated:', user.id);
 
     if (!checkRateLimit(user.id)) {
-        console.log('Rate limit exceeded for user:', user.id);
-        return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
+        return sendError(res, 'Too many requests. Try again in a minute.', 429, 'Rate Limit Exceeded');
     }
 
-    let { contentType, content, url, title, difficulty } = req.body;
+    let { contentType, content, url, title, difficulty } = validatedBody.data;
     console.log('Request body:', {
         contentType,
         hasContent: !!content,
@@ -112,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (contentType === 'youtube') {
             try {
                 console.log('Fetching YouTube transcript for:', url);
-                const transcriptData = await YoutubeTranscript.fetchTranscript(url);
+                const transcriptData = await YoutubeTranscript.fetchTranscript(url as string);
                 processedTranscript = transcriptData.map((t: any) => t.text).join(' ');
                 console.log('YouTube transcript fetched successfully');
             } catch (err: any) {
@@ -130,7 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             try {
                 console.log('Generating session title...');
                 const contentForTitle = processedTranscript || content || url;
-                title = await generateSessionTitle(contentForTitle, contentType);
+                title = await generateSessionTitle(contentForTitle || '', contentType);
                 console.log('Generated title:', title);
             } catch (e) {
                 title = title || 'Untitled Session';
@@ -141,8 +137,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id: Date.now().toString(),
             type: contentType,
             title,
-            content,
-            url
+            content: content || '',
+            url: url || ''
         };
 
         const targetContent = content ?? url;
@@ -215,13 +211,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Session created:', session.id);
 
-        const deduction = await deductSparks(user.id, sparkCost, 'session_ingestion', session.id);
+        const deduction = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks to extract concepts.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

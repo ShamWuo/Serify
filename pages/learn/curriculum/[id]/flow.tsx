@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -34,7 +34,7 @@ function ProgressBar({ concepts, currentConceptId }: { concepts: any[]; currentC
 }
 
 function StepIcon({ type }: { type: FlowStepType }) {
-    const MAP: Partial<Record<string, JSX.Element>> = {
+    const MAP: Partial<Record<string, React.ReactNode>> = {
         orient: <Target size={16} />,
         build_layer: <Layers size={16} />,
         anchor: <BookOpen size={16} />,
@@ -46,7 +46,7 @@ function StepIcon({ type }: { type: FlowStepType }) {
 }
 
 function ActionButton({ label, icon, primary, secondary, onClick, disabled }: {
-    label: string; icon?: JSX.Element; primary?: boolean; secondary?: boolean;
+    label: string; icon?: React.ReactNode; primary?: boolean; secondary?: boolean;
     onClick: () => void; disabled?: boolean;
 }) {
     const bg = primary ? 'var(--accent)' : 'transparent';
@@ -78,12 +78,25 @@ function ReadOnlyNotice() {
     );
 }
 
-function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps }: {
+function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAnswer }: {
     content: any; onNext: (r: string) => void; readOnly?: boolean;
-    stepNumber?: number; totalSteps?: number;
+    stepNumber?: number; totalSteps?: number; savedAnswer?: string;
 }) {
     const quickChecks: any[] = content.quickChecks || [];
-    const [answers, setAnswers] = useState<(number | null)[]>(Array(quickChecks.length).fill(null));
+
+    const initializeAnswers = () => {
+        if (savedAnswer) {
+            try {
+                const parsed = JSON.parse(savedAnswer);
+                if (parsed.answers) return parsed.answers;
+            } catch (e) {
+                // Return empty array on parse error
+            }
+        }
+        return Array(quickChecks.length).fill(null);
+    };
+
+    const [answers, setAnswers] = useState<(number | null)[]>(initializeAnswers);
     const [qIdx, setQIdx] = useState(0);
     const allAnswered = quickChecks.length === 0 || answers.every((a) => a !== null);
 
@@ -200,7 +213,7 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps }: {
                             label={allAnswered ? 'Continue' : `Answer all checks`}
                             icon={<ChevronRight size={16} />}
                             primary
-                            onClick={() => onNext('completed_teach')}
+                            onClick={() => onNext(JSON.stringify({ type: 'completed_teach', answers }))}
                             disabled={!allAnswered}
                         />
                         {!allAnswered && <span className="text-[13px] text-[var(--muted)] italic animate-pulse">Verify understanding before moving on</span>}
