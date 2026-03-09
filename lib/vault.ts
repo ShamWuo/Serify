@@ -105,61 +105,95 @@ export async function findOrCreateConceptNode(
     userId: string,
     conceptName: string,
     sessionId: string,
-    definition: string
+    definition: string,
+    parentConceptId?: string
 ): Promise<any> {
-    const { data: exact } = await db
-        .from('knowledge_nodes')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('canonical_name', conceptName.toLowerCase())
-        .single();
-
-    if (exact) return exact;
-
-    const similar = await findSimilarConcept(db, userId, conceptName);
-
-    if (similar) {
-        const updatedSessionIds = [...(similar.session_ids || []), sessionId];
-        const { data: updated } = await db
+    try {
+        const { data: exact, error: exactError } = await db
             .from('knowledge_nodes')
-            .update({
+            .select('*')
+            .eq('user_id', userId)
+            .eq('canonical_name', conceptName.toLowerCase())
+            .maybeSingle();
+
+        if (exact) {
+            // If it exists but lacks a parent and we have one, update it
+            if (!exact.parent_concept_id && parentConceptId) {
+                await db.from('knowledge_nodes')
+                    .update({ parent_concept_id: parentConceptId, is_sub_concept: true })
+                    .eq('id', exact.id);
+            }
+            return exact;
+        }
+
+        const similar = await findSimilarConcept(db, userId, conceptName);
+
+        if (similar) {
+            const updatedSessionIds = Array.from(new Set([...(similar.session_ids || []), sessionId]));
+            const updatePayload: any = {
                 display_name: conceptName,
                 session_count: (similar.session_count || 0) + 1,
-                session_ids: updatedSessionIds,
+                session_ids: updatedSessionIds as any,
                 last_seen_at: new Date().toISOString()
+            };
+
+            if (!similar.parent_concept_id && parentConceptId) {
+                updatePayload.parent_concept_id = parentConceptId;
+                updatePayload.is_sub_concept = true;
+            }
+
+            const { data: updated } = await db
+                .from('knowledge_nodes')
+                .update(updatePayload)
+                .eq('id', similar.id)
+                .select()
+                .maybeSingle();
+            if (updated) return updated;
+        }
+
+        const newNodeId = crypto.randomUUID();
+        const { data: inserted, error } = await db
+            .from('knowledge_nodes')
+            .insert({
+                id: newNodeId,
+                user_id: userId,
+                canonical_name: conceptName.toLowerCase(),
+                display_name: conceptName,
+                definition,
+                current_mastery: 'revisit',
+                mastery_history: [],
+                session_count: 1,
+                session_ids: [sessionId] as any,
+                first_seen_at: new Date().toISOString(),
+                last_seen_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                parent_concept_id: parentConceptId || null,
+                is_sub_concept: !!parentConceptId
             })
-            .eq('id', similar.id)
             .select()
-            .single();
-        if (updated) return updated;
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error creating concept node:', error);
+            // If insert failed (maybe race condition), try one last fetch
+            const { data: retryFetch } = await db
+                .from('knowledge_nodes')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('canonical_name', conceptName.toLowerCase())
+                .maybeSingle();
+            return retryFetch;
+        }
+        return inserted;
+    } catch (err) {
+        console.error('Critical error in findOrCreateConceptNode:', err);
+        return null;
     }
-
-    const { data: inserted, error } = await db
-        .from('knowledge_nodes')
-        .insert({
-            id: crypto.randomUUID(),
-            user_id: userId,
-            canonical_name: conceptName.toLowerCase(),
-            display_name: conceptName,
-            definition,
-            current_mastery: 'revisit',
-            mastery_history: JSON.parse(JSON.stringify([])),
-            session_count: 1,
-            session_ids: [sessionId] as any,
-            first_seen_at: new Date().toISOString(),
-            last_seen_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-    if (error) console.error('Error creating concept node:', error);
-    return inserted;
 }
 
 export async function upsertCategory(db: DbClient, userId: string, categoryName: string): Promise<any> {
-    const { data: existing } = await (db as any)
+    const { data: existing } = await db
         .from('vault_categories')
         .select('*')
         .eq('user_id', userId)
@@ -168,7 +202,7 @@ export async function upsertCategory(db: DbClient, userId: string, categoryName:
 
     if (existing) return existing;
 
-    const { data: inserted } = await (db as any)
+    const { data: inserted } = await db
         .from('vault_categories')
         .insert({
             id: crypto.randomUUID(),
@@ -241,7 +275,7 @@ export async function updateVaultHierarchy(db: DbClient, userId: string) {
     }
 
     try {
-        const { data: existingCategories } = await (db as any).from('vault_categories').select('name').eq('user_id', userId);
+        const { data: existingCategories } = await db.from('vault_categories').select('name').eq('user_id', userId);
         const { data: existingParents } = await db.from('knowledge_nodes').select('display_name').eq('user_id', userId).eq('is_sub_concept', false);
 
         const catList = (existingCategories || []).map((c: any) => c.name).join(', ');

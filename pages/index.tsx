@@ -164,14 +164,26 @@ export default function Home() {
             return;
         }
 
-        supabase.from('reflection_sessions')
-            .select('id, title, content_type, created_at, status, depth_score')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(8)
-            .then(({ data, error }) => {
-                if (!error && data) {
-                    const mapped: SessionSummary[] = data.map(s => {
+        // Fetch both reflection and flow sessions
+        const fetchSessions = async () => {
+            try {
+                const [reflectionRes, flowRes] = await Promise.all([
+                    supabase.from('reflection_sessions')
+                        .select('id, title, content_type, created_at, status, depth_score')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(8),
+                    supabase.from('flow_sessions')
+                        .select('id, title, created_at, status, last_activity_at')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(8)
+                ]);
+
+                let allSessions: SessionSummary[] = [];
+
+                if (reflectionRes.data) {
+                    allSessions = [...allSessions, ...reflectionRes.data.map(s => {
                         const dateObj = new Date(s.created_at);
                         const isRecent = (new Date().getTime() - dateObj.getTime()) < 24 * 60 * 60 * 1000;
                         return {
@@ -181,13 +193,46 @@ export default function Home() {
                             date: isRecent
                                 ? `${formatDistanceToNow(dateObj, { addSuffix: true })}`
                                 : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                            status: s.status === 'feedback' || s.status === 'complete' ? 'Completed' : 'In Progress',
-                            result: s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found',
+                            status: (s.status === 'feedback' || s.status === 'complete')
+                                ? 'Completed'
+                                : (s.status === 'questions' || s.status === 'assessment')
+                                    ? 'Practicing'
+                                    : (isRecent && (new Date().getTime() - dateObj.getTime()) > 60 * 60 * 1000)
+                                        ? 'In Progress'
+                                        : 'Analyzing' as SessionSummary['status'],
+                            result: (s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found') as SessionSummary['result'],
+                            last_activity: s.created_at
                         };
-                    });
-                    setLatestSessions(mapped);
+                    })];
                 }
-            });
+
+                if (flowRes.data) {
+                    allSessions = [...allSessions, ...flowRes.data.map(s => {
+                        const dateObj = new Date(s.created_at);
+                        const isRecent = (new Date().getTime() - dateObj.getTime()) < 24 * 60 * 60 * 1000;
+                        return {
+                            id: s.id,
+                            title: s.title || 'Learning Flow',
+                            type: 'Flow',
+                            date: isRecent
+                                ? `${formatDistanceToNow(dateObj, { addSuffix: true })}`
+                                : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                            status: (s.status === 'completed' ? 'Completed' : 'In Progress') as SessionSummary['status'],
+                            result: 'Ongoing' as SessionSummary['result'],
+                            last_activity: s.last_activity_at || s.created_at
+                        };
+                    })];
+                }
+
+                // Sort by last activity and limit
+                allSessions.sort((a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime());
+                setLatestSessions(allSessions.slice(0, 8));
+            } catch (err) {
+                console.error('Failed to fetch sessions:', err);
+            }
+        };
+
+        fetchSessions();
 
         supabase.from('knowledge_nodes')
             .select('count', { count: 'exact', head: true })
@@ -311,25 +356,7 @@ export default function Home() {
         }
     }, [isNavigating, balance, token, router]);
 
-    const handleTestSubscription = async () => {
-        try {
-            const res = await fetch('/api/subscriptions/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify({
-                    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST || process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY,
-                    successUrl: `${window.location.origin}/settings?session_id={CHECKOUT_SESSION_ID}`,
-                    cancelUrl: `${window.location.origin}/pricing`,
-                }),
-            });
-            const { url } = await res.json();
-            if (url) window.location.href = url;
-        } catch (error) {
-        }
-    };
+
 
     if (loading) return null;
     if (!user && !isDemo) return <LandingPage />;
@@ -347,9 +374,8 @@ export default function Home() {
 
     return (
         <DashboardLayout>
-            <Head><title>Dashboard | Serify</title></Head>
-
             <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-10 pb-28 md:pb-16 page-transition">
+                <Head><title>Dashboard | Serify</title></Head>
 
                 {isDemo && (
                     <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 mb-6 shadow-sm">
@@ -361,42 +387,45 @@ export default function Home() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight">
-                            {getGreeting()}, {user?.displayName?.split(' ')[0] || 'Learner'} 👋
+                            {getGreeting()}, <span className="text-[var(--accent)]">{user?.displayName?.split(' ')[0] || 'Learner'}</span> 👋
                         </h1>
-                        <p className="text-[var(--muted)] text-sm mt-0.5">Your AI tutor is ready. What are you working on?</p>
+                        <p className="text-[var(--muted)] text-sm mt-1">Your AI tutor is ready. What are you working on?</p>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                        <Link href="/sparks" className="flex items-center gap-2 px-3.5 py-2 hover:bg-amber-50 rounded-xl transition-all group">
-                            <Zap size={14} className="text-amber-500" fill="currentColor" />
-                            <span className="text-base font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
-                            <span className="text-xs text-amber-500 font-medium tracking-tight">sparks</span>
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-2xl shadow-sm">
+                        <Link href="/sparks" className="flex items-center gap-2 px-3 py-1.5 hover:bg-amber-50 rounded-xl transition-all group shrink-0">
+                            <Zap size={13} className="text-amber-500 group-hover:scale-110 transition-transform" fill="currentColor" />
+                            <span className="text-sm font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
                         </Link>
+
+                        <div className="w-px h-4 bg-[var(--border)] mx-1" />
 
                         {activeCurriculum && (
                             <Link
                                 href={`/learn/curriculum/${activeCurriculum.id}`}
-                                className="group flex items-center gap-2 px-3.5 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/30 hover:shadow-md transition-all shadow-sm relative overflow-hidden"
+                                className="group flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg)] rounded-xl transition-all shrink-0 max-w-[200px]"
                             >
-                                <div className="absolute bottom-0 left-0 h-0.5 bg-[var(--accent)]/20 transition-all duration-1000" style={{ width: `${activeCurriculum.progress}%` }} />
-                                <div className="w-6 h-6 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
-                                    <Play size={12} fill="currentColor" />
+                                <div className="w-5 h-5 rounded-md bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-sm">
+                                    <Play size={10} fill="currentColor" />
                                 </div>
-                                <div className="flex flex-col min-w-0 pr-1">
-                                    <span className="text-xs font-bold truncate max-w-[140px] leading-tight">{activeCurriculum.title}</span>
-                                    <span className="text-[9px] text-[var(--muted)] font-bold uppercase tracking-widest">{activeCurriculum.progress}% complete</span>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[10px] font-bold truncate leading-tight">{activeCurriculum.title}</span>
+                                    <span className="text-[8px] text-[var(--accent)] font-bold uppercase tracking-wider">{activeCurriculum.progress}%</span>
                                 </div>
                             </Link>
                         )}
 
                         {latestSessions.length > 0 && latestSessions[0].status !== 'Completed' && (
-                            <Link
-                                href={`/session/${latestSessions[0].id}`}
-                                className="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-[var(--accent)] text-white rounded-xl hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 transition-all shadow-lg shadow-[var(--accent)]/20 active:translate-y-0"
-                            >
-                                <Play size={12} fill="currentColor" />
-                                <span className="text-xs font-bold">Continue Analysis</span>
-                            </Link>
+                            <>
+                                <div className="w-px h-4 bg-[var(--border)] mx-1" />
+                                <Link
+                                    href={`/session/${latestSessions[0].id}`}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-[var(--accent)] text-white rounded-xl hover:bg-[var(--accent)]/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[var(--accent)]/20 shrink-0"
+                                >
+                                    <Sparkles size={11} fill="currentColor" />
+                                    <span className="text-[10px] font-bold">Resume</span>
+                                </Link>
+                            </>
                         )}
                     </div>
                 </div>
@@ -428,17 +457,21 @@ export default function Home() {
                                                 <button
                                                     key={i}
                                                     onClick={() => {
-                                                        setInputValue(sp.prompt);
-                                                        setTimeout(() => inputRef.current?.focus(), 50);
+                                                        if (sp.label.toLowerCase().includes('analyze')) {
+                                                            router.push('/analyze');
+                                                        } else {
+                                                            router.push(`/learn?q=${encodeURIComponent(sp.prompt)}`);
+                                                        }
                                                     }}
-                                                    className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:shadow-md hover:-translate-y-0.5 transition-all text-left"
+                                                    className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden"
                                                 >
-                                                    <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
+                                                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/0 to-[var(--accent)]/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all shadow-sm">
                                                         <sp.icon size={16} className="text-[var(--muted)] group-hover:text-white transition-colors" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-xs font-bold uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
-                                                        <p className="text-[11px] text-[var(--muted)]/60 mt-0.5 leading-snug">{sp.description}</p>
+                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
+                                                        <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug">{sp.description}</p>
                                                     </div>
                                                 </button>
                                             ))}
@@ -578,7 +611,19 @@ export default function Home() {
                             </div>
                         </section>
 
-                        {latestSessions.length > 0 && (
+                        {loading ? (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="h-6 bg-[var(--border)] rounded w-32 animate-pulse" />
+                                    <div className="h-4 bg-[var(--border)] rounded w-16 animate-pulse" />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
+                                    {[...Array(4)].map((_, i) => (
+                                        <div key={i} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 h-28 animate-pulse" />
+                                    ))}
+                                </div>
+                            </div>
+                        ) : latestSessions.length > 0 ? (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-display text-[var(--text)]">Recent Sessions</h2>
@@ -614,8 +659,10 @@ export default function Home() {
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-1.5">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                                                        <span className="text-xs font-bold tracking-tight text-blue-600">Active Session</span>
+                                                        <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${session.status === 'Practicing' ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                                                        <span className={`text-xs font-bold tracking-tight ${session.status === 'Practicing' ? 'text-blue-600' : 'text-amber-600'}`}>
+                                                            {session.status}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 <ChevronRight size={12} className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors" />
@@ -624,7 +671,7 @@ export default function Home() {
                                     ))}
                                 </div>
                             </div>
-                        )}
+                        ) : null}
 
                         {latestSessions.length === 0 && hasMessages && (
                             <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-2xl p-10 text-center">
@@ -638,7 +685,16 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-6">
-                        {focusConcepts.length > 0 && (
+                        {loading ? (
+                            <section className="premium-card rounded-2xl p-5 animate-pulse">
+                                <div className="h-4 bg-[var(--border)] rounded w-1/2 mb-4" />
+                                <div className="space-y-4">
+                                    {[...Array(3)].map((_, i) => (
+                                        <div key={i} className="h-10 bg-[var(--border)] rounded" />
+                                    ))}
+                                </div>
+                            </section>
+                        ) : focusConcepts.length > 0 ? (
                             <section className="premium-card rounded-2xl p-5">
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
@@ -668,14 +724,20 @@ export default function Home() {
                                         </div>
                                     ))}
                                 </div>
+                                <button
+                                    onClick={() => handleAction({ type: 'START_LEARN', payload: { q: focusConcepts.map(c => c.display_name).join(', ') } })}
+                                    className="w-full mt-4 flex items-center justify-center gap-2 py-3 bg-red-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-red-500/20"
+                                >
+                                    <Play size={14} fill="currentColor" /> Start Review Session
+                                </button>
                                 <Link
                                     href="/vault"
-                                    className="mt-4 flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent)]/40 rounded-xl py-3 transition-all"
+                                    className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-all"
                                 >
-                                    Concept Vault <ChevronRight size={12} />
+                                    Open Concept Vault <ChevronRight size={12} />
                                 </Link>
                             </section>
-                        )}
+                        ) : null}
 
                         <div className="premium-card rounded-2xl p-5">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mb-4">Tools & Launch</h3>
@@ -702,14 +764,6 @@ export default function Home() {
                                 ))}
                             </div>
 
-                            {process.env.NODE_ENV === 'development' && (
-                                <button
-                                    onClick={handleTestSubscription}
-                                    className="w-full mt-4 flex items-center justify-center gap-2 py-3 px-3 border border-dashed border-purple-200 rounded-xl text-xs font-bold uppercase tracking-widest text-purple-400 hover:text-purple-600 hover:border-purple-400 transition-all active:scale-[0.98]"
-                                >
-                                    <Zap size={10} fill="currentColor" /> Developer: Test Checkout
-                                </button>
-                            )}
                         </div>
                     </div>
                 </div>

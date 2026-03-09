@@ -33,6 +33,25 @@ const projectRef = supabaseUrl.includes('supabase.co')
     ? supabaseUrl.split('.')[0].split('//')[1]
     : 'local';
 
+// Custom fetch wrapper to handle timeouts
+const fetchWithTimeout = async (url: string | URL | Request, options?: RequestInit) => {
+    const timeout = 15000; // 15 second timeout for auth/DB calls
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+};
+
 // Singleton pattern to prevent multiple instances during Fast Refresh
 const createSupabaseClient = () => {
     return createClient(supabaseUrl, supabaseAnonKey, {
@@ -42,6 +61,9 @@ const createSupabaseClient = () => {
             persistSession: true,
             storageKey: `sb-${projectRef}-auth-token`,
             flowType: 'pkce'
+        },
+        global: {
+            fetch: fetchWithTimeout
         }
     });
 };

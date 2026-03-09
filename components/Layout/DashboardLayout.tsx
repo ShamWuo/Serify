@@ -23,10 +23,11 @@ interface DashboardLayoutProps {
     children: React.ReactNode;
     sidebarContent?: React.ReactNode;
     backLink?: string;
+    backLinkText?: string;
 }
 
-export default function DashboardLayout({ children, sidebarContent, backLink }: DashboardLayoutProps) {
-    const { user, logout } = useAuth();
+export default function DashboardLayout({ children, sidebarContent, backLink, backLinkText }: DashboardLayoutProps) {
+    const { user, token, logout, loading: authLoading } = useAuth();
     const router = useRouter();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -50,26 +51,25 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
     }, [router.asPath]);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user || !token) {
+            if (!authLoading && !user && !router.pathname.startsWith('/auth') && router.pathname !== '/404') {
+                router.push('/');
+            }
+            return;
+        }
 
         // Prevent non-onboarded users from accessing dashboard pages
         if (user.onboardingCompleted === false && !router.pathname.startsWith('/onboarding')) {
             router.push('/onboarding');
         }
 
-        import('@/lib/supabase').then(({ supabase }) => {
-            supabase.auth.getSession().then(({ data: { session } }) => {
-                const token = session?.access_token;
-                if (!token) return;
-                fetch('/api/vault/stats', { headers: { Authorization: `Bearer ${token}` } })
-                    .then((r) => (r.ok ? r.json() : null))
-                    .then((d) => {
-                        if (d) setVaultNeedsWork(d.needsWork || 0);
-                    })
-                    .catch(() => { });
-            });
-        });
-    }, [user, router]);
+        fetch('/api/vault/stats', { headers: { Authorization: `Bearer ${token}` } })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((d) => {
+                if (d) setVaultNeedsWork(d.needsWork || 0);
+            })
+            .catch(() => { });
+    }, [user, token, authLoading, router]);
 
     const handleLogout = () => {
         logout();
@@ -110,7 +110,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                             <div className="w-8 h-8 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface)] group-hover:bg-[var(--accent)] group-hover:text-white transition-all">
                                 <ChevronRight size={18} className="rotate-180" />
                             </div>
-                            Back
+                            {backLinkText || 'Back'}
                         </Link>
                     ) : (
                         <Link href="/" className="inline-flex items-center gap-3 group mb-2 text-left">
@@ -158,11 +158,10 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                                 <Link
                                     key={item.href}
                                     href={item.href}
-                                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${
-                                        isActive
-                                            ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm'
-                                            : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'
-                                    }`}
+                                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${isActive
+                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm'
+                                        : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'
+                                        }`}
                                 >
                                     {isActive && (
                                         <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)] animate-fade-in" />
@@ -179,11 +178,10 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                                     </div>
                                     {item.badge !== undefined && (
                                         <span
-                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                                isActive
-                                                    ? 'bg-[var(--accent)] text-white'
-                                                    : 'bg-[var(--border)] text-[var(--muted)] group-hover:bg-[var(--accent)]/20 group-hover:text-[var(--accent)] transition-colors'
-                                            }`}
+                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
+                                                ? 'bg-[var(--accent)] text-white'
+                                                : 'bg-[var(--border)] text-[var(--muted)] group-hover:bg-[var(--accent)]/20 group-hover:text-[var(--accent)] transition-colors'
+                                                }`}
                                         >
                                             {item.badge}
                                         </span>
@@ -215,28 +213,38 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                     <div className="mb-2 w-full flex justify-center">
                         <SparkBalance />
                     </div>
-                    <button
-                        onClick={() => setIsProfileOpen(!isProfileOpen)}
-                        className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[var(--accent)]/5 transition-all text-left group"
-                    >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-[var(--accent)]/20 group-hover:scale-105 transition-transform">
-                                {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-[var(--text)] truncate">
-                                    {user?.displayName || 'User'}
-                                </p>
-                                <p className="text-[10px] text-[var(--muted)] truncate capitalize font-medium tracking-wide">
-                                    {user?.subscriptionTier === 'pro' ? '✦ Pro Plan' : 'Free Plan'}
-                                </p>
+                    {authLoading || !user ? (
+                        <div className="w-full flex items-center gap-2 p-2 rounded-xl animate-pulse">
+                            <div className="w-8 h-8 rounded-full bg-[var(--border)]" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-3 bg-[var(--border)] rounded w-3/4" />
+                                <div className="h-2 bg-[var(--border)] rounded w-1/2 opacity-50" />
                             </div>
                         </div>
-                        <ChevronUp
-                            size={16}
-                            className={`text-[var(--muted)] transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`}
-                        />
-                    </button>
+                    ) : (
+                        <button
+                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[var(--accent)]/5 transition-all text-left group"
+                        >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-[var(--accent)]/20 group-hover:scale-105 transition-transform">
+                                    {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-[var(--text)] truncate">
+                                        {user?.displayName || 'User'}
+                                    </p>
+                                    <p className="text-[10px] text-[var(--muted)] truncate capitalize font-medium tracking-wide">
+                                        {user?.subscriptionTier === 'pro' ? '✦ Pro Plan' : 'Free Plan'}
+                                    </p>
+                                </div>
+                            </div>
+                            <ChevronUp
+                                size={16}
+                                className={`text-[var(--muted)] transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`}
+                            />
+                        </button>
+                    )}
                 </div>
             </aside>
 
@@ -294,11 +302,10 @@ export default function DashboardLayout({ children, sidebarContent, backLink }: 
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center py-2.5 px-1 w-full gap-1 transition-all relative ${
-                                isActive
-                                    ? 'text-[var(--accent)]'
-                                    : 'text-[var(--muted)] hover:text-[var(--text)]'
-                            }`}
+                            className={`flex flex-col items-center justify-center py-2.5 px-1 w-full gap-1 transition-all relative ${isActive
+                                ? 'text-[var(--accent)]'
+                                : 'text-[var(--muted)] hover:text-[var(--text)]'
+                                }`}
                         >
                             {isActive && (
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-b-full bg-[var(--accent)] shadow-[0_0_6px_var(--accent)]" />

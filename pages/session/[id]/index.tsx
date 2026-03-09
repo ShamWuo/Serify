@@ -40,12 +40,12 @@ const DEMO_QUESTIONS = [
 export default function ActiveSession() {
     const router = useRouter();
     const { id } = router.query;
-    const { user } = useAuth();
+    const { user, token } = useAuth();
 
     const [sessionData, setSessionData] = useState<any>(null);
-    const [concepts, setConcepts] = useState<any[]>(DEMO_CONCEPTS);
-    const [questions, setQuestions] = useState<any[]>(DEMO_QUESTIONS);
-    const [title, setTitle] = useState('How Transformer Models Work');
+    const [concepts, setConcepts] = useState<any[]>([]);
+    const [questions, setQuestions] = useState<any[]>([]);
+    const [title, setTitle] = useState('');
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answer, setAnswer] = useState('');
@@ -177,8 +177,8 @@ export default function ActiveSession() {
 
             // 2. Fallback to DB if not in localStorage or ID mismatch
             try {
-                const { data: { session: authSession } } = await supabase.auth.getSession();
-                const token = authSession?.access_token;
+                // Use token from useAuth directly (hydrated by AuthContext)
+                // If it's not ready yet, the API call will just run without auth or we can wait
 
                 const res = await fetch(`/api/sessions/${id}`, {
                     headers: {
@@ -291,7 +291,7 @@ export default function ActiveSession() {
             <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
-                    <p className="text-[var(--muted)] text-sm animate-pulse">Resuming session...</p>
+                    <p className="text-[var(--muted)] text-sm animate-pulse">Preparing session...</p>
                 </div>
             </div>
         );
@@ -398,6 +398,7 @@ export default function ActiveSession() {
                         day: 'numeric',
                         year: 'numeric'
                     }),
+                    last_activity: new Date().toISOString(),
                     status: 'Completed',
                     result: 'Default'
                 });
@@ -525,18 +526,20 @@ export default function ActiveSession() {
 
     if (!currentQuestion) {
         return (
-            <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
-                <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 text-center shadow-lg">
-                    <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Circle size={32} />
+            <DashboardLayout backLink="/">
+                <div className="flex-1 flex items-center justify-center p-6 min-h-[80vh]">
+                    <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 text-center shadow-lg animate-fade-in-up">
+                        <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <CheckCircle2 size={32} />
+                        </div>
+                        <h1 className="text-2xl font-bold mb-2 text-[var(--text)]">Session Completed</h1>
+                        <p className="text-[var(--muted)] mb-8">You&apos;ve completed all questions in this session.</p>
+                        <Link href="/" className="inline-block bg-[var(--accent)] text-white font-bold py-3.5 px-10 rounded-xl hover:bg-[var(--accent)]/90 shadow-md shadow-[var(--accent)]/20 hover:-translate-y-0.5 transition-all">
+                            Back to Dashboard
+                        </Link>
                     </div>
-                    <h1 className="text-2xl font-bold mb-2">Session Finished</h1>
-                    <p className="text-[var(--muted)] mb-8">All questions have been answered or this session is empty.</p>
-                    <Link href="/" className="inline-block bg-[var(--accent)] text-white font-bold py-3 px-8 rounded-xl hover:bg-[var(--accent)]/90 transition-all">
-                        Back to Dashboard
-                    </Link>
                 </div>
-            </div>
+            </DashboardLayout>
         );
     }
 

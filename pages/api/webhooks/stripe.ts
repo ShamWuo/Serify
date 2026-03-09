@@ -160,6 +160,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
                 break;
 
+            case 'invoice.payment_failed':
+                const failedInvoice = event.data.object as any;
+                if (failedInvoice.subscription) {
+                    const failedUserId = await getUserIdFromCustomer(
+                        failedInvoice.customer as string,
+                        supabase
+                    );
+                    if (failedUserId) {
+                        await supabase
+                            .from('profiles')
+                            .update({ subscription_tier: 'free' })
+                            .eq('id', failedUserId);
+                        
+                        await supabase
+                            .from('subscriptions')
+                            .update({ status: 'past_due' })
+                            .eq('stripe_subscription_id', failedInvoice.subscription as string);
+                    }
+                }
+                break;
+
             default:
                 console.log(`Unhandled event type ${event.type}`);
         }
@@ -172,7 +193,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 function getPlanFromPriceId(session: any) {
-    return 'pro';
+    const priceId = session.line_items?.data[0]?.price?.id || session.subscription?.plan?.id;
+    
+    if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAMS_MONTHLY) return 'teams';
+    if (
+        priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ||
+        priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY
+    ) {
+        return 'pro';
+    }
+    return 'free';
 }
 
 async function getPlanFromSubscription(subId: string) {

@@ -7,7 +7,7 @@ dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash', // Use stable flash for test
+    model: 'gemini-2.5-flash', // Use stable flash for test
     generationConfig: {
         temperature: 0.1,
         responseMimeType: 'application/json'

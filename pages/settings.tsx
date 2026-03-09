@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSparks } from '@/hooks/useSparks';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -18,7 +19,9 @@ import {
 } from 'lucide-react';
 
 export default function Settings() {
-    const { user, loading } = useAuth();
+    const { user, loading: authLoading } = useAuth();
+    const { balance, loading: sparksLoading } = useSparks();
+    const loading = authLoading || sparksLoading;
     const [notificationsActive, setNotificationsActive] = useState(true);
     const [aiTutorEnabled, setAiTutorEnabled] = useState(false);
 
@@ -85,7 +88,7 @@ export default function Settings() {
                         </div>
                         <div className="p-4 hover:bg-[var(--accent)]/5 cursor-pointer flex items-center justify-between transition-all row-hover-accent hover:shadow-sm">
                             <div className="flex items-center gap-3 font-medium">
-                                <User size={18} className="text-[var(--muted)]" /> Password
+                                <User size={18} className="text-[var(--muted)]" /> Change Password
                             </div>
                             <div className="flex items-center text-[var(--muted)] text-sm">
                                 ●●●●●●●● <ChevronRight size={16} className="ml-2" />
@@ -99,21 +102,20 @@ export default function Settings() {
                         <Cpu size={12} className="opacity-60" /> Learning Preferences
                     </h2>
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
-                        <Link
-                            href="/pricing"
-                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-all row-hover-accent block"
+                        <div
+                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-default transition-all row-hover-accent"
                         >
                             <div>
                                 <h3 className="font-bold flex items-center gap-3">
-                                    <Cpu size={18} className="text-[var(--accent)]" /> Default
+                                    <Layout size={18} className="text-[var(--accent)]" /> Default
                                     Learning Method
                                 </h3>
                                 <p className="text-sm text-[var(--muted)] mt-1 ml-7">
-                                    Standard Mode
+                                    Standard Mode (Default)
                                 </p>
                             </div>
-                            <ChevronRight size={16} className="text-[var(--muted)]" />
-                        </Link>
+                            <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-black/5 px-2 py-1 rounded">Locked</span>
+                        </div>
 
                         <div className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors">
                             <div>
@@ -126,10 +128,10 @@ export default function Settings() {
                                         </span>
                                     )}
                                 </h3>
-                                <p className="text-sm text-[var(--muted)] mt-1 ml-7">
+                                <p className="text-sm text-[var(--muted)] mt-1 ml-7 leading-relaxed max-w-md">
                                     {user?.subscriptionTier === 'pro'
-                                        ? 'Personalized AI coaching enabled'
-                                        : 'Requires Serify Pro'}
+                                        ? 'Personalized AI coaching and active guidance enabled during sessions.'
+                                        : 'Unlock personalized AI coaching and active-recall guidance with Serify Pro.'}
                                 </p>
                             </div>
                             <label
@@ -151,10 +153,10 @@ export default function Settings() {
                                     <Bell size={18} className="text-[var(--shallow)]" />{' '}
                                     Notifications
                                 </h3>
-                                <p className="text-sm text-[var(--muted)] mt-1 ml-7">
+                                <p className="text-sm text-[var(--muted)] mt-1 ml-7 leading-relaxed max-w-md">
                                     {notificationsActive
-                                        ? 'Weekly digest active'
-                                        : 'Notifications paused'}
+                                        ? 'You will receive weekly summaries of your learning progress and mastery achievements.'
+                                        : 'Notifications are currently paused. You won\'t receive weekly activity digests.'}
                                 </p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
@@ -202,7 +204,12 @@ export default function Settings() {
                                 <Zap size={18} className="text-amber-500" fill="currentColor" />{' '}
                                 Spark History & Balance
                             </div>
-                            <ChevronRight size={16} className="text-[var(--muted)]" />
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                                    {balance?.total_sparks || 0} Sparks
+                                </span>
+                                <ChevronRight size={16} className="text-[var(--muted)]" />
+                            </div>
                         </Link>
                     </div>
                 </section>
@@ -212,17 +219,17 @@ export default function Settings() {
                         <Download size={12} className="opacity-60" /> Data &amp; Privacy
                     </h2>
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
-                        <div className="p-4 hover:bg-[var(--accent)]/5 cursor-pointer flex items-center justify-between transition-all row-hover-accent hover:shadow-sm">
-                            <div className="flex items-center gap-3 font-medium">
-                                <Download size={18} className="text-[var(--muted)]" /> Export Session
-                                Data
+                        <div className="p-4 hover:bg-amber-50/50 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
+                            <div className="flex items-center gap-3 font-medium text-[var(--muted)] group-hover:text-amber-700">
+                                <Download size={18} /> Export Session Data
                             </div>
-                            <ChevronRight size={16} className="text-[var(--muted)]" />
+                            <ChevronRight size={16} className="text-[var(--muted)] group-hover:text-amber-700" />
                         </div>
                         <div className="p-4 hover:bg-red-50 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
                             <div className="flex items-center gap-3 font-medium text-red-600">
                                 <Trash2 size={18} /> Delete Account
                             </div>
+                            <span className="text-xs font-bold text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">Permanently remove all data</span>
                         </div>
                     </div>
                 </section>

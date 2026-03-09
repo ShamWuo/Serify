@@ -61,11 +61,11 @@ Return a JSON array of Mastery Pillars.
 Format:
 [
   {
-    "id": "c1",
+    "id": "uuid string",
     "name": "Pillar Name",
     "description": "A broad, comprehensive definition of this knowledge pillar (1-2 sentences).",
     "importance": "high" | "medium" | "low",
-    "relatedConcepts": ["c2"],
+    "relatedConcepts": ["uuid-of-another-pillar"],
     "subConcepts": [
       {
         "name": "Sub-concept name",
@@ -76,10 +76,10 @@ Format:
 ]
 
 Rules:
-- Use concept IDs c1, c2, c3, etc.
+- Generate a unique UUID for each "id". Use standard UUID v4 format.
 - "description": Provide a high-quality definition.
 - "importance": "high" for the most central pillars.
-- "relatedConcepts": IDs of other extracted pillars that this one builds upon or connects to.
+- "relatedConcepts": valid UUIDs of other extracted pillars that this one builds upon or connects to.
 - Focus on breadth for the pillars and depth for the sub-concepts.`;
 
 
@@ -135,14 +135,15 @@ Tone: ${toneInstruction}
 JSON Format:
 [
   {
-    "id": "q1",
+    "id": "uuid string",
     "type": "retrieval" | "application" | "misconception",
     "text": "Question text",
-    "relatedConcepts": ["c1"]
+    "relatedConcepts": ["uuid-from-concept-list"]
   }
 ]
 
 Rules:
+- Generate a NEW unique UUID for each question "id".
 - Retrieval: recall/explain. Application: scenario. Misconception: fix wrong framing.
 - One clear sentence per question.
 - Answers should require a few sentences.`;
@@ -290,7 +291,8 @@ CURRICULUM DESIGN RULES:
   moderate 8-15 min, complex 12-20 min.
 - misconceptionRisk should be high for concepts that are commonly misunderstood
   or that build on misconception-prone prerequisites.
-- For 'id' inside concepts, generate a stable unique string (like a clean slug or uuid).
+- For 'id' inside concepts, ALWAYS generate a valid UUID v4 string.
+- NEVER use short IDs like "c1" or "intro". ALWAYS use UUIDs.
 
 SCOPING RULES:
 - Input "derivatives" → 5-7 concepts (concept + prerequisites + extensions)

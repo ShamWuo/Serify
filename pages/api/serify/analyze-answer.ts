@@ -106,12 +106,34 @@ export default async function handler(req: Request) {
                         process.env.SUPABASE_SERVICE_ROLE_KEY!
                     );
 
+                    let parentNodeId: string | undefined = undefined;
+
+                    // Hierarchical Graduation Check
+                    if (concept.related_concept_names &&
+                        Array.isArray(concept.related_concept_names) &&
+                        concept.related_concept_names.length >= 2 &&
+                        concept.related_concept_names[1] === "IS_SUB") {
+
+                        const parentName = concept.related_concept_names[0];
+                        const parentNode = await findOrCreateConceptNode(
+                            supabase,
+                            user,
+                            parentName,
+                            question.session_id,
+                            `Mastery Pillar for ${parentName}.`
+                        );
+                        if (parentNode) {
+                            parentNodeId = parentNode.id;
+                        }
+                    }
+
                     const node = await findOrCreateConceptNode(
                         supabase,
                         user,
                         concept.name,
                         question.session_id,
-                        concept.definition || ''
+                        concept.definition || '',
+                        parentNodeId
                     );
 
                     if (node) {

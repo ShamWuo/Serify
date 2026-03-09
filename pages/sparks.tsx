@@ -151,6 +151,19 @@ export default function SparksShop() {
 
     const isPro = userPlan !== 'free';
 
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-10 h-10 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
+                        <p className="text-[var(--muted)] text-sm animate-pulse">Syncing Spark balance...</p>
+                    </div>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
     return (
         <DashboardLayout>
             <Head>

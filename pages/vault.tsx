@@ -36,10 +36,10 @@ import { KnowledgeNode, VaultCategory, StudySet, MasteryState } from '@/types/se
 // --- Constants & Config ---
 
 const MASTERY_CONFIG: Record<MasteryState, { label: string; color: string; bg: string; dot: string; weight: number }> = {
-    solid: { label: 'Solid', color: 'text-[#2A5C45]', bg: 'bg-[#2A5C45]/10', dot: 'bg-[#2A5C45]', weight: 3 },
-    developing: { label: 'Developing', color: 'text-[#4A90A4]', bg: 'bg-[#4A90A4]/10', dot: 'bg-[#4A90A4]', weight: 2 },
-    shaky: { label: 'Shaky', color: 'text-[#B8860B]', bg: 'bg-[#B8860B]/10', dot: 'bg-[#B8860B]', weight: 1 },
-    revisit: { label: 'Revisit', color: 'text-[#C4541A]', bg: 'bg-[#C4541A]/10', dot: 'bg-[#C4541A]', weight: 0 }
+    solid: { label: 'Solid', color: 'text-[#1B4332]', bg: 'bg-[#1B4332]/10', dot: 'bg-[#1B4332]', weight: 3 }, // Darker emerald for contrast
+    developing: { label: 'Developing', color: 'text-[#0E4F64]', bg: 'bg-[#0E4F64]/10', dot: 'bg-[#0E4F64]', weight: 2 }, // Darker cyan
+    shaky: { label: 'Shaky', color: 'text-[#856404]', bg: 'bg-[#FFF3CD]', dot: 'bg-[#856404]', weight: 1 }, // High contrast gold
+    revisit: { label: 'Revisit', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0 } // High contrast maroon/red
 };
 
 const DEFAULT_MASTERY = { label: 'Not Studied', color: 'text-[var(--muted)]', bg: 'bg-[var(--border)]', dot: 'bg-[var(--border)]', weight: -1 };
@@ -103,7 +103,11 @@ export default function VaultPage() {
             });
             if (res.ok) {
                 const d = await res.json();
-                setNodes(d.nodes || []);
+                const normalized = (d.nodes || []).map((n: KnowledgeNode) => ({
+                    ...n,
+                    display_name: n.display_name || n.canonical_name || 'Unnamed Concept'
+                }));
+                setNodes(normalized);
                 setCategories(d.categories || []);
                 setStudySets(d.studySets || []);
 
@@ -115,6 +119,8 @@ export default function VaultPage() {
                     });
                     setCollapsedCategories(collapsed);
                 }
+            } else {
+                console.error('[vault] API error:', res.status, await res.text());
             }
         } catch (e) {
             console.error('[vault] Error fetching data:', e);
@@ -403,99 +409,116 @@ export default function VaultPage() {
 
     // Construct Hierarchy Optimized O(N)
     const hierarchy = useMemo(() => {
-        // Group everything by category and parent
-        const nodesByCategory = new Map<string | null, KnowledgeNode[]>();
+        const processedIds = new Set<string>();
+        const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
+
+        // Group everything by parent for quick lookup
         const nodesByParent = new Map<string, KnowledgeNode[]>();
-
-        nodes.forEach(n => {
-            const cid = n.category_id || null;
-            if (!nodesByCategory.has(cid)) nodesByCategory.set(cid, []);
-            nodesByCategory.get(cid)!.push(n);
-        });
-
         filteredNodes.forEach(n => {
-            if (n.parent_concept_id) {
+            if (n.parent_concept_id && filteredNodeIds.has(n.parent_concept_id)) {
                 if (!nodesByParent.has(n.parent_concept_id)) nodesByParent.set(n.parent_concept_id, []);
                 nodesByParent.get(n.parent_concept_id)!.push(n);
             }
         });
 
-        const grouped: any[] = [];
-        const processedIds = new Set<string>();
-
-        // 1. Process Categorized Nodes
-        categories.sort((a, b) => a.display_order - b.display_order).forEach(cat => {
-            const allInCat = nodesByCategory.get(cat.id) || [];
-            const filteredInCat = filteredNodes.filter(n => n.category_id === cat.id);
-
-            const parentNodes = filteredInCat.filter(n => !n.is_sub_concept && !n.parent_concept_id);
-            const parentGroups = parentNodes.map(parent => {
-                const subs = nodesByParent.get(parent.id) || [];
-                const ids = [parent.id, ...subs.map(s => s.id)];
-                ids.forEach(id => processedIds.add(id));
-
-                const allMasteries = [parent, ...subs].map(n => (n.current_mastery || 'developing') as MasteryState);
-                let aggregateMastery: MasteryState = 'solid';
-                if (allMasteries.includes('revisit')) aggregateMastery = 'revisit';
-                else if (allMasteries.includes('shaky')) aggregateMastery = 'shaky';
-                else if (allMasteries.some(m => !m || m === 'developing')) aggregateMastery = 'developing';
-
-                return {
-                    parent,
-                    subs,
-                    aggregateMastery,
-                    needsWork: allMasteries.filter(m => m === 'shaky' || m === 'revisit').length,
-                    allMasteries
-                };
+        // Helper to find all descendants (flattened for 2-level UI)
+        const getDescendants = (parentId: string): KnowledgeNode[] => {
+            const direct = nodesByParent.get(parentId) || [];
+            let all: KnowledgeNode[] = [...direct];
+            direct.forEach(d => {
+                all = [...all, ...getDescendants(d.id)];
             });
+            return all;
+        };
 
-            if (parentGroups.length > 0 || allInCat.some(n => !processedIds.has(n.id))) {
-                const totalNodes = allInCat.length;
-                const stats = {
-                    solid: allInCat.filter(n => n.current_mastery === 'solid').length,
-                    developing: allInCat.filter(n => n.current_mastery === 'developing').length,
-                    shaky: allInCat.filter(n => n.current_mastery === 'shaky').length,
-                    revisit: allInCat.filter(n => n.current_mastery === 'revisit').length,
-                    not_studied: allInCat.filter(n => !n.current_mastery).length
-                };
-                grouped.push({
-                    category: cat,
-                    parentGroups,
-                    totalNodes,
-                    stats,
-                    progress: totalNodes > 0 ? (stats.solid / totalNodes) * 100 : 0
-                });
-            }
-        });
+        const createGroup = (p: KnowledgeNode) => {
+            const subs = getDescendants(p.id);
+            const allNodes = [p, ...subs];
+            allNodes.forEach(n => processedIds.add(n.id));
 
-        // 2. Process Uncategorized Hierarchically
-        const remainingNodes = filteredNodes.filter(n => !processedIds.has(n.id) && (!n.category_id || !new Set(categories.map(c => c.id)).has(n.category_id)));
-        const uncategorizedParents = remainingNodes.filter(n => !n.is_sub_concept && !n.parent_concept_id);
-
-        const uncategorizedGroups = uncategorizedParents.map(parent => {
-            const subs = nodesByParent.get(parent.id) || [];
-            subs.forEach(s => processedIds.add(s.id));
-            processedIds.add(parent.id);
-
-            const allMasteries = [parent, ...subs].map(n => (n.current_mastery || 'developing') as MasteryState);
+            const allMasteries = allNodes.map(n => (n.current_mastery || 'developing') as MasteryState);
             let aggregateMastery: MasteryState = 'solid';
             if (allMasteries.includes('revisit')) aggregateMastery = 'revisit';
             else if (allMasteries.includes('shaky')) aggregateMastery = 'shaky';
             else if (allMasteries.some(m => !m || m === 'developing')) aggregateMastery = 'developing';
 
             return {
-                parent,
+                parent: p,
                 subs,
                 aggregateMastery,
                 needsWork: allMasteries.filter(m => m === 'shaky' || m === 'revisit').length,
                 allMasteries
             };
+        };
+
+        // 1. Process Categorized Roots
+        const grouped: any[] = [];
+        categories.sort((a, b) => a.display_order - b.display_order).forEach(cat => {
+            const inCat = filteredNodes.filter(n => n.category_id === cat.id);
+            // Root in category: no parent OR parent is not in filteredNodes
+            const roots = inCat.filter(n => !n.parent_concept_id || !filteredNodeIds.has(n.parent_concept_id));
+            
+            const parentGroups = roots.map(createGroup);
+
+            // Also check for any stragglers in this category that somehow weren't processed
+            const stragglers = inCat.filter(n => !processedIds.has(n.id));
+            stragglers.forEach(s => parentGroups.push(createGroup(s)));
+
+            if (parentGroups.length > 0) {
+                const allNodesInCat = nodes.filter(n => n.category_id === cat.id);
+                const stats = {
+                    solid: allNodesInCat.filter(n => n.current_mastery === 'solid').length,
+                    developing: allNodesInCat.filter(n => n.current_mastery === 'developing').length,
+                    shaky: allNodesInCat.filter(n => n.current_mastery === 'shaky').length,
+                    revisit: allNodesInCat.filter(n => n.current_mastery === 'revisit').length,
+                    not_studied: allNodesInCat.filter(n => !n.current_mastery).length
+                };
+                grouped.push({
+                    category: cat,
+                    parentGroups,
+                    totalNodes: allNodesInCat.length,
+                    stats,
+                    progress: allNodesInCat.length > 0 ? (stats.solid / allNodesInCat.length) * 100 : 0
+                });
+            }
         });
 
-        // Any subs whose parents were NOT in the uncategorized list (shouldn't happen with filteredNodes, but for safety)
-        const Orphans = remainingNodes.filter(n => !processedIds.has(n.id));
+        // 2. Uncategorized Roots
+        const uncategorizedRoots = filteredNodes.filter(n => 
+            !processedIds.has(n.id) && 
+            !n.category_id && 
+            (!n.parent_concept_id || !filteredNodeIds.has(n.parent_concept_id))
+        );
+        const uncategorizedGroups = uncategorizedRoots.map(createGroup);
 
-        return { grouped, uncategorizedGroups, orphans: Orphans };
+        // Subject auto-grouping for uncategorized
+        const subjectGroupsMap: Record<string, typeof uncategorizedGroups> = {};
+        const realUncategorized: typeof uncategorizedGroups = [];
+
+        uncategorizedGroups.forEach(group => {
+            const match = group.parent.display_name.match(/^([^:]+):/);
+            if (match && match[1]) {
+                const subject = match[1].trim();
+                if (!subjectGroupsMap[subject]) subjectGroupsMap[subject] = [];
+                subjectGroupsMap[subject].push(group);
+            } else {
+                realUncategorized.push(group);
+            }
+        });
+
+        // 3. Orphans (Stray nodes that somehow missed everything)
+        const orphans = filteredNodes.filter(n => !processedIds.has(n.id));
+
+        return {
+            grouped,
+            subjectGroups: Object.entries(subjectGroupsMap).map(([name, items]) => ({
+                name,
+                items,
+                totalNodes: items.reduce((acc, i) => acc + 1 + i.subs.length, 0)
+            })),
+            uncategorizedGroups: realUncategorized,
+            orphans
+        };
     }, [categories, nodes, filteredNodes]);
 
     const toggleSelection = (ids: string[], e: React.MouseEvent | React.ChangeEvent) => {
@@ -531,6 +554,8 @@ export default function VaultPage() {
         }
     };
 
+    const [selectedNodeForDetail, setSelectedNodeForDetail] = useState<KnowledgeNode | null>(null);
+
     const toggleParent = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
         setCollapsedParents(prev => {
@@ -538,6 +563,120 @@ export default function VaultPage() {
             next.has(id) ? next.delete(id) : next.add(id);
             return next;
         });
+    };
+
+    const renderParentNode = ({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
+        const pCollapsed = search ? false : collapsedParents.has(parent.id);
+        return (
+            <div key={parent.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm h-fit">
+                {/* Parent Row */}
+                <div
+                    onClick={(e) => {
+                        // If clicking specifically on the chevron or checkbox, don't open detail
+                        const isAction = (e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.checkbox-area');
+                        if (isAction) return;
+                        setSelectedNodeForDetail(parent);
+                    }}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, parent.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, parent.id); }}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => { e.stopPropagation(); handleDrop(e, parent.id, 'concept'); }}
+                    className={`flex items-center px-5 py-3.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
+                >
+                    <div
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            const allIds = [parent.id, ...subs.map((s) => s.id)];
+                            toggleSelection(allIds, e);
+                        }}
+                        className="checkbox-area w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]"
+                    >
+                        {[parent.id, ...subs.map((s) => s.id)].every(id => selectedNodeIds.has(id)) ? (
+                            <div className="w-full h-full bg-[var(--accent)] flex items-center justify-center rounded-[3px]">
+                                <Check size={12} className="text-white" strokeWidth={3} />
+                            </div>
+                        ) : [parent.id, ...subs.map((s) => s.id)].some(id => selectedNodeIds.has(id)) ? (
+                            <div className="w-2 h-2 bg-[var(--accent)] rounded-[1px]" />
+                        ) : null}
+                    </div>
+
+                    <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-2">
+                            {subs.length > 0 && (
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); toggleParent(parent.id, e); }}
+                                    className="shrink-0 text-[var(--muted)] opacity-50 hover:opacity-100 transition-opacity p-1 -ml-1"
+                                >
+                                    {pCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                                </button>
+                            )}
+                            <span className="font-semibold text-sm text-[var(--text)] truncate">
+                                {parent.display_name}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${MASTERY_CONFIG[aggregateMastery].bg} ${MASTERY_CONFIG[aggregateMastery].color} border-current`}>
+                            {MASTERY_CONFIG[aggregateMastery].label}
+                        </span>
+                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === parent.id ? null : parent.id); }}
+                                className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-all text-[var(--muted)] hover:text-[var(--text)]"
+                            >
+                                <MoreHorizontal size={14} />
+                            </button>
+                            {activeMenuId === parent.id && (
+                                <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
+                                    <button onClick={() => { setRenamingNode(parent); setNewName(parent.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                        <Edit2 size={14} className="text-[var(--muted)]" /> Rename
+                                    </button>
+                                    <button onClick={() => { setMovingNode(parent); setSelectedMoveCatId(parent.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                        <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
+                                    </button>
+                                    <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
+                                    <button onClick={() => handleUpdateNode(parent.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
+                                        <Archive size={14} /> Archive
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sub-concepts */}
+                {!pCollapsed && subs.length > 0 && (
+                    <div className="border-t border-[var(--border)] bg-[#fafafa] dark:bg-[#0a0a0a]/30">
+                        {subs.map((sub: KnowledgeNode) => (
+                            <div
+                                key={sub.id}
+                                onClick={(e) => {
+                                    const isAction = (e.target as HTMLElement).closest('.checkbox-area');
+                                    if (isAction) return;
+                                    setSelectedNodeForDetail(sub);
+                                }}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, sub.id)}
+                                onDragEnd={handleDragEnd}
+                                className={`flex items-center pl-12 pr-5 py-2 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(sub.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === sub.id ? 'opacity-40' : ''}`}
+                            >
+                                <div
+                                    onClick={(e) => { e.stopPropagation(); toggleSelection([sub.id], e); }}
+                                    className="checkbox-area w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]"
+                                >
+                                    {selectedNodeIds.has(sub.id) && <Check size={10} className="text-white" strokeWidth={3} />}
+                                </div>
+                                <MasteryDot state={sub.current_mastery} size={8} className="mr-2.5" />
+                                <span className="text-sm text-[var(--text)] truncate flex-1">{sub.display_name}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     const hasAnyConcepts = nodes.length > 0;
@@ -624,21 +763,35 @@ export default function VaultPage() {
                     <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
                         <button
                             onClick={() => setIsAddingConcept(true)}
-                            className="hidden sm:flex h-10 px-4 rounded-xl bg-[var(--surface)] text-[var(--text)] font-semibold items-center gap-2 border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all glass shadow-sm"
+                            className="flex h-10 px-4 rounded-xl bg-[var(--surface)] text-[var(--text)] font-semibold items-center gap-2 border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all glass shadow-sm"
                         >
                             <Plus size={16} />
-                            Add Concept
+                            <span className="hidden xs:inline">Add Concept</span>
                         </button>
                         <div className="relative w-full sm:w-auto">
                             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
                             <input
                                 type="text"
-                                placeholder="Search concepts…"
+                                placeholder="Search concepts..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9 pr-4 h-10 w-full sm:w-64 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm outline-none focus:border-[var(--accent)] transition-colors glass"
+                                className="h-10 pl-10 pr-4 rounded-xl bg-[var(--surface)] text-sm border border-[var(--border)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none transition-all w-full min-w-[240px] shadow-sm"
                             />
                         </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-6 text-[11px] text-[var(--muted)] px-1 mb-4 border-b border-[var(--border)] pb-4 overflow-x-auto whitespace-nowrap scrollbar-none">
+                    <span className="font-semibold uppercase tracking-wider text-[var(--muted)]/60">Mastery Legend:</span>
+                    {Object.entries(MASTERY_CONFIG).map(([key, config]) => (
+                        <div key={key} className="flex items-center gap-1.5 grayscale-[0.3] hover:grayscale-0 transition-all cursor-default group">
+                            <div className={`w-2 h-2 rounded-full ${config.dot}`} />
+                            <span className={`font-medium group-hover:text-[var(--text)] transition-colors`}>{config.label}</span>
+                        </div>
+                    ))}
+                    <div className="flex items-center gap-1.5 grayscale-[0.3] hover:grayscale-0 transition-all cursor-default group">
+                        <div className={`w-2 h-2 rounded-full ${DEFAULT_MASTERY.dot}`} />
+                        <span className={`font-medium group-hover:text-[var(--text)] transition-colors`}>{DEFAULT_MASTERY.label}</span>
                     </div>
                 </div>
 
@@ -646,20 +799,28 @@ export default function VaultPage() {
                 {hasAnyConcepts && (
                     <div className="flex flex-col gap-4 mb-8">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="flex items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1 glass">
-                                {([
-                                    ['all', 'All'],
-                                    ['needs_work', 'Needs Work'],
-                                    ['solid', 'Solid']
-                                ] as [Tab, string][]).map(([t, label]) => (
-                                    <button
-                                        key={t}
-                                        onClick={() => setTab(t)}
-                                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${tab === t ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                            <div className="flex items-center gap-1 p-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl glass shrink-0">
+                                {['all', 'needs_work', 'solid'].map((t) => {
+                                    const count = t === 'all'
+                                        ? nodes.length
+                                        : nodes.filter(n => t === 'needs_work'
+                                            ? ['shaky', 'revisit'].includes(n.current_mastery || '')
+                                            : n.current_mastery === 'solid'
+                                        ).length;
+
+                                    return (
+                                        <button
+                                            key={t}
+                                            onClick={() => setTab(t as Tab)}
+                                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${tab === t ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                        >
+                                            <span>{t === 'all' ? 'All' : t === 'needs_work' ? 'Needs Work' : 'Solid'}</span>
+                                            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${tab === t ? 'bg-white/20 text-white' : 'bg-[var(--bg)] text-[var(--muted)]'}`}>
+                                                {count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                             <div className="flex items-center gap-2 relative">
                                 <button
@@ -812,12 +973,12 @@ export default function VaultPage() {
                                                 <div className="flex items-center gap-3">
                                                     <div
                                                         onClick={(e) => {
-                                                            const categoryNodes = (hierarchy.grouped[category.id] || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]);
+                                                            const categoryNodes = parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]);
                                                             toggleSelection(categoryNodes, e);
                                                         }}
-                                                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${(hierarchy.grouped[category.id] || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]).length > 0 && (hierarchy.grouped[category.id] || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]).every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`}
+                                                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).length > 0 && parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).every((id: string) => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`}
                                                     >
-                                                        {(hierarchy.grouped[category.id] || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]).length > 0 && (hierarchy.grouped[category.id] || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]).every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
+                                                        {parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).length > 0 && parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).every((id: string) => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
                                                     </div>
                                                     {isCollapsed ? <ChevronRight size={18} className="text-[var(--muted)] group-hover:text-[var(--text)] transition-colors" /> : <ChevronDown size={18} className="text-[var(--muted)] group-hover:text-[var(--text)] transition-colors" />}
                                                     <div className="w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:border-[var(--accent)] transition-colors">
@@ -873,10 +1034,13 @@ export default function VaultPage() {
                                                                     className={`flex items-center pl-10 pr-5 py-3.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
                                                                 >
                                                                     <div
-                                                                        onClick={(e) => toggleSelection([parent.id, ...subs.map(s => s.id)], e)}
-                                                                        className={`w-4 h-4 rounded mt-0.5 border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors ${[parent.id, ...subs.map(s => s.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`}
+                                                                        onClick={(e) => {
+                                                                            const allIds = [parent.id, ...subs.map((s) => s.id)];
+                                                                            toggleSelection(allIds, e);
+                                                                        }}
+                                                                        className={`w-4 h-4 rounded mt-0.5 border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors ${[parent.id, ...subs.map((s) => s.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`}
                                                                     >
-                                                                        {[parent.id, ...subs.map(s => s.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
+                                                                        {[parent.id, ...subs.map((s) => s.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
                                                                     </div>
 
                                                                     <div className="flex-1 min-w-0 pr-4">
@@ -1015,7 +1179,7 @@ export default function VaultPage() {
                                 })}
 
                                 {/* Uncategorized */}
-                                {(hierarchy.uncategorizedGroups.length > 0 || hierarchy.orphans.length > 0) && (
+                                {(hierarchy?.uncategorizedGroups.length > 0 || hierarchy?.orphans.length > 0) && (
                                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm">
                                         <div
                                             onDragOver={(e) => handleDragOver(e, 'other')}
@@ -1025,10 +1189,10 @@ export default function VaultPage() {
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    onClick={(e) => toggleSelection([...hierarchy.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy.orphans.map(o => o.id)], e)}
-                                                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${[...hierarchy.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy.orphans.map(o => o.id)].length > 0 && [...hierarchy.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy.orphans.map(o => o.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]'}`}
+                                                    onClick={(e) => toggleSelection([...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)], e)}
+                                                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${[...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].length > 0 && [...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]'}`}
                                                 >
-                                                    {[...hierarchy.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy.orphans.map(o => o.id)].length > 0 && [...hierarchy.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy.orphans.map(o => o.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
+                                                    {[...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].length > 0 && [...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
                                                 </div>
                                                 <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
                                                     <Layers size={14} />
@@ -1042,7 +1206,7 @@ export default function VaultPage() {
                                             onDrop={(e) => handleDrop(e, 'other', 'category')}
                                             className={`divide-y divide-[var(--border)] min-h-[40px] transition-colors ${dropTargetId === 'other' ? 'bg-[var(--accent)]/5' : ''}`}
                                         >
-                                            {hierarchy.uncategorizedGroups.map(({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
+                                            {hierarchy?.uncategorizedGroups.map(({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
                                                 const pCollapsed = search ? false : collapsedParents.has(parent.id);
                                                 return (
                                                     <div key={parent.id} className="border-b border-[var(--border)] last:border-0 relative">
@@ -1191,7 +1355,54 @@ export default function VaultPage() {
                                                     </div>
                                                 );
                                             })}
-                                            {hierarchy.orphans.map(node => (
+                                            {/* Subject Groups */}
+                                            {hierarchy.subjectGroups.map(subject => (
+                                                <div key={subject.name} className="space-y-4">
+                                                    <div className="flex items-center justify-between px-1">
+                                                        <h3 className="text-sm font-medium text-[var(--muted)]">{subject.name}</h3>
+                                                        <span className="text-[10px] font-bold text-[var(--muted)]/50 uppercase tracking-widest">{subject.totalNodes} concepts</span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                        {subject.items.map(group => renderParentNode(group))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {/* General concepts section */}
+                                            <div
+                                                onDrop={(e) => handleDrop(e, 'uncategorized', 'category')}
+                                                onDragOver={(e) => { e.preventDefault(); setDropTargetId('uncategorized'); }}
+                                                onDragLeave={() => setDropTargetId(null)}
+                                                className={`space-y-4 rounded-2xl p-4 transition-all duration-300 border-2 border-dashed ${dropTargetId === 'uncategorized'
+                                                    ? 'bg-[var(--accent)]/5 border-[var(--accent)]'
+                                                    : draggedNodeId
+                                                        ? 'bg-[var(--surface)] border-[var(--border)]'
+                                                        : 'border-transparent'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center justify-between px-1">
+                                                    <h3 className="text-sm font-medium text-[var(--muted)]">General Concepts</h3>
+                                                    {dropTargetId === 'uncategorized' && (
+                                                        <span className="text-xs text-[var(--accent)] font-medium animate-pulse">Drop to move to General</span>
+                                                    )}
+                                                </div>
+
+                                                {hierarchy.uncategorizedGroups.length > 0 ? (
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                        {hierarchy.uncategorizedGroups.map(group => renderParentNode(group))}
+                                                    </div>
+                                                ) : !draggedNodeId && (
+                                                    <div className="py-8 flex flex-col items-center justify-center text-[var(--muted)] border border-[var(--border)] rounded-xl bg-[var(--surface)]/50">
+                                                        <p className="text-sm">No general concepts</p>
+                                                    </div>
+                                                )}
+
+                                                {draggedNodeId && hierarchy.uncategorizedGroups.length === 0 && dropTargetId !== 'uncategorized' && (
+                                                    <div className="py-8 flex flex-col items-center justify-center text-[var(--muted)]">
+                                                        <p className="text-sm">Drag here to remove from folder</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {hierarchy?.orphans.map(node => (
                                                 <div
                                                     key={node.id}
                                                     onClick={(e) => toggleSelection([node.id], e)}
@@ -1383,11 +1594,11 @@ export default function VaultPage() {
             {
                 movingNode && (
                     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-xl w-full max-w-md p-6">
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
                             <h3 className="text-xl font-bold text-[var(--text)] mb-4">Move Concept</h3>
                             <p className="text-sm border border-[var(--border)] rounded-lg p-3 bg-[var(--bg)] text-[var(--muted)] mb-4">Moving <strong>{movingNode.display_name}</strong> to:</p>
 
-                            <div className="space-y-2 mb-6 max-h-60 overflow-y-auto">
+                            <div className="space-y-2 mb-6 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                                 {categories.map((cat) => (
                                     <button
                                         key={cat.id}
@@ -1436,6 +1647,91 @@ export default function VaultPage() {
                     </div>
                 )
             }
+
+            {/* Concept Detail Modal */}
+            {selectedNodeForDetail && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+                        <div className="p-6 border-b border-[var(--border)] flex justify-between items-start">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].bg} ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].color}`}>
+                                    <Brain size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-[var(--text)]">{selectedNodeForDetail.display_name}</h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].bg} ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].color} border-current`}>
+                                            {MASTERY_CONFIG[selectedNodeForDetail.current_mastery].label} Mastery
+                                        </span>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] bg-[var(--bg)] px-2 py-0.5 rounded-full border border-[var(--border)]">
+                                            {selectedNodeForDetail.session_count || 0} Sessions
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setSelectedNodeForDetail(null)}
+                                className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--muted)] hover:text-[var(--text)] transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+                            <section className="mb-10">
+                                <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)] mb-4">Conceptual Definition</h4>
+                                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-5 text-[var(--text)] leading-relaxed shadow-inner">
+                                    {selectedNodeForDetail.definition || "No definition available for this concept."}
+                                </div>
+                            </section>
+
+                            <div className="grid grid-cols-2 gap-6 mb-10">
+                                <div>
+                                    <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)] mb-3">Quick Actions</h4>
+                                    <div className="flex flex-col gap-2">
+                                        <Link 
+                                            href={`/vault/drill?nodes=${selectedNodeForDetail.id}`}
+                                            className="flex items-center gap-3 px-4 py-2.5 bg-[var(--accent)]/10 text-[var(--accent)] rounded-xl text-sm font-bold hover:bg-[var(--accent)]/20 transition-all"
+                                        >
+                                            <Zap size={16} fill="currentColor" /> Practice Concept
+                                        </Link>
+                                        <button 
+                                            onClick={() => { setRenamingNode(selectedNodeForDetail); setSelectedNodeForDetail(null); }}
+                                            className="flex items-center gap-3 px-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-xl text-sm font-medium hover:bg-[var(--surface)] transition-all"
+                                        >
+                                            <Edit2 size={16} /> Rename
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)] mb-3">Related Metadata</h4>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm py-1 border-b border-[var(--border)]/50">
+                                            <span className="text-[var(--muted)]">Source:</span>
+                                            <span className="font-medium text-[var(--text)]">Extraction Session</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm py-1 border-b border-[var(--border)]/50">
+                                            <span className="text-[var(--muted)]">First Learned:</span>
+                                            <span className="font-medium text-[var(--text)]">
+                                                {selectedNodeForDetail.created_at ? new Date(selectedNodeForDetail.created_at).toLocaleDateString() : 'Unknown'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-[var(--bg)] border-t border-[var(--border)] flex justify-end">
+                            <button 
+                                onClick={() => setSelectedNodeForDetail(null)}
+                                className="px-6 py-2.5 bg-[var(--text)] text-[var(--surface)] rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-lg shadow-black/10"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Merge Modal */}
             {

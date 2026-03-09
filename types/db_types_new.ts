@@ -1101,6 +1101,76 @@ export type Database = {
                     }
                 ];
             };
+            vault_categories: {
+                Row: {
+                    created_at: string | null;
+                    display_order: number | null;
+                    id: string;
+                    is_collapsed: boolean | null;
+                    name: string;
+                    user_id: string;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    display_order?: number | null;
+                    id?: string;
+                    is_collapsed?: boolean | null;
+                    name: string;
+                    user_id: string;
+                };
+                Update: {
+                    created_at?: string | null;
+                    display_order?: number | null;
+                    id?: string;
+                    is_collapsed?: boolean | null;
+                    name?: string;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'vault_categories_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
+            study_sets: {
+                Row: {
+                    concept_ids: string[];
+                    created_at: string | null;
+                    id: string;
+                    last_studied_at: string | null;
+                    name: string;
+                    user_id: string;
+                };
+                Insert: {
+                    concept_ids?: string[];
+                    created_at?: string | null;
+                    id?: string;
+                    last_studied_at?: string | null;
+                    name: string;
+                    user_id: string;
+                };
+                Update: {
+                    concept_ids?: string[];
+                    created_at?: string | null;
+                    id?: string;
+                    last_studied_at?: string | null;
+                    name?: string;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'study_sets_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
         };
         Views: {
             [_ in never]: never;

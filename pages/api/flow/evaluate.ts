@@ -64,9 +64,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .order('step_number', { ascending: true });
 
         const planConcepts = sessionData.initial_plan?.concepts || [];
-        const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId) || {
-            conceptName: 'Unknown Topic'
-        };
+        
+        // Search for the concept in the plan using both the current ID (might be UUID) 
+        // and its name (if we can find it in the vault)
+        let currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId);
+        
+        if (!currentConcept) {
+            // If not found by ID, try to find by name from the Vault
+            const { data: vaultNode } = await supabaseAdmin
+                .from('knowledge_nodes')
+                .select('display_name')
+                .eq('id', conceptId)
+                .maybeSingle();
+                
+            if (vaultNode) {
+                currentConcept = planConcepts.find((c: any) => 
+                    c.conceptName.toLowerCase() === vaultNode.display_name.toLowerCase()
+                );
+            }
+        }
+        
+        if (!currentConcept) {
+            currentConcept = { conceptName: 'Unknown Topic' };
+        }
 
         let learnerProfile: SessionLearnerProfile = sessionData.learner_profile || {
             estimatedLevel: 'average',

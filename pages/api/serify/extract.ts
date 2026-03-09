@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { extractConcepts } from '@/lib/serify-ai';
+import { extractConcepts, generateSessionTitle } from '@/lib/serify-ai';
 import { ContentSource } from '@/types/serify';
 import { deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { YoutubeTranscript } from 'youtube-transcript';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -85,7 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
     }
 
-    const { contentType, content, url, title, difficulty } = req.body;
+    let { contentType, content, url, title, difficulty } = req.body;
     console.log('Request body:', {
         contentType,
         hasContent: !!content,
@@ -94,8 +95,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         difficulty
     });
 
-    if (!contentType || !title) {
-        return res.status(400).json({ error: 'Missing contentType or title' });
+    if (!contentType) {
+        return res.status(400).json({ error: 'Missing contentType' });
     }
 
     if (contentType === 'text' && !content) {
@@ -107,6 +108,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+        let processedTranscript = undefined;
+        if (contentType === 'youtube') {
+            try {
+                console.log('Fetching YouTube transcript for:', url);
+                const transcriptData = await YoutubeTranscript.fetchTranscript(url);
+                processedTranscript = transcriptData.map((t: any) => t.text).join(' ');
+                console.log('YouTube transcript fetched successfully');
+            } catch (err: any) {
+                console.error('YouTube transcript error:', err);
+                const msg = err.message || '';
+                if (msg.includes('Transcript is disabled') || msg.includes('No transcript found')) {
+                    throw new Error('This video has no available transcript. Please try a different video or paste the content manually.');
+                }
+                throw new Error('Could not extract transcript from this video. Please ensure the URL is correct.');
+            }
+        }
+
+        // Generate a better title if needed
+        if (!title || title === 'New Session' || title === 'pasted notes' || title.length < 5) {
+            try {
+                console.log('Generating session title...');
+                const contentForTitle = processedTranscript || content || url;
+                title = await generateSessionTitle(contentForTitle, contentType);
+                console.log('Generated title:', title);
+            } catch (e) {
+                title = title || 'Untitled Session';
+            }
+        }
+
         const contentSource: ContentSource = {
             id: Date.now().toString(),
             type: contentType,
@@ -128,10 +158,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .limit(1)
             .maybeSingle();
 
-        // 1. Check if we have a viable cache hit
+        // 1. Check if we have a viable cache hit or an existing session to resume
         if (existingSession && !checkErr) {
             console.log('Found existing session for this content:', existingSession.id);
 
+            // If it's a "live" session (not complete), just return it
+            if (!['feedback', 'complete'].includes(existingSession.status)) {
+                console.log('Resuming existing session:', existingSession.id);
+                return res.status(200).json({
+                    sessionId: existingSession.id,
+                    resumed: true,
+                    message: 'Resuming existing session for this content.'
+                });
+            }
+
+            // If it's complete, we still try to use its concepts
             if (['assessment', 'feedback', 'complete'].includes(existingSession.status)) {
                 const { data: existingConcepts } = await supabaseWithAuth
                     .from('concepts')
@@ -212,7 +253,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } else {
             console.log('Extracting concepts via Gemini...');
-            const extracted = await extractConcepts(contentSource);
+            const extracted = await extractConcepts(contentSource, processedTranscript);
             console.log('Concepts extracted:', extracted.length);
             finalConcepts = extracted;
 

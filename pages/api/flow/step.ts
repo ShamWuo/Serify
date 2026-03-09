@@ -32,14 +32,62 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (sessionError || !sessionData)
             return res.status(404).json({ error: 'Session not found' });
 
-        const { data: progressData } = await supabaseAdmin
+        // ── Look up the concept name from the plan ────────────────
+        const planConcepts = sessionData.initial_plan?.concepts || [];
+        const currentConceptMeta = planConcepts.find((c: any) => c.conceptId === conceptId);
+        const conceptName = currentConceptMeta?.conceptName || 'Unknown Concept';
+
+        // ── Ensure concept exists in vault (FK requirement) ───────
+        const node = await findOrCreateConceptNode(
+            supabaseAdmin as any,
+            userId,
+            conceptName,
+            sessionId,
+            `Learning path: ${conceptName}`
+        );
+        const vaultConceptId = node?.id || conceptId;
+
+        let { data: progressData } = await supabaseAdmin
             .from('flow_concept_progress')
             .select('*')
             .eq('flow_session_id', sessionId)
-            .eq('concept_id', conceptId)
-            .single();
+            .eq('concept_id', vaultConceptId)
+            .maybeSingle();
+
+        // FALLBACK: If not found by vault ID, try original plan conceptId
+        if (!progressData && vaultConceptId !== conceptId) {
+            console.log(`[step] Progress not found by VaultID (${vaultConceptId}). Trying PlanID (${conceptId})`);
+            const { data: fallbackData } = await supabaseAdmin
+                .from('flow_concept_progress')
+                .select('*')
+                .eq('flow_session_id', sessionId)
+                .eq('concept_id', conceptId)
+                .maybeSingle();
+            progressData = fallbackData;
+        }
+
+        // FALLBACK 2: If still not found, try looking up by Name match in existing progress
+        if (!progressData) {
+            const { data: allProgress } = await supabaseAdmin
+                .from('flow_concept_progress')
+                .select('*')
+                .eq('flow_session_id', sessionId);
+            
+            if (allProgress) {
+                // This is slow but better than a crash. Find a plan where the orchestrator_plan 
+                // matches this concept name.
+                const matchedProgress = allProgress.find((p: any) => 
+                    p.orchestrator_plan?.teach?.text?.toLowerCase().includes(conceptName.toLowerCase().slice(0, 20))
+                );
+                if (matchedProgress) {
+                    console.log(`[step] Progress found by content match. Aligning to VaultID: ${vaultConceptId}`);
+                    progressData = matchedProgress;
+                }
+            }
+        }
 
         if (!progressData || !progressData.orchestrator_plan) {
+            console.error(`[step] Plan not found. Session: ${sessionId}, IDs checked: ${vaultConceptId}, ${conceptId}`);
             return res
                 .status(400)
                 .json({
@@ -53,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('flow_steps')
             .select('*')
             .eq('flow_session_id', sessionId)
-            .eq('concept_id', conceptId)
+            .eq('concept_id', vaultConceptId)
             .order('step_number', { ascending: true });
 
         const lastStep =
@@ -61,7 +109,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ? previousSteps[previousSteps.length - 1]
                 : null;
 
-        if (lastStep && !lastStep.user_response && lastStep.step_type !== 'completed' && !forcePhase) {
+        // If last step is not answered yet, or is a check/confirm step that failed to evaluate, 
+        // return it so the user can try again.
+        const isCheckMissingEval = lastStep && (lastStep.step_type === 'check' || lastStep.step_type === 'confirm') && !lastStep.evaluation;
+
+        if (lastStep && (!lastStep.user_response || isCheckMissingEval) && lastStep.step_type !== 'completed' && !forcePhase) {
             return res.status(200).json({
                 step: lastStep,
                 stepHistory: previousSteps
@@ -73,9 +125,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (forcePhase === 'teach') {
             nextStepType = 'teach';
+            const isFirstRead = !previousSteps || previousSteps.length === 0;
             content = {
-                text: plan.teach?.text || '',
-                quickChecks: plan.quickChecks || []
+                text: isFirstRead
+                    ? plan.teach?.text || ''
+                    : `### Let's reinforce: ${conceptName}\n\n${plan.teach?.reinforcementText || plan.teach?.text || ''}`,
+                quickChecks: plan.quickChecks || [],
+                isReinforcement: !isFirstRead
             };
         } else if (forcePhase === 'check') {
             nextStepType = 'check';
@@ -98,12 +154,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 checkType: 'recall'
             };
         } else if (lastStep.step_type === 'check') {
-            if (!lastStep.evaluation)
-                return res.status(400).json({ error: 'Check step not evaluated yet' });
-
             if (
-                ['A', 'strong'].includes(lastStep.evaluation.path) ||
-                lastStep.evaluation.outcome === 'strong'
+                ['A', 'strong'].includes(lastStep.evaluation?.path) ||
+                lastStep.evaluation?.outcome === 'strong'
             ) {
                 const currentCheckIndex =
                     plan.checks?.findIndex(
@@ -269,7 +322,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: stepId,
                 flow_session_id: sessionId,
                 user_id: userId,
-                concept_id: conceptId,
+                concept_id: vaultConceptId, // Use Vault UUID
                 step_number: stepNumber,
                 step_type: nextStepType,
                 content: content,

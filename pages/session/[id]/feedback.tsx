@@ -37,7 +37,7 @@ export default function FeedbackReport() {
     const [report, setReport] = useState<any>(null);
     const [concepts, setConcepts] = useState<any[]>([]);
     const [assessments, setAssessments] = useState<any[]>([]);
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const { balance } = useSparks();
     const { materials, refetch } = useSessionMaterials(id as string);
 
@@ -75,8 +75,6 @@ export default function FeedbackReport() {
         }
         setIsSharingLoading(true);
         try {
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
             const res = await fetch('/api/sessions/share', {
                 method: 'POST',
                 headers: {
@@ -107,8 +105,6 @@ export default function FeedbackReport() {
     const handleUnshare = async () => {
         if (!user) return;
         try {
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
             await fetch('/api/sessions/share', {
                 method: 'POST',
                 headers: {
@@ -233,6 +229,18 @@ export default function FeedbackReport() {
         }
     }, [object, isLoading]);
 
+    const [showTimeoutNotice, setShowTimeoutNotice] = useState(false);
+
+    useEffect(() => {
+        let timer: any;
+        if (isLoading && !displayReport) {
+            timer = setTimeout(() => {
+                setShowTimeoutNotice(true);
+            }, 25000); // 25 seconds
+        }
+        return () => clearTimeout(timer);
+    }, [isLoading, displayReport]);
+
     const getConceptName = (id: string) => {
         const c = concepts.find((c) => c.id === id);
         return c ? c.name : 'Concept';
@@ -241,10 +249,37 @@ export default function FeedbackReport() {
     if (!displayReport) {
         return (
             <DashboardLayout>
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] gap-6 animate-fade-in">
-                    <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
-                    <div className="text-[var(--muted)] text-sm font-medium animate-pulse">
-                        Running Session Diagnostics...
+                <Head>
+                    <title>Synthesizing Feedback | Serify</title>
+                </Head>
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6 text-center animate-fade-in">
+                    <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <BrainCircuit size={24} className="text-[var(--accent)]" />
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-[var(--text)]">Synthesizing Feedback</h2>
+                            <p className="text-[var(--muted)] text-sm font-medium animate-pulse max-w-xs mx-auto">
+                                Our AI is mapping your understanding patterns and identifying cognitive gaps...
+                            </p>
+                        </div>
+
+                        {showTimeoutNotice && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <p className="text-xs text-amber-600 font-medium mb-4">
+                                    This is taking longer than expected. The AI might be deep in thought...
+                                </p>
+                                <button 
+                                    onClick={() => router.push('/sessions')}
+                                    className="px-4 py-2 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold hover:bg-[var(--bg)] transition-all"
+                                >
+                                    Return to Sessions
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </DashboardLayout>
@@ -551,43 +586,69 @@ export default function FeedbackReport() {
                         <h2 className="text-3xl font-display text-[var(--text)] border-b border-[var(--border)] pb-4">
                             What to Do Next
                         </h2>
-                        <ul className="space-y-4">
-                            {displayReport.focus_suggestions
-                                ?.filter((s: any) => s.title || s.reason)
-                                .map((suggestion: any, idx: number) => (
-                                    <li key={idx} className="flex items-start gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 font-display text-xl">
-                                            {idx + 1}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-[var(--text)]">
-                                                {suggestion.title || 'Next Step'}
-                                            </h4>
-                                            {suggestion.reason && (
-                                                <p className="text-[var(--muted)] text-[15px] mt-1">
-                                                    {suggestion.reason}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </li>
-                                ))}
-                        </ul>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                            <ul className="space-y-6">
+                                {displayReport.focus_suggestions
+                                    ?.filter((s: any) => s.title || s.reason)
+                                    .map((suggestion: any, idx: number) => (
+                                        <li key={idx} className="flex items-start gap-4">
+                                            <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 font-display text-base font-bold shadow-sm">
+                                                {idx + 1}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-[var(--text)] leading-tight">
+                                                    {suggestion.title || 'Next Step'}
+                                                </h4>
+                                                {suggestion.reason && (
+                                                    <p className="text-[var(--muted)] text-[14px] mt-1 leading-relaxed">
+                                                        {suggestion.reason}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                            </ul>
+                            
+                            <div className="bg-gradient-to-br from-[var(--accent)]/5 to-transparent border border-[var(--accent)]/10 rounded-2xl p-6 space-y-4">
+                                <h4 className="font-bold text-[var(--text)] flex items-center gap-2">
+                                    <Target size={18} className="text-[var(--accent)]" /> 
+                                    Ready for more?
+                                </h4>
+                                <p className="text-sm text-[var(--muted)] leading-relaxed">
+                                    Your personal learning path is ready. Choose a way to address your gaps below, or start a new deep dive.
+                                </p>
+                                <div className="flex flex-col gap-3 pt-2">
+                                    <Link
+                                        href="#gaps-section"
+                                        className="w-full py-3 bg-[var(--accent)] text-white text-center rounded-xl font-bold hover:bg-[var(--accent)]/90 shadow-md shadow-[var(--accent)]/20 transition-all hover:-translate-y-0.5"
+                                    >
+                                        Practice Gaps Now
+                                    </Link>
+                                    <Link
+                                        href="/analyze"
+                                        className="w-full py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] text-center rounded-xl font-bold hover:bg-black/5 transition-all"
+                                    >
+                                        Start New Material
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
 
-                        <div className="pt-6 flex flex-wrap items-center gap-4">
+                        <div className="pt-8 flex flex-wrap items-center gap-4 border-t border-[var(--border)]/50">
                             <Link
                                 href="/"
-                                className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-medium hover:bg-[var(--accent)]/90 shadow-sm transition-all hover:-translate-y-0.5"
+                                className="text-sm font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors flex items-center gap-2"
                             >
-                                Go to Dashboard &rarr;
+                                <ArrowRight size={14} className="rotate-180" /> Back to Dashboard
                             </Link>
                         </div>
                     </section>
                 )}
 
                 { }
-                <section className="mt-16 pt-8 border-t-2 border-[var(--border)]">
+                <section id="gaps-section" className="mt-16 pt-8 border-t-2 border-[var(--border)] animate-fade-in">
                     <div className="mb-8">
-                        <h2 className="text-[22px] font-display text-[var(--text)]">
+                        <h2 className="text-[26px] font-display text-[var(--text)] font-semibold">
                             Fix these gaps now
                         </h2>
                         {(() => {

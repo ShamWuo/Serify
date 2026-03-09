@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface SessionMaterialsSummary {
     flashcards: {
@@ -39,6 +40,7 @@ const emptyMaterials: SessionMaterialsSummary = {
 
 export function useSessionMaterials(sessionId: string | null) {
     const [materials, setMaterials] = useState<SessionMaterialsSummary>(emptyMaterials);
+    const { token } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
@@ -51,14 +53,11 @@ export function useSessionMaterials(sessionId: string | null) {
         setError(null);
 
         try {
-            const {
-                data: { session }
-            } = await supabase.auth.getSession();
-            if (!session?.access_token) return;
+            if (!token) return;
 
             const response = await fetch(`/api/sessions/${sessionId}/materials`, {
                 headers: {
-                    Authorization: `Bearer ${session.access_token}`
+                    Authorization: `Bearer ${token}`
                 }
             });
 

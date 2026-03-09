@@ -85,6 +85,7 @@ export default function LearnIndex() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [curriculumToDelete, setCurriculumToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent');
 
     const { balance, loading: sparksLoading } = useSparks();
 
@@ -128,9 +129,25 @@ export default function LearnIndex() {
             .from('curricula')
             .select('*')
             .order('last_activity_at', { ascending: false });
-        if (!error && data) setCurricula(data);
+        if (!error && data) {
+            setCurricula(data);
+        }
         setLoadingCurricula(false);
     };
+
+    const sortedCurricula = [...curricula].sort((a, b) => {
+        if (sortBy === 'recent') {
+            return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
+        }
+        if (sortBy === 'title') {
+            return a.title.localeCompare(b.title);
+        }
+        if (sortBy === 'progress') {
+            const getProgress = (c: any) => (c.completed_concept_ids?.length || 0) / (c.concept_count || 1);
+            return getProgress(b) - getProgress(a);
+        }
+        return 0;
+    });
 
     const handleDelete = async (curriculum: any) => {
         setCurriculumToDelete(curriculum);
@@ -289,25 +306,25 @@ export default function LearnIndex() {
                 key={curriculum.id}
                 className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 relative flex flex-col shadow-sm hover:shadow-md transition-shadow"
             >
-                <div className="flex justify-between items-start mb-1.5">
-                    <h3 className="font-semibold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug">
+                <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug" title={curriculum.title}>
                         {curriculum.title}
                     </h3>
-                    <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-700' :
-                        isAbandoned ? 'bg-[var(--border)] text-[var(--muted)]' :
-                            'bg-[var(--accent)]/10 text-[var(--accent)]'
-                        }`}>
-                        {isCompleted ? 'Done' : isAbandoned ? 'Paused' : 'Active'}
-                    </span>
+                    {(isCompleted || isAbandoned) && (
+                        <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-[var(--border)] text-[var(--muted)]'}`}>
+                            {isCompleted ? 'Done' : 'Paused'}
+                        </span>
+                    )}
                 </div>
 
-                <p className="text-[var(--muted)] text-xs mb-4">
-                    {conceptsCompleted}/{totalConcepts} concepts
+                <p className="text-[var(--muted)] text-[11px] mb-4 flex items-center gap-1.5">
+                    <span className="font-medium text-[var(--text)]">{conceptsCompleted}/{totalConcepts}</span>
+                    <span>concepts mastered</span>
                 </p>
 
-                <div className="w-full h-1 bg-[var(--border)] rounded-full mb-4 overflow-hidden">
+                <div className="w-full h-1.5 bg-[var(--border)]/60 rounded-full mb-5 overflow-hidden">
                     <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className="h-full rounded-full transition-all duration-700 ease-out"
                         style={{
                             width: `${progressPercent}%`,
                             background: isCompleted ? '#10b981' : 'var(--accent)'
@@ -577,10 +594,26 @@ export default function LearnIndex() {
                 </div>
 
                 <div>
-                    <h2 className="text-base font-bold text-[var(--text)] mb-4 flex items-center gap-2">
-                        <BookOpen size={16} className="text-[var(--muted)]" />
-                        Your Curricula
-                    </h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-bold text-[var(--text)] flex items-center gap-2">
+                            <BookOpen size={16} className="text-[var(--muted)]" />
+                            Your Curricula
+                        </h2>
+                        {curricula.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] uppercase font-bold text-[var(--muted)] tracking-wider">Sort by:</span>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value as any)}
+                                    className="bg-transparent text-xs font-semibold text-[var(--text)] outline-none cursor-pointer hover:text-[var(--accent)] transition-colors"
+                                >
+                                    <option value="recent">Recent</option>
+                                    <option value="progress">Progress</option>
+                                    <option value="title">Title</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
 
                     {loadingCurricula ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -590,7 +623,7 @@ export default function LearnIndex() {
                         </div>
                     ) : curricula.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {curricula.map(renderCurriculumCard)}
+                            {sortedCurricula.map(renderCurriculumCard)}
                         </div>
                     ) : (
                         <div className="text-center py-14 bg-[var(--surface)] border border-dashed border-[var(--border)] rounded-2xl">

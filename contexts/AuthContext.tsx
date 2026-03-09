@@ -180,32 +180,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             try {
-                // Fetch the initial session
-                const {
-                    data: { session },
-                    error
-                } = await supabase.auth.getSession();
+                // We no longer call getSession() here to avoid competing for the LockManager lock.
+                // Supabase's onAuthStateChange with event === 'INITIAL_SESSION' will handle 
+                // the initial hydrating session automatically.
 
-                if (error) {
-                    // Silently ignore lock errors during init as onAuthStateChange will eventually catch up
-                    if (error.message?.includes('LockManager') || error.message?.includes('timeout')) {
-                        console.warn('Supabase lock timeout during init - relying on auth state listener');
-                        return;
-                    }
-                    throw error;
+                // If we aren't in an OAuth flow, we can just wait for the listener
+                if (!isOAuth) {
+                    // Just a small safety timeout to ensure we don't stay loading forever 
+                    // if Supabase listener fails to fire INITIAL_SESSION
+                    setTimeout(() => {
+                        if (state.current.isMounted && loading) {
+                            console.log('Auth hydration fallback triggered');
+                            syncLoading(false);
+                        }
+                    }, 5000);
                 }
-
-                if (state.current.isMounted) {
-                    if (session?.user) {
-                        setToken(session.access_token);
-                        await ensureProfile(session.user.id, session.user.email || '');
-                    } else {
-                        syncUser(null);
-                        setToken(null);
-                        syncLoading(false);
-                    }
+            } catch (err: any) {
+                // Also catch if the promise itself rejects (like the Navigator Lock timeout sometimes does)
+                if (err?.message?.includes('LockManager') || err?.message?.includes('timeout')) {
+                    console.warn('Caught Supabase lock timeout exception - relying on auth state listener');
+                    return;
                 }
-            } catch (err) {
                 console.error('Error during auth init:', err);
                 if (state.current.isMounted) {
                     syncUser(null);
@@ -246,6 +241,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string) => {
+        console.log('[Auth] Starting login for:', email);
         if (!email || !email.trim()) {
             throw new Error('Email is required');
         }
@@ -260,12 +256,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
+            console.log('[Auth] Calling signInWithPassword');
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
                 password: password.trim()
             });
 
             if (error) {
+                console.error('[Auth] signInWithPassword error:', error);
                 const errorMessage = error.message || '';
                 const errorStatus = (error as any).status;
 
@@ -302,10 +300,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data?.user) {
+                console.log('[Auth] Login successful, user:', data.user.id);
                 setToken(data.session?.access_token || null);
                 await ensureProfile(data.user.id, data.user.email || '');
+                console.log('[Auth] Profile ensured');
             }
         } catch (err: any) {
+            console.error('[Auth] Login catch block:', err);
             if (err instanceof Error) {
                 throw err;
             }

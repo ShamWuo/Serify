@@ -39,9 +39,13 @@ interface UnifiedSession {
     createdAt: string;
     completedAt?: string;
 
+    sourceType?: string;
+    sourceId?: string;
+
     completedCount?: number;
     totalCount?: number;
     sparksSpent?: number;
+    session_type?: string;
 }
 
 function getIcon(contentType: string) {
@@ -143,9 +147,19 @@ function SessionRow({
 }) {
     const router = useRouter();
 
+    const isStale =
+        (session.status.toLowerCase() === 'processing' || session.status.toLowerCase() === 'analyzing') &&
+        new Date().getTime() - new Date(session.createdAt).getTime() > 60 * 60 * 1000;
+
     function handleRowClick() {
+        if (isStale) return; // Prevent clicking failed sessions unless we add a retry
+
         if (session.type === 'flow') {
-            router.push(`/flow/${session.id}`);
+            if (session.sourceType === 'curriculum' && session.sourceId) {
+                router.push(`/learn/curriculum/${session.sourceId}/flow?session=${session.id}`);
+            } else {
+                router.push(`/flow/${session.id}`);
+            }
         } else {
             router.push(
                 session.status === 'complete' || session.status === 'completed'
@@ -155,19 +169,27 @@ function SessionRow({
         }
     }
 
-    const statusLabel =
+    let statusLabel =
         session.type === 'flow'
             ? `${session.completedCount ?? 0}/${session.totalCount ?? 0} concepts`
-            : session.status === 'complete' || session.status === 'completed'
+            : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed'
                 ? 'Completed'
-                : 'In Progress';
+                : session.status.toLowerCase() === 'practicing'
+                    ? 'Practicing'
+                    : 'Analyzing';
+
+    if (isStale) statusLabel = 'Incomplete';
 
     const statusColor =
-        session.type === 'flow'
-            ? 'bg-purple-50 text-purple-600 border-purple-200'
-            : session.status === 'complete' || session.status === 'completed'
-                ? 'bg-[var(--accent-light)] text-[var(--accent)] border-[var(--accent)]/20'
-                : 'bg-amber-50 text-amber-600 border-amber-200';
+        isStale
+            ? 'bg-red-50 text-red-600 border-red-200'
+            : session.type === 'flow'
+                ? 'bg-purple-50 text-purple-600 border-purple-200'
+                : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed'
+                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                    : session.status.toLowerCase() === 'practicing'
+                        ? 'bg-blue-50 text-blue-600 border-blue-200'
+                        : 'bg-amber-50 text-amber-600 border-amber-200';
 
     return (
         <tr
@@ -181,7 +203,7 @@ function SessionRow({
                         {getIcon(session.contentType)}
                     </div>
                     <div className="min-w-0">
-                        <div className="font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 text-sm">
+                        <div className="font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 text-sm" title={session.title}>
                             {session.title}
                         </div>
                         <div className="text-xs text-[var(--muted)] mt-0.5">
@@ -250,10 +272,10 @@ function SessionRow({
                             onClick={(e) => e.stopPropagation()}
                         >
                             <Link
-                                href={`/flow/${session.id}`}
+                                href={session.sourceType === 'curriculum' && session.sourceId ? `/learn/curriculum/${session.sourceId}/flow?session=${session.id}` : `/flow/${session.id}`}
                                 className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors"
                             >
-                                <Zap size={9} /> Resume
+                                <Zap size={9} /> {session.completedCount === 0 ? 'Start' : 'Resume'}
                             </Link>
                         </div>
                     )}
@@ -278,7 +300,7 @@ function SessionRow({
                         e.stopPropagation();
                         onDelete(session);
                     }}
-                    className="p-1.5 rounded-lg text-[var(--muted)] hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-1.5 rounded-lg text-[var(--muted)] hover:text-red-500 hover:bg-red-50 transition-colors opacity-40 group-hover:opacity-100"
                     title="Delete session"
                 >
                     <Trash2 size={15} />
@@ -291,7 +313,7 @@ function SessionRow({
 type FilterTab = 'all' | 'reflection' | 'flow' | 'in_progress' | 'completed';
 
 export default function LibraryPage() {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const router = useRouter();
 
     const [sessions, setSessions] = useState<UnifiedSession[]>([]);
@@ -308,18 +330,9 @@ export default function LibraryPage() {
     }, []);
 
     const fetchSessions = useCallback(async () => {
-        if (!user) return;
+        if (!user || !token) return;
         setLoading(true);
         try {
-            const {
-                data: { session: authSession }
-            } = await supabase.auth.getSession();
-            const token = authSession?.access_token;
-            if (!token) {
-                setLoading(false);
-                return;
-            }
-
             const res = await fetch('/api/sessions', {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -332,7 +345,7 @@ export default function LibraryPage() {
         } finally {
             setLoading(false);
         }
-    }, [user]);
+    }, [user, token]);
 
     useEffect(() => {
         fetchSessions();
@@ -342,10 +355,6 @@ export default function LibraryPage() {
         if (!deleteTarget) return;
         setDeleting(true);
         try {
-            const {
-                data: { session: authSession }
-            } = await supabase.auth.getSession();
-            const token = authSession?.access_token;
 
             const res = await fetch('/api/sessions', {
                 method: 'DELETE',
@@ -371,40 +380,41 @@ export default function LibraryPage() {
     }
 
     const filtered = sessions.filter((s) => {
-        let matchesTab = filterTab === 'all' || s.type === filterTab;
+        let matchesTab = filterTab === 'all';
+
         if (filterTab === 'reflection') {
-            matchesTab = s.type === 'reflection' || (s as any).session_type === 'analysis';
-        }
-        if (filterTab === 'completed') {
-            matchesTab =
-                s.status === 'complete' ||
-                s.status === 'completed' ||
-                (s.type === 'flow' && s.completedCount === s.totalCount);
+            matchesTab = s.type === 'reflection' || (s as any).session_type === 'analysis' || (s as any).session_type === 'reflection';
+        } else if (filterTab === 'flow') {
+            matchesTab = s.type === 'flow';
+        } else if (filterTab === 'completed') {
+            const status = s.status?.toLowerCase() || '';
+            matchesTab = status === 'complete' || status === 'completed' || status === 'feedback';
         } else if (filterTab === 'in_progress') {
-            matchesTab =
-                s.status !== 'complete' &&
-                s.status !== 'completed' &&
-                !(s.type === 'flow' && s.completedCount === s.totalCount);
+            const status = s.status?.toLowerCase() || '';
+            matchesTab = status !== 'complete' && status !== 'completed' && status !== 'feedback';
         }
+
+
         const matchesSearch =
             !search.trim() || s.title.toLowerCase().includes(search.toLowerCase());
         return matchesTab && matchesSearch;
     });
 
-    const reflectionCount = sessions.filter((s) => s.type === 'reflection' || (s as any).session_type === 'analysis').length;
+    const reflectionCount = sessions.filter((s) => s.type === 'reflection' || (s as any).session_type === 'analysis' || (s as any).session_type === 'reflection').length;
     const flowCount = sessions.filter((s) => s.type === 'flow').length;
     const completedCount = sessions.filter(
-        (s) =>
-            s.status === 'complete' ||
-            s.status === 'completed' ||
-            (s.type === 'flow' && s.completedCount === s.totalCount)
+        (s) => {
+            const status = s.status?.toLowerCase() || '';
+            return status === 'complete' || status === 'completed' || status === 'feedback';
+        }
     ).length;
     const inProgressCount = sessions.filter(
-        (s) =>
-            s.status !== 'complete' &&
-            s.status !== 'completed' &&
-            !(s.type === 'flow' && s.completedCount === s.totalCount)
+        (s) => {
+            const status = s.status?.toLowerCase() || '';
+            return status !== 'complete' && status !== 'completed' && status !== 'feedback';
+        }
     ).length;
+
 
     return (
         <DashboardLayout>
@@ -436,7 +446,7 @@ export default function LibraryPage() {
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Search sessions…"
+                                        placeholder="Search by title…"
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                         className="pl-9 pr-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm outline-none focus:border-[var(--accent)] w-full md:w-60 transition-colors"
@@ -458,9 +468,10 @@ export default function LibraryPage() {
                                 [
                                     ['all', 'All', sessions.length],
                                     ['reflection', 'Analysis', reflectionCount],
-                                    ['flow', 'Flow Mode', flowCount],
+                                    ['flow', 'Flow', flowCount],
                                     ['in_progress', 'In Progress', inProgressCount],
                                     ['completed', 'Completed', completedCount]
+
                                 ] as [FilterTab, string, number][]
                             ).map(([tab, label, count]) => (
                                 <button
@@ -471,8 +482,9 @@ export default function LibraryPage() {
                                         : 'text-[var(--muted)] hover:text-[var(--text)]'
                                         }`}
                                 >
-                                    {tab === 'flow' && <Zap size={12} />}
+
                                     {tab === 'reflection' && <FlaskConical size={12} />}
+                                    {tab === 'flow' && <Zap size={12} />}
                                     {tab === 'in_progress' && <Clock size={12} />}
                                     {tab === 'completed' && (
                                         <CheckCircle2
@@ -548,13 +560,11 @@ export default function LibraryPage() {
                                             ? 'No sessions match your search'
                                             : filterTab === 'reflection'
                                                 ? 'No Analysis Sessions'
-                                                : filterTab === 'flow'
-                                                    ? 'No Flow Sessions'
-                                                    : filterTab === 'completed'
-                                                        ? 'No Completed Sessions'
-                                                        : filterTab === 'in_progress'
-                                                            ? 'No Active Sessions'
-                                                            : 'Your learning library is clear'}
+                                                : filterTab === 'completed'
+                                                    ? 'No Completed Sessions'
+                                                    : filterTab === 'in_progress'
+                                                        ? 'No Active Sessions'
+                                                        : 'Your learning library is clear'}
                                     </h3>
 
                                     <p className="text-[var(--muted)] text-sm max-w-sm mx-auto leading-relaxed mb-10">
@@ -562,14 +572,13 @@ export default function LibraryPage() {
                                             ? `Try searching for different keywords or checking all sessions.`
                                             : filterTab === 'reflection'
                                                 ? 'Transform notes, videos, or PDFs into structured knowledge and active recall sessions.'
-                                                : filterTab === 'flow'
-                                                    ? 'The most immersive way to study. Select challenge areas from your Vault to start a Flow session.'
-                                                    : filterTab === 'completed'
-                                                        ? 'Sessions will appear here once you finish all steps in an analysis or Flow.'
-                                                        : filterTab === 'in_progress'
-                                                            ? 'Ready to dive back in? Any unfinished sessions will be tracked right here.'
-                                                            : 'Start your next adventure. Choose a study method to begin mapping your understanding.'}
+                                                : filterTab === 'completed'
+                                                    ? 'Sessions will appear here once you finish all steps in an analysis.'
+                                                    : filterTab === 'in_progress'
+                                                        ? 'Ready to dive back in? Any unfinished sessions will be tracked right here.'
+                                                        : 'Start your next adventure. Choose a study method to begin mapping your understanding.'}
                                     </p>
+
 
                                     {!search && (
                                         <div className="flex flex-col sm:flex-row gap-4">
@@ -580,14 +589,9 @@ export default function LibraryPage() {
                                                 <Zap size={16} fill="currentColor" />
                                                 Start Learning
                                             </Link>
-                                            <Link
-                                                href="/flow"
-                                                className="h-11 px-8 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-sm font-bold hover:border-[var(--accent)]/30 hover:bg-[var(--accent)]/5 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                Try Flow Mode
-                                            </Link>
                                         </div>
                                     )}
+
                                 </div>
                             )}
                         </div>

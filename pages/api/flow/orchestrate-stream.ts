@@ -1,6 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { NextApiRequest, NextApiResponse } from 'next';
+import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { findOrCreateConceptNode } from '@/lib/vault';
@@ -14,35 +14,53 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false, autoRefreshToken: false }
 });
 
+export const config = {
+    api: {
+        bodyParser: true,
+    },
+};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const sparkCost = SPARK_COSTS.FLOW_MODE_ORCHESTRATE;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks)
-        return res
-            .status(403)
-            .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark to orchestrate this concept.`
-            });
-
     const { sessionId, conceptId } = req.body;
-    if (!sessionId || !conceptId)
-        return res.status(400).json({ error: 'Missing sessionId or conceptId' });
+    if (!sessionId || !conceptId) return res.status(400).json({ error: 'Missing sessionId or conceptId' });
+
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const sendUpdate = (data: any) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
 
     try {
+        sendUpdate({ status: 'Initializing...', progress: 5 });
+
+        const sparkCost = SPARK_COSTS.FLOW_MODE_ORCHESTRATE;
+        const hasSparks = await hasEnoughSparks(userId, sparkCost);
+        if (!hasSparks) {
+            sendUpdate({ error: 'out_of_sparks', message: `You need ${sparkCost} Spark to orchestrate this concept.` });
+            return res.end();
+        }
+
+        sendUpdate({ status: 'Connecting to Serify Engine...', progress: 15 });
+
         const { data: sessionData, error: sessionError } = await supabaseAdmin
             .from('flow_sessions')
             .select('*')
             .eq('id', sessionId)
             .single();
 
-        if (sessionError || !sessionData)
-            return res.status(404).json({ error: 'Session not found' });
+        if (sessionError || !sessionData) {
+            sendUpdate({ error: 'Session not found' });
+            return res.end();
+        }
 
         const planConcepts = sessionData.initial_plan?.concepts || [];
         const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId) || {
@@ -50,15 +68,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
         const conceptName = currentConcept.conceptName || 'Unknown Topic';
 
-        // ── Ensure concept exists in vault (FK requirement) ───────
-        const node = await findOrCreateConceptNode(
-            supabaseAdmin as any,
-            userId,
-            conceptName,
-            sessionId,
-            `Learning path: ${conceptName}`
-        );
-        const vaultConceptId = node?.id || conceptId;
+        sendUpdate({ status: `Preparing vault for ${conceptName}...`, progress: 25 });
+
+        let vaultConceptId: string;
+        try {
+            const node = await findOrCreateConceptNode(
+                supabaseAdmin as any,
+                userId,
+                conceptName,
+                sessionId,
+                `Learning path: ${conceptName}`
+            );
+            if (!node || !node.id) {
+                throw new Error(`Failed to ensure concept node in vault for "${conceptName}"`);
+            }
+            vaultConceptId = node.id;
+            console.log(`[orchestrate-stream] Vault ID: ${vaultConceptId} for concept: ${conceptId} (${conceptName})`);
+        } catch (err: any) {
+            console.error('[orchestrate-stream] Vault error:', err);
+            sendUpdate({ error: `Vault error: ${err.message}` });
+            return res.end();
+        }
+
+        // STRATEGY: We use the vaultConceptId as the primary key for flow_concept_progress.
+        // However, we check for Plan ID fallback to handle legacy/mismatched records.
+        let { data: existingProgress } = await supabaseAdmin
+            .from('flow_concept_progress')
+            .select('*')
+            .eq('flow_session_id', sessionId)
+            .eq('concept_id', vaultConceptId)
+            .maybeSingle();
+
+        if (!existingProgress && vaultConceptId !== conceptId) {
+            console.log(`[orchestrate-stream] Progress not found by VaultID (${vaultConceptId}). Trying PlanID (${conceptId})`);
+            const { data: fallbackProgress } = await supabaseAdmin
+                .from('flow_concept_progress')
+                .select('*')
+                .eq('flow_session_id', sessionId)
+                .eq('concept_id', conceptId)
+                .maybeSingle();
+            existingProgress = fallbackProgress;
+
+            if (existingProgress) {
+                console.log(`[orchestrate-stream] Found existing progress by PlanID. Aligning to VaultID: ${vaultConceptId}`);
+                await supabaseAdmin.from('flow_concept_progress').update({ concept_id: vaultConceptId }).eq('id', existingProgress.id);
+            }
+        }
+
+        if (existingProgress?.orchestrator_plan) {
+            console.log(`[orchestrate-stream] Restoring existing plan for ${conceptName} (ID: ${existingProgress.concept_id})`);
+            sendUpdate({
+                status: 'Restoring your path...',
+                progress: 100,
+                done: true,
+                orchestratorPlan: existingProgress.orchestrator_plan,
+                total_sparks_spent: sessionData.total_sparks_spent
+            });
+            return res.end();
+        }
 
         const { data: strongNodes } = await supabaseAdmin
             .from('knowledge_nodes')
@@ -75,6 +142,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             reinforcementsRequired: 0
         };
         const learnerProfile = sessionData.learner_profile || defaultProfile;
+
+        sendUpdate({ status: 'Deeply analyzing learner profile...', progress: 40 });
 
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
@@ -162,9 +231,25 @@ What this learner understands well (use as bridges): ${strongConcepts.join(', ')
 Reinforcements required so far this session: ${learnerProfile.reinforcementsRequired || 0}
 `;
 
+        sendUpdate({ status: `Generating custom curriculum for ${conceptName}...`, progress: 60 });
+
         await deductSparks(userId, sparkCost, 'flow_mode_orchestrate');
 
-        const result = await model.generateContent(promptText);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
+        let result: Awaited<ReturnType<typeof model.generateContent>>;
+        try {
+            result = await model.generateContent(promptText, { signal: controller.signal } as any);
+        } catch (err: any) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError' || err.message?.includes('abort')) {
+                sendUpdate({ error: 'Flow Mode is taking too long. Please try again.' });
+                res.end();
+                return;
+            }
+            throw err;
+        }
+        clearTimeout(timeoutId);
         const text = result.response.text();
 
         // ── Token / cost logging ──────────────────────────────
@@ -174,78 +259,59 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
             const outputTokens = usage.candidatesTokenCount ?? 0;
             const costUsd = (inputTokens / 1_000_000) * 0.075 + (outputTokens / 1_000_000) * 0.30;
             console.log(
-                `[orchestrate] tokens — in: ${inputTokens}, out: ${outputTokens}` +
+                `[orchestrate-stream] tokens — in: ${inputTokens}, out: ${outputTokens}` +
                 ` | est. cost: $${costUsd.toFixed(6)} | concept: ${conceptId}`
             );
         }
-        const cleanedText = text
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            .trim();
+
+        const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        sendUpdate({ status: 'Structuring your learning path...', progress: 85 });
+
         let orchestratorPlan: any;
         try {
             orchestratorPlan = JSON.parse(cleanedText);
-        } catch (_firstErr) {
-            // LaTeX backslashes (e.g. \frac, \lim) are not valid JSON escapes.
-            // Replace any \ not already part of a valid JSON escape with \\.
+        } catch (e) {
             const reescaped = cleanedText.replace(/\\(?!["\\\/bfnrtu])/g, '\\\\');
-            try {
-                orchestratorPlan = JSON.parse(reescaped);
-            } catch (finalErr: any) {
-                console.error('Failed to parse orchestrator plan JSON:', finalErr.message);
-                console.error('Raw text:', cleanedText.slice(0, 500));
-                return res.status(500).json({ error: 'AI returned malformed JSON. Please try again.' });
-            }
+            orchestratorPlan = JSON.parse(reescaped);
         }
 
-        const { data: existingProgress } = await supabaseAdmin
-            .from('flow_concept_progress')
-            .select('id')
-            .eq('flow_session_id', sessionId)
-            .eq('concept_id', vaultConceptId)
-            .maybeSingle();
+        let progressId = existingProgress?.id;
 
-        let updateError;
-        if (existingProgress) {
-            const { error } = await supabaseAdmin
-                .from('flow_concept_progress')
-                .update({
-                    orchestrator_plan: orchestratorPlan,
-                    status: 'in_progress'
-                })
-                .eq('id', existingProgress.id);
-            updateError = error;
-        } else {
-            const progressId = uuidv4();
-            const { error } = await supabaseAdmin.from('flow_concept_progress').insert({
-                id: progressId,
+        if (!progressId) {
+            const { data: newProgress } = await supabaseAdmin.from('flow_concept_progress').insert({
+                id: uuidv4(),
                 flow_session_id: sessionId,
                 concept_id: vaultConceptId,
                 user_id: userId,
                 orchestrator_plan: orchestratorPlan,
                 status: 'in_progress'
-            });
-            updateError = error;
-        }
-
-        if (updateError) {
-            console.error('Error updating orchestrator plan:', updateError);
-            return res.status(500).json({ error: 'Failed to save orchestrator plan' });
+            }).select().single();
+            progressId = newProgress?.id;
+        } else {
+            await supabaseAdmin
+                .from('flow_concept_progress')
+                .update({ orchestrator_plan: orchestratorPlan, status: 'in_progress' })
+                .eq('id', progressId);
         }
 
         await supabaseAdmin
             .from('flow_sessions')
-            .update({ total_sparks_spent: sessionData.total_sparks_spent + sparkCost })
+            .update({ total_sparks_spent: (sessionData.total_sparks_spent || 0) + sparkCost })
             .eq('id', sessionId);
 
-        return res
-            .status(200)
-            .json({
-                orchestratorPlan,
-                total_sparks_spent: sessionData.total_sparks_spent + sparkCost
-            });
+        sendUpdate({
+            status: 'Ready!',
+            progress: 100,
+            done: true,
+            orchestratorPlan,
+            total_sparks_spent: (sessionData.total_sparks_spent || 0) + sparkCost
+        });
+
     } catch (error: any) {
-        console.error('Error in flow orchestrator:', error);
-        return res.status(500).json({ error: error.message || 'Internal server error' });
+        console.error('SSE Flow Error:', error);
+        sendUpdate({ error: error.message || 'Orchestration failed' });
+    } finally {
+        res.end();
     }
 }

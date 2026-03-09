@@ -136,6 +136,7 @@ export default function CurriculumView() {
     return (
         <DashboardLayout
             backLink="/learn"
+            backLinkText="Back to Curricula"
             sidebarContent={
                 <CurriculumSidebar
                     concepts={allConcepts}
@@ -182,7 +183,7 @@ export default function CurriculumView() {
                                         </span>
                                     )}
                                 </div>
-                                <h1 className="text-2xl sm:text-3xl font-display text-[var(--text)] leading-tight">
+                                <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text)] leading-tight" title={curriculum.title}>
                                     {curriculum.title}
                                 </h1>
                             </div>
@@ -208,9 +209,13 @@ export default function CurriculumView() {
 
                         {/* Stats row */}
                         <div className="flex flex-wrap gap-4 mb-6 text-sm text-[var(--muted)]">
+                            <div className="flex items-center gap-1.5 bg-[var(--bg)] px-2 py-1 rounded-md border border-[var(--border)]">
+                                <BookOpen size={14} className="text-[var(--accent)]" />
+                                <span className="font-semibold text-[var(--text)]">{completedCount} of {totalCount} mastered</span>
+                            </div>
                             <div className="flex items-center gap-1.5">
-                                <BookOpen size={14} />
-                                <span>{totalCount} concepts · {curriculum.units.length} units</span>
+                                <Zap size={14} className="text-amber-500" />
+                                <span>{curriculum.units.length} units</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <Clock size={14} />
@@ -244,7 +249,9 @@ export default function CurriculumView() {
                                 className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-white font-bold rounded-2xl hover:bg-[var(--accent)]/90 transition-all shadow-lg shadow-[var(--accent)]/20 hover:-translate-y-0.5 active:translate-y-0"
                             >
                                 <PlayCircle size={18} />
-                                {currentIndex === 0 ? 'Start Learning' : `Resume — ${startConcept?.name}`}
+                                <span className="truncate max-w-[200px]">
+                                    {currentIndex === 0 ? 'Start Learning' : `Resume: ${startConcept?.name}`}
+                                </span>
                                 <ArrowRight size={16} />
                             </button>
                             <button
@@ -290,11 +297,11 @@ export default function CurriculumView() {
                                     onClick={() => toggleUnit(uIdx)}
                                     className={`w-full flex items-center gap-3 px-5 py-4 hover:bg-[var(--bg)] transition-colors text-left ${!isExpanded ? 'rounded-2xl' : 'rounded-t-2xl'}`}
                                 >
-                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${unitCompleted ? 'bg-emerald-500 text-white' :
-                                        unitInProgress ? 'bg-[var(--accent)] text-white' :
-                                            'bg-[var(--border)] text-[var(--muted)]'
+                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${unitCompleted ? 'bg-emerald-500 text-white' :
+                                        unitInProgress ? 'bg-[var(--accent)] text-white shadow-sm shadow-[var(--accent)]/30' :
+                                            'bg-[var(--bg)] border border-[var(--border)] text-[var(--muted)]'
                                         }`}>
-                                        {unitCompleted ? '✓' : unit.unitNumber}
+                                        {unitCompleted ? '✓' : unit.unitNumber || uIdx + 1}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="font-semibold text-sm text-[var(--text)] truncate">{unit.unitTitle}</div>
@@ -341,8 +348,9 @@ export default function CurriculumView() {
                                                         <button
                                                             onClick={() => !isLocked && handleStart()}
                                                             disabled={isLocked}
-                                                            className={`text-sm font-medium truncate block text-left w-full transition-colors ${isLocked ? 'text-[var(--muted)] cursor-default' :
-                                                                isCurrent ? 'text-[var(--accent)]' :
+                                                            title={isLocked ? 'Complete previous concepts to unlock' : concept.name}
+                                                            className={`text-[14px] font-medium truncate block text-left w-full transition-colors ${isLocked ? 'text-[var(--muted)] cursor-not-allowed' :
+                                                                isCurrent ? 'text-[var(--accent)] font-bold' :
                                                                     'text-[var(--text)] hover:text-[var(--accent)]'
                                                                 }`}
                                                         >

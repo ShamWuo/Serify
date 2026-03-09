@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { tab = 'all', sort = 'last_seen', topics: topicsParam } = req.query;
 
     try {
-        let query = supabaseAdmin.from('knowledge_nodes').select('*').eq('user_id', userId);
+        let query = supabaseAdmin.from('knowledge_nodes').select('*').eq('user_id', userId).eq('is_archived', false);
 
         if (topicsParam && typeof topicsParam === 'string') {
             const categoryIds = topicsParam.split(',').filter(Boolean);
