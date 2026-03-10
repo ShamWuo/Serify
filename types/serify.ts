@@ -176,7 +176,6 @@ export interface FlowSession {
     concepts_in_progress: string[];
     status: 'active' | 'paused' | 'completed' | 'abandoned';
     learner_profile?: SessionLearnerProfile;
-    total_sparks_spent: number;
     started_at: Date | string;
     last_activity_at: Date | string;
     completed_at?: Date | string;
@@ -200,7 +199,6 @@ export interface FlowStep {
         masterySignal?: string;
     } | null;
     ai_reasoning?: string | null;
-    spark_cost: number;
     created_at: Date | string;
 }
 
@@ -265,7 +263,6 @@ export interface Curriculum {
     started_at: Date | string;
     last_activity_at: Date | string;
     completed_at?: Date | string | null;
-    total_sparks_spent: number;
     created_at: Date | string;
 }
 
@@ -279,7 +276,6 @@ export interface CurriculumConceptProgress {
     path_taken?: 'full' | 'accelerated_solid' | 'accelerated_developing';
     flow_session_id?: string;
     mastery_at_completion?: MasteryState;
-    sparks_spent: number;
     started_at: Date | string;
     completed_at?: Date | string | null;
 }

@@ -27,8 +27,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } = await supabaseWithAuth.auth.getUser(token);
     if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const hasSparks = (await checkUsage(user.id, 'curricula')).allowed;
-    if (!hasSparks)
+    const { data: tracking } = await supabaseWithAuth
+        .from('usage_tracking')
+        .select('plan')
+        .eq('user_id', user.id)
+        .single();
+
+    const hasUsage = (await checkUsage(user.id, 'curricula')).allowed;
+    if (!hasUsage)
         return res
             .status(403)
             .json({
@@ -82,7 +88,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             userInput,
             inputType,
             vaultContext,
-            userProfile
+            userProfile,
+            tracking?.plan || 'free'
         );
 
         // Map AI-generated string IDs to valid UUIDs
@@ -108,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Update original_units to match the mapped IDs
         curriculumData.original_units = JSON.parse(JSON.stringify(curriculumData.units));
 
-        // Deduct sparks
+        // Record usage
         const deduction = (await incrementUsage(user.id, 'curricula').then(() => ({ success: true })));
         if (!deduction.success) return res.status(403).json({ error: 'limit_reached' });
 

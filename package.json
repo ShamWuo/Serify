@@ -1,7 +1,7 @@
 {
-    "name": "ai-quiz-generator",
+    "name": "serify",
     "version": "1.0.0",
-    "description": "AI-powered quiz generation application",
+    "description": "AI-powered deep learning assistant",
     "private": true,
     "scripts": {
         "dev": "next dev",

@@ -1,26 +1,21 @@
-/**
- * practice.tsx
- * Purpose: Provides a multiple-choice practice quiz mode to reinforce concept mastery.
- * Key Logic: Generates or retrieves a quiz based on weak concepts from a session. 
- * Handles answer selection, provides instant feedback and explanations, and 
- * updates the user's concept mastery in the database.
- */
-
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
-import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import { CheckCircle2, ChevronLeft, ChevronRight, AlertTriangle, Target, ArrowRight } from 'lucide-react';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 
 export default function PracticeMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user, token } = useAuth();
+    const { isAllowed, increment, refresh } = useUsage('quizzes');
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [sessionData, setSessionData] = useState<any>(null);
@@ -30,7 +25,6 @@ export default function PracticeMode() {
     const [isAnswered, setIsAnswered] = useState(false);
     const [stats, setStats] = useState({ correct: 0, total: 0 });
     const [isComplete, setIsComplete] = useState(false);
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
     const [carouselIndex, setCarouselIndex] = useState(0);
 
     useEffect(() => {
@@ -93,6 +87,12 @@ export default function PracticeMode() {
                     return;
                 }
 
+                // If we need to generate, check if allowed
+                if (!isAllowed) {
+                    setLoading(false);
+                    return;
+                }
+
                 const res = await fetch(`/api/sessions/${id}/quiz/generate`, {
                     method: 'POST',
                     headers,
@@ -102,11 +102,11 @@ export default function PracticeMode() {
                 if (res.ok) {
                     const data = await res.json();
                     setQuestions(data.questions || []);
+                    // Increment usage
+                    increment();
+                    refresh();
                 } else {
                     const errorData = await res.json().catch(() => ({}));
-                    if (errorData.error === 'out_of_sparks') {
-                        setIsOutOfSparksModalOpen(true);
-                    }
                     setError(errorData.error || 'Failed to generate practice quiz.');
                 }
             } catch (err: any) {
@@ -116,8 +116,10 @@ export default function PracticeMode() {
             }
         };
 
-        initQuiz();
-    }, [id, router, user]);
+        if (isAllowed !== undefined) {
+            initQuiz();
+        }
+    }, [id, router, user, isAllowed]);
 
     const handleSelectOption = (index: number) => {
         if (isAnswered) return;
@@ -179,12 +181,22 @@ export default function PracticeMode() {
         );
     }
 
+    if (!isAllowed && questions.length === 0 && !isComplete) {
+        return (
+            <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
+                <div className="max-w-md w-full">
+                    <UsageGate feature="quizzes" />
+                </div>
+            </div>
+        );
+    }
+
     if (error) {
         return (
             <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
                 <div className="max-w-[600px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24 text-center">
-                    <div className="w-20 h-20 rounded-full bg-[var(--warn-light)] text-[var(--warn)] flex items-center justify-center mb-6 text-3xl">
-                        ⚠️
+                    <div className="w-20 h-20 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-6 text-3xl">
+                        <AlertTriangle size={40} />
                     </div>
                     <h2 className="text-3xl font-display mb-4">Generation Failed</h2>
                     <p className="text-[var(--muted)] mb-8 text-lg">{error}</p>
@@ -204,7 +216,7 @@ export default function PracticeMode() {
             <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
                 <div className="max-w-[600px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24">
                     <div className="w-20 h-20 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-6 text-3xl">
-                        🎯
+                        <Target size={40} />
                     </div>
                     <h2 className="text-3xl font-display mb-4">Quiz Complete</h2>
                     <p className="text-[var(--muted)] text-center mb-8 text-lg">
@@ -264,16 +276,18 @@ export default function PracticeMode() {
                             );
                         })}
                     </div>
+
+                    <div className="px-3 mt-4">
+                        <UsageWarning feature="quizzes" />
+                    </div>
                 </div>
             }
         >
-            <Head>
-                <title>Practice Quiz | Serify</title>
-            </Head>
+            <SEO title="Practice Quiz" />
 
             <main className="max-w-[700px] mx-auto p-6 md:p-8 pb-32 flex flex-col min-h-[calc(100vh-120px)]">
                 <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[32px] p-6 md:p-10 shadow-xl shadow-black/5 relative overflow-hidden glass-premium">
-                    {/* Progress Background Decoration */}
+
                     <div
                         className="absolute top-0 left-0 h-1 bg-[var(--accent)]/30 transition-all duration-500"
                         style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
@@ -294,7 +308,7 @@ export default function PracticeMode() {
                         </div>
                     </div>
 
-                    {/* All options — 2x2 grid */}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {currentQ.options.map((opt: string, idx: number) => {
                             const isSelected = selectedOption === idx;
@@ -316,9 +330,9 @@ export default function PracticeMode() {
                                     className={cls}
                                 >
                                     <div className={`shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all ${isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' :
-                                            isWrong ? 'bg-rose-500 border-rose-500 text-white' :
-                                                isSelected ? 'bg-[var(--accent)] border-[var(--accent)] text-white' :
-                                                    'border-[var(--border)] text-[var(--muted)]'
+                                        isWrong ? 'bg-rose-500 border-rose-500 text-white' :
+                                            isSelected ? 'bg-[var(--accent)] border-[var(--accent)] text-white' :
+                                                'border-[var(--border)] text-[var(--muted)]'
                                         }`}>
                                         {isCorrect ? '✓' : isWrong ? '✗' : String.fromCharCode(65 + idx)}
                                     </div>
@@ -330,7 +344,7 @@ export default function PracticeMode() {
                         })}
                     </div>
 
-                    {/* Feedback Inline */}
+
                     {isAnswered && (
                         <div className="mt-6 pt-6 border-t border-[var(--border)] animate-in fade-in slide-in-from-bottom-2">
                             <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-3 ${selectedOption === currentQ.correctIndex ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
@@ -342,7 +356,7 @@ export default function PracticeMode() {
                         </div>
                     )}
 
-                    {/* Question navigation + action buttons */}
+
                     <div className="mt-8 flex items-center justify-between gap-3">
                         <button
                             onClick={() => {
@@ -358,7 +372,7 @@ export default function PracticeMode() {
                             <ChevronLeft size={20} />
                         </button>
 
-                        {/* Dot indicators */}
+
                         <div className="flex gap-1.5 items-center">
                             {questions.map((_: any, i: number) => {
                                 let dot = 'h-2 rounded-full transition-all duration-200 ';
@@ -388,12 +402,6 @@ export default function PracticeMode() {
                     </div>
                 </div>
             </main>
-
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                featureName="Practice Quiz"
-            />
         </DashboardLayout>
     );
 }

@@ -72,11 +72,8 @@ Only include concepts that were actually discussed and demonstrated by the user 
             }
         }
 
-        const isOpening = messages.length <= 1;
-        const sparkCostBase = isOpening ? 0 : 0;
-        
-        const hasSparks = (await checkUsage(userId, 'ai_messages')).allowed;
-        if (!hasSparks) {
+        const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+        if (!hasUsage) {
             return res
                 .status(403)
                 .json({

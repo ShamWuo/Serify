@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { checkSessionAllowance } from '@/lib/usage';
+import { checkUsage } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const allowance = await checkSessionAllowance(user.id);
+        const allowance = await checkUsage(user.id, 'sessions');
         return res.status(200).json(allowance);
     } catch (err: any) {
         console.error('Allowance error:', err);

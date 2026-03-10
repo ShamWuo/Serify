@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
-import Head from 'next/head';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import SEO from '@/components/Layout/SEO';
 import { ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Login() {
     const router = useRouter();
     const { user, login, loginWithGoogle } = useAuth();
+    const mounted = useRef(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -15,14 +16,22 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
-        if (user) {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        // Only redirect automatically if we aren't currently in the middle of a login attempt
+        if (user && !isLoading) {
             if (!user.onboardingCompleted) {
                 router.push('/onboarding');
             } else {
                 router.push('/');
             }
         }
-    }, [user, router]);
+    }, [user, router, isLoading]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -30,11 +39,24 @@ export default function Login() {
         setError(null);
 
         try {
-            await login(email, password);
-            // The useEffect will handle the redirect once user state updates
+            const loggedInUser = await login(email, password);
+            if (loggedInUser) {
+                if (!loggedInUser.onboardingCompleted) {
+                    router.push('/onboarding');
+                } else {
+                    router.push('/');
+                }
+            }
+            
+            // Fallback: clear loading after 5s if redirect doesn't happen
+            setTimeout(() => {
+                if (mounted.current) setIsLoading(false);
+            }, 5000);
         } catch (err: any) {
-            setError(err.message || 'Failed to log in. Please check your credentials.');
-            setIsLoading(false);
+            if (mounted.current) {
+                setError(err.message || 'Failed to log in. Please check your credentials.');
+                setIsLoading(false);
+            }
         }
     };
 
@@ -55,9 +77,7 @@ export default function Login() {
             <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] right-[-100px]" />
             <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] left-[-100px]" />
             <div className="auth-bg-blob w-[300px] h-[300px] bg-[#b8860b] top-[40%] left-[60%]" />
-            <Head>
-                <title>Log In | Serify</title>
-            </Head>
+            <SEO title="Log In" />
 
             <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
                 <div className="mb-10 text-center">

@@ -20,8 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const hasSparks = (await checkUsage(userId, 'flow_sessions')).allowed;
-    if (!hasSparks)
+    const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+    if (!hasUsage)
         return res
             .status(403)
             .json({
@@ -232,16 +232,10 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
             return res.status(500).json({ error: 'Failed to save orchestrator plan' });
         }
 
-        await supabaseAdmin
-            .from('flow_sessions')
-            .update({ total_sparks_spent: sessionData.total_sparks_spent + sparkCost })
-            .eq('id', sessionId);
-
         return res
             .status(200)
             .json({
-                orchestratorPlan,
-                total_sparks_spent: sessionData.total_sparks_spent + sparkCost
+                orchestratorPlan
             });
     } catch (error: any) {
         console.error('Error in flow orchestrator:', error);

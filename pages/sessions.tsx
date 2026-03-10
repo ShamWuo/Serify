@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import SEO from '@/components/Layout/SEO';
 import {
     Search,
     Filter,
@@ -44,7 +44,6 @@ interface UnifiedSession {
 
     completedCount?: number;
     totalCount?: number;
-    sparksSpent?: number;
     session_type?: string;
 }
 
@@ -208,7 +207,6 @@ function SessionRow({
                         </div>
                         <div className="text-xs text-[var(--muted)] mt-0.5">
                             {session.type === 'flow' ? 'Flow Mode' : session.contentType}
-                            {session.sparksSpent ? ` · ${session.sparksSpent} sparks` : ''}
                         </div>
                     </div>
                     { }
@@ -418,9 +416,7 @@ export default function LibraryPage() {
 
     return (
         <DashboardLayout>
-            <Head>
-                <title>Sessions | Serify</title>
-            </Head>
+            <SEO title="Sessions" />
 
             <div className="max-w-5xl mx-auto w-full px-6 md:px-10 py-8 pb-24">
                 {isInitialLoading && !user ? (

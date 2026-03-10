@@ -25,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing session context' });
     }
 
-    const hasSparks = (await checkUsage(userId, 'ai_messages')).allowed;
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+    if (!hasUsage) {
         return res.status(403).json({
             error: 'limit_reached',
             message: 'You have reached your feature limit.'

@@ -7,12 +7,15 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { DefaultChatTransport } from 'ai';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import Head from 'next/head';
 import Link from 'next/link';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import SEO from '@/components/Layout/SEO';
 import { formatDistanceToNow } from 'date-fns';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate } from '@/components/billing/UsageEnforcement';
 import {
     Zap,
     History,
@@ -36,10 +39,8 @@ import {
 } from 'lucide-react';
 import { storage, SessionSummary } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
-import { useSparks } from '@/hooks/useSparks';
 import { KnowledgeNode } from '@/types/serify';
 import LandingPage from '@/components/LandingPage';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import { useChat } from '@ai-sdk/react';
 
 type DetectedType = 'youtube' | 'article' | 'text' | 'pdf' | null;
@@ -107,7 +108,7 @@ export default function Home() {
     const router = useRouter();
     const { demo } = router.query;
     const isDemo = demo === 'true';
-    const { balance } = useSparks();
+    const { usage, refresh: refreshUsage } = useUsage('ai_messages');
 
     const [latestSessions, setLatestSessions] = useState<SessionSummary[]>([]);
     const [activeCurriculum, setActiveCurriculum] = useState<any>(null);
@@ -115,24 +116,28 @@ export default function Home() {
     const [vaultCount, setVaultCount] = useState<number | null>(null);
     const [activityDays, setActivityDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
 
-    const [inputValue, setInputValue] = useState('');
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
-    const [outOfSparksError, setOutOfSparksError] = useState(false);
+    const [input, setInput] = useState('');
+    const [isGateOpen, setIsGateOpen] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const { messages, append, status, error, setMessages } = useChat({
-        api: '/api/home-chat',
-        headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            ...(isDemo ? { 'x-serify-demo': 'true' } : {})
-        },
-        onError: (err: Error) => {
-            if (err.message?.includes('out_of_sparks') || err.message?.includes('403')) {
-                setOutOfSparksError(true);
+    const { messages, sendMessage, status, error } = useChat({
+        transport: new DefaultChatTransport({
+            api: '/api/home-chat',
+            headers: {
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                ...(isDemo ? { 'x-serify-demo': 'true' } : {})
+            }
+        }),
+        onError: (err: any) => {
+            if (err.message?.includes('limit_reached') || err.message?.includes('403')) {
+                setIsGateOpen(true);
             }
         },
+        onFinish: () => {
+            refreshUsage();
+        }
     });
 
     const isLoading = status === 'submitted' || status === 'streaming';
@@ -221,6 +226,14 @@ export default function Home() {
         fetchSessions();
 
         supabase.from('knowledge_nodes')
+            .select('id, display_name, current_mastery, session_count')
+            .eq('user_id', user.id)
+            .in('current_mastery', ['shaky', 'revisit'])
+            .order('session_count', { ascending: false })
+            .limit(3)
+            .then(({ data }) => setFocusConcepts((data as any) || []));
+
+        supabase.from('knowledge_nodes')
             .select('count', { count: 'exact', head: true })
             .eq('user_id', user.id)
             .then(({ count }) => setVaultCount(count));
@@ -251,14 +264,6 @@ export default function Home() {
                 }
             });
 
-        supabase.from('knowledge_nodes')
-            .select('id, display_name, current_mastery, session_count')
-            .eq('user_id', user.id)
-            .in('current_mastery', ['shaky', 'revisit'])
-            .order('session_count', { ascending: false })
-            .limit(3)
-            .then(({ data }) => setFocusConcepts((data as any) || []));
-
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
         sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -279,18 +284,22 @@ export default function Home() {
             });
     }, [user]);
 
-    const handleSend = useCallback(() => {
-        const text = inputValue.trim();
-        if (!text || isLoading || (!token && !isDemo)) return;
-        setOutOfSparksError(false);
-        setInputValue('');
-        append({ role: 'user', content: text });
-    }, [inputValue, isLoading, append, token, isDemo]);
+    // We use sendMessage from useChat since managed state is not available
+    const onSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!token && !isDemo) return;
+        if (!input.trim()) return;
+
+        sendMessage({ text: input });
+        setInput('');
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            handleSend();
+            if (input?.trim()) {
+                onSubmit(e as any);
+            }
         }
     };
 
@@ -301,12 +310,6 @@ export default function Home() {
         if (action.type === 'START_ANALYZE') {
             const content = action.payload.content || '';
             const type = detectInputType(content);
-
-            if (balance && balance.total_sparks < 2) {
-                setIsOutOfSparksModalOpen(true);
-                setIsNavigating(false);
-                return;
-            }
 
             try {
                 const res = await fetch('/api/serify/extract', {
@@ -340,7 +343,7 @@ export default function Home() {
             if (action.payload.skipTopics) params.set('skipTopics', action.payload.skipTopics);
             router.push(`/learn?${params.toString()}`);
         }
-    }, [isNavigating, balance, token, router]);
+    }, [isNavigating, router, token]);
 
 
 
@@ -355,33 +358,52 @@ export default function Home() {
     };
 
     const weekDayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const sparkPct = Math.min(100, ((balance?.total_sparks ?? 0) / 50) * 100);
     const hasMessages = messages.length > 0;
 
     return (
         <DashboardLayout>
+            <SEO title="Dashboard" />
             <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-10 pb-28 md:pb-16 page-transition">
-                <Head><title>Dashboard | Serify</title></Head>
 
-                {isDemo && (
-                    <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 mb-6 shadow-sm">
-                        <Zap size={15} fill="currentColor" />
-                        <span>You&apos;re in demo mode — <strong>sign up</strong> to save progress and unlock full features.</span>
-                    </div>
-                )}
+
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight">
+                        <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight flex items-center gap-2">
                             {getGreeting()}, <span className="text-[var(--accent)]">{user?.displayName?.split(' ')[0] || 'Learner'}</span> 👋
+                            {user?.subscriptionTier && (
+                                <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.15em] rounded-md border ml-2 ${user.subscriptionTier === 'proplus'
+                                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/20 shadow-[0_0_12px_rgba(var(--accent-rgb),0.1)]'
+                                    : user.subscriptionTier === 'pro'
+                                        ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                        : 'bg-[var(--muted)]/5 text-[var(--muted)] border-[var(--border)]'
+                                    }`}>
+                                    {user.subscriptionTier === 'proplus' ? 'Pro+' : user.subscriptionTier === 'pro' ? 'Pro' : 'Free'}
+                                </span>
+                            )}
                         </h1>
                         <p className="text-[var(--muted)] text-sm mt-1">Your AI tutor is ready. What are you working on?</p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-2xl shadow-sm">
-                        <Link href="/sparks" className="flex items-center gap-2 px-3 py-1.5 hover:bg-amber-50 rounded-xl transition-all group shrink-0">
-                            <Zap size={13} className="text-amber-500 group-hover:scale-110 transition-transform" fill="currentColor" />
-                            <span className="text-sm font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
+                    <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-2xl shadow-sm max-w-full">
+                        <Link href="/settings/billing" className="flex items-center gap-3 px-3 py-1.5 hover:bg-[var(--bg)] rounded-xl transition-all group shrink-0 relative overflow-hidden">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors leading-none mb-1">AI Usage</span>
+                                <span className="text-[11px] font-black text-[var(--text)] whitespace-nowrap leading-none flex items-center gap-1.5">
+                                    {usage?.used ?? 0} <span className="text-[var(--muted)] font-bold">/ {usage?.limit ?? '∞'}</span>
+                                    {usage?.limit && (
+                                        <div className="w-8 h-1 bg-[var(--border)] rounded-full overflow-hidden hidden xs:block">
+                                            <div
+                                                className="h-full bg-[var(--accent)] transition-all duration-1000"
+                                                style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                </span>
+                            </div>
+                            <div className="w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)]/30 transition-all">
+                                <Zap size={14} className={usage?.limit && (usage.used / usage.limit) > 0.8 ? 'text-orange-500 animate-pulse' : ''} />
+                            </div>
                         </Link>
 
                         <div className="w-px h-4 bg-[var(--border)] mx-1" />
@@ -421,8 +443,7 @@ export default function Home() {
                     <div className="flex flex-col gap-12">
 
                         <section
-                            className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col"
-                            style={{ minHeight: '560px', maxHeight: '720px' }}
+                            className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col h-[560px] md:h-[640px] lg:h-[720px]"
                         >
 
 
@@ -465,7 +486,7 @@ export default function Home() {
                                     </div>
                                 )}
 
-                                {messages.map((msg, idx) => {
+                                {messages.map((msg: any, idx: number) => {
                                     const isUser = msg.role === 'user';
                                     const textContent = (msg.parts ?? [])
                                         .filter((p: any) => p.type === 'text')
@@ -485,10 +506,10 @@ export default function Home() {
                                                 </div>
                                             )}
 
-                                            <div className={`flex flex-col gap-2 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+                                            <div className={`flex flex-col gap-2 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
                                                 {displayText && (
                                                     <div
-                                                        className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser
+                                                        className={`px-4 py-3 rounded-2xl text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser
                                                             ? 'bg-[var(--accent)] text-white rounded-br-sm shadow-md shadow-[var(--accent)]/20'
                                                             : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm'
                                                             }`}
@@ -535,30 +556,20 @@ export default function Home() {
                                     </div>
                                 )}
 
-                                {(outOfSparksError || (error && !outOfSparksError)) && (
-                                    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4 chat-bubble-in">
-                                        <Zap size={16} className="text-amber-500 shrink-0 mt-0.5" fill="currentColor" />
+                                {(error) && (
+                                    <div className="flex items-start gap-3 bg-[var(--warn-light)] border border-[var(--warn)]/20 rounded-2xl p-4 chat-bubble-in">
+                                        <AlertTriangle size={16} className="text-[var(--warn)] shrink-0 mt-0.5" />
                                         <div className="flex-1">
-                                            <p className="text-sm font-semibold text-amber-800">
-                                                {outOfSparksError ? "You're out of Sparks" : "Something went wrong"}
+                                            <p className="text-sm font-semibold text-[var(--warn)]">
+                                                Something went wrong
                                             </p>
-                                            <p className="text-xs text-amber-600 mt-0.5">
-                                                {outOfSparksError
-                                                    ? 'Sparks power every AI interaction.'
-                                                    : (error?.message?.startsWith('{')
-                                                        ? (JSON.parse(error.message).error || JSON.parse(error.message).message || "An unexpected error occurred")
-                                                        : (error?.message || "An unexpected error occurred"))
+                                            <p className="text-xs text-[var(--warn)]/70 mt-0.5">
+                                                {(error?.message?.startsWith('{')
+                                                    ? (JSON.parse(error.message).error || JSON.parse(error.message).message || "An unexpected error occurred")
+                                                    : (error?.message || "An unexpected error occurred"))
                                                 }
                                             </p>
                                         </div>
-                                        {outOfSparksError && (
-                                            <button
-                                                onClick={() => { setIsOutOfSparksModalOpen(true); setOutOfSparksError(false); }}
-                                                className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors shrink-0"
-                                            >
-                                                Refill
-                                            </button>
-                                        )}
                                     </div>
                                 )}
                             </div>
@@ -567,8 +578,8 @@ export default function Home() {
                                 <div className="relative flex items-end gap-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-2 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
                                     <textarea
                                         ref={inputRef}
-                                        value={inputValue}
-                                        onChange={e => setInputValue(e.target.value)}
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
                                         onKeyDown={handleKeyDown}
                                         placeholder="What would you like to learn?"
                                         rows={1}
@@ -577,13 +588,13 @@ export default function Home() {
                                         disabled={isLoading}
                                     />
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-amber-600 font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-100">
-                                            <Zap size={11} className="text-amber-500" fill="currentColor" />
-                                            1 spark
+                                        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--muted)] font-bold bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
+                                            <Sparkles size={11} className="text-[var(--accent)]" />
+                                            AI Tutor
                                         </div>
                                         <button
-                                            onClick={handleSend}
-                                            disabled={!inputValue.trim() || isLoading}
+                                            onClick={(e) => onSubmit(e as any)}
+                                            disabled={!input?.trim() || isLoading}
                                             className="w-8 h-8 rounded-xl bg-[var(--text)] text-[var(--surface)] disabled:opacity-30 flex items-center justify-center hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/10"
                                         >
                                             <ArrowUp size={16} />
@@ -617,7 +628,7 @@ export default function Home() {
                                         View all <ChevronRight size={13} />
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 stagger-children">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children">
                                     {latestSessions.map((session) => (
                                         <Link
                                             key={session.id}
@@ -755,12 +766,12 @@ export default function Home() {
                 </div>
             </div>
 
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                cost={1}
-                featureName="AI Tutor Chat"
-            />
+            {isGateOpen && (
+                <UsageGate
+                    feature="ai_messages"
+                    onClose={() => setIsGateOpen(false)}
+                />
+            )}
         </DashboardLayout>
     );
 }

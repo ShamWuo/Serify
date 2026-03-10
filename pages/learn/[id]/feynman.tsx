@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -180,9 +180,7 @@ export default function FeynmanMode() {
                 </div>
             }
         >
-            <Head>
-                <title>Feynman Method | Serify</title>
-            </Head>
+            <SEO title="Feynman Method" />
 
             <main className="max-w-[800px] mx-auto p-6 md:p-8 pb-32">
                 {!feedback && !analyzing && (

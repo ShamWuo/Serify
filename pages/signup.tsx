@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import SEO from '@/components/Layout/SEO';
 import { ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -9,6 +9,7 @@ export default function Signup() {
     const router = useRouter();
     const { user, register, loginWithGoogle } = useAuth();
     const [email, setEmail] = useState('');
+    const [fullName, setFullName] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -45,7 +46,7 @@ export default function Signup() {
         setError(null);
 
         try {
-            await register(email, password, '');
+            await register(email, password, fullName);
             // The useEffect will handle the redirect once user state updates to '/onboarding'
         } catch (err: any) {
             const msg = err.message || '';
@@ -77,9 +78,7 @@ export default function Signup() {
             <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] left-[-100px]" />
             <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] right-[-100px]" />
             <div className="auth-bg-blob w-[300px] h-[300px] bg-[#b8860b] top-[50%] right-[40%]" />
-            <Head>
-                <title>Sign Up | Serify</title>
-            </Head>
+            <SEO title="Sign Up" />
 
             <div className="w-full max-w-[400px] relative z-10 animate-fade-in-up">
                 <div className="mb-10 text-center">
@@ -150,7 +149,21 @@ export default function Signup() {
                         <span className="text-xs text-[var(--muted)] tracking-wider">or</span>
                     </div>
 
-                    <form onSubmit={handleSignup} className="space-y-5">
+                    <form onSubmit={handleSignup} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-[var(--text)] mb-2">
+                                Full Name
+                            </label>
+                            <input
+                                type="text"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="w-full h-12 px-4 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none input-focus-ring transition-all"
+                                placeholder="e.g. John Doe"
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
                         <div>
                             <label className="block text-sm font-medium text-[var(--text)] mb-2">
                                 Email address
@@ -213,7 +226,6 @@ export default function Signup() {
                     </form>
 
                     <div className="mt-6 text-center text-sm text-[var(--muted)] space-y-1 font-medium">
-                        <p>30 free Sparks included.</p>
                         <p>No credit card required.</p>
                     </div>
                 </div>

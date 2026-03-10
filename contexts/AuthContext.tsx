@@ -25,7 +25,7 @@ interface AuthContextType {
     user: UserProfile | null;
     token: string | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<UserProfile>;
     register: (email: string, password: string, displayName: string) => Promise<void>;
     loginWithGoogle: () => Promise<void>;
     logout: () => Promise<void>;
@@ -240,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string): Promise<UserProfile> => {
         console.log('[Auth] Starting login for:', email);
         if (!email || !email.trim()) {
             throw new Error('Email is required');
@@ -302,9 +302,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (data?.user) {
                 console.log('[Auth] Login successful, user:', data.user.id);
                 setToken(data.session?.access_token || null);
-                await ensureProfile(data.user.id, data.user.email || '');
+                const profile = await loadProfile(data.user.id, data.user.email || '');
+                syncUser(profile);
                 console.log('[Auth] Profile ensured');
+                if (!profile) throw new Error('Failed to load user profile after login');
+                return profile;
             }
+            throw new Error('Login failed: No user data returned');
         } catch (err: any) {
             console.error('[Auth] Login catch block:', err);
             if (err instanceof Error) {

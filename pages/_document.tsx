@@ -12,9 +12,8 @@ export default function Document() {
                 />
 
                 {/* Brand Identity & Favicons */}
-                <link rel="icon" href="/favicon.ico" sizes="any" />
-                <link rel="icon" href="/logo.png" type="image/png" />
-                <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+                <link rel="icon" href="/favicon.png" type="image/png" />
+                <link rel="apple-touch-icon" href="/logo.png" />
                 <meta name="theme-color" content="#6366f1" />
             </Head>
             <body>

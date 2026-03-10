@@ -1,7 +1,7 @@
 /**
  * home-chat.ts
  * Purpose: Edge API route for the dashboard's AI Tutor chat interface.
- * Key Logic: Authenticates requests, verifies spark balance, and streams responses from 
+ * Key Logic: Authenticates requests, verifies usage limits, and streams responses from 
  * Gemini. Uses a specialized system prompt to handle intent classification and trigger 
  * learning or analysis modes via structured action blocks.
  */
@@ -34,8 +34,8 @@ export default async function handler(req: Request) {
             console.error('[home-chat] Authentication failed. No user identified.');
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
-        const hasSparks = (await checkUsage(user, 'ai_messages')).allowed;
-        if (!hasSparks) {
+        const hasUsage = (await checkUsage(user, 'ai_messages')).allowed;
+        if (!hasUsage) {
             return new Response(
                 JSON.stringify({
                     error: 'limit_reached',

@@ -47,9 +47,9 @@ export default async function handler(req: Request) {
             return createErrorResponse('Unauthorized', 401, 'Unauthorized');
         }
 
-        const hasSparks = (await checkUsage(user, 'sessions')).allowed;
-        if (!hasSparks) {
-            return createErrorResponse(`You need ${sparkCost} Sparks.`, 403, 'out_of_sparks');
+        const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+        if (!hasUsage) {
+            return createErrorResponse('You have reached your limit for analyzing answers.', 403, 'limit_reached');
         }
 
         const prompt = `

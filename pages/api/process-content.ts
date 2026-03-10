@@ -36,8 +36,8 @@ export default async function handler(req: Request) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        const hasSparks = (await checkUsage(user, 'sessions')).allowed;
-        if (!hasSparks) {
+        const isAllowed = (await checkUsage(user, 'sessions')).allowed;
+        if (!isAllowed) {
             return new Response(
                 JSON.stringify({
                     error: 'limit_reached',

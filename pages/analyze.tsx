@@ -1,28 +1,18 @@
-/**
- * analyze.tsx
- * Purpose: Handles the initiation of content analysis sessions from various sources.
- * Key Logic: Supports YouTube, URLs, PDFs, and manual notes. Uses @ai-sdk/react's 
- * useObject for streaming concept extraction and question generation, then 
- * initializes a reflection session in Supabase.
- */
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/contexts/AuthContext';
-import Head from 'next/head';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import SEO from '@/components/Layout/SEO';
 import { z } from 'zod';
 import { storage } from '@/lib/storage';
-import { useSparks } from '@/hooks/useSparks';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 import {
     CheckCircle2,
-    Zap,
     Loader2,
     Brain,
     HelpCircle,
-    Sparkles,
     Search,
     Database,
     AlertTriangle,
@@ -30,7 +20,8 @@ import {
     FileText,
     FileUp,
     ClipboardPaste,
-    ArrowRight
+    ArrowRight,
+    Lock
 } from 'lucide-react';
 
 const conceptSchema = z.object({
@@ -65,13 +56,12 @@ export default function Analyze() {
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
+    const [isGateOpen, setIsGateOpen] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-    const { balance, loading: sparksLoading } = useSparks();
+    const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('sessions');
 
     useEffect(() => {
-        // Simple delay to prevent immediate flash of content before auth state is fully confirmed
         const timer = setTimeout(() => {
             setIsInitialLoading(false);
         }, 500);
@@ -91,7 +81,6 @@ export default function Analyze() {
     const [currentStep, setCurrentStep] = useState<'extracting' | 'concepts' | 'questions' | 'saving' | 'completed'>('extracting');
 
 
-    // Smooth count-up for percentage
     useEffect(() => {
         if (displayProgress < progress) {
             const timer = setTimeout(() => {
@@ -108,8 +97,8 @@ export default function Analyze() {
         if (!inputValue.trim() && activeTab !== 'pdf') return;
         if (activeTab === 'pdf' && !pdfFile) return;
 
-        if (balance && balance.total_sparks < 11) {
-            setIsOutOfSparksModalOpen(true);
+        if (usage && !usage.allowed) {
+            setIsGateOpen(true);
             return;
         }
 
@@ -120,19 +109,18 @@ export default function Analyze() {
         setQuestionData(null);
 
         try {
-            const isBasicMode = balance && balance.total_sparks >= 11 && balance.total_sparks < 13;
             const contentPayload = activeTab === 'pdf' ? `[PDF File: ${pdfFile?.name}]` : inputValue;
 
             const response = await fetch('/api/serify/analyze-stream', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
+                    Authorization: token ? `Bearer ${token}` : '',
+                    ...(router.query.demo === 'true' ? { 'x-serify-demo': 'true' } : {})
                 },
                 body: JSON.stringify({
                     content: contentPayload,
-                    contentType: activeTab,
-                    isBasicMode
+                    contentType: activeTab
                 })
             });
 
@@ -177,6 +165,7 @@ export default function Analyze() {
 
                             if (payload.status === 'completed' && payload.session) {
                                 setProgress(100);
+                                refreshUsage();
                                 localStorage.setItem('serify_active_session', JSON.stringify(payload.session));
                                 storage.saveSession({
                                     id: payload.session.id,
@@ -228,10 +217,7 @@ export default function Analyze() {
 
     return (
         <DashboardLayout>
-            <Head>
-                <title>New Session | Serify</title>
-            </Head>
-
+            <SEO title="New Session" />
             <div className="flex-1 flex items-center justify-center p-6 md:p-10 min-h-[calc(100vh-64px)]">
                 <div className="w-full max-w-4xl">
                     <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 md:p-12 relative overflow-hidden shadow-sm min-h-[500px] flex items-center justify-center glass animate-scale-in">
@@ -240,26 +226,24 @@ export default function Analyze() {
                         {isStreaming ? (
                             <div className="w-full relative z-10 animate-fade-in text-left">
                                 <div className="mb-10">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h2 className="text-2xl font-display text-[var(--text)] flex items-center gap-3">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                                        <h2 className="text-xl sm:text-2xl font-display text-[var(--text)] flex items-center gap-3">
                                             {currentStep === 'extracting' && <Search className="text-[var(--accent)] animate-pulse" size={24} />}
                                             {currentStep === 'concepts' && <Brain className="text-[var(--accent)] animate-pulse" size={24} />}
                                             {currentStep === 'questions' && <HelpCircle className="text-[var(--accent)] animate-pulse" size={24} />}
                                             {currentStep === 'saving' && <Database className="text-[var(--accent)] animate-pulse" size={24} />}
-                                            {statusMessage}
+                                            <span className="truncate">{statusMessage}</span>
                                         </h2>
-                                        <span className="text-sm font-bold text-[var(--accent)] transition-none">
+                                        <span className="text-lg font-bold text-[var(--accent)] transition-none tabular-nums">
                                             {displayProgress}%
                                         </span>
                                     </div>
 
-                                    {/* Progress Bar Container */}
                                     <div className="w-full h-2 bg-[var(--border)] rounded-full overflow-hidden mb-4 relative shadow-inner">
                                         <div
                                             className="h-full bg-[var(--accent)] transition-all duration-300 ease-out shadow-[0_0_10px_var(--accent)] relative overflow-hidden"
                                             style={{ width: `${progress}%` }}
                                         >
-                                            {/* Shimmer effect inside progress */}
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shimmer"
                                                 style={{ animationDuration: '2s' }} />
                                         </div>
@@ -287,7 +271,6 @@ export default function Analyze() {
                                             {conceptData?.concepts ? (
                                                 conceptData.concepts.filter((c: any) => !c.parent_id).map((pillar: any, i: number) => (
                                                     <div key={pillar.id || i} className="space-y-2">
-                                                        {/* Pillar Card */}
                                                         <div
                                                             className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4 shadow-sm text-sm border-l-4 border-l-[var(--accent)] card-hover animate-scale-in"
                                                         >
@@ -302,7 +285,6 @@ export default function Analyze() {
                                                             </span>
                                                         </div>
 
-                                                        {/* Nested Sub-concepts */}
                                                         <div className="pl-6 space-y-2 border-l border-[var(--border)] ml-4">
                                                             {conceptData.concepts
                                                                 .filter((sub: any) => sub.parent_id === pillar.id)
@@ -388,34 +370,18 @@ export default function Analyze() {
                                     </div>
                                 )}
 
-                                <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
+                                <div className="flex flex-nowrap overflow-x-auto no-scrollbar items-center justify-start sm:justify-center gap-2 mb-8 pb-2">
                                     {[
-                                        {
-                                            id: 'youtube',
-                                            label: 'YouTube URL',
-                                            icon: <Youtube size={16} />
-                                        },
-                                        {
-                                            id: 'article',
-                                            label: 'Article URL',
-                                            icon: <FileText size={16} />
-                                        },
-                                        {
-                                            id: 'pdf',
-                                            label: 'PDF Upload',
-                                            icon: <FileUp size={16} />
-                                        },
-                                        {
-                                            id: 'notes',
-                                            label: 'Paste Notes',
-                                            icon: <ClipboardPaste size={16} />
-                                        }
+                                        { id: 'youtube', label: 'YouTube URL', icon: <Youtube size={16} /> },
+                                        { id: 'article', label: 'Article URL', icon: <FileText size={16} /> },
+                                        { id: 'pdf', label: 'PDF Upload', icon: <FileUp size={16} /> },
+                                        { id: 'notes', label: 'Paste Notes', icon: <ClipboardPaste size={16} /> }
                                     ].map((tab) => (
                                         <button
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as any)}
-                                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === tab.id
-                                                ? 'bg-[var(--text)] text-[var(--surface)] shadow-md translate-y-[-1px]'
+                                            className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id
+                                                ? 'bg-[var(--text)] text-[var(--surface)] shadow-lg translate-y-[-1px]'
                                                 : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)]'
                                                 }`}
                                         >
@@ -459,11 +425,8 @@ export default function Analyze() {
                                                     <FileUp size={20} className="text-[var(--accent)]" />
                                                 </div>
                                                 <span className="text-sm font-medium max-w-[80%] truncate text-center">
-                                                    {pdfFile
-                                                        ? pdfFile.name
-                                                        : 'Click to select or drag and drop .pdf'}
+                                                    {pdfFile ? pdfFile.name : 'Click to select or drag and drop .pdf'}
                                                 </span>
-                                                {!pdfFile && <span className="text-[10px] uppercase font-bold tracking-widest mt-1 opacity-50">Max 10MB</span>}
                                             </label>
                                         )}
                                         {activeTab === 'notes' && (
@@ -475,68 +438,44 @@ export default function Analyze() {
                                             />
                                         )}
                                     </div>
+
+                                    {usage && (
+                                        <div className="mb-2">
+                                            <UsageWarning feature="sessions" usage={usage} />
+                                        </div>
+                                    )}
+
                                     <button
                                         onClick={handleAnalyze}
                                         disabled={
                                             isProcessing ||
-                                            sparksLoading ||
+                                            usageLoading ||
                                             (activeTab === 'pdf' ? !pdfFile : !inputValue.trim())
                                         }
-                                        className={`w-full h-14 rounded-xl font-bold transition-all flex flex-col items-center justify-center text-lg ${(activeTab === 'pdf' ? pdfFile : inputValue.trim()) && !isProcessing ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:scale-[1.01] active:scale-[0.99] cursor-pointer' : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-60'}`}
+                                        className={`w-full h-14 rounded-xl font-bold transition-all flex items-center justify-center text-lg ${(activeTab === 'pdf' ? pdfFile : inputValue.trim()) && !isProcessing
+                                            ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
+                                            : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-60'
+                                            }`}
                                     >
-                                        <span className="flex items-center">
-                                            {sparksLoading ? (
-                                                'Checking Sparks...'
-                                            ) : (
-                                                <>
-                                                    Analyze Content{' '}
-                                                    <ArrowRight size={20} className="ml-2" />
-                                                </>
-                                            )}
-                                        </span>
-                                        {(activeTab === 'pdf' ? pdfFile : inputValue.trim()) &&
-                                            !sparksLoading &&
-                                            balance &&
-                                            balance.total_sparks >= 11 && (
-                                                <span className="text-xs opacity-80 mt-0.5 flex items-center gap-1 font-normal">
-                                                    <Zap size={12} fill="currentColor" />{' '}
-                                                    {balance.total_sparks >= 13 ? '13' : '11'}{' '}
-                                                    Sparks
-                                                </span>
-                                            )}
+                                        {usageLoading ? (
+                                            <Loader2 className="animate-spin" size={20} />
+                                        ) : usage && !usage.allowed ? (
+                                            <span className="flex items-center gap-2">
+                                                <Lock size={18} /> Plan Limit Reached
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center">
+                                                Analyze Content <ArrowRight size={20} className="ml-2" />
+                                            </span>
+                                        )}
                                     </button>
                                 </div>
 
-                                {balance && balance.total_sparks < 13 && (
-                                    <div className="mt-8 premium-card border border-[var(--border)] rounded-xl p-6 shadow-sm text-left glass animate-fade-in-up animate-shake">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="bg-amber-100 text-amber-600 p-2 rounded-lg">
-                                                <Zap className="w-5 h-5" fill="currentColor" />
-                                            </div>
-                                            <h3 className="text-xl font-display text-[var(--text)] m-0">
-                                                Not enough Sparks for a full session
-                                            </h3>
-                                        </div>
-                                        <p className="text-[var(--muted)] mb-6 text-base">
-                                            You need 13 Sparks to start a full session. You have{' '}
-                                            {balance.total_sparks}.
-                                        </p>
-                                        <div className="flex flex-col sm:flex-row gap-3">
-                                            <Link
-                                                href="/sparks"
-                                                className="bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white font-medium py-3 px-6 rounded-xl transition-colors flex-1 text-center"
-                                            >
-                                                Buy Sparks &rarr;
-                                            </Link>
-                                            {balance.total_sparks >= 11 && (
-                                                <button
-                                                    onClick={handleAnalyze}
-                                                    className="bg-[var(--surface)] hover:bg-[var(--border)]/20 border border-[var(--border)] text-[var(--text)] font-medium py-3 px-6 rounded-xl transition-colors flex-1 text-center flex items-center justify-center gap-2"
-                                                >
-                                                    Use Basic Mode (11 Sparks)
-                                                </button>
-                                            )}
-                                        </div>
+                                {usage && !usage.allowed && (
+                                    <div className="mt-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm animate-fade-in text-left">
+                                        <p className="font-bold mb-1">Monthly Limit Reached</p>
+                                        <p className="opacity-80">You&apos;ve used all {usage.limit} diagnostic sessions for this month. Upgrade to Pro for 15 sessions or Pro+ for unlimited.</p>
+                                        <Link href="/pricing" className="inline-block mt-3 font-bold text-amber-800 underline">View Plans &rarr;</Link>
                                     </div>
                                 )}
                             </div>
@@ -545,12 +484,7 @@ export default function Analyze() {
                 </div>
             </div>
 
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                cost={13}
-                featureName="New Learning Session"
-            />
+            {isGateOpen && <UsageGate feature="sessions" onClose={() => setIsGateOpen(false)} />}
         </DashboardLayout>
     );
 }

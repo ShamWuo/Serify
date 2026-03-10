@@ -79,10 +79,9 @@ export default async function handler(req: Request) {
                     return;
                 }
 
-                // Check sparks
-                const sparkCost = (0 || 2) + (0 || 1);
-                const hasSparks = (await checkUsage(userId, 'sessions')).allowed;
-                if (!hasSparks) {
+                // Check usage
+                const hasUsage = (await checkUsage(userId, 'sessions')).allowed;
+                if (!hasUsage) {
                     send({ error: 'limit_reached', message: 'You have reached your feature limit.' });
                     controller.close();
                     return;
@@ -159,7 +158,7 @@ export default async function handler(req: Request) {
                 // Step 4: Database Save
                 send({ progress: 90, status: 'saving', message: 'Finalizing session...' });
 
-                // Deduct sparks first
+                // Deduct usage first
                 (await incrementUsage(userId, 'sessions').then(() => ({ success: true })));
 
                 // 1. Create the session

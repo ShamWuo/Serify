@@ -280,7 +280,7 @@ export async function updateVaultHierarchy(db: DbClient, userId: string) {
             ${unclassified.map((c) => `- ${c.display_name} (ID: ${c.id}): ${c.definition}`).join('\n')}
         `;
 
-        const model = getGeminiModel(false);
+        const model = getGeminiModel('free');
         const result = await model.generateContent(prompt);
         const hierarchy = parseJSON<any>(result.response.text()) as {
             categoryName: string;
@@ -388,7 +388,7 @@ export async function generateConceptSynthesis(
         }
       `;
 
-        const model = getGeminiModel(false);
+        const model = getGeminiModel('free');
         const result = await model.generateContent(prompt);
         const synthesisResult = parseJSON<any>(result.response.text());
 

@@ -144,8 +144,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             relatedConcepts: c.related_concept_names ?? []
         }));
 
-        const hasSparks = (await checkUsage(user.id, 'sessions')).allowed;
-        if (!hasSparks) {
+        const { data: tracking } = await supabaseWithAuth
+            .from('usage_tracking')
+            .select('plan')
+            .eq('user_id', user.id)
+            .single();
+
+        const hasUsage = (await checkUsage(user.id, 'sessions')).allowed;
+        if (!hasUsage) {
             return res
                 .status(403)
                 .json({
@@ -164,8 +170,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
         }
 
-        console.log('Assess API: Generating questions via Gemini...');
-        const questions = await generateAssessment(concepts, preferences);
+        console.log('Assess API: Generating questions via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
+        const questions = await generateAssessment(concepts, tracking?.plan || 'free', preferences);
         console.log('Assess API: Generated', questions.length, 'questions');
 
         const questionRows = questions.map((q) => ({

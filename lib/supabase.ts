@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/db_types_new'; // Correct path for DB types
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -73,6 +74,19 @@ const globalForSupabase = globalThis as unknown as {
 };
 
 export const supabase = globalForSupabase.supabase ?? createSupabaseClient();
+
+// Admin client for server-side operations that need to bypass RLS
+// We only initialize this if the SUPABASE_SERVICE_ROLE_KEY is present
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+export const supabaseAdmin = (supabaseUrl && supabaseServiceKey) 
+    ? createClient<Database>(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    })
+    : null;
 
 if (process.env.NODE_ENV !== 'production') {
     globalForSupabase.supabase = supabase;

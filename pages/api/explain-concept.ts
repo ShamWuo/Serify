@@ -21,8 +21,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasSparks = (await checkUsage(user, 'ai_messages')).allowed;
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(user, 'ai_messages')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({ error: 'limit_reached', message: 'You have reached your feature limit.' });

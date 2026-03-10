@@ -3,7 +3,6 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import {
     Youtube,
     Target,
@@ -22,8 +21,9 @@ import {
 } from 'lucide-react';
 import { InlineUpgradeCard } from '@/components/billing/InlineUpgradeCard';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSparks } from '@/hooks/useSparks';
 import { useSessionMaterials } from '@/hooks/useSessionMaterials';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate } from '@/components/billing/UsageEnforcement';
 import { Zap, RotateCcw } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -38,7 +38,7 @@ export default function FeedbackReport() {
     const [concepts, setConcepts] = useState<any[]>([]);
     const [assessments, setAssessments] = useState<any[]>([]);
     const { user, token } = useAuth();
-    const { balance } = useSparks();
+    const { usage, loading: usageLoading } = useUsage('ai_messages');
     const { materials, refetch } = useSessionMaterials(id as string);
 
     const feedbackSchema = z.object({
@@ -84,9 +84,8 @@ export default function FeedbackReport() {
         cost: number;
         name: string;
     } | null>(null);
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
-    const [outOfSparksCost, setOutOfSparksCost] = useState(1);
-    const [outOfSparksFeature, setOutOfSparksFeature] = useState('this feature');
+    const [isUsageGateOpen, setIsUsageGateOpen] = useState(false);
+    const [usageFeature, setUsageFeature] = useState<any>('ai_messages');
 
     // Share state
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -160,12 +159,11 @@ export default function FeedbackReport() {
     const handleConfirmRegenerate = () => {
         if (!regenerateTarget) return;
 
-        // Check balance again just in case
-        if (!balance || balance.total_sparks < regenerateTarget.cost) {
+        // Check usage allowed
+        if (usage?.allowed === false) {
             setIsRegenerateModalOpen(false);
-            setOutOfSparksCost(regenerateTarget.cost);
-            setOutOfSparksFeature(regenerateTarget.name);
-            setIsOutOfSparksModalOpen(true);
+            setUsageFeature('ai_messages');
+            setIsUsageGateOpen(true);
             return;
         }
 
@@ -176,12 +174,11 @@ export default function FeedbackReport() {
     const handleFeatureClick = (e: React.MouseEvent, type: string, cost: number, name: string, exists: boolean) => {
         if (exists) return; // If it exists, let the link handle it (navigation)
 
-        if (!balance || balance.total_sparks < cost) {
+        if (usage?.allowed === false) {
             e.preventDefault();
             e.stopPropagation();
-            setOutOfSparksCost(cost);
-            setOutOfSparksFeature(name);
-            setIsOutOfSparksModalOpen(true);
+            setUsageFeature('ai_messages');
+            setIsUsageGateOpen(true);
         }
     };
 
@@ -713,7 +710,7 @@ export default function FeedbackReport() {
                         {(displayReport.overall_counts?.['shaky'] > 0 ||
                             displayReport.overall_counts?.['revisit'] > 0) && (
                                 <div
-                                    className={`group p-5 bg-gradient-to-br from-[#7c3aed15] to-[#4f46e510] border border-[#7c3aed55] hover:border-[#7c3aed] rounded-2xl transition-all relative overflow-hidden flex flex-col ${!balance || balance.total_sparks < 1 ? 'opacity-50 pointer-events-none' : ''}`}
+                                    className={`group p-5 bg-gradient-to-br from-[#7c3aed15] to-[#4f46e510] border border-[#7c3aed55] hover:border-[#7c3aed] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) ? 'opacity-50 pointer-events-none' : ''}`}
                                 >
                                     <div className="flex items-start justify-between mb-3 relative z-10">
                                         <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
@@ -737,8 +734,8 @@ export default function FeedbackReport() {
                                         >
                                             Start Flow &rarr;
                                         </Link>
-                                        <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 1 Spark
+                                        <span className="text-[10px] bg-indigo-50 text-indigo-600 border border-indigo-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                                            <Zap size={10} fill="currentColor" /> Premium
                                         </span>
                                     </div>
                                     <Link
@@ -751,7 +748,7 @@ export default function FeedbackReport() {
 
                         { }
                         <div
-                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.flashcards?.exists ? 'opacity-50 pointer-events-none' : ''}`}
+                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.flashcards?.exists ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                             <div className="flex items-start justify-between mb-3 relative z-10">
                                 <div className="w-10 h-10 rounded-xl bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center">
@@ -796,7 +793,7 @@ export default function FeedbackReport() {
                                         </span>
                                     ) : (
                                         <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 1 Spark
+                                            <Zap size={10} fill="currentColor" /> Premium Activity
                                         </span>
                                     )}
                                 </div>
@@ -810,7 +807,7 @@ export default function FeedbackReport() {
 
                         { }
                         <div
-                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${!balance || balance.total_sparks < 1 ? 'opacity-50 pointer-events-none' : ''}`}
+                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                             <div className="flex items-start justify-between mb-3 relative z-10">
                                 <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -855,7 +852,7 @@ export default function FeedbackReport() {
                                         </span>
                                     ) : (
                                         <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 1 Spark
+                                            <Zap size={10} fill="currentColor" /> Premium Activity
                                         </span>
                                     )}
                                 </div>
@@ -869,7 +866,7 @@ export default function FeedbackReport() {
 
                         { }
                         <div
-                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${!balance || balance.total_sparks < 2 ? 'opacity-50 pointer-events-none' : ''}`}
+                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                             <div className="flex items-start justify-between mb-3 relative z-10">
                                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -898,7 +895,7 @@ export default function FeedbackReport() {
                                         </span>
                                     ) : (
                                         <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 2 Sparks
+                                            <Zap size={10} fill="currentColor" /> Premium Activity
                                         </span>
                                     )}
                                 </div>
@@ -936,7 +933,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.tutorConversation?.exists ? 'opacity-70' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.tutorConversation?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -979,7 +976,7 @@ export default function FeedbackReport() {
                                             </span>
                                         ) : (
                                             <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                                <Zap size={10} fill="currentColor" /> 1 Spark
+                                                <Zap size={10} fill="currentColor" /> Premium Activity
                                             </span>
                                         )}
                                     </div>
@@ -1019,7 +1016,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.practiceQuiz?.exists ? 'opacity-70' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.practiceQuiz?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -1064,7 +1061,7 @@ export default function FeedbackReport() {
                                             </span>
                                         ) : (
                                             <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                                <Zap size={10} fill="currentColor" /> 1 Spark
+                                                <Zap size={10} fill="currentColor" /> Premium Activity
                                             </span>
                                         )}
                                     </div>
@@ -1104,7 +1101,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 2) && !materials?.deepDive?.exists ? 'opacity-70' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.deepDive?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
@@ -1149,7 +1146,7 @@ export default function FeedbackReport() {
                                             </span>
                                         ) : (
                                             <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                                <Zap size={10} fill="currentColor" /> 2 Sparks
+                                                <Zap size={10} fill="currentColor" /> Premium Activity
                                             </span>
                                         )}
                                     </div>
@@ -1320,7 +1317,7 @@ export default function FeedbackReport() {
                 </div>
             )}
 
-            {/* Spark Action Confirmation Modal */}
+            {/* Activity Action Confirmation Modal */}
             {isRegenerateModalOpen && regenerateTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
                     <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl w-full max-w-md p-6 shadow-xl animate-scale-in">
@@ -1334,11 +1331,7 @@ export default function FeedbackReport() {
                         </div>
                         <p className="text-[var(--text)] text-[15px] leading-relaxed mb-6">
                             Are you sure you want to regenerate{' '}
-                            <strong>{regenerateTarget.name}</strong>? This action will cost{' '}
-                            <strong className="text-amber-600">
-                                {regenerateTarget.cost} Spark{regenerateTarget.cost > 1 ? 's' : ''}
-                            </strong>{' '}
-                            and cannot be undone.
+                            <strong>{regenerateTarget.name}</strong>? This will use your monthly AI activity allowance and cannot be undone.
                         </p>
                         <div className="flex items-center justify-end gap-3">
                             <button
@@ -1351,18 +1344,17 @@ export default function FeedbackReport() {
                                 onClick={handleConfirmRegenerate}
                                 className="px-6 py-2 bg-[var(--accent)] text-white font-medium rounded-xl hover:bg-[var(--accent)]/90 transition-all shadow-sm"
                             >
-                                Confirm & Pay
+                                Confirm
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                cost={outOfSparksCost}
-                featureName={outOfSparksFeature}
+            <UsageGate
+                feature={usageFeature}
+                forceShow={isUsageGateOpen}
+                onClose={() => setIsUsageGateOpen(false)}
             />
         </DashboardLayout>
     );

@@ -28,11 +28,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasSparks = (await checkUsage(userId, 'flashcards')).allowed;
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'flashcards')).allowed;
+    if (!hasUsage) {
         return res.status(403).json({
             error: 'limit_reached',
-            message: `You do not have enough Sparks to generate a new flashcard deck. This action costs ${sparkCost} Spark. Please top up your balance.`
+            message: `You have reached your feature limit for generating flashcard decks.`
         });
     }
 

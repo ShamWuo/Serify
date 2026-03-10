@@ -1,8 +1,23 @@
 import { NextApiRequest } from 'next';
-import { supabase } from './supabase';
+import { supabase, supabaseAdmin } from './supabase';
 
-export async function authenticateApiRequest(req: NextApiRequest): Promise<string | null> {
-    const authHeader = req.headers.authorization;
+export async function authenticateApiRequest(req: NextApiRequest | Request): Promise<string | null> {
+    // Handle demo mode
+    const demoHeader = (req instanceof Request)
+        ? req.headers.get('x-serify-demo')
+        : (req as NextApiRequest).headers['x-serify-demo'];
+
+    if (demoHeader === 'true') {
+        return 'demo-user';
+    }
+
+    let authHeader: string | null = null;
+    if (req instanceof Request) {
+        authHeader = req.headers.get('authorization');
+    } else {
+        authHeader = (req as NextApiRequest).headers.authorization || null;
+    }
+
     if (!authHeader) return null;
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error } = await supabase.auth.getUser(token);
@@ -33,7 +48,20 @@ export async function checkUsage(
     userId: string,
     feature: FeatureName
 ): Promise<UsageCheckResult> {
-    const { data: tracking } = await supabase
+    const client = supabaseAdmin || supabase;
+
+    if (userId === 'demo-user') {
+        return {
+            allowed: true,
+            used: 0,
+            limit: null,
+            remaining: null,
+            percentUsed: 0,
+            featureName: feature
+        };
+    }
+
+    const { data: tracking } = await client
         .from('usage_tracking')
         .select('*')
         .eq('user_id', userId)
@@ -41,7 +69,7 @@ export async function checkUsage(
 
     const plan = tracking?.plan || 'free';
 
-    const { data: limits } = await supabase
+    const { data: limits } = await client
         .from('plan_limits')
         .select('*')
         .eq('plan', plan)
@@ -93,8 +121,11 @@ export async function incrementUsage(
     feature: FeatureName,
     amount: number = 1
 ): Promise<void> {
+    if (userId === 'demo-user') return;
+
     // Use RPC for atomic increment
-    await supabase.rpc('increment_usage', {
+    const client = supabaseAdmin || supabase;
+    await client.rpc('increment_usage', {
         target_user_id: userId,
         feature_name: feature,
         amount: amount

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import SEO from '@/components/Layout/SEO';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -457,7 +457,7 @@ export default function VaultPage() {
             const inCat = filteredNodes.filter(n => n.category_id === cat.id);
             // Root in category: no parent OR parent is not in filteredNodes
             const roots = inCat.filter(n => !n.parent_concept_id || !filteredNodeIds.has(n.parent_concept_id));
-            
+
             const parentGroups = roots.map(createGroup);
 
             // Also check for any stragglers in this category that somehow weren't processed
@@ -484,9 +484,9 @@ export default function VaultPage() {
         });
 
         // 2. Uncategorized Roots
-        const uncategorizedRoots = filteredNodes.filter(n => 
-            !processedIds.has(n.id) && 
-            !n.category_id && 
+        const uncategorizedRoots = filteredNodes.filter(n =>
+            !processedIds.has(n.id) &&
+            !n.category_id &&
             (!n.parent_concept_id || !filteredNodeIds.has(n.parent_concept_id))
         );
         const uncategorizedGroups = uncategorizedRoots.map(createGroup);
@@ -605,7 +605,7 @@ export default function VaultPage() {
                     <div className="flex-1 min-w-0 pr-2">
                         <div className="flex items-center gap-2">
                             {subs.length > 0 && (
-                                <button 
+                                <button
                                     onClick={(e) => { e.stopPropagation(); toggleParent(parent.id, e); }}
                                     className="shrink-0 text-[var(--muted)] opacity-50 hover:opacity-100 transition-opacity p-1 -ml-1"
                                 >
@@ -749,7 +749,7 @@ export default function VaultPage() {
 
     return (
         <DashboardLayout>
-            <Head><title>Concept Vault | Serify</title></Head>
+            <SEO title="Concept Vault" />
 
             <div className="max-w-[1000px] mx-auto px-6 py-8 pb-32">
                 {/* Header */}
@@ -1669,7 +1669,7 @@ export default function VaultPage() {
                                     </div>
                                 </div>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setSelectedNodeForDetail(null)}
                                 className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--muted)] hover:text-[var(--text)] transition-all"
                             >
@@ -1689,13 +1689,13 @@ export default function VaultPage() {
                                 <div>
                                     <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--muted)] mb-3">Quick Actions</h4>
                                     <div className="flex flex-col gap-2">
-                                        <Link 
+                                        <Link
                                             href={`/vault/drill?nodes=${selectedNodeForDetail.id}`}
                                             className="flex items-center gap-3 px-4 py-2.5 bg-[var(--accent)]/10 text-[var(--accent)] rounded-xl text-sm font-bold hover:bg-[var(--accent)]/20 transition-all"
                                         >
                                             <Zap size={16} fill="currentColor" /> Practice Concept
                                         </Link>
-                                        <button 
+                                        <button
                                             onClick={() => { setRenamingNode(selectedNodeForDetail); setSelectedNodeForDetail(null); }}
                                             className="flex items-center gap-3 px-4 py-2.5 bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-xl text-sm font-medium hover:bg-[var(--surface)] transition-all"
                                         >
@@ -1722,7 +1722,7 @@ export default function VaultPage() {
                         </div>
 
                         <div className="p-6 bg-[var(--bg)] border-t border-[var(--border)] flex justify-end">
-                            <button 
+                            <button
                                 onClick={() => setSelectedNodeForDetail(null)}
                                 className="px-6 py-2.5 bg-[var(--text)] text-[var(--surface)] rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-lg shadow-black/10"
                             >

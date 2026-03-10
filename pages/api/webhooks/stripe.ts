@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             case 'checkout.session.completed': {
                 const session = event.data.object as any;
                 if (session.mode === 'subscription') {
-                    const subscription = await stripe.subscriptions.retrieve(session.subscription);
+                    const subscription = await stripe.subscriptions.retrieve(session.subscription) as any;
                     const userId = session.metadata?.userId || subscription.metadata?.userId;
                     const plan = subscription.metadata?.plan || getPlanFromPriceId(subscription.items.data[0].price.id);
 
@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 if (invoice.billing_reason === 'subscription_cycle') {
                     const userId = await getUserIdFromCustomer(invoice.customer as string, supabase);
                     if (userId) {
-                        const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+                        const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string) as any;
                         await supabase.from('usage_tracking').update({
                             sessions_used: 0,
                             flashcards_used: 0,

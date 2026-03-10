@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Use a user-scoped client for fetching to respect RLS
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
-    const supabaseUser = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabaseUser = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
         auth: { persistSession: false, autoRefreshToken: false },
         global: { headers: { Authorization: `Bearer ${token}` } }
     });
@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 supabaseUser
                     .from('flow_sessions')
                     .select(
-                        'id, status, initial_plan, started_at, completed_at, created_at, total_sparks_spent, concepts_completed, source_type, source_session_id'
+                        'id, status, initial_plan, started_at, completed_at, created_at, concepts_completed, source_type, source_session_id'
                     )
                     .eq('user_id', userId)
                     .order('created_at', { ascending: false })
@@ -78,8 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     createdAt: s.created_at,
                     completedAt: s.completed_at,
                     completedCount,
-                    totalCount,
-                    sparksSpent: s.total_sparks_spent
+                    totalCount
                 };
             });
 

@@ -6,9 +6,9 @@
  */
 
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
@@ -289,9 +289,7 @@ export default function FlashcardsMode() {
                 </div>
             }
         >
-            <Head>
-                <title>Flashcards | Serify</title>
-            </Head>
+            <SEO title="Flashcards" />
 
             <main className="max-w-[800px] mx-auto p-6 md:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
                 <div className="w-full mb-12 flex items-center justify-between">

@@ -18,8 +18,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing concept' });
     }
 
-    const hasSparks = (await checkUsage(userId, 'deep_dives')).allowed;
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'deep_dives')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({

@@ -165,7 +165,7 @@ export default function VaultDrillPage() {
                 <div className="flex items-center justify-between mb-8">
                     <Link href="/vault" className="flex items-center gap-2 text-[var(--muted)] hover:text-[var(--text)] transition-colors text-sm font-medium">
                         <ArrowLeft size={16} />
-                        Back Tracking
+                        Back to Vault
                     </Link>
                     <div className="flex items-center gap-3">
                         <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider">

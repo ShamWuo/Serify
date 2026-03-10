@@ -10,19 +10,26 @@ import {
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export function getGeminiModel(proMode: boolean = false, systemInstruction?: string) {
-  const modelName = proMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+export function getGeminiModel(plan: string = 'free', systemInstruction?: string) {
+  let modelName = 'gemini-2.5-flash';
+  
+  if (plan === 'pro') {
+    modelName = 'gemini-2.5-pro';
+  } else if (plan === 'proplus') {
+    modelName = 'gemini-2.5-pro'; // Or gemini-1.5-pro-latest if preferred for Pro+
+  }
+
   return genAI.getGenerativeModel({
     model: modelName,
     systemInstruction,
     generationConfig: {
-      temperature: proMode ? 0.3 : 0.1,
+      temperature: plan === 'free' ? 0.1 : 0.3,
       responseMimeType: 'application/json'
     }
   });
 }
 
-const defaultModel = getGeminiModel(false);
+const defaultModel = getGeminiModel('free');
 
 export function parseJSON<T>(text: string): T {
   // Try to extract JSON between markdown code blocks if they exist
@@ -37,15 +44,15 @@ export function parseJSON<T>(text: string): T {
     console.error('Failed to parse JSON from AI response:', text);
     // If it's a common "AI added a comment" error, try one last aggressive strip
     try {
-        const aggressive = cleaned.substring(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);
-        return JSON.parse(aggressive);
+      const aggressive = cleaned.substring(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);
+      return JSON.parse(aggressive);
     } catch (innerErr) {
-        throw err;
+      throw err;
     }
   }
 }
 
-export async function extractConcepts(content: ContentSource, transcript?: string): Promise<Concept[]> {
+export async function extractConcepts(content: ContentSource, plan: string = 'free', transcript?: string): Promise<Concept[]> {
   const contentDescription =
     content.type === 'text'
       ? `Here are the user's notes:\n\n${content.content}`
@@ -104,7 +111,8 @@ export async function generateSessionTitle(content: string, type: string): Promi
   
   Return ONLY the title string as a JSON object: {"title": "The Title Here"}`;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel('free');
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { maxOutputTokens: 100 }
   });
@@ -115,6 +123,7 @@ export async function generateSessionTitle(content: string, type: string): Promi
 
 export async function generateAssessment(
   concepts: Concept[],
+  plan: string = 'free',
   preferences?: { tone?: string; questionCount?: number }
 ): Promise<AssessmentQuestion[]> {
   const tone = preferences?.tone ?? 'supportive';
@@ -152,7 +161,8 @@ Rules:
 - One clear sentence per question.
 - Answers should require a few sentences.`;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { maxOutputTokens: 1500 }
   });
@@ -163,7 +173,8 @@ Rules:
 }
 
 export async function analyzeAnswers(
-  session: ReflectionSession
+  session: ReflectionSession,
+  plan: string = 'free'
 ): Promise<{ analysis: CognitiveAnalysis; depthScore: number }> {
   const conceptMap = Object.fromEntries(session.extractedConcepts.map((c) => [c.id, c.name]));
   const qAndA = session.assessmentQuestions
@@ -195,7 +206,8 @@ Rules:
 - 3-5 insights, 2-4 focusSuggestions (start with verb).
 - Constructive tone.`;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { maxOutputTokens: 1500 }
   });
@@ -215,7 +227,8 @@ export async function generateCurriculum(
     shakyConcepts: { name: string }[];
     revisitConcepts: { name: string }[];
   },
-  userProfile?: { userType?: string; learningContext?: string }
+  userProfile?: { userType?: string; learningContext?: string },
+  plan: string = 'free'
 ): Promise<
   Omit<
     Curriculum,
@@ -226,7 +239,6 @@ export async function generateCurriculum(
     | 'started_at'
     | 'last_activity_at'
     | 'completed_at'
-    | 'total_sparks_spent'
   >
 > {
   const { strongConcepts, shakyConcepts, revisitConcepts } = vaultContext;
@@ -286,7 +298,8 @@ RULES:
 - estimatedMinutes: simple (5-8), moderate (8-15), complex (12-20).
 `;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { maxOutputTokens: 8000 }
   });

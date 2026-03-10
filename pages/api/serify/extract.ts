@@ -73,9 +73,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return sendError(res, 'Unauthorized', 401, 'Unauthorized');
     }
 
-    const hasSparks = (await checkUsage(user.id, 'sessions')).allowed;
-    if (!hasSparks) {
-        return sendError(res, `You need ${sparkCost} Sparks.`, 403, 'out_of_sparks');
+    const hasUsage = (await checkUsage(user.id, 'sessions')).allowed;
+    if (!hasUsage) {
+        return sendError(res, 'You have reached your feature limit.', 403, 'limit_reached');
     }
 
     if (!checkRateLimit(user.id)) {
@@ -221,6 +221,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
         }
 
+        const { data: tracking } = await supabaseWithAuth
+            .from('usage_tracking')
+            .select('plan')
+            .eq('user_id', user.id)
+            .single();
+
         // 3. Either clone cached concepts or call Gemini
         let finalConcepts: any[] = [];
 
@@ -248,8 +254,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 // For now, we'll log and proceed, assuming the session is still valid.
             }
         } else {
-            console.log('Extracting concepts via Gemini...');
-            const extracted = await extractConcepts(contentSource, processedTranscript);
+            console.log('Extracting concepts via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
+            const extracted = await extractConcepts(contentSource, tracking?.plan || 'free', processedTranscript);
             console.log('Concepts extracted:', extracted.length);
             finalConcepts = extracted;
 

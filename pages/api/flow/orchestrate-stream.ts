@@ -42,8 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         sendUpdate({ status: 'Initializing...', progress: 5 });
 
-        const hasSparks = (await checkUsage(userId, 'flow_sessions')).allowed;
-        if (!hasSparks) {
+        const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+        if (!hasUsage) {
             sendUpdate({ error: 'limit_reached', message: 'You have reached your feature limit.' });
             return res.end();
         }
@@ -119,9 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             sendUpdate({
                 status: 'Restoring your path...',
                 progress: 100,
-                done: true,
-                orchestratorPlan: existingProgress.orchestrator_plan,
-                total_sparks_spent: sessionData.total_sparks_spent
+                orchestratorPlan: existingProgress.orchestrator_plan
             });
             return res.end();
         }
@@ -294,17 +292,11 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
                 .eq('id', progressId);
         }
 
-        await supabaseAdmin
-            .from('flow_sessions')
-            .update({ total_sparks_spent: (sessionData.total_sparks_spent || 0) + sparkCost })
-            .eq('id', sessionId);
-
         sendUpdate({
             status: 'Ready!',
             progress: 100,
             done: true,
-            orchestratorPlan,
-            total_sparks_spent: (sessionData.total_sparks_spent || 0) + sparkCost
+            orchestratorPlan
         });
 
     } catch (error: any) {

@@ -37,8 +37,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasSparks = (await checkUsage(user, 'sessions')).allowed;
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({

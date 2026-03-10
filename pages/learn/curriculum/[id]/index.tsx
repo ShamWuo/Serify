@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { supabase } from '@/lib/supabase';
-import { useSparks } from '@/hooks/useSparks';
 import {
     Clock,
     CheckCircle2,
@@ -12,7 +11,6 @@ import {
     X,
     GripVertical,
     AlertTriangle,
-    Zap,
     ArrowRight,
     Share2,
     Check,
@@ -20,7 +18,8 @@ import {
     ChevronUp,
     BookOpen,
     PlayCircle,
-    Lock
+    Lock,
+    ListChecks
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,9 +36,6 @@ export default function CurriculumView() {
     const [isEditing, setIsEditing] = useState(false);
     const [copied, setCopied] = useState(false);
     const [expandedUnits, setExpandedUnits] = useState<Set<number>>(new Set([0]));
-
-    const { balance } = useSparks();
-    const isProPlus = user?.subscriptionTier === 'pro';
 
     useEffect(() => {
         if (id) fetchCurriculum();
@@ -101,13 +97,13 @@ export default function CurriculumView() {
     const completedCount = curriculum.completed_concept_ids?.length || 0;
     const totalCount = curriculum.concept_count || 1;
     const progressPct = Math.min(100, Math.round((completedCount / totalCount) * 100));
-    const sparkCostPerConcept = 8;
-    const remainingSparkCost = (totalCount - currentIndex) * sparkCostPerConcept;
 
     const handleShare = () => {
-        navigator.clipboard.writeText(`${window.location.origin}/share/curriculum/${curriculum.id}`);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (typeof window !== 'undefined') {
+            navigator.clipboard.writeText(`${window.location.origin}/share/curriculum/${curriculum.id}`);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     const handleStart = () => router.push(`/learn/curriculum/${curriculum.id}/flow`);
@@ -202,19 +198,19 @@ export default function CurriculumView() {
                                     />
                                 </svg>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className="text-sm font-bold text-[var(--text)] leading-none">{progressPct}%</span>
+                                    <span className="text-sm font-bold text-[var(--text)] font-display leading-none">{progressPct}%</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Stats row */}
                         <div className="flex flex-wrap gap-4 mb-6 text-sm text-[var(--muted)]">
-                            <div className="flex items-center gap-1.5 bg-[var(--bg)] px-2 py-1 rounded-md border border-[var(--border)]">
+                            <div className="flex items-center gap-1.5 bg-[var(--bg)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
                                 <BookOpen size={14} className="text-[var(--accent)]" />
                                 <span className="font-semibold text-[var(--text)]">{completedCount} of {totalCount} mastered</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                                <Zap size={14} className="text-amber-500" />
+                                <ListChecks size={14} className="text-blue-500" />
                                 <span>{curriculum.units.length} units</span>
                             </div>
                             <div className="flex items-center gap-1.5">
@@ -267,14 +263,6 @@ export default function CurriculumView() {
                             >
                                 {copied ? <><Check size={15} />Copied!</> : <><Share2 size={15} />Share</>}
                             </button>
-
-                            {/* Spark cost chip */}
-                            {!isProPlus && (
-                                <div className="ml-auto flex items-center gap-1.5 text-xs text-[var(--muted)]">
-                                    <Zap size={12} className="text-[var(--accent)]" />
-                                    ~{remainingSparkCost} sparks remaining
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>

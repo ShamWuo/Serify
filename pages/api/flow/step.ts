@@ -72,11 +72,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .from('flow_concept_progress')
                 .select('*')
                 .eq('flow_session_id', sessionId);
-            
+
             if (allProgress) {
                 // This is slow but better than a crash. Find a plan where the orchestrator_plan 
                 // matches this concept name.
-                const matchedProgress = allProgress.find((p: any) => 
+                const matchedProgress = allProgress.find((p: any) =>
                     p.orchestrator_plan?.teach?.text?.toLowerCase().includes(conceptName.toLowerCase().slice(0, 20))
                 );
                 if (matchedProgress) {
@@ -231,12 +231,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             }
         } else if (lastStep.step_type === 'completed') {
-            return res
-                .status(200)
-                .json({
-                    action: 'concept_complete',
-                    totalSparksSpent: sessionData.total_sparks_spent
-                });
+            return res.status(200).json({
+                action: 'concept_complete',
+                stepHistory: previousSteps
+            });
         } else {
             nextStepType = 'completed';
             content = { text: 'Fallback completion state.' };
@@ -308,7 +306,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             return res.status(200).json({
                 action: 'concept_complete',
-                totalSparksSpent: sessionData.total_sparks_spent,
                 stepHistory: previousSteps
             });
         }
@@ -326,8 +323,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 step_number: stepNumber,
                 step_type: nextStepType,
                 content: content,
-                ai_reasoning: 'Strict deterministic routing',
-                spark_cost: 0
+                ai_reasoning: 'Strict deterministic routing'
             })
             .select()
             .single();

@@ -56,13 +56,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing sessionId or answers' });
     }
 
-    const reportCost = isBasicMode
-        ? 0
-        : 0 + 0;
-    const sparkCost = answers.length * 0 + reportCost;
+    const { data: tracking } = await supabaseWithAuth
+        .from('usage_tracking')
+        .select('plan')
+        .eq('user_id', user.id)
+        .single();
 
-    const hasSparks = (await checkUsage(user.id, 'sessions')).allowed;
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(user.id, 'sessions')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({
@@ -71,8 +72,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
     }
 
-    const deduction = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
-    if (!deduction.success) {
+    const usageIncrement = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
+    if (!usageIncrement.success) {
         return res
             .status(403)
             .json({
@@ -180,8 +181,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             status: 'feedback'
         };
 
-        console.log('Analyze API: Analyzing answers via Gemini...');
-        const { analysis, depthScore } = await analyzeAnswers(reflectionSession);
+        console.log('Analyze API: Analyzing answers via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
+        const { analysis, depthScore } = await analyzeAnswers(reflectionSession, tracking?.plan || 'free');
 
         if (isBasicMode) {
             console.log('Analyze API: Basic mode requested, stripping advanced fields');

@@ -20,6 +20,7 @@ import {
     Layers,
     RefreshCw,
     MessageSquare,
+    Activity
 } from 'lucide-react';
 
 // Intersection Observer hook for scroll animations
@@ -185,7 +186,7 @@ export default function LandingPage() {
 
                         {/* Floating decorative badges */}
                         <div className="absolute -top-4 -right-4 md:-right-8 bg-white border border-[var(--border)] rounded-xl px-3 py-2 shadow-lg animate-fade-in-up text-xs font-bold flex items-center gap-1.5" style={{ animationDelay: '300ms' }}>
-                            <Zap size={12} className="text-amber-500" fill="currentColor" /> 13 Sparks
+                            <Activity size={12} className="text-[var(--accent)]" /> Pro Tier
                         </div>
                         <div className="absolute -bottom-3 -left-4 md:-left-8 bg-white border border-[var(--border)] rounded-xl px-3 py-2 shadow-lg animate-fade-in-up text-xs font-bold flex items-center gap-1.5" style={{ animationDelay: '500ms' }}>
                             <Target size={12} className="text-[var(--accent)]" /> 3 Gaps Found
@@ -312,9 +313,9 @@ export default function LandingPage() {
                                 iconColor: 'text-rose-600',
                             },
                             {
-                                icon: Zap,
-                                title: 'Spark Credits',
-                                desc: 'Pay only for what you use. Every AI action is measured in Sparks — transparent, predictable, and never wasted.',
+                                icon: Target,
+                                title: 'Smart Usage',
+                                desc: 'Generous monthly limits across all features. Track your progress with transparent usage meters and never lose work.',
                                 accent: 'from-yellow-500/10 to-amber-500/10',
                                 iconColor: 'text-amber-500',
                             },
@@ -404,17 +405,23 @@ export default function LandingPage() {
 
                     <div className="scroll-reveal grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
                         {/* Free */}
-                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-7">
+                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-7 flex flex-col">
                             <h3 className="text-xl font-bold mb-1">Free</h3>
-                            <p className="text-xs font-medium text-amber-500 flex items-center gap-1 mb-4">
-                                <Zap size={12} fill="currentColor" /> 20 Sparks / month
-                            </p>
+                            <p className="text-[var(--muted)] text-sm mb-4">Try it. Find out what you actually know.</p>
                             <div className="flex items-baseline gap-1 mb-5">
                                 <span className="text-4xl font-bold">$0</span>
                                 <span className="text-sm text-[var(--muted)]">/mo</span>
                             </div>
-                            <ul className="space-y-2.5 mb-6">
-                                {['~1 full session/month', 'Basic Strength Map', '3 learning modes', '7-day history'].map((f, i) => (
+                            <ul className="space-y-2.5 mb-6 flex-1">
+                                {[
+                                    '3 sessions per month',
+                                    '5 flashcard generations',
+                                    '3 practice quizzes',
+                                    '10 AI assistant messages',
+                                    '1 Flow Mode session',
+                                    'Basic feedback report',
+                                    'Concept Vault (10 concepts)'
+                                ].map((f, i) => (
                                     <li key={i} className="flex items-center gap-2 text-sm text-[var(--muted)]">
                                         <Check size={14} className="text-emerald-500 shrink-0" /> {f}
                                     </li>
@@ -429,27 +436,32 @@ export default function LandingPage() {
                         </div>
 
                         {/* Pro */}
-                        <div className="relative bg-[var(--bg)] border-2 border-[var(--accent)] rounded-2xl p-7">
+                        <div className="relative bg-[var(--bg)] border-2 border-[var(--accent)] rounded-2xl p-7 flex flex-col">
                             <div className="absolute -top-3 right-6">
                                 <span className="bg-[var(--accent)] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                                    Most Popular
+                                    Recommended
                                 </span>
                             </div>
                             <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
                                 Pro <BrainCircuit size={18} className="text-[var(--accent)]" />
                             </h3>
-                            <p className="text-xs font-medium text-[var(--accent)] flex items-center gap-1 mb-4">
-                                <Zap size={12} fill="currentColor" /> 150 Sparks / month
-                            </p>
+                            <p className="text-[var(--muted)] text-sm mb-4">For students and learners who are serious about understanding, not just finishing.</p>
                             <div className="flex items-baseline gap-1 mb-5">
-                                <span className="text-4xl font-bold">$8</span>
+                                <span className="text-4xl font-bold">$7.99</span>
                                 <span className="text-sm text-[var(--muted)]">/mo</span>
-                                <span className="text-xs text-[var(--accent)] ml-2 px-2 py-0.5 bg-[var(--accent-light)] rounded-full font-semibold">
-                                    Save 33% annually
-                                </span>
                             </div>
-                            <ul className="space-y-2.5 mb-6">
-                                {['~11 full sessions/month', 'Full Cognitive Analysis', 'All 6 learning modes', 'Unlimited history & Vault', 'Sparks roll over'].map((f, i) => (
+                            <ul className="space-y-2.5 mb-6 flex-1">
+                                {[
+                                    '20 sessions per month',
+                                    '50 flashcard generations',
+                                    '30 practice quizzes',
+                                    '150 AI assistant messages',
+                                    '10 Flow Mode sessions',
+                                    '5 Learn Mode curricula',
+                                    'Full cognitive feedback',
+                                    '20 Deep Dives',
+                                    'Concept Vault up to 200'
+                                ].map((f, i) => (
                                     <li key={i} className="flex items-center gap-2 text-sm text-[var(--muted)]">
                                         <Check size={14} className="text-[var(--accent)] shrink-0" /> {f}
                                     </li>

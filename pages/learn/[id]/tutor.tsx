@@ -1,19 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { useSparks } from '@/hooks/useSparks';
-import { Zap, CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, MessageSquare, Send, AlertTriangle, ArrowRight } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 
 export default function TutorMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user } = useAuth();
+    const { isAllowed, increment, refresh } = useUsage('ai_messages');
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [sessionData, setSessionData] = useState<any>(null);
@@ -21,18 +23,15 @@ export default function TutorMode() {
     const [inputStr, setInputStr] = useState('');
     const [sending, setSending] = useState(false);
     const [isPro, setIsPro] = useState(false);
-    const [proMode, setProMode] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
-    const { balance } = useSparks();
     const [weakConcepts, setWeakConcepts] = useState<any[]>([]);
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
 
     useEffect(() => {
         if (!id) return;
 
         const initDeck = async () => {
             try {
-                const proStatus = user?.subscriptionTier === 'pro' || user?.plan === 'pro';
+                const proStatus = user?.subscriptionTier === 'pro' || user?.plan === 'pro' || user?.subscriptionTier === 'proplus';
                 setIsPro(proStatus);
 
                 const stored = localStorage.getItem('serify_feedback_report');
@@ -118,10 +117,6 @@ export default function TutorMode() {
                         }
                     } else {
                         const errorData = await startRes.json().catch(() => ({}));
-                        if (errorData.error === 'out_of_sparks') {
-                            setIsOutOfSparksModalOpen(true);
-                            throw new Error('You are out of Sparks.');
-                        }
                         throw new Error(errorData.error || 'Could not initialize tutor session');
                     }
                 }
@@ -142,6 +137,7 @@ export default function TutorMode() {
 
     const sendMessage = async () => {
         if (!inputStr.trim() || sending) return;
+        if (!isAllowed) return;
 
         const userMsg = { role: 'user', content: inputStr };
         const newMessages = [...messages, userMsg];
@@ -162,28 +158,14 @@ export default function TutorMode() {
                 headers,
                 body: JSON.stringify({
                     messages: newMessages,
-                    sessionContext: sessionData,
-                    proMode
+                    sessionContext: sessionData
                 })
             });
 
             if (res.ok) {
                 const data = await res.json();
                 setMessages((prev) => [...prev, { role: 'model', content: data.reply }]);
-            } else if (res.status === 403) {
-                const data = await res.json();
-                if (data.error === 'out_of_sparks') {
-                    setIsOutOfSparksModalOpen(true);
-                    setMessages((prev) => [
-                        ...prev,
-                        { role: 'model', content: 'You are out of Sparks and cannot continue this specific chat. [Get more Sparks](/sparks) to start a new session or refresh your balance.' }
-                    ]);
-                } else {
-                    setMessages((prev) => [
-                        ...prev,
-                        { role: 'model', content: 'Sorry, I ran into an error.' }
-                    ]);
-                }
+                increment();
             } else {
                 setMessages((prev) => [
                     ...prev,
@@ -244,41 +226,6 @@ export default function TutorMode() {
         router.push(`/session/${id}/feedback`);
     };
 
-    const isActuallyPro = user?.subscriptionTier === 'pro' || user?.plan === 'pro';
-
-    if (!loading && !isActuallyPro) {
-        return (
-            <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
-                <div className="max-w-[500px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center mb-6 text-3xl shadow-lg">
-                        🧠
-                    </div>
-                    <h2 className="text-3xl font-display mb-4 text-center">
-                        AI Tutor is a Pro Feature
-                    </h2>
-                    <p className="text-[var(--muted)] text-center mb-8 text-lg leading-relaxed">
-                        Upgrade to Serify Pro to get 1-on-1 personalized tutoring directly connected
-                        to your learning gaps and Concept Vault.
-                    </p>
-                    <div className="flex flex-col gap-4 w-full sm:w-auto">
-                        <Link
-                            href="/pricing"
-                            className="px-8 py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all text-center shadow-md shadow-indigo-500/20"
-                        >
-                            Upgrade to Pro
-                        </Link>
-                        <Link
-                            href={`/session/${id}/feedback`}
-                            className="px-8 py-3.5 bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-xl font-medium hover:bg-black/5 transition-all text-center"
-                        >
-                            Return to Report
-                        </Link>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-[var(--background)]">
@@ -291,8 +238,8 @@ export default function TutorMode() {
         return (
             <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
                 <div className="max-w-[500px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24 text-center">
-                    <div className="w-20 h-20 rounded-2xl bg-[var(--warn-light)] text-[var(--warn)] flex items-center justify-center mb-6 text-3xl shadow-lg">
-                        ⚠️
+                    <div className="w-20 h-20 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mb-6 text-3xl shadow-lg">
+                        <AlertTriangle size={40} />
                     </div>
                     <h2 className="text-3xl font-display mb-4 text-center">
                         Initialization Failed
@@ -323,7 +270,6 @@ export default function TutorMode() {
                     </div>
                     <div className="space-y-1">
                         {weakConcepts.map((c: any, idx: number) => {
-                            // In tutor mode, they are all being "addressed" potentially
                             return (
                                 <div
                                     key={c.id}
@@ -337,29 +283,23 @@ export default function TutorMode() {
                             );
                         })}
                     </div>
+
+                    <div className="px-3 mt-auto pt-4">
+                        <UsageWarning feature="ai_messages" />
+                    </div>
                 </div>
             }
         >
-            <Head>
-                <title>AI Tutor | Serify</title>
-            </Head>
+            <SEO title="AI Tutor" />
 
             <div className="h-[calc(100vh-64px)] flex flex-col overflow-hidden bg-[var(--background)]">
-                { }
                 <header className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-white/80 backdrop-blur-md z-10 shrink-0">
                     <div className="font-medium flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         <span className="font-bold">Serify Tutor</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-[var(--surface)] text-[var(--accent)] border border-[var(--border)] rounded-full text-xs font-semibold whitespace-nowrap">
-                            <Zap className="w-3.5 h-3.5 fill-[var(--accent)] text-[var(--accent)]" />
-                            <span>{balance?.total_sparks || 0}</span>
-                        </div>
-                    </div>
                 </header>
 
-                { }
                 <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 flex flex-col items-center">
                     <div className="w-full max-w-[800px] flex flex-col gap-6 pb-20">
                         {messages.map((msg, i) => (
@@ -406,58 +346,35 @@ export default function TutorMode() {
                     </div>
                 </main>
 
-                { }
                 <footer className="p-4 md:p-6 bg-white border-t border-[var(--border)] shrink-0">
                     <div className="max-w-[800px] mx-auto relative flex flex-col gap-2">
-                        <div className="flex justify-end pr-2">
-                            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-3 py-1.5 rounded-full shadow-sm border border-[var(--border)]">
-                                <input
-                                    type="checkbox"
-                                    checked={proMode}
-                                    onChange={(e) => setProMode(e.target.checked)}
-                                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-3.5 h-3.5"
+                        <UsageGate feature="ai_messages">
+                            <div className="relative flex items-end gap-2">
+                                <textarea
+                                    value={inputStr}
+                                    onChange={(e) => setInputStr(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            sendMessage();
+                                        }
+                                    }}
+                                    placeholder="Message your tutor..."
+                                    className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-5 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none min-h-[60px] max-h-[200px]"
+                                    rows={1}
                                 />
-                                <span><strong className="text-amber-500">Pro Mode</strong> (5x Sparks)</span>
-                            </label>
-                        </div>
-                        <div className="relative flex items-end gap-2">
-                            <textarea
-                                value={inputStr}
-                                onChange={(e) => setInputStr(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        sendMessage();
-                                    }
-                                }}
-                                placeholder="Message your tutor..."
-                                className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-5 py-4 pr-16 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 resize-none min-h-[60px] max-h-[200px]"
-                                rows={1}
-                            />
-                            <button
-                                onClick={sendMessage}
-                                disabled={!inputStr.trim() || sending}
-                                className="absolute right-3 bottom-3 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                    className="w-5 h-5"
+                                <button
+                                    onClick={sendMessage}
+                                    disabled={!inputStr.trim() || sending}
+                                    className="absolute right-3 bottom-3 p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                                 >
-                                    <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-                                </svg>
-                            </button>
-                        </div>
+                                    <Send size={20} />
+                                </button>
+                            </div>
+                        </UsageGate>
                     </div>
                 </footer>
             </div>
-
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                featureName="AI Tutor"
-            />
         </DashboardLayout>
     );
 }

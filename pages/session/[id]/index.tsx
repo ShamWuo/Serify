@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Pause, X, CheckCircle2, Circle, Zap, ChevronLeft } from 'lucide-react';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import { UsageGate } from '@/components/billing/UsageEnforcement';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { storage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -62,7 +62,7 @@ export default function ActiveSession() {
     const [isFirstSession, setIsFirstSession] = useState(false);
     const [showGuidance1, setShowGuidance1] = useState(false);
     const [showGuidance2, setShowGuidance2] = useState(false);
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
+    const [isUsageLimitModalOpen, setIsUsageLimitModalOpen] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -260,7 +260,7 @@ export default function ActiveSession() {
         };
 
         loadSession();
-    }, [id]);
+    }, [id, token]);
 
     useEffect(() => {
         if (sessionData && (currentIndex > 0 || assessments.length > 0)) {
@@ -465,8 +465,8 @@ export default function ActiveSession() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                if (data.error === 'out_of_sparks') {
-                    setIsOutOfSparksModalOpen(true);
+                if (data.error === 'limit_reached') {
+                    setIsUsageLimitModalOpen(true);
                     setExplanations((prev) => ({
                         ...prev,
                         [qId]: { requesting: false, text: null }
@@ -693,7 +693,7 @@ export default function ActiveSession() {
                                     </span>
                                     {explanations[currentQuestion.id]?.requesting
                                         ? 'Loading hint...'
-                                        : 'Explain this concept (1 Spark)'}
+                                        : 'Explain this concept'}
                                 </button>
                             </div>
                         )}
@@ -794,10 +794,10 @@ export default function ActiveSession() {
                 </div>
             )}
 
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                featureName="Concept Hints"
+            <UsageGate
+                feature="ai_messages"
+                forceShow={isUsageLimitModalOpen}
+                onClose={() => setIsUsageLimitModalOpen(false)}
             />
         </DashboardLayout>
     );

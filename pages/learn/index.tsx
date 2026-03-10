@@ -1,30 +1,25 @@
-/**
- * pages/learn/index.tsx
- * Purpose: Entry point for Learn Mode, allowing users to create custom curricula.
- * Key Logic: Implements a multi-step flow to gather user intent and context, 
- * streams curriculum generation using AI, and manages saved learning paths.
- */
-
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/contexts/AuthContext';
 import Head from 'next/head';
+import { useAuth } from '@/contexts/AuthContext';
+import SEO from '@/components/Layout/SEO';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { supabase } from '@/lib/supabase';
-import { useSparks } from '@/hooks/useSparks';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 import {
     Sparkles,
     ArrowRight,
     BookOpen,
     Trash2,
     AlertTriangle,
-    Zap,
     ChevronRight,
     ChevronLeft,
     Target,
     Brain,
     SkipForward,
-    Loader2
+    Loader2,
+    Lock
 } from 'lucide-react';
 import Link from 'next/link';
 import { experimental_useObject as useObject } from '@ai-sdk/react';
@@ -86,8 +81,9 @@ export default function LearnIndex() {
     const [curriculumToDelete, setCurriculumToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent');
+    const [isGateOpen, setIsGateOpen] = useState(false);
 
-    const { balance, loading: sparksLoading } = useSparks();
+    const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('curricula');
 
     const curriculumInitialValue = {
         title: '', target_description: '', outcomes: [] as string[],
@@ -114,7 +110,8 @@ export default function LearnIndex() {
                 ...init,
                 headers: {
                     ...init?.headers,
-                    Authorization: `Bearer ${token}`
+                    Authorization: token ? `Bearer ${token}` : '',
+                    ...(router.query.demo === 'true' ? { 'x-serify-demo': 'true' } : {})
                 }
             });
         },
@@ -163,13 +160,18 @@ export default function LearnIndex() {
             try {
                 const res = await fetch('/api/serify/save-curriculum', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        Authorization: token ? `Bearer ${token}` : '',
+                        ...(router.query.demo === 'true' ? { 'x-serify-demo': 'true' } : {})
+                    },
                     body: JSON.stringify({ ...toSave, user_input: lastSubmitRef.current?.userInput ?? '' })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || data.message || 'Failed to save curriculum');
                 if (data.curriculumId) {
                     isSavingRef.current = false;
+                    refreshUsage();
                     router.push(`/learn/curriculum/${data.curriculumId}`);
                 } else {
                     throw new Error('Invalid response while saving.');
@@ -199,6 +201,12 @@ export default function LearnIndex() {
 
         if (router.query.autoStart === 'true' && router.query.q && token) {
             const qVal = router.query.q as string;
+
+            if (usage && !usage.allowed) {
+                setIsGateOpen(true);
+                return;
+            }
+
             const pkVal = (router.query.priorKnowledge as string) || '';
             const stVal = (router.query.skipTopics as string) || '';
             const fgVal = (router.query.focusGoal as string) || '';
@@ -265,17 +273,13 @@ export default function LearnIndex() {
         }
     };
 
-    function guessInputType(text: string) {
+    const guessInputType = (text: string) => {
         const lower = text.toLowerCase();
         if (lower.includes('?') || lower.startsWith('how') || lower.startsWith('why')) return 'question';
         if (lower.startsWith('i want to') || lower.includes('understand how') || lower.includes('learn how')) return 'goal';
         if (text.trim().split(' ').length <= 3) return 'concept';
         return 'topic';
-    }
-
-
-
-
+    };
 
     const handleNext = () => {
         if (!inputValue.trim()) return;
@@ -285,8 +289,12 @@ export default function LearnIndex() {
 
     const handleBuildCurriculum = async () => {
         if (!inputValue.trim()) return;
-        setErrorMsg('');
+        if (usage && !usage.allowed) {
+            setIsGateOpen(true);
+            return;
+        }
 
+        setErrorMsg('');
         setIsGenerating(true);
         setStep('generating');
         retryCountRef.current = 0;
@@ -360,8 +368,6 @@ export default function LearnIndex() {
             </div>
         );
     };
-
-    const hasEnoughSparks = !sparksLoading && balance && balance.total_sparks >= 2;
 
     return (
         <DashboardLayout>
@@ -527,21 +533,45 @@ export default function LearnIndex() {
                                 </div>
                             )}
 
+                            {usage && (
+                                <div className="mt-6">
+                                    <UsageWarning feature="curricula" usage={usage} />
+                                </div>
+                            )}
+
                             <div className="mt-6 flex items-center justify-between">
                                 <div className="text-xs text-[var(--muted)] flex items-center gap-1">
-                                    <Zap size={12} className="text-[var(--accent)]" />
-                                    Costs 2 Sparks · You have {balance?.total_sparks ?? '...'}
+                                    New curriculum generation
                                 </div>
                                 <button
                                     onClick={handleBuildCurriculum}
-                                    disabled={!hasEnoughSparks}
-                                    className="h-11 px-6 rounded-xl font-semibold bg-[var(--accent)] text-white flex items-center gap-2 hover:bg-[var(--accent)]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-[var(--accent)]/20"
+                                    disabled={usageLoading}
+                                    className={`h-11 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-sm ${usage && !usage.allowed
+                                        ? 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-60'
+                                        : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-[var(--accent)]/20 shadow-lg'
+                                        }`}
                                 >
-                                    <Sparkles size={16} />
-                                    Build Curriculum
-                                    <ArrowRight size={16} />
+                                    {usageLoading ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : usage && !usage.allowed ? (
+                                        <>
+                                            <Lock size={16} /> Limit Reached
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={16} /> Build Curriculum <ArrowRight size={16} />
+                                        </>
+                                    )}
                                 </button>
                             </div>
+
+                            {usage && !usage.allowed && (
+                                <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm animate-fade-in">
+                                    <p className="font-bold mb-1">Monthly Limit Reached</p>
+                                    <p className="opacity-80">You&apos;ve generated all {usage.limit} curricula for this month. Upgrade to Pro for 5 or Pro+ for unlimited.</p>
+                                    <Link href="/pricing" className="inline-block mt-3 font-bold text-amber-800 underline">View Plans &rarr;</Link>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -644,6 +674,8 @@ export default function LearnIndex() {
                     )}
                 </div>
             </div>
+
+            {isGateOpen && <UsageGate feature="curricula" onClose={() => setIsGateOpen(false)} />}
         </DashboardLayout>
     );
 }

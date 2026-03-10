@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
 import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 
 // ────────────────────────────────────────────────────────────
 // Small utilities
@@ -42,7 +44,7 @@ function StepIcon({ type }: { type: FlowStepType }) {
         reinforce: <Replace size={16} />,
         confirm: <CheckCircle2 size={16} />,
     };
-    return MAP[type] || <Zap size={16} />;
+    return MAP[type] || <Brain size={16} />;
 }
 
 function ActionButton({ label, icon, primary, secondary, onClick, disabled }: {
@@ -386,6 +388,7 @@ export default function CurriculumFlowSessionPage() {
     const [conceptJustCompleted, setConceptJustCompleted] = useState(false);
 
     const [conceptStatuses, setConceptStatuses] = useState<Record<string, 'not_started' | 'in_progress' | 'completed'>>({});
+    const [isLimitReached, setIsLimitReached] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [stepping, setStepping] = useState(false);
@@ -434,6 +437,7 @@ export default function CurriculumFlowSessionPage() {
                 const data = await res.json();
                 if (!res.ok) {
                     if (data.error === 'Curriculum already completed') { setSessionDone(true); setLoading(false); return; }
+                    if (data.error === 'limit_reached') { setIsLimitReached(true); setLoading(false); return; }
                     throw new Error(data.error || 'Failed to initialize session');
                 }
                 setFlowSessionId(data.flowSessionId);
@@ -595,7 +599,7 @@ export default function CurriculumFlowSessionPage() {
         } finally {
             setStepping(false);
         }
-    }, [flowSession, currentConcept, stepping, fetchError, conceptStatuses]);
+    }, [flowSession, currentConcept, stepping, conceptStatuses]);
 
     // ── Auto-fetch first step when concept changes ──────────
     useEffect(() => {
@@ -754,6 +758,16 @@ export default function CurriculumFlowSessionPage() {
     // ────────────────────────────────────────────────────────
     // Render states
     // ────────────────────────────────────────────────────────
+
+    if (isLimitReached) {
+        return (
+            <DashboardLayout>
+                <div className="flex items-center justify-center min-h-[70vh] p-6">
+                    <UsageGate feature="flow_sessions" />
+                </div>
+            </DashboardLayout>
+        );
+    }
 
     if (loading) {
         return (

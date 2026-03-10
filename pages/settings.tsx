@@ -1,7 +1,6 @@
 import Head from 'next/head';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSparks } from '@/hooks/useSparks';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -19,9 +18,7 @@ import {
 } from 'lucide-react';
 
 export default function Settings() {
-    const { user, loading: authLoading } = useAuth();
-    const { balance, loading: sparksLoading } = useSparks();
-    const loading = authLoading || sparksLoading;
+    const { user, loading } = useAuth();
     const [notificationsActive, setNotificationsActive] = useState(true);
     const [aiTutorEnabled, setAiTutorEnabled] = useState(false);
 
@@ -184,9 +181,9 @@ export default function Settings() {
                                     Plan: <span className={user?.plan === 'pro' ? 'text-[var(--accent)]' : 'text-[var(--text)]'}>{user?.plan === 'pro' ? 'Pro Tier' : 'Free Tier'}</span>
                                 </h3>
                                 <p className="text-sm text-[var(--muted)] mt-1 ml-7">
-                                    {user?.plan === 'pro'
-                                        ? 'Unlimited sessions. Full Knowledge Graph.'
-                                        : '3 sessions per month. No Knowledge Graph.'}
+                                    {user?.plan === 'pro' || user?.plan === 'proplus'
+                                        ? 'Full access to all diagnostic features.'
+                                        : 'Limited diagnostic sessions per month.'}
                                 </p>
                             </div>
                             <button
@@ -197,16 +194,16 @@ export default function Settings() {
                             </button>
                         </div>
                         <Link
-                            href="/settings/sparks"
+                            href="/settings/billing"
                             className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-colors block"
                         >
                             <div className="flex items-center gap-3 font-medium">
-                                <Zap size={18} className="text-amber-500" fill="currentColor" />{' '}
-                                Spark History & Balance
+                                <CreditCard size={18} className="text-[var(--accent)]" />{' '}
+                                Plan Details & Billing History
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                                    {balance?.total_sparks || 0} Sparks
+                                <span className="text-sm font-bold text-[var(--accent)] bg-[var(--accent)]/5 px-2 py-1 rounded-lg border border-[var(--accent)]/10">
+                                    {user?.plan || 'Free'}
                                 </span>
                                 <ChevronRight size={16} className="text-[var(--muted)]" />
                             </div>

@@ -6,9 +6,9 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -233,9 +233,7 @@ export default function ExplainMode() {
                 </div>
             }
         >
-            <Head>
-                <title>Explain It To Me | Serify</title>
-            </Head>
+            <SEO title="Explain It To Me" />
 
             <main className="max-w-[700px] mx-auto p-6 md:p-12 pb-32">
                 <h1 className="text-3xl md:text-4xl font-display mb-8 text-[var(--text)]">

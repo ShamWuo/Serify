@@ -16,8 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const hasSparks = (await checkUsage(userId, 'flow_sessions')).allowed;
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+    if (!hasUsage) {
         return res.status(403).json({
             error: 'limit_reached',
             message: 'You have reached your feature limit.'
@@ -101,7 +101,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         overallStrategy: `Curriculum: ${curriculum.title}`
                     },
                     concepts_completed: [],
-                    total_sparks_spent: 0,
                     status: 'active'
                 })
                 .select('id')
@@ -114,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             flowSessionId = flowSession.id;
 
-            // Deduct sparks once per new session start
+            // Deduct usage once per new session start
             (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
             // Link this session to the current concept progress
