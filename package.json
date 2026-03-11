@@ -17,6 +17,7 @@
         "@supabase/supabase-js": "^2.97.0",
         "@types/canvas-confetti": "^1.9.0",
         "@types/node": "^20.8.0",
+        "@vercel/speed-insights": "^2.0.0",
         "ai": "^6.0.116",
         "autoprefixer": "^10.4.16",
         "canvas-confetti": "^1.9.4",
