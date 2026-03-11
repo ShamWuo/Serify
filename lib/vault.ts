@@ -1,40 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../types/db_types_new';
 import { MasteryHistoryEntry, MasteryState, ConceptSynthesis } from '../types/serify';
-import { parseJSON } from './serify-ai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-
-async function callFlashAI(prompt: string, jsonMode: boolean = true): Promise<string> {
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: jsonMode
-            ? {
-                  responseMimeType: 'application/json',
-                  maxOutputTokens: 1000,
-                  temperature: 0.1
-              }
-            : { temperature: 0.1 }
-    });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-}
-
-async function callProAI(prompt: string, jsonMode: boolean = true): Promise<string> {
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        generationConfig: jsonMode
-            ? {
-                  responseMimeType: 'application/json',
-                  maxOutputTokens: 1000,
-                  temperature: 0.1
-              }
-            : { temperature: 0.1 }
-    });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-}
+import { parseJSON, getGeminiModel } from './serify-ai';
 
 type DbClient = SupabaseClient<Database>;
 
@@ -105,47 +72,146 @@ export async function findOrCreateConceptNode(
     userId: string,
     conceptName: string,
     sessionId: string,
-    definition: string
+    definition: string,
+    parentConceptId?: string
 ): Promise<any> {
-    const { data: exact } = await db
+    try {
+        const { data: exact, error: exactError } = await db
+            .from('knowledge_nodes')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('canonical_name', conceptName.toLowerCase())
+            .maybeSingle();
+
+        if (exact) {
+            // If it exists but lacks a parent and we have one, update it
+            if (!exact.parent_concept_id && parentConceptId) {
+                await db.from('knowledge_nodes')
+                    .update({ parent_concept_id: parentConceptId, is_sub_concept: true })
+                    .eq('id', exact.id);
+            }
+            return exact;
+        }
+
+        const similar = await findSimilarConcept(db, userId, conceptName);
+
+        if (similar) {
+            const updatedSessionIds = Array.from(new Set([...(similar.session_ids || []), sessionId]));
+            const updatePayload: any = {
+                display_name: conceptName,
+                session_count: (similar.session_count || 0) + 1,
+                session_ids: updatedSessionIds as any,
+                last_seen_at: new Date().toISOString()
+            };
+
+            if (!similar.parent_concept_id && parentConceptId) {
+                updatePayload.parent_concept_id = parentConceptId;
+                updatePayload.is_sub_concept = true;
+            }
+
+            const { data: updated } = await db
+                .from('knowledge_nodes')
+                .update(updatePayload)
+                .eq('id', similar.id)
+                .select()
+                .maybeSingle();
+            if (updated) return updated;
+        }
+
+        const newNodeId = crypto.randomUUID();
+        const { data: inserted, error } = await db
+            .from('knowledge_nodes')
+            .insert({
+                id: newNodeId,
+                user_id: userId,
+                canonical_name: conceptName.toLowerCase(),
+                display_name: conceptName,
+                definition,
+                current_mastery: 'revisit',
+                mastery_history: [],
+                session_count: 1,
+                session_ids: [sessionId] as any,
+                first_seen_at: new Date().toISOString(),
+                last_seen_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                parent_concept_id: parentConceptId || null,
+                is_sub_concept: !!parentConceptId
+            })
+            .select()
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error creating concept node:', error);
+            // If insert failed (maybe race condition), try one last fetch
+            const { data: retryFetch } = await db
+                .from('knowledge_nodes')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('canonical_name', conceptName.toLowerCase())
+                .maybeSingle();
+            return retryFetch;
+        }
+        return inserted;
+    } catch (err) {
+        console.error('Critical error in findOrCreateConceptNode:', err);
+        return null;
+    }
+}
+
+export async function upsertCategory(db: DbClient, userId: string, categoryName: string): Promise<any> {
+    const { data: existing } = await db
+        .from('vault_categories')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('name', categoryName)
+        .single();
+
+    if (existing) return existing;
+
+    const { data: inserted } = await db
+        .from('vault_categories')
+        .insert({
+            id: crypto.randomUUID(),
+            user_id: userId,
+            name: categoryName
+        })
+        .select()
+        .single();
+
+    return inserted;
+}
+
+export async function upsertParentConcept(db: DbClient, userId: string, categoryId: string, parentName: string, parentDefinition: string): Promise<any> {
+    const { data: existing } = await db
         .from('knowledge_nodes')
         .select('*')
         .eq('user_id', userId)
-        .eq('canonical_name', conceptName.toLowerCase())
+        .eq('is_sub_concept', false)
+        .eq('canonical_name', parentName.toLowerCase())
         .single();
 
-    if (exact) return exact;
-
-    const similar = await findSimilarConcept(db, userId, conceptName);
-
-    if (similar) {
-        const updatedSessionIds = [...(similar.session_ids || []), sessionId];
-        const { data: updated } = await db
-            .from('knowledge_nodes')
-            .update({
-                display_name: conceptName,
-                session_count: (similar.session_count || 0) + 1,
-                session_ids: updatedSessionIds,
-                last_seen_at: new Date().toISOString()
-            })
-            .eq('id', similar.id)
-            .select()
-            .single();
-        if (updated) return updated;
+    if (existing) {
+        if (existing.category_id !== categoryId) {
+            await db.from('knowledge_nodes').update({ category_id: categoryId }).eq('id', existing.id);
+        }
+        return existing;
     }
 
-    const { data: inserted, error } = await db
+    const { data: inserted } = await db
         .from('knowledge_nodes')
         .insert({
             id: crypto.randomUUID(),
             user_id: userId,
-            canonical_name: conceptName.toLowerCase(),
-            display_name: conceptName,
-            definition,
+            canonical_name: parentName.toLowerCase(),
+            display_name: parentName,
+            definition: parentDefinition,
+            category_id: categoryId,
+            is_sub_concept: false,
             current_mastery: 'revisit',
             mastery_history: JSON.parse(JSON.stringify([])),
-            session_count: 1,
-            session_ids: [sessionId] as any,
+            session_count: 0,
+            session_ids: [] as any,
             first_seen_at: new Date().toISOString(),
             last_seen_at: new Date().toISOString(),
             created_at: new Date().toISOString(),
@@ -154,121 +220,96 @@ export async function findOrCreateConceptNode(
         .select()
         .single();
 
-    if (error) console.error('Error creating concept node:', error);
     return inserted;
 }
 
-export async function upsertTopic(db: DbClient, userId: string, topicName: string): Promise<any> {
-    const { data: existing } = await db
-        .from('concept_topics')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('name', topicName)
-        .single();
-
-    if (existing) return existing;
-
-    const { data: inserted } = await db
-        .from('concept_topics')
-        .insert({
-            id: crypto.randomUUID(),
-            user_id: userId,
-            name: topicName,
-            concept_count: 0
-        })
-        .select()
-        .single();
-
-    return inserted;
-}
-
-export async function refreshTopicCounts(db: DbClient, userId: string) {
-    const { data: topics } = await db.from('concept_topics').select('id').eq('user_id', userId);
-
-    if (!topics) return;
-
-    for (const topic of topics) {
-        const { count, data } = await db
-            .from('knowledge_nodes')
-            .select('current_mastery', { count: 'exact' })
-            .eq('topic_id', topic.id);
-
-        let dominant_mastery = null;
-        if (data && data.length > 0) {
-            const counts: Record<string, number> = {
-                solid: 0,
-                developing: 0,
-                shaky: 0,
-                revisit: 0
-            };
-            data.forEach((d) => counts[d.current_mastery]++);
-            dominant_mastery = Object.keys(counts).reduce((a, b) =>
-                counts[a] > counts[b] ? a : b
-            );
-        }
-
-        await db
-            .from('concept_topics')
-            .update({
-                concept_count: count || 0,
-                dominant_mastery,
-                last_updated_at: new Date().toISOString()
-            })
-            .eq('id', topic.id);
-    }
-}
-
-export async function updateTopicClusters(db: DbClient, userId: string) {
+export async function updateVaultHierarchy(db: DbClient, userId: string) {
+    // Get ALL sub-concepts that need organizing (we re-cluster unorganized ones, but provide context of existing structured ones)
     const { data: concepts } = await db
         .from('knowledge_nodes')
-        .select('id, canonical_name, definition, topic_id')
-        .eq('user_id', userId);
+        .select('id, display_name, canonical_name, definition, category_id, parent_concept_id')
+        .eq('user_id', userId)
+        // Only target sub-concepts (or unclassified ones that should become sub-concepts)
+        .neq('is_sub_concept', false);
 
-    if (!concepts || concepts.length < 3) return;
+    if (!concepts || concepts.length < 2) return;
 
-    const unclassified = concepts.filter((c) => !c.topic_id);
-    if (unclassified.length < 1) {
-        console.log(`[vault] Skipping clustering: no unclassified concepts`);
+    // We focus on assigning unclassified concepts. For now, let's just pick those that lack a parent_concept_id.
+    const unclassified = concepts.filter((c) => !c.parent_concept_id);
+    if (unclassified.length === 0) {
+        console.log(`[vault] Hierarchy is up to date.`);
         return;
     }
 
     try {
-        const prompt = `
-            Group these concepts into logical topics.
-            JSON Format: [{ "topicName": "Topic Name", "conceptIds": ["id1", "id2"] }]
+        const { data: existingCategories } = await db.from('vault_categories').select('name').eq('user_id', userId);
+        const { data: existingParents } = await db.from('knowledge_nodes').select('display_name').eq('user_id', userId).eq('is_sub_concept', false);
 
-            Concepts:
-            ${concepts.map((c) => `- ${c.canonical_name}: ${c.definition}`).join('\n')}
+        const catList = (existingCategories || []).map((c: any) => c.name).join(', ');
+        const parentList = (existingParents || []).map(p => p.display_name).join(', ');
+
+        const prompt = `
+            Your goal is to organize granular concepts into a 2-level hierarchy: 
+            Category -> General Parent Concept -> [List of Granular Concept IDs]
+
+            Existing Categories: [${catList || 'None yet'}]
+            Existing General Concepts: [${parentList || 'None yet'}]
+
+            INSTRUCTIONS:
+            1. Group the provided concepts into General Parent Concepts (e.g., "Transformer Architecture"). Sub-concepts should be specific details.
+            2. Assign each General Parent Concept to a broad Category (e.g., "Machine Learning", "Mathematics"). 
+            3. Use predefined broad categories if possible: Science & Mathematics, Technology & Engineering, Humanities & Arts, Business & Economics, Health & Medicine, Social Sciences, Languages & Communication, Practical & Life Skills. If a concept doesn't fit, put it in "Other".
+            4. If a concept belongs to an existing General Concept or Category from the lists above, reuse the exact name.
+            5. Return a JSON array.
+
+            JSON Format:
+            [
+              {
+                "categoryName": "Machine Learning",
+                "parentConcepts": [
+                  {
+                    "parentName": "Transformer Architecture",
+                    "parentDefinition": "A neural network architecture based on self-attention mechanisms.",
+                    "subConceptIds": ["id1", "id2"]
+                  }
+                ]
+              }
+            ]
+
+            CONCEPTS TO GROUP:
+            ${unclassified.map((c) => `- ${c.display_name} (ID: ${c.id}): ${c.definition}`).join('\n')}
         `;
 
-        const responseString = await callFlashAI(prompt);
-        // Clean markdown block matching standard lib/serify-ai format
-        const cleanJsonString = responseString
-            .replace(/^```json\s*/m, '')
-            .replace(/```$/m, '')
-            .trim();
-        const clusters = JSON.parse(cleanJsonString) as {
-            topicName: string;
-            conceptIds: string[];
+        const model = getGeminiModel('free');
+        const result = await model.generateContent(prompt);
+        const hierarchy = parseJSON<any>(result.response.text()) as {
+            categoryName: string;
+            parentConcepts: {
+                parentName: string;
+                parentDefinition: string;
+                subConceptIds: string[];
+            }[];
         }[];
 
-        // Upsert topics and assign concepts
-        for (const cluster of clusters) {
-            const topic = await upsertTopic(db, userId, cluster.topicName);
+        for (const cat of hierarchy) {
+            const categoryObj = await upsertCategory(db, userId, cat.categoryName);
+            for (const parent of cat.parentConcepts) {
+                const parentObj = await upsertParentConcept(db, userId, categoryObj.id, parent.parentName, parent.parentDefinition);
 
-            await db
-                .from('knowledge_nodes')
-                .update({
-                    topic_id: topic.id,
-                    topic_name: topic.name
-                })
-                .in('id', cluster.conceptIds);
+                // Update children
+                if (parent.subConceptIds && parent.subConceptIds.length > 0) {
+                    await db.from('knowledge_nodes')
+                        .update({
+                            category_id: categoryObj.id,
+                            parent_concept_id: parentObj.id,
+                            is_sub_concept: true
+                        })
+                        .in('id', parent.subConceptIds);
+                }
+            }
         }
-
-        // Update concept counts per topic
-        await refreshTopicCounts(db, userId);
     } catch (err) {
-        console.error('Failed to update topic clusters', err);
+        console.error('Failed to update vault hierarchy', err);
     }
 }
 
@@ -347,13 +388,9 @@ export async function generateConceptSynthesis(
         }
       `;
 
-        // Switch to Flash for cost savings
-        const responseString = await callFlashAI(prompt);
-        const cleanJsonString = responseString
-            .replace(/^```json\s*/m, '')
-            .replace(/```$/m, '')
-            .trim();
-        const synthesisResult = JSON.parse(cleanJsonString);
+        const model = getGeminiModel('free');
+        const result = await model.generateContent(prompt);
+        const synthesisResult = parseJSON<any>(result.response.text());
 
         const synthesis: ConceptSynthesis = {
             ...synthesisResult,

@@ -48,6 +48,8 @@ export default function CurriculumSidebar({
 
             <div className="space-y-1 overflow-y-auto pr-2 custom-scrollbar">
                 {concepts.map((concept, i) => {
+                    // Show all concepts in the sidebar
+
                     const conceptId = concept.conceptId || concept.id || '';
                     const conceptName = concept.conceptName || concept.name || '';
                     const status = conceptStatuses[conceptId] || 'not_started';
@@ -62,10 +64,10 @@ export default function CurriculumSidebar({
                             disabled={!isClickable && !isCurrent}
                             onClick={() => isClickable && onConceptClick(i)}
                             className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl transition-all duration-200 group relative text-left ${isCurrent
-                                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
-                                    : isCompleted
-                                        ? 'text-emerald-600 hover:bg-emerald-50'
-                                        : 'text-[var(--muted)] opacity-60'
+                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
+                                : isCompleted
+                                    ? 'text-emerald-600 hover:bg-emerald-50'
+                                    : 'text-[var(--muted)] opacity-60'
                                 } ${isClickable || isCurrent ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                         >
                             <div className="flex items-center gap-3 min-w-0">
@@ -77,7 +79,7 @@ export default function CurriculumSidebar({
                                             <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
                                         </div>
                                     ) : (
-                                        <Lock size={14} className="opacity-40" />
+                                        <div className="w-4 h-4 rounded-full border border-[var(--border)]" />
                                     )}
                                 </div>
                                 <span className="text-xs tracking-wide truncate">

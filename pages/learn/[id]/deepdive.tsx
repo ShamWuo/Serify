@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
-import { CheckCircle2 } from 'lucide-react';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import { CheckCircle2, AlertTriangle, ArrowRight, Brain, Check } from 'lucide-react';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 
 export default function DeepDiveMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user } = useAuth();
+    const { isAllowed, increment, refresh } = useUsage('deep_dives');
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [sessionData, setSessionData] = useState<any>(null);
@@ -22,13 +25,11 @@ export default function DeepDiveMode() {
     const [deepDive, setDeepDive] = useState<any>(null);
     const [generating, setGenerating] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
-    const [proMode, setProMode] = useState(false);
 
     const [answer, setAnswer] = useState('');
     const [evaluating, setEvaluating] = useState(false);
     const [feedback, setFeedback] = useState<any>(null);
     const [isComplete, setIsComplete] = useState(false);
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -97,6 +98,8 @@ export default function DeepDiveMode() {
     }, [id, router]);
 
     const generateDeepDive = async (concept: any) => {
+        if (!isAllowed) return;
+
         setGenerating(true);
         try {
             const {
@@ -113,18 +116,18 @@ export default function DeepDiveMode() {
                 {
                     method: 'POST',
                     headers,
-                    body: JSON.stringify({ concept, proMode })
+                    body: JSON.stringify({ concept })
                 }
             );
 
             if (res.ok) {
                 const data = await res.json();
                 setDeepDive(data.content);
+                // Increment usage
+                increment();
+                refresh();
             } else {
                 const errorData = await res.json().catch(() => ({}));
-                if (errorData.error === 'out_of_sparks') {
-                    setIsOutOfSparksModalOpen(true);
-                }
                 setError(errorData.error || 'Failed to generate deep dive.');
             }
         } catch (e: any) {
@@ -208,35 +211,30 @@ export default function DeepDiveMode() {
         return (
             <div className="flex flex-col items-center pt-32 min-h-screen bg-[var(--background)] px-6">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center mb-6 text-3xl shadow-lg">
-                    🧠
+                    <Brain size={40} />
                 </div>
                 <h2 className="text-3xl font-display mb-4 text-center text-[var(--text)]">
                     Deep Dive: {targetConcept.name}
                 </h2>
                 <p className="text-[var(--muted)] text-center mb-8 text-lg max-w-[500px]">
-                    Let's break down this concept and fix the exact areas you struggled with.
+                    Let&apos;s break down this concept and fix the exact areas you struggled with.
                 </p>
 
-                <div className="flex flex-col items-center gap-6">
-                    <button
-                        onClick={() => {
-                            setHasStarted(true);
-                            generateDeepDive(targetConcept);
-                        }}
-                        className="px-8 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10"
-                    >
-                        Generate Deep Dive
-                    </button>
+                <div className="flex flex-col items-center gap-6 w-full max-w-sm">
+                    <UsageGate feature="deep_dives">
+                        <button
+                            onClick={() => {
+                                setHasStarted(true);
+                                generateDeepDive(targetConcept);
+                            }}
+                            className="w-full px-8 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10 flex items-center justify-center gap-2"
+                        >
+                            Generate Deep Dive
+                            <ArrowRight size={20} />
+                        </button>
+                    </UsageGate>
 
-                    <label className="flex items-center gap-3 cursor-pointer text-sm font-medium text-[var(--muted)] hover:text-indigo-600 transition-colors bg-[var(--surface)] px-4 py-2.5 rounded-full shadow-sm border border-[var(--border)]">
-                        <input
-                            type="checkbox"
-                            checked={proMode}
-                            onChange={(e) => setProMode(e.target.checked)}
-                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 w-4 h-4"
-                        />
-                        <span><strong className="text-amber-500">Pro Mode</strong> (5x Sparks)</span>
-                    </label>
+                    <UsageWarning feature="deep_dives" />
                 </div>
             </div>
         );
@@ -246,8 +244,8 @@ export default function DeepDiveMode() {
         return (
             <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
                 <div className="max-w-[600px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24 text-center">
-                    <div className="w-20 h-20 rounded-full bg-[var(--warn-light)] text-[var(--warn)] flex items-center justify-center mb-6 text-3xl">
-                        ⚠️
+                    <div className="w-20 h-20 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-6 text-3xl">
+                        <AlertTriangle size={40} />
                     </div>
                     <h2 className="text-3xl font-display mb-4">Generation Failed</h2>
                     <p className="text-[var(--muted)] mb-8 text-lg">{error}</p>
@@ -299,12 +297,10 @@ export default function DeepDiveMode() {
                 </div>
             }
         >
-            <Head>
-                <title>Deep Dive | Serify</title>
-            </Head>
+            <SEO title="Deep Dive" />
 
             <main className="max-w-[800px] mx-auto p-6 md:p-8 pb-32">
-                { }
+
                 <div className="mb-12 border-b-2 border-[var(--text)] pb-8">
                     <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-widest rounded-full mb-6 relative">
                         Deep Dive Guide
@@ -314,7 +310,7 @@ export default function DeepDiveMode() {
                     </h1>
                 </div>
 
-                { }
+
                 <div className="space-y-12">
                     {deepDive.sections?.map((section: any, idx: number) => (
                         <section key={idx} className="relative">
@@ -331,7 +327,7 @@ export default function DeepDiveMode() {
                     ))}
                 </div>
 
-                { }
+
                 <div className="mt-24 pt-16 border-t border-[var(--border)]">
                     <div className="max-w-2xl mx-auto bg-white border border-[var(--border)] rounded-3xl p-8 md:p-12 shadow-xl shadow-black/5 relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
@@ -340,9 +336,9 @@ export default function DeepDiveMode() {
                             <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Check Your
                             Understanding
                         </h3>
-                        <p className="text-2xl font-display text-[var(--text)] leading-snug mb-8">
-                            {deepDive.confirmatoryQuestion}
-                        </p>
+                        <div className="text-2xl font-display text-[var(--text)] leading-snug mb-8">
+                            <MarkdownRenderer className="inline-markdown">{deepDive.confirmatoryQuestion}</MarkdownRenderer>
+                        </div>
 
                         {!isComplete ? (
                             <div className="space-y-6">
@@ -372,23 +368,23 @@ export default function DeepDiveMode() {
                                         <h4 className="font-bold text-rose-700 mb-2">
                                             Not quite right...
                                         </h4>
-                                        <p className="text-rose-900 leading-relaxed text-[15px]">
-                                            {feedback.feedback}
-                                        </p>
+                                        <div className="text-rose-900 leading-relaxed text-[15px]">
+                                            <MarkdownRenderer className="inline-markdown">{feedback.feedback}</MarkdownRenderer>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         ) : (
                             <div className="animate-fade-in text-center py-6">
                                 <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center text-4xl mb-6 shadow-inner">
-                                    ✓
+                                    <Check size={40} />
                                 </div>
                                 <h4 className="font-display text-3xl mb-4 text-[var(--text)]">
                                     Nailed it.
                                 </h4>
-                                <p className="text-[var(--text)] leading-relaxed mb-10 text-lg opacity-80">
-                                    {feedback?.feedback}
-                                </p>
+                                <div className="text-[var(--text)] leading-relaxed mb-10 text-lg opacity-80">
+                                    <MarkdownRenderer className="inline-markdown">{feedback?.feedback}</MarkdownRenderer>
+                                </div>
                                 <Link
                                     href={`/session/${id}/feedback`}
                                     className="inline-block px-10 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10"
@@ -400,13 +396,6 @@ export default function DeepDiveMode() {
                     </div>
                 </div>
             </main>
-
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                cost={proMode ? 10 : 2}
-                featureName="Concept Deep Dive"
-            />
         </DashboardLayout>
     );
 }

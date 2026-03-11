@@ -3,8 +3,9 @@ export interface SessionSummary {
     title: string;
     type: string;
     date: string;
-    status: 'In Progress' | 'Completed';
-    result?: 'Strong' | 'Gaps Found' | 'Default';
+    status: 'In Progress' | 'Completed' | 'Practicing' | 'Analyzing';
+    result?: 'Strong' | 'Gaps Found' | 'Default' | 'Ongoing';
+    last_activity: string;
 }
 
 const STORAGE_KEY = 'serify_sessions_history';

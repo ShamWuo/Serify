@@ -291,7 +291,6 @@ export type Database = {
                     feedback: Json;
                     id: string;
                     session_id: string | null;
-                    spark_cost: number | null;
                     submitted_at: string | null;
                     target_concept_id: string | null;
                     target_concept_name: string | null;
@@ -303,7 +302,6 @@ export type Database = {
                     feedback: Json;
                     id?: string;
                     session_id?: string | null;
-                    spark_cost?: number | null;
                     submitted_at?: string | null;
                     target_concept_id?: string | null;
                     target_concept_name?: string | null;
@@ -315,7 +313,6 @@ export type Database = {
                     feedback?: Json;
                     id?: string;
                     session_id?: string | null;
-                    spark_cost?: number | null;
                     submitted_at?: string | null;
                     target_concept_id?: string | null;
                     target_concept_name?: string | null;
@@ -473,7 +470,6 @@ export type Database = {
                     source_type: string | null;
                     started_at: string | null;
                     status: string | null;
-                    total_sparks_spent: number | null;
                     user_id: string | null;
                 };
                 Insert: {
@@ -492,7 +488,6 @@ export type Database = {
                     source_type?: string | null;
                     started_at?: string | null;
                     status?: string | null;
-                    total_sparks_spent?: number | null;
                     user_id?: string | null;
                 };
                 Update: {
@@ -511,7 +506,6 @@ export type Database = {
                     source_type?: string | null;
                     started_at?: string | null;
                     status?: string | null;
-                    total_sparks_spent?: number | null;
                     user_id?: string | null;
                 };
                 Relationships: [];
@@ -527,7 +521,6 @@ export type Database = {
                     id: string;
                     responded_at: string | null;
                     response_type: string | null;
-                    spark_cost: number | null;
                     step_number: number;
                     step_type: string;
                     user_id: string | null;
@@ -543,7 +536,6 @@ export type Database = {
                     id: string;
                     responded_at?: string | null;
                     response_type?: string | null;
-                    spark_cost?: number | null;
                     step_number: number;
                     step_type: string;
                     user_id?: string | null;
@@ -559,7 +551,6 @@ export type Database = {
                     id?: string;
                     responded_at?: string | null;
                     response_type?: string | null;
-                    spark_cost?: number | null;
                     step_number?: number;
                     step_type?: string;
                     user_id?: string | null;
@@ -578,6 +569,7 @@ export type Database = {
             knowledge_nodes: {
                 Row: {
                     canonical_name: string;
+                    category_id: string | null;
                     created_at: string | null;
                     current_mastery: string;
                     definition: string | null;
@@ -585,8 +577,12 @@ export type Database = {
                     first_seen_at: string | null;
                     hint_request_count: number | null;
                     id: string;
+                    is_sub_concept: boolean | null;
+                    is_archived: boolean | null;
+                    added_manually: boolean | null;
                     last_seen_at: string | null;
                     mastery_history: Json;
+                    parent_concept_id: string | null;
                     session_count: number | null;
                     session_ids: string[] | null;
                     skip_count: number | null;
@@ -599,15 +595,20 @@ export type Database = {
                 };
                 Insert: {
                     canonical_name: string;
+                    category_id?: string | null;
                     created_at?: string | null;
                     current_mastery?: string;
                     definition?: string | null;
                     display_name: string;
                     first_seen_at?: string | null;
                     hint_request_count?: number | null;
-                    id: string;
+                    id?: string;
+                    is_sub_concept?: boolean | null;
+                    is_archived?: boolean | null;
+                    added_manually?: boolean | null;
                     last_seen_at?: string | null;
                     mastery_history?: Json;
+                    parent_concept_id?: string | null;
                     session_count?: number | null;
                     session_ids?: string[] | null;
                     skip_count?: number | null;
@@ -620,6 +621,7 @@ export type Database = {
                 };
                 Update: {
                     canonical_name?: string;
+                    category_id?: string | null;
                     created_at?: string | null;
                     current_mastery?: string;
                     definition?: string | null;
@@ -627,8 +629,12 @@ export type Database = {
                     first_seen_at?: string | null;
                     hint_request_count?: number | null;
                     id?: string;
+                    is_sub_concept?: boolean | null;
+                    is_archived?: boolean | null;
+                    added_manually?: boolean | null;
                     last_seen_at?: string | null;
                     mastery_history?: Json;
+                    parent_concept_id?: string | null;
                     session_count?: number | null;
                     session_ids?: string[] | null;
                     skip_count?: number | null;
@@ -811,170 +817,6 @@ export type Database = {
                     }
                 ];
             };
-            spark_balances: {
-                Row: {
-                    subscription_sparks: number | null;
-                    topup_sparks: number | null;
-                    total_sparks: number | null;
-                    trial_sparks: number | null;
-                    updated_at: string | null;
-                    user_id: string;
-                };
-                Insert: {
-                    subscription_sparks?: number | null;
-                    topup_sparks?: number | null;
-                    total_sparks?: number | null;
-                    trial_sparks?: number | null;
-                    updated_at?: string | null;
-                    user_id: string;
-                };
-                Update: {
-                    subscription_sparks?: number | null;
-                    topup_sparks?: number | null;
-                    total_sparks?: number | null;
-                    trial_sparks?: number | null;
-                    updated_at?: string | null;
-                    user_id?: string;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'spark_balances_user_id_fkey';
-                        columns: ['user_id'];
-                        isOneToOne: true;
-                        referencedRelation: 'profiles';
-                        referencedColumns: ['id'];
-                    }
-                ];
-            };
-            spark_grants: {
-                Row: {
-                    expires_at: string | null;
-                    granted_at: string | null;
-                    id: string;
-                    reason: string | null;
-                    sparks_granted: number | null;
-                    sparks_remaining: number | null;
-                    user_id: string | null;
-                };
-                Insert: {
-                    expires_at?: string | null;
-                    granted_at?: string | null;
-                    id?: string;
-                    reason?: string | null;
-                    sparks_granted?: number | null;
-                    sparks_remaining?: number | null;
-                    user_id?: string | null;
-                };
-                Update: {
-                    expires_at?: string | null;
-                    granted_at?: string | null;
-                    id?: string;
-                    reason?: string | null;
-                    sparks_granted?: number | null;
-                    sparks_remaining?: number | null;
-                    user_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'spark_grants_user_id_fkey';
-                        columns: ['user_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'profiles';
-                        referencedColumns: ['id'];
-                    }
-                ];
-            };
-            spark_purchases: {
-                Row: {
-                    expires_at: string | null;
-                    id: string;
-                    pack_id: string | null;
-                    price_cents: number | null;
-                    purchased_at: string | null;
-                    sparks_granted: number | null;
-                    sparks_remaining: number | null;
-                    stripe_payment_intent_id: string | null;
-                    user_id: string | null;
-                };
-                Insert: {
-                    expires_at?: string | null;
-                    id?: string;
-                    pack_id?: string | null;
-                    price_cents?: number | null;
-                    purchased_at?: string | null;
-                    sparks_granted?: number | null;
-                    sparks_remaining?: number | null;
-                    stripe_payment_intent_id?: string | null;
-                    user_id?: string | null;
-                };
-                Update: {
-                    expires_at?: string | null;
-                    id?: string;
-                    pack_id?: string | null;
-                    price_cents?: number | null;
-                    purchased_at?: string | null;
-                    sparks_granted?: number | null;
-                    sparks_remaining?: number | null;
-                    stripe_payment_intent_id?: string | null;
-                    user_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'spark_purchases_user_id_fkey';
-                        columns: ['user_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'profiles';
-                        referencedColumns: ['id'];
-                    }
-                ];
-            };
-            spark_transactions: {
-                Row: {
-                    action: string | null;
-                    amount: number;
-                    balance_after: number | null;
-                    created_at: string | null;
-                    id: string;
-                    pool: string;
-                    reference_id: string | null;
-                    stripe_payment_intent_id: string | null;
-                    transaction_type: string | null;
-                    user_id: string | null;
-                };
-                Insert: {
-                    action?: string | null;
-                    amount: number;
-                    balance_after?: number | null;
-                    created_at?: string | null;
-                    id?: string;
-                    pool: string;
-                    reference_id?: string | null;
-                    stripe_payment_intent_id?: string | null;
-                    transaction_type?: string | null;
-                    user_id?: string | null;
-                };
-                Update: {
-                    action?: string | null;
-                    amount?: number;
-                    balance_after?: number | null;
-                    created_at?: string | null;
-                    id?: string;
-                    pool?: string;
-                    reference_id?: string | null;
-                    stripe_payment_intent_id?: string | null;
-                    transaction_type?: string | null;
-                    user_id?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'spark_transactions_user_id_fkey';
-                        columns: ['user_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'profiles';
-                        referencedColumns: ['id'];
-                    }
-                ];
-            };
             trigger_debug_logs: {
                 Row: {
                     created_at: string | null;
@@ -1004,7 +846,6 @@ export type Database = {
                     message_count: number | null;
                     messages: Json;
                     session_id: string | null;
-                    spark_cost: number | null;
                     started_at: string | null;
                     user_id: string | null;
                 };
@@ -1015,7 +856,6 @@ export type Database = {
                     message_count?: number | null;
                     messages?: Json;
                     session_id?: string | null;
-                    spark_cost?: number | null;
                     started_at?: string | null;
                     user_id?: string | null;
                 };
@@ -1026,7 +866,6 @@ export type Database = {
                     message_count?: number | null;
                     messages?: Json;
                     session_id?: string | null;
-                    spark_cost?: number | null;
                     started_at?: string | null;
                     user_id?: string | null;
                 };
@@ -1086,28 +925,81 @@ export type Database = {
                     }
                 ];
             };
+            vault_categories: {
+                Row: {
+                    created_at: string | null;
+                    display_order: number | null;
+                    id: string;
+                    is_collapsed: boolean | null;
+                    name: string;
+                    user_id: string;
+                };
+                Insert: {
+                    created_at?: string | null;
+                    display_order?: number | null;
+                    id?: string;
+                    is_collapsed?: boolean | null;
+                    name: string;
+                    user_id: string;
+                };
+                Update: {
+                    created_at?: string | null;
+                    display_order?: number | null;
+                    id?: string;
+                    is_collapsed?: boolean | null;
+                    name?: string;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'vault_categories_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
+            study_sets: {
+                Row: {
+                    concept_ids: string[];
+                    created_at: string | null;
+                    id: string;
+                    last_studied_at: string | null;
+                    name: string;
+                    user_id: string;
+                };
+                Insert: {
+                    concept_ids?: string[];
+                    created_at?: string | null;
+                    id?: string;
+                    last_studied_at?: string | null;
+                    name: string;
+                    user_id: string;
+                };
+                Update: {
+                    concept_ids?: string[];
+                    created_at?: string | null;
+                    id?: string;
+                    last_studied_at?: string | null;
+                    name?: string;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'study_sets_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
         };
         Views: {
             [_ in never]: never;
         };
         Functions: {
-            add_topup_sparks: {
-                Args: {
-                    p_amount: number;
-                    p_stripe_payment_intent_id: string;
-                    p_user_id: string;
-                };
-                Returns: Json;
-            };
-            deduct_sparks: {
-                Args: {
-                    p_action: string;
-                    p_amount: number;
-                    p_reference_id?: string;
-                    p_user_id: string;
-                };
-                Returns: Json;
-            };
         };
         Enums: {
             [_ in never]: never;
@@ -1124,116 +1016,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>]
 
 export type Tables<
     DefaultSchemaTableNameOrOptions extends
-        | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-        | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
+    | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-              DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-        : never = never
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
+    : never = never
 > = DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'] &
-          DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
-          Row: infer R;
-      }
-        ? R
-        : never
-    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
-            DefaultSchema['Views'])
-      ? (DefaultSchema['Tables'] &
-            DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
             Row: infer R;
         }
-          ? R
-          : never
-      : never;
+    ? R
+    : never
+    : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])
+    ? (DefaultSchema['Tables'] &
+        DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
+            Row: infer R;
+        }
+    ? R
+    : never
+    : never;
 
 export type TablesInsert<
     DefaultSchemaTableNameOrOptions extends
-        | keyof DefaultSchema['Tables']
-        | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['Tables']
+    | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-        : never = never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never = never
 > = DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-          Insert: infer I;
-      }
-        ? I
-        : never
+        Insert: infer I;
+    }
+    ? I
+    : never
     : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-            Insert: infer I;
-        }
-          ? I
-          : never
-      : never;
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+    }
+    ? I
+    : never
+    : never;
 
 export type TablesUpdate<
     DefaultSchemaTableNameOrOptions extends
-        | keyof DefaultSchema['Tables']
-        | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['Tables']
+    | { schema: keyof DatabaseWithoutInternals },
     TableName extends DefaultSchemaTableNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-        : never = never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
+    : never = never
 > = DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-          Update: infer U;
-      }
-        ? U
-        : never
+        Update: infer U;
+    }
+    ? U
+    : never
     : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-      ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-            Update: infer U;
-        }
-          ? U
-          : never
-      : never;
+    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+    }
+    ? U
+    : never
+    : never;
 
 export type Enums<
     DefaultSchemaEnumNameOrOptions extends
-        | keyof DefaultSchema['Enums']
-        | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['Enums']
+    | { schema: keyof DatabaseWithoutInternals },
     EnumName extends DefaultSchemaEnumNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
-        : never = never
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
+    : never = never
 > = DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
     : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-      ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
-      : never;
+    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
+    : never;
 
 export type CompositeTypes<
     PublicCompositeTypeNameOrOptions extends
-        | keyof DefaultSchema['CompositeTypes']
-        | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema['CompositeTypes']
+    | { schema: keyof DatabaseWithoutInternals },
     CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
         schema: keyof DatabaseWithoutInternals;
     }
-        ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
-        : never = never
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
+    : never = never
 > = PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
 }
     ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
     : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-      ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
-      : never;
+    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
+    : never;
 
 export const Constants = {
     public: {

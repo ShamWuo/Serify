@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateApiRequest } from '@/lib/sparks';
+import { authenticateApiRequest } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey =
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Use a user-scoped client for fetching to respect RLS
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
-    const supabaseUser = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabaseUser = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
         auth: { persistSession: false, autoRefreshToken: false },
         global: { headers: { Authorization: `Bearer ${token}` } }
     });
@@ -28,14 +28,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 supabaseUser
                     .from('reflection_sessions')
                     .select('id, title, content_type, status, created_at, completed_at, session_type')
+                    .eq('user_id', userId)
                     .order('created_at', { ascending: false }),
                 supabaseUser
                     .from('flow_sessions')
                     .select(
-                        'id, status, initial_plan, started_at, completed_at, created_at, total_sparks_spent, concepts_completed'
+                        'id, status, initial_plan, started_at, completed_at, created_at, concepts_completed, source_type, source_session_id'
                     )
+                    .eq('user_id', userId)
                     .order('created_at', { ascending: false })
             ]);
+
+            if (reflectionRes.error) {
+                console.error('[sessions GET] reflectionRes error:', reflectionRes.error);
+                throw reflectionRes.error;
+            }
+            if (flowRes.error) {
+                console.error('[sessions GET] flowRes error:', flowRes.error);
+                throw flowRes.error;
+            }
 
             const reflectionSessions = (reflectionRes.data || []).map((s: any) => ({
                 id: s.id,
@@ -57,6 +68,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return {
                     id: s.id,
                     type: 'flow' as const,
+                    sourceType: s.source_type,
+                    sourceId: s.source_session_id,
                     title: conceptNames
                         ? `Flow: ${conceptNames.substring(0, 60)}${conceptNames.length > 60 ? '…' : ''}`
                         : 'Flow Mode Session',
@@ -65,8 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     createdAt: s.created_at,
                     completedAt: s.completed_at,
                     completedCount,
-                    totalCount,
-                    sparksSpent: s.total_sparks_spent
+                    totalCount
                 };
             });
 

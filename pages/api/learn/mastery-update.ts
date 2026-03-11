@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { updateConceptMastery } from '@/lib/vault';
 import { MasteryState } from '@/types/serify';
-import { authenticateApiRequest } from '@/lib/sparks';
+import { authenticateApiRequest } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey =

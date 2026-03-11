@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateApiRequest } from '@/lib/sparks';
+import { authenticateApiRequest } from '@/lib/usage';
 import { generateConceptSynthesis } from '@/lib/vault';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -54,6 +54,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(200).json({ node, sessions });
         } catch (error: any) {
             console.error('Error fetching vault node:', error);
+            return res.status(500).json({ error: error.message || 'Internal server error' });
+        }
+    }
+
+    if (req.method === 'PATCH') {
+        try {
+            const { updates } = req.body;
+            if (!updates) return res.status(400).json({ error: 'Missing updates' });
+
+            const allowedKeys = ['display_name', 'category_id', 'is_archived', 'parent_concept_id', 'is_sub_concept'];
+            const sanitizedUpdates: any = {};
+            for (const key of allowedKeys) {
+                if (updates[key] !== undefined) {
+                    sanitizedUpdates[key] = updates[key];
+                }
+            }
+
+            if (Object.keys(sanitizedUpdates).length === 0) {
+                return res.status(400).json({ error: 'No valid fields to update' });
+            }
+
+            const { data: updatedNode, error } = await supabase
+                .from('knowledge_nodes')
+                .update(sanitizedUpdates)
+                .eq('id', nodeId)
+                .eq('user_id', userId)
+                .select()
+                .single();
+
+            if (error || !updatedNode) {
+                console.error('Update node error:', error);
+                return res.status(404).json({ error: 'Node not found or update failed' });
+            }
+
+            return res.status(200).json({ success: true, node: updatedNode });
+        } catch (error: any) {
+            console.error('Error updating vault node:', error);
             return res.status(500).json({ error: error.message || 'Internal server error' });
         }
     }

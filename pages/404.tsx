@@ -12,20 +12,23 @@ export default function Custom404() {
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center min-h-[60vh]">
                 <div className="glass p-10 md:p-14 rounded-3xl border border-[var(--border)] shadow-2xl flex flex-col items-center max-w-lg w-full relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-40 h-40 bg-[var(--accent)]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-                    <div className="w-20 h-20 rounded-full bg-[var(--surface)] border-2 border-[var(--border)] flex items-center justify-center mb-6 shadow-sm animate-fade-in-up relative z-10">
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-[var(--accent)]/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3"></div>
+
+                    <div className="w-20 h-20 rounded-full bg-[var(--accent-soft)] border border-[var(--accent)]/20 flex items-center justify-center mb-6 shadow-sm animate-fade-in-up relative z-10">
                         <Compass size={32} className="text-[var(--accent)]" />
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-display text-gradient mb-4 relative z-10">404</h1>
-                    <h2 className="text-xl md:text-2xl font-medium text-[var(--text)] mb-4 relative z-10">
+
+                    <h1 className="text-6xl md:text-7xl font-display text-[var(--accent)] mb-4 relative z-10 leading-none">404</h1>
+                    <h2 className="text-xl md:text-2xl font-medium text-[var(--text)] mb-3 relative z-10">
                         Off the beaten path
                     </h2>
-                    <p className="text-[var(--muted)] max-w-md mx-auto mb-8 leading-relaxed relative z-10">
+                    <p className="text-[var(--muted)] max-w-sm mx-auto mb-10 leading-relaxed relative z-10 text-sm">
                         The page you&apos;re looking for doesn&apos;t exist or has been moved.
                         Let&apos;s get you back to your learning journey.
                     </p>
                     <Link
                         href="/"
-                        className="px-8 py-3.5 bg-[var(--accent)] text-white font-medium rounded-xl shadow-sm hover:-translate-y-0.5 hover:shadow-lg transition-all animate-pulse-glow relative z-10"
+                        className="px-10 py-4 bg-[var(--accent)] text-white font-bold rounded-xl shadow-lg shadow-[var(--accent)]/20 hover:-translate-y-0.5 hover:shadow-xl transition-all relative z-10 text-sm flex items-center gap-2"
                     >
                         Return Home
                     </Link>

@@ -42,7 +42,7 @@ export default function OnboardingHowItWorks() {
 
             // Artificial delay for "Magic Moment" transition
             setTimeout(() => setTransitionMsg('Calibrating diagnostic engine...'), 800);
-            setTimeout(() => setTransitionMsg('Preparing your 15 Sparks...'), 1600);
+            setTimeout(() => setTransitionMsg('Preparing your learning workspace...'), 1600);
 
             setTimeout(() => {
                 router.push('/');
@@ -121,9 +121,9 @@ export default function OnboardingHowItWorks() {
                     </div>
 
                     <div className="flex flex-col items-center justify-center gap-1 mb-8">
-                        <div className="flex items-center gap-2 text-amber-500 font-semibold text-sm">
-                            <Zap size={16} fill="currentColor" className="text-amber-500" />
-                            <span>Your 15 Sparks are ready.</span>
+                        <div className="flex items-center gap-2 text-[var(--accent)] font-semibold text-sm">
+                            <Zap size={16} fill="currentColor" className="text-[var(--accent)]" />
+                            <span>Your diagnostic engine is ready.</span>
                         </div>
                         <p className="text-sm text-[var(--muted)]">
                             First session takes about 5 minutes.

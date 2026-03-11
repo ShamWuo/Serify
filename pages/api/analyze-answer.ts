@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { parseJSON } from '@/lib/serify-ai';
 import { updateConceptMastery, findOrCreateConceptNode } from '@/lib/vault';
 import { MasteryState } from '@/types/serify';
@@ -37,14 +37,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const sparkCost = SPARK_COSTS.SESSION_ANSWER_ANALYSIS || 1;
-    const hasSparks = await hasEnoughSparks(user, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Sparks to analyze an answer.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -86,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             overconfident: boolean;
         }>(responseText);
 
-        await deductSparks(user, sparkCost, 'session_answer_analysis');
+        (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,

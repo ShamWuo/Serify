@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -14,14 +14,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const sparkCost = SPARK_COSTS.FLASHCARD_DECK;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'flashcards')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark to generate flashcards.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -53,13 +52,13 @@ The student showed the following understanding of each concept. For each one, ge
 ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} — ${c.feedbackNote || ''}`).join('\n')}
     `;
 
-        const deduction = await deductSparks(userId, sparkCost, 'flashcard_deck');
+        const deduction = (await incrementUsage(userId, 'flashcards').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to generate flashcards.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

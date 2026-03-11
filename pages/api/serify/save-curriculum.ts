@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateApiRequest, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { findOrCreateConceptNode } from '@/lib/vault';
 
@@ -20,8 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
         const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-        const sparkCost = SPARK_COSTS.CURRICULUM_GENERATION || 2;
-        await deductSparks(user, sparkCost, 'curriculum_generation');
+        (await incrementUsage(user, 'curricula').then(() => ({ success: true })));
 
         const userInput =
             curriculumData.user_input ?? curriculumData.title ?? '';

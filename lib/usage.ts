@@ -1,102 +1,133 @@
-import { supabase } from './supabase';
+import { NextApiRequest } from 'next';
+import { supabase, supabaseAdmin } from './supabase';
 
-function getCurrentMonth(): string {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
+export async function authenticateApiRequest(req: NextApiRequest | Request): Promise<string | null> {
+    // Handle demo mode
+    const demoHeader = (req instanceof Request)
+        ? req.headers.get('x-serify-demo')
+        : (req as NextApiRequest).headers['x-serify-demo'];
+
+    if (demoHeader === 'true') {
+        return 'demo-user';
+    }
+
+    let authHeader: string | null = null;
+    if (req instanceof Request) {
+        authHeader = req.headers.get('authorization');
+    } else {
+        authHeader = (req as NextApiRequest).headers.authorization || null;
+    }
+
+    if (!authHeader) return null;
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return user.id;
 }
 
-export async function checkSessionAllowance(userId: string): Promise<{
+export type FeatureName =
+    | 'sessions'
+    | 'flashcards'
+    | 'quizzes'
+    | 'ai_messages'
+    | 'flow_sessions'
+    | 'curricula'
+    | 'deep_dives'
+    | 'vault_concepts';
+
+export interface UsageCheckResult {
     allowed: boolean;
-    remaining: number;
-    reason?: string;
-    passId?: string;
-}> {
-    const { data: user } = await supabase
-        .from('profiles')
-        .select('subscription_tier')
-        .eq('id', userId)
-        .single();
+    used: number;
+    limit: number | null; // null = unlimited
+    remaining: number | null;
+    percentUsed: number | null;
+    featureName: FeatureName;
+}
 
-    const plan = user?.subscription_tier || 'free';
+export async function checkUsage(
+    userId: string,
+    feature: FeatureName
+): Promise<UsageCheckResult> {
+    const client = supabaseAdmin || supabase;
 
-    if (['pro', 'teams'].includes(plan)) {
-        return { allowed: true, remaining: Infinity };
-    }
-
-    const { data: deepdivePasses } = await supabase
-        .from('purchases')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('product', 'deepdive')
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .limit(1);
-
-    if (deepdivePasses && deepdivePasses.length > 0) {
-        return { allowed: true, remaining: 1, passId: deepdivePasses[0].id };
-    }
-
-    const currentMonth = getCurrentMonth();
-
-    let { data: usage } = await supabase
-        .from('usage')
-        .select('session_count')
-        .eq('user_id', userId)
-        .eq('month', currentMonth)
-        .single();
-
-    if (!usage) {
-        usage = { session_count: 0 };
-    }
-
-    const sessionLimit = 1;
-    const remaining = Math.max(0, sessionLimit - (usage.session_count || 0));
-
-    if (remaining === 0) {
+    if (userId === 'demo-user') {
         return {
-            allowed: false,
-            remaining: 0,
-            reason: 'monthly_limit_reached'
+            allowed: true,
+            used: 0,
+            limit: null,
+            remaining: null,
+            percentUsed: 0,
+            featureName: feature
         };
     }
 
-    return { allowed: true, remaining };
-}
-
-export async function incrementSessionUsage(userId: string, passId?: string) {
-    if (passId) {
-        await supabase
-            .from('purchases')
-            .update({ used: true, used_at: new Date().toISOString() })
-            .eq('id', passId);
-        return;
-    }
-
-    const currentMonth = getCurrentMonth();
-
-    const { data: existing } = await supabase
-        .from('usage')
-        .select('session_count')
+    const { data: tracking } = await client
+        .from('usage_tracking')
+        .select('*')
         .eq('user_id', userId)
-        .eq('month', currentMonth)
         .single();
 
-    if (existing) {
-        await supabase
-            .from('usage')
-            .update({
-                session_count: existing.session_count + 1,
-                updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId)
-            .eq('month', currentMonth);
-    } else {
-        await supabase.from('usage').insert({
-            user_id: userId,
-            month: currentMonth,
-            session_count: 1
-        });
+    const plan = tracking?.plan || 'free';
+
+    const { data: limits } = await client
+        .from('plan_limits')
+        .select('*')
+        .eq('plan', plan)
+        .single();
+
+    if (!tracking || !limits) {
+        return {
+            allowed: false,
+            used: 0,
+            limit: 0,
+            remaining: 0,
+            percentUsed: 100,
+            featureName: feature
+        };
     }
+
+    const limit = limits[`${feature}_limit`];
+    const used = tracking[`${feature}_used`] ?? tracking.vault_concept_count;
+
+    // vault_concepts uses a different column name for counting
+    const actualUsed = feature === 'vault_concepts'
+        ? tracking.vault_concept_count
+        : tracking[`${feature}_used`];
+
+    // Unlimited plan
+    if (limit === null) {
+        return {
+            allowed: true,
+            used: actualUsed,
+            limit: null,
+            remaining: null,
+            percentUsed: null,
+            featureName: feature
+        };
+    }
+
+    return {
+        allowed: actualUsed < limit,
+        used: actualUsed,
+        limit,
+        remaining: limit - actualUsed,
+        percentUsed: (actualUsed / limit) * 100,
+        featureName: feature
+    };
+}
+
+export async function incrementUsage(
+    userId: string,
+    feature: FeatureName,
+    amount: number = 1
+): Promise<void> {
+    if (userId === 'demo-user') return;
+
+    // Use RPC for atomic increment
+    const client = supabaseAdmin || supabase;
+    await client.rpc('increment_usage', {
+        target_user_id: userId,
+        feature_name: feature,
+        amount: amount
+    });
 }

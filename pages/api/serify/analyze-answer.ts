@@ -1,10 +1,11 @@
 import { streamObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { updateConceptMastery, findOrCreateConceptNode } from '@/lib/vault';
 import { MasteryState } from '@/types/serify';
 import { createClient } from '@supabase/supabase-js';
+import { createErrorResponse } from '@/lib/api-utils';
 
 export const config = {
     runtime: 'edge'
@@ -12,16 +13,15 @@ export const config = {
 
 export default async function handler(req: Request) {
     if (req.method !== 'POST') {
-        return new Response(JSON.stringify({ message: 'Method Not Allowed' }), { status: 405 });
+        return createErrorResponse('Method Not Allowed', 405, 'Method Not Allowed');
     }
 
     try {
-        const { answerText, question, concept, explanationRequested, skipped } = await req.json();
+        const body = await req.json().catch(() => ({}));
+        const { answerText, question, concept, explanationRequested, skipped } = body;
 
         if ((!answerText && !skipped) || !question || !concept) {
-            return new Response(JSON.stringify({ message: 'Missing required fields' }), {
-                status: 400
-            });
+            return createErrorResponse('Missing required fields', 400, 'Bad Request');
         }
 
         if (skipped) {
@@ -44,19 +44,12 @@ export default async function handler(req: Request) {
 
         const user = await authenticateApiRequest(req);
         if (!user) {
-            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+            return createErrorResponse('Unauthorized', 401, 'Unauthorized');
         }
 
-        const sparkCost = SPARK_COSTS.SESSION_ANSWER_ANALYSIS || 1;
-        const hasSparks = await hasEnoughSparks(user, sparkCost);
-        if (!hasSparks) {
-            return new Response(
-                JSON.stringify({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks.`
-                }),
-                { status: 403 }
-            );
+        const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+        if (!hasUsage) {
+            return createErrorResponse('You have reached your limit for analyzing answers.', 403, 'limit_reached');
         }
 
         const prompt = `
@@ -99,19 +92,41 @@ export default async function handler(req: Request) {
             }),
             onFinish: async ({ object }) => {
                 if (object?.assessment) {
-                    await deductSparks(user, sparkCost, 'session_answer_analysis');
+                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
 
                     const supabase = createClient(
                         process.env.NEXT_PUBLIC_SUPABASE_URL!,
                         process.env.SUPABASE_SERVICE_ROLE_KEY!
                     );
 
+                    let parentNodeId: string | undefined = undefined;
+
+                    // Hierarchical Graduation Check
+                    if (concept.related_concept_names &&
+                        Array.isArray(concept.related_concept_names) &&
+                        concept.related_concept_names.length >= 2 &&
+                        concept.related_concept_names[1] === "IS_SUB") {
+
+                        const parentName = concept.related_concept_names[0];
+                        const parentNode = await findOrCreateConceptNode(
+                            supabase,
+                            user,
+                            parentName,
+                            question.session_id,
+                            `Mastery Pillar for ${parentName}.`
+                        );
+                        if (parentNode) {
+                            parentNodeId = parentNode.id;
+                        }
+                    }
+
                     const node = await findOrCreateConceptNode(
                         supabase,
                         user,
                         concept.name,
                         question.session_id,
-                        concept.definition || ''
+                        concept.definition || '',
+                        parentNodeId
                     );
 
                     if (node) {
@@ -133,10 +148,8 @@ export default async function handler(req: Request) {
         });
 
         return result.toTextStreamResponse();
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error analyzing answer:', error);
-        return new Response(JSON.stringify({ message: 'Failed to analyze answer' }), {
-            status: 500
-        });
+        return createErrorResponse(error.message || 'Failed to analyze answer', 500, 'Internal Server Error');
     }
 }

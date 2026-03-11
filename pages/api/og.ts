@@ -2,47 +2,47 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 // Returns a dynamic SVG-based OG image for a shared Serify session
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    const { sessionId } = req.query;
+  const { sessionId } = req.query;
 
-    if (!sessionId || typeof sessionId !== 'string') {
-        return res.status(400).send('Missing sessionId');
-    }
+  if (!sessionId || typeof sessionId !== 'string') {
+    return res.status(400).send('Missing sessionId');
+  }
 
-    const { data: session } = await supabase
-        .from('reflection_sessions')
-        .select('title, depth_score, is_public')
-        .eq('id', sessionId)
-        .single();
+  const { data: session } = await supabase
+    .from('reflection_sessions')
+    .select('title, depth_score, is_public')
+    .eq('id', sessionId)
+    .single();
 
-    if (!session || !session.is_public) {
-        return res.status(404).send('Not found');
-    }
+  if (!session || !session.is_public) {
+    return res.status(404).send('Not found');
+  }
 
-    const title = session.title || 'A Serify Session';
-    const depthScore = session.depth_score ?? null;
+  const title = session.title || 'A Serify Session';
+  const depthScore = session.depth_score ?? null;
 
-    // Truncate title for display
-    const displayTitle = title.length > 48 ? title.slice(0, 45) + '...' : title;
+  // Truncate title for display
+  const displayTitle = title.length > 48 ? title.slice(0, 45) + '...' : title;
 
-    // Color palette for the score gradient
-    const scoreColor =
-        depthScore === null
-            ? '#6b7280'
-            : depthScore >= 75
-                ? '#16a34a'
-                : depthScore >= 50
-                    ? '#2563eb'
-                    : '#d97706';
+  // Color palette for the score gradient
+  const scoreColor =
+    depthScore === null
+      ? '#6b7280'
+      : depthScore >= 75
+        ? '#16a34a'
+        : depthScore >= 50
+          ? '#2563eb'
+          : '#d97706';
 
-    const scoreText = depthScore !== null ? `${depthScore}` : '—';
+  const scoreText = depthScore !== null ? `${depthScore}` : '—';
 
-    const svg = `
+  const svg = `
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
@@ -90,11 +90,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   <!-- CTA Banner -->
   <rect x="72" y="540" width="820" height="55" rx="12" fill="#1b4332"/>
   <text x="482" y="575" font-family="-apple-system, sans-serif" font-size="20" fill="white" text-anchor="middle">
-    What will Serify find in your notes? Get 15 free Sparks → serify.io
+    What will Serify find in your notes? Try it now at serify.io
   </text>
 </svg>`;
 
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
-    res.status(200).send(svg);
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+  res.status(200).send(svg);
 }

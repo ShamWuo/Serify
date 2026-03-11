@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import {
     Search,
@@ -30,14 +30,14 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const navShortcuts = [
+    const navShortcuts = useMemo(() => [
         { name: 'Dashboard', icon: <Home size={16} />, href: '/' },
         { name: 'New Session', icon: <PlusCircle size={16} />, href: '/analyze' },
         { name: 'Learn Mode', icon: <Sparkles size={16} />, href: '/learn' },
         { name: 'Session History', icon: <History size={16} />, href: '/sessions' },
         { name: 'Concept Vault', icon: <Archive size={16} />, href: '/vault' },
         { name: 'Settings', icon: <Settings size={16} />, href: '/settings' },
-    ];
+    ], []);
 
     useEffect(() => {
         if (isOpen) {

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { v4 as uuidv4 } from 'uuid';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -16,12 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const sparkCost = SPARK_COSTS.FLOW_MODE_PLAN;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+    if (!hasUsage) {
         return res.status(403).json({
-            error: 'out_of_sparks',
-            message: `You need ${sparkCost} Sparks to start a learning flow.`
+            error: 'limit_reached',
+            message: 'You have reached your feature limit.'
         });
     }
 
@@ -102,7 +101,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         overallStrategy: `Curriculum: ${curriculum.title}`
                     },
                     concepts_completed: [],
-                    total_sparks_spent: 0,
                     status: 'active'
                 })
                 .select('id')
@@ -115,8 +113,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             flowSessionId = flowSession.id;
 
-            // Deduct sparks once per new session start
-            await deductSparks(userId, sparkCost, 'flow_mode_plan');
+            // Deduct usage once per new session start
+            (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
             // Link this session to the current concept progress
             // (Wait, we should ideally link it to ALL concepts in this flow if we wanted total persistence, 

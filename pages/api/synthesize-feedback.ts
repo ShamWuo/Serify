@@ -1,9 +1,9 @@
 import { streamObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
-import { findOrCreateConceptNode, updateTopicClusters } from '@/lib/vault';
+import { findOrCreateConceptNode, updateVaultHierarchy } from '@/lib/vault';
 
 export const config = {
     runtime: 'edge'
@@ -29,15 +29,12 @@ export default async function handler(req: Request) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        const sparkCost = isBasicMode
-            ? SPARK_COSTS.BASIC_FEEDBACK_REPORT
-            : SPARK_COSTS.BASIC_FEEDBACK_REPORT + (SPARK_COSTS.FULL_FEEDBACK_UPGRADE || 2);
-        const hasSparks = await hasEnoughSparks(user, sparkCost);
-        if (!hasSparks) {
+        const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+        if (!hasUsage) {
             return new Response(
                 JSON.stringify({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 }),
                 { status: 403 }
             );
@@ -107,11 +104,7 @@ export default async function handler(req: Request) {
             }),
             onFinish: async ({ object }) => {
                 if (object) {
-                    await deductSparks(
-                        user,
-                        sparkCost,
-                        isBasicMode ? 'session_basic_analysis' : 'session_full_analysis'
-                    );
+                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
 
                     const sessionId = sessionData?.sessionId || sessionData?.id;
                     const conceptsToWrite: { name: string; description: string }[] = (
@@ -129,7 +122,7 @@ export default async function handler(req: Request) {
                         const supabaseAdmin = createClient(
                             process.env.NEXT_PUBLIC_SUPABASE_URL!,
                             process.env.SUPABASE_SERVICE_ROLE_KEY ||
-                                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
                         );
 
                         Promise.all(
@@ -146,7 +139,7 @@ export default async function handler(req: Request) {
                             .then((results) => {
                                 const newNodeCount = results.filter(Boolean).length;
                                 if (newNodeCount >= 5) {
-                                    updateTopicClusters(supabaseAdmin, user).catch(console.error);
+                                    updateVaultHierarchy(supabaseAdmin, user).catch(console.error);
                                 }
                             })
                             .catch(console.error);

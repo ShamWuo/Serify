@@ -159,7 +159,7 @@ export default function PublicCurriculumView() {
                                             </div>
                                         </div>
                                         <p className="text-xs text-[var(--muted)] leading-relaxed italic mb-4 line-clamp-2">
-                                            "{concept.definition}"
+                                            &quot;{concept.definition}&quot;
                                         </p>
                                         <div className="flex items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-[var(--muted)]">
                                             <span>Difficulty: {concept.difficulty}</span>

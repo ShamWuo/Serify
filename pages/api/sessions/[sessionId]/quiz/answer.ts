@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { parseJSON } from '@/lib/serify-ai';
 
@@ -25,14 +25,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing questionId or answerText' });
     }
 
-    const sparkCost = SPARK_COSTS.PRACTICE_QUIZ_EVAL;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'quizzes')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark to evaluate this answer.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -85,13 +84,13 @@ Explanation: ${question.explanation || 'None'}
 Student's Answer: ${answerText}
 `;
 
-        const deduction = await deductSparks(userId, sparkCost, 'quiz_answer_evaluation');
+        const deduction = (await incrementUsage(userId, 'quizzes').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to evaluate this answer.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

@@ -1,8 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { extractConcepts } from '@/lib/serify-ai';
+import { extractConcepts, generateSessionTitle } from '@/lib/serify-ai';
 import { ContentSource } from '@/types/serify';
-import { deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { checkUsage, incrementUsage } from '@/lib/usage';
+import { YoutubeTranscript } from 'youtube-transcript';
+import { sendError } from '@/lib/api-utils';
+import { z } from 'zod';
+
+const extractRequestSchema = z.object({
+    contentType: z.enum(['youtube', 'article', 'pdf', 'text']),
+    content: z.string().optional(),
+    url: z.string().optional(),
+    title: z.string().optional(),
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional()
+});
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -23,25 +34,24 @@ function checkRateLimit(userId: string): boolean {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'POST') {
-        console.log('Method not allowed:', req.method);
-        return res.status(405).json({ error: 'Method not allowed' });
+        return sendError(res, 'Method not allowed', 405, 'Method Not Allowed');
     }
 
-    console.log('Extract API called');
-
     if (!process.env.GEMINI_API_KEY) {
-        console.error('GEMINI_API_KEY is not set');
-        return res
-            .status(500)
-            .json({
-                error: 'GEMINI_API_KEY is not configured. Please set it in your .env.local file.'
-            });
+        return sendError(res, 'AI service is not configured', 500, 'Configuration Error');
+    }
+
+    const validatedBody = extractRequestSchema.safeParse(req.body);
+    if (!validatedBody.success) {
+        return res.status(400).json({
+            error: 'Invalid request body',
+            details: validatedBody.error.format()
+        });
     }
 
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-        console.log('No authorization header');
-        return res.status(401).json({ error: 'Unauthorized: No authorization header' });
+        return sendError(res, 'Unauthorized', 401, 'Unauthorized');
     }
 
     const token = authHeader.replace('Bearer ', '');
@@ -59,33 +69,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         error: authError
     } = await supabaseWithAuth.auth.getUser(token);
 
-    if (authError) {
-        console.error('Auth error:', authError);
-        return res.status(401).json({ error: `Unauthorized: ${authError.message}` });
+    if (authError || !user) {
+        return sendError(res, 'Unauthorized', 401, 'Unauthorized');
     }
 
-    if (!user) {
-        console.log('No user found');
-        return res.status(401).json({ error: 'Unauthorized: No user found' });
+    const hasUsage = (await checkUsage(user.id, 'sessions')).allowed;
+    if (!hasUsage) {
+        return sendError(res, 'You have reached your feature limit.', 403, 'limit_reached');
     }
-
-    const sparkCost = SPARK_COSTS.SESSION_INGESTION;
-    const hasSparks = await hasEnoughSparks(user.id, sparkCost);
-    if (!hasSparks) {
-        return res.status(403).json({
-            error: 'out_of_sparks',
-            message: `You need ${sparkCost} Sparks to extract concepts.`
-        });
-    }
-
-    console.log('User authenticated:', user.id);
 
     if (!checkRateLimit(user.id)) {
-        console.log('Rate limit exceeded for user:', user.id);
-        return res.status(429).json({ error: 'Too many requests. Try again in a minute.' });
+        return sendError(res, 'Too many requests. Try again in a minute.', 429, 'Rate Limit Exceeded');
     }
 
-    const { contentType, content, url, title, difficulty } = req.body;
+    let { contentType, content, url, title, difficulty } = validatedBody.data;
     console.log('Request body:', {
         contentType,
         hasContent: !!content,
@@ -94,8 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         difficulty
     });
 
-    if (!contentType || !title) {
-        return res.status(400).json({ error: 'Missing contentType or title' });
+    if (!contentType) {
+        return res.status(400).json({ error: 'Missing contentType' });
     }
 
     if (contentType === 'text' && !content) {
@@ -107,12 +104,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+        let processedTranscript = undefined;
+        if (contentType === 'youtube') {
+            try {
+                console.log('Fetching YouTube transcript for:', url);
+                const transcriptData = await YoutubeTranscript.fetchTranscript(url as string);
+                processedTranscript = transcriptData.map((t: any) => t.text).join(' ');
+                console.log('YouTube transcript fetched successfully');
+            } catch (err: any) {
+                console.error('YouTube transcript error:', err);
+                const msg = err.message || '';
+                if (msg.includes('Transcript is disabled') || msg.includes('No transcript found')) {
+                    throw new Error('This video has no available transcript. Please try a different video or paste the content manually.');
+                }
+                throw new Error('Could not extract transcript from this video. Please ensure the URL is correct.');
+            }
+        }
+
+        // Generate a better title if needed
+        if (!title || title === 'New Session' || title === 'pasted notes' || title.length < 5) {
+            try {
+                console.log('Generating session title...');
+                const contentForTitle = processedTranscript || content || url;
+                title = await generateSessionTitle(contentForTitle || '', contentType);
+                console.log('Generated title:', title);
+            } catch (e) {
+                title = title || 'Untitled Session';
+            }
+        }
+
         const contentSource: ContentSource = {
             id: Date.now().toString(),
             type: contentType,
             title,
-            content,
-            url
+            content: content || '',
+            url: url || ''
         };
 
         const targetContent = content ?? url;
@@ -128,10 +154,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .limit(1)
             .maybeSingle();
 
-        // 1. Check if we have a viable cache hit
+        // 1. Check if we have a viable cache hit or an existing session to resume
         if (existingSession && !checkErr) {
             console.log('Found existing session for this content:', existingSession.id);
 
+            // If it's a "live" session (not complete), just return it
+            if (!['feedback', 'complete'].includes(existingSession.status)) {
+                console.log('Resuming existing session:', existingSession.id);
+                return res.status(200).json({
+                    sessionId: existingSession.id,
+                    resumed: true,
+                    message: 'Resuming existing session for this content.'
+                });
+            }
+
+            // If it's complete, we still try to use its concepts
             if (['assessment', 'feedback', 'complete'].includes(existingSession.status)) {
                 const { data: existingConcepts } = await supabaseWithAuth
                     .from('concepts')
@@ -174,54 +211,123 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Session created:', session.id);
 
-        const deduction = await deductSparks(user.id, sparkCost, 'session_ingestion', session.id);
+        const deduction = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks to extract concepts.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 
+        // 2. Fetch Vault Context for better hierarchical sorting
+        let vaultContextString = '';
+        try {
+            const { data: categories } = await supabaseWithAuth
+                .from('vault_categories')
+                .select('id, name')
+                .eq('user_id', user.id);
+            
+            if (categories && categories.length > 0) {
+                const categoryIds = categories.map(c => c.id);
+                const { data: nodes } = await supabaseWithAuth
+                    .from('knowledge_nodes')
+                    .select('display_name, category_id')
+                    .eq('user_id', user.id)
+                    .in('category_id', categoryIds)
+                    .is('is_archived', false);
+                
+                vaultContextString = categories.map(cat => {
+                    const catNodes = nodes?.filter(n => n.category_id === cat.id) || [];
+                    const nodeNames = catNodes.map(n => n.display_name).join(', ');
+                    return `- ${cat.name}${nodeNames ? `: ${nodeNames}` : ''}`;
+                }).join('\n');
+            }
+        } catch (vErr) {
+            console.error('Error fetching vault context:', vErr);
+        }
+
+        const { data: tracking } = await supabaseWithAuth
+            .from('usage_tracking')
+            .select('plan')
+            .eq('user_id', user.id)
+            .single();
+
         // 3. Either clone cached concepts or call Gemini
-        let conceptsToSave = [];
-        let finalConcepts = [];
+        let finalConcepts: any[] = [];
 
         if (cachedConcepts) {
             console.log('Cloning cached concepts...');
             finalConcepts = cachedConcepts;
-            conceptsToSave = cachedConcepts.map((c: any) => ({
+            const conceptsToSave = cachedConcepts.map((c: any) => ({
                 session_id: session.id, // attach to the NEW session
                 name: c.name,
                 description: c.description,
                 importance: c.importance,
                 related_concept_names: c.related_concept_names, // cloned exactly
-                misconception_risk: c.misconception_risk
+                misconception_risk: c.misconception_risk,
+                relationships: c.relationships // Preserve hierarchy metadata
             }));
+
+            console.log('Saving cached concepts...');
+            const { error: conceptError } = await supabaseWithAuth
+                .from('concepts')
+                .insert(conceptsToSave);
+
+            if (conceptError) {
+                console.error('Cached concept save error:', conceptError);
+                // Decide how to handle this error: return 500 or just log and continue?
+                // For now, we'll log and proceed, assuming the session is still valid.
+            }
         } else {
-            console.log('Extracting concepts via Gemini...');
-            const extracted = await extractConcepts(contentSource);
+            console.log('Extracting concepts via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
+            const extracted = await extractConcepts(contentSource, tracking?.plan || 'free', processedTranscript, vaultContextString);
             console.log('Concepts extracted:', extracted.length);
             finalConcepts = extracted;
-            conceptsToSave = extracted.map((c: any) => ({
-                session_id: session.id,
-                name: c.name,
-                description: c.description,
-                importance: c.importance,
-                related_concept_names: c.relatedConcepts
-            }));
-        }
 
-        console.log('Saving concepts to database...');
-        const { error: conceptError } = await supabaseWithAuth.from('concepts').insert(conceptsToSave);
+            const flattenedConcepts: any[] = [];
+            extracted.forEach((pillar: any) => {
+                // Add the pillar itself
+                flattenedConcepts.push({
+                    session_id: session.id,
+                    name: pillar.name,
+                    description: pillar.description || '',
+                    importance: pillar.importance || 'medium',
+                    related_concept_names: pillar.relatedConcepts || [],
+                    relationships: { isPillar: true }
+                });
 
-        if (conceptError) {
-            console.error('Concept insert error:', conceptError);
-            return res.status(500).json({
-                error: `Failed to save concepts: ${conceptError.message}`,
-                details: conceptError
+                // Add sub-concepts if they exist
+                if (pillar.subConcepts && Array.isArray(pillar.subConcepts)) {
+                    pillar.subConcepts.forEach((sub: any) => {
+                        flattenedConcepts.push({
+                            session_id: session.id,
+                            name: sub.name,
+                            description: sub.description || '',
+                            importance: pillar.importance || 'medium',
+                            related_concept_names: [pillar.name],
+                            relationships: {
+                                isSub: true,
+                                parentName: pillar.name
+                            }
+                        });
+                    });
+                }
             });
+
+            console.log('Saving concepts to database...');
+            const { error: conceptError } = await supabaseWithAuth
+                .from('concepts')
+                .insert(flattenedConcepts);
+
+            if (conceptError) {
+                console.error('Concept insert error:', conceptError);
+                return res.status(500).json({
+                    error: `Failed to save concepts: ${conceptError.message}`,
+                    details: conceptError
+                });
+            }
         }
 
         await supabaseWithAuth
@@ -230,13 +336,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('id', session.id);
 
         console.log('Extraction complete, returning sessionId:', session.id);
-        return res.status(200).json({ sessionId: session.id, concepts: finalConcepts, cached: !!cachedConcepts });
+        return res
+            .status(200)
+            .json({ sessionId: session.id, concepts: finalConcepts, cached: !!cachedConcepts });
     } catch (err: any) {
         console.error('Extract error:', err);
         const errorMessage = err.message || 'Failed to extract concepts';
         return res.status(500).json({
             error: errorMessage,
-            details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+            details: err
         });
     }
 }

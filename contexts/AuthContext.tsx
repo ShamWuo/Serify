@@ -5,7 +5,7 @@
  * creation, manages onboarding status, and provides auth-related methods via React Context.
  */
 
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
@@ -25,7 +25,7 @@ interface AuthContextType {
     user: UserProfile | null;
     token: string | null;
     loading: boolean;
-    login: (email: string, password: string) => Promise<void>;
+    login: (email: string, password: string) => Promise<UserProfile>;
     register: (email: string, password: string, displayName: string) => Promise<void>;
     loginWithGoogle: () => Promise<void>;
     logout: () => Promise<void>;
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const ensureProfile = async (userId: string, email: string) => {
+    const ensureProfile = useCallback(async (userId: string, email: string) => {
         if (state.current.currentUser?.id === userId) {
             syncLoading(false);
             return;
@@ -160,57 +160,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         state.current.profilePromise = promise;
         await promise;
-    };
+    }, []);
 
     useEffect(() => {
         state.current.isMounted = true;
 
         const init = async () => {
+            // Check for OAuth flow tokens/codes in URL
             const isOAuth =
                 typeof window !== 'undefined' &&
                 (window.location.hash.includes('access_token=') ||
                     window.location.hash.includes('type=recovery') ||
                     window.location.search.includes('code='));
 
+            // If OAuth, we wait a bit for the internal Supabase client to process the URL
             if (isOAuth) {
-                setTimeout(async () => {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (session?.user && !state.current.currentUser) {
-                        setToken(session.access_token);
-                        await ensureProfile(session.user.id, session.user.email || '');
-                    }
-                }, 1500);
-                return;
+                syncLoading(true);
+                await new Promise((resolve) => setTimeout(resolve, 1000));
             }
 
             try {
-                const {
-                    data: { session },
-                    error
-                } = await supabase.auth.getSession();
-                if (error) throw error;
+                // We no longer call getSession() here to avoid competing for the LockManager lock.
+                // Supabase's onAuthStateChange with event === 'INITIAL_SESSION' will handle 
+                // the initial hydrating session automatically.
 
-                if (session?.user) {
-                    setToken(session.access_token);
-                    await ensureProfile(session.user.id, session.user.email || '');
-                } else {
+                // If we aren't in an OAuth flow, we can just wait for the listener
+                if (!isOAuth) {
+                    // Just a small safety timeout to ensure we don't stay loading forever 
+                    // if Supabase listener fails to fire INITIAL_SESSION
+                    setTimeout(() => {
+                        if (state.current.isMounted && loading) {
+                            console.log('Auth hydration fallback triggered');
+                            syncLoading(false);
+                        }
+                    }, 5000);
+                }
+            } catch (err: any) {
+                // Also catch if the promise itself rejects (like the Navigator Lock timeout sometimes does)
+                if (err?.message?.includes('LockManager') || err?.message?.includes('timeout')) {
+                    console.warn('Caught Supabase lock timeout exception - relying on auth state listener');
+                    return;
+                }
+                console.error('Error during auth init:', err);
+                if (state.current.isMounted) {
                     syncUser(null);
                     setToken(null);
                     syncLoading(false);
                 }
-            } catch (err) {
-                syncUser(null);
-                setToken(null);
-                syncLoading(false);
             }
         };
 
         init();
 
+        // Listen for auth state changes
         const {
             data: { subscription }
         } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!state.current.isMounted) return;
+
+            console.log('Auth state change:', event);
 
             if (event === 'SIGNED_OUT') {
                 syncUser(null);
@@ -219,19 +227,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } else if (session?.user) {
                 setToken(session.access_token);
                 await ensureProfile(session.user.id, session.user.email || '');
+            } else if (event === 'INITIAL_SESSION' && !session) {
+                syncLoading(false);
             } else if (event === 'SIGNED_IN' && !session) {
                 syncLoading(false);
             }
         });
 
-        const currentState = state.current;
         return () => {
-            currentState.isMounted = false;
+            state.current.isMounted = false;
             subscription.unsubscribe();
         };
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string): Promise<UserProfile> => {
+        console.log('[Auth] Starting login for:', email);
         if (!email || !email.trim()) {
             throw new Error('Email is required');
         }
@@ -246,12 +256,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         try {
+            console.log('[Auth] Calling signInWithPassword');
             const { data, error } = await supabase.auth.signInWithPassword({
                 email: email.trim(),
                 password: password.trim()
             });
 
             if (error) {
+                console.error('[Auth] signInWithPassword error:', error);
                 const errorMessage = error.message || '';
                 const errorStatus = (error as any).status;
 
@@ -288,10 +300,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data?.user) {
+                console.log('[Auth] Login successful, user:', data.user.id);
                 setToken(data.session?.access_token || null);
-                await ensureProfile(data.user.id, data.user.email || '');
+                const profile = await loadProfile(data.user.id, data.user.email || '');
+                syncUser(profile);
+                console.log('[Auth] Profile ensured');
+                if (!profile) throw new Error('Failed to load user profile after login');
+                return profile;
             }
+            throw new Error('Login failed: No user data returned');
         } catch (err: any) {
+            console.error('[Auth] Login catch block:', err);
             if (err instanceof Error) {
                 throw err;
             }

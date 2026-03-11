@@ -1,30 +1,25 @@
-/**
- * pages/learn/index.tsx
- * Purpose: Entry point for Learn Mode, allowing users to create custom curricula.
- * Key Logic: Implements a multi-step flow to gather user intent and context, 
- * streams curriculum generation using AI, and manages saved learning paths.
- */
-
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '@/contexts/AuthContext';
 import Head from 'next/head';
+import { useAuth } from '@/contexts/AuthContext';
+import SEO from '@/components/Layout/SEO';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { supabase } from '@/lib/supabase';
-import { useSparks } from '@/hooks/useSparks';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 import {
     Sparkles,
     ArrowRight,
     BookOpen,
     Trash2,
     AlertTriangle,
-    Zap,
     ChevronRight,
     ChevronLeft,
     Target,
     Brain,
     SkipForward,
-    Loader2
+    Loader2,
+    Lock
 } from 'lucide-react';
 import Link from 'next/link';
 import { experimental_useObject as useObject } from '@ai-sdk/react';
@@ -85,80 +80,10 @@ export default function LearnIndex() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [curriculumToDelete, setCurriculumToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent');
+    const [isGateOpen, setIsGateOpen] = useState(false);
 
-    const { balance, loading: sparksLoading } = useSparks();
-
-    useEffect(() => {
-        if (!loading && user) {
-            fetchCurricula();
-        }
-    }, [user, loading]);
-
-    useEffect(() => {
-        if (router.query.q) setInputValue(router.query.q as string);
-        if (router.query.priorKnowledge) setPriorKnowledge(router.query.priorKnowledge as string);
-        if (router.query.skipTopics) setSkipTopics(router.query.skipTopics as string);
-        if (router.query.focusGoal) setFocusGoal(router.query.focusGoal as string);
-
-        if (router.query.autoStart === 'true' && router.query.q && token) {
-            const qVal = router.query.q as string;
-            const pkVal = (router.query.priorKnowledge as string) || '';
-            const stVal = (router.query.skipTopics as string) || '';
-            const fgVal = (router.query.focusGoal as string) || '';
-
-            const inputType = guessInputType(qVal);
-            const payload = {
-                userInput: qVal,
-                inputType,
-                priorKnowledge: pkVal.trim() || undefined,
-                skipTopics: stVal.trim() || undefined,
-                focusGoal: fgVal.trim() || undefined,
-            };
-
-            lastSubmitRef.current = payload;
-            setStep('generating');
-            setIsGenerating(true);
-            submit(payload);
-        }
-    }, [router.query, token]);
-
-    const fetchCurricula = async () => {
-        setLoadingCurricula(true);
-        const { data, error } = await supabase
-            .from('curricula')
-            .select('*')
-            .order('last_activity_at', { ascending: false });
-        if (!error && data) setCurricula(data);
-        setLoadingCurricula(false);
-    };
-
-    const handleDelete = async (curriculum: any) => {
-        setCurriculumToDelete(curriculum);
-        setDeleteModalOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!curriculumToDelete) return;
-        setIsDeleting(true);
-        try {
-            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
-            setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
-            setDeleteModalOpen(false);
-            setCurriculumToDelete(null);
-        } catch (err) {
-            console.error('Error deleting curriculum:', err);
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-    function guessInputType(text: string) {
-        const lower = text.toLowerCase();
-        if (lower.includes('?') || lower.startsWith('how') || lower.startsWith('why')) return 'question';
-        if (lower.startsWith('i want to') || lower.includes('understand how') || lower.includes('learn how')) return 'goal';
-        if (text.trim().split(' ').length <= 3) return 'concept';
-        return 'topic';
-    }
+    const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('curricula');
 
     const curriculumInitialValue = {
         title: '', target_description: '', outcomes: [] as string[],
@@ -180,15 +105,22 @@ export default function LearnIndex() {
         api: '/api/serify/stream-curriculum',
         schema: curriculumSchema,
         initialValue: curriculumInitialValue,
-        headers: {
-            Authorization: `Bearer ${token}`
+        fetch: async (url, init) => {
+            return fetch(url, {
+                ...init,
+                headers: {
+                    ...init?.headers,
+                    Authorization: token ? `Bearer ${token}` : '',
+                    ...(router.query.demo === 'true' ? { 'x-serify-demo': 'true' } : {})
+                }
+            });
         },
-        onError: (e) => {
+        onError: (e: Error) => {
             setErrorMsg(e.message || 'Failed to generate curriculum.');
             setIsGenerating(false);
             setStep('context');
         },
-        onFinish: async ({ object, error }) => {
+        onFinish: async ({ object, error }: { object: any; error: Error | undefined }) => {
             if (isSavingRef.current) return;
             isSavingRef.current = true;
 
@@ -228,13 +160,18 @@ export default function LearnIndex() {
             try {
                 const res = await fetch('/api/serify/save-curriculum', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        Authorization: token ? `Bearer ${token}` : '',
+                        ...(router.query.demo === 'true' ? { 'x-serify-demo': 'true' } : {})
+                    },
                     body: JSON.stringify({ ...toSave, user_input: lastSubmitRef.current?.userInput ?? '' })
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || data.message || 'Failed to save curriculum');
                 if (data.curriculumId) {
                     isSavingRef.current = false;
+                    refreshUsage();
                     router.push(`/learn/curriculum/${data.curriculumId}`);
                 } else {
                     throw new Error('Invalid response while saving.');
@@ -250,6 +187,100 @@ export default function LearnIndex() {
 
     curriculumDataRef.current = (curriculumData as any) ?? curriculumInitialValue;
 
+    useEffect(() => {
+        if (!loading && user) {
+            fetchCurricula();
+        }
+    }, [user, loading]);
+
+    useEffect(() => {
+        if (router.query.q) setInputValue(router.query.q as string);
+        if (router.query.priorKnowledge) setPriorKnowledge(router.query.priorKnowledge as string);
+        if (router.query.skipTopics) setSkipTopics(router.query.skipTopics as string);
+        if (router.query.focusGoal) setFocusGoal(router.query.focusGoal as string);
+
+        if (router.query.autoStart === 'true' && router.query.q && token) {
+            const qVal = router.query.q as string;
+
+            if (usage && !usage.allowed) {
+                setIsGateOpen(true);
+                return;
+            }
+
+            const pkVal = (router.query.priorKnowledge as string) || '';
+            const stVal = (router.query.skipTopics as string) || '';
+            const fgVal = (router.query.focusGoal as string) || '';
+
+            const inputType = guessInputType(qVal);
+            const payload = {
+                userInput: qVal,
+                inputType,
+                priorKnowledge: pkVal.trim() || undefined,
+                skipTopics: stVal.trim() || undefined,
+                focusGoal: fgVal.trim() || undefined,
+            };
+
+            lastSubmitRef.current = payload;
+            setStep('generating');
+            setIsGenerating(true);
+            submit(payload);
+        }
+    }, [router.query, token, submit, usage, refreshUsage]);
+
+    const fetchCurricula = async () => {
+        setLoadingCurricula(true);
+        const { data, error } = await supabase
+            .from('curricula')
+            .select('*')
+            .order('last_activity_at', { ascending: false });
+        if (!error && data) {
+            setCurricula(data);
+        }
+        setLoadingCurricula(false);
+    };
+
+    const sortedCurricula = [...curricula].sort((a, b) => {
+        if (sortBy === 'recent') {
+            return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
+        }
+        if (sortBy === 'title') {
+            return a.title.localeCompare(b.title);
+        }
+        if (sortBy === 'progress') {
+            const getProgress = (c: any) => (c.completed_concept_ids?.length || 0) / (c.concept_count || 1);
+            return getProgress(b) - getProgress(a);
+        }
+        return 0;
+    });
+
+    const handleDelete = async (curriculum: any) => {
+        setCurriculumToDelete(curriculum);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!curriculumToDelete) return;
+        setIsDeleting(true);
+        try {
+            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
+            setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
+            setDeleteModalOpen(false);
+            setCurriculumToDelete(null);
+        } catch (err) {
+            console.error('Error deleting curriculum:', err);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const guessInputType = (text: string) => {
+        const lower = text.toLowerCase();
+        if (lower.includes('?') || lower.startsWith('how') || lower.startsWith('why')) return 'question';
+        if (lower.startsWith('i want to') || lower.includes('understand how') || lower.includes('learn how')) return 'goal';
+        if (text.trim().split(' ').length <= 3) return 'concept';
+        return 'topic';
+    };
+
     const handleNext = () => {
         if (!inputValue.trim()) return;
         setErrorMsg('');
@@ -258,8 +289,12 @@ export default function LearnIndex() {
 
     const handleBuildCurriculum = async () => {
         if (!inputValue.trim()) return;
-        setErrorMsg('');
+        if (usage && !usage.allowed) {
+            setIsGateOpen(true);
+            return;
+        }
 
+        setErrorMsg('');
         setIsGenerating(true);
         setStep('generating');
         retryCountRef.current = 0;
@@ -289,25 +324,25 @@ export default function LearnIndex() {
                 key={curriculum.id}
                 className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 relative flex flex-col shadow-sm hover:shadow-md transition-shadow"
             >
-                <div className="flex justify-between items-start mb-1.5">
-                    <h3 className="font-semibold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug">
+                <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug" title={curriculum.title}>
                         {curriculum.title}
                     </h3>
-                    <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-700' :
-                        isAbandoned ? 'bg-[var(--border)] text-[var(--muted)]' :
-                            'bg-[var(--accent)]/10 text-[var(--accent)]'
-                        }`}>
-                        {isCompleted ? 'Done' : isAbandoned ? 'Paused' : 'Active'}
-                    </span>
+                    {(isCompleted || isAbandoned) && (
+                        <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-[var(--border)] text-[var(--muted)]'}`}>
+                            {isCompleted ? 'Done' : 'Paused'}
+                        </span>
+                    )}
                 </div>
 
-                <p className="text-[var(--muted)] text-xs mb-4">
-                    {conceptsCompleted}/{totalConcepts} concepts
+                <p className="text-[var(--muted)] text-[11px] mb-4 flex items-center gap-1.5">
+                    <span className="font-medium text-[var(--text)]">{conceptsCompleted}/{totalConcepts}</span>
+                    <span>concepts mastered</span>
                 </p>
 
-                <div className="w-full h-1 bg-[var(--border)] rounded-full mb-4 overflow-hidden">
+                <div className="w-full h-1.5 bg-[var(--border)]/60 rounded-full mb-5 overflow-hidden">
                     <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className="h-full rounded-full transition-all duration-700 ease-out"
                         style={{
                             width: `${progressPercent}%`,
                             background: isCompleted ? '#10b981' : 'var(--accent)'
@@ -333,8 +368,6 @@ export default function LearnIndex() {
             </div>
         );
     };
-
-    const hasEnoughSparks = !sparksLoading && balance && balance.total_sparks >= 2;
 
     return (
         <DashboardLayout>
@@ -440,7 +473,7 @@ export default function LearnIndex() {
                                 </button>
                                 <div>
                                     <p className="text-xs text-[var(--muted)] font-medium">Learning</p>
-                                    <h2 className="font-bold text-[var(--text)] leading-tight">"{inputValue}"</h2>
+                                    <h2 className="font-bold text-[var(--text)] leading-tight">&quot;{inputValue}&quot;</h2>
                                 </div>
                             </div>
 
@@ -482,7 +515,7 @@ export default function LearnIndex() {
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
                                         <Target size={15} className="text-[var(--accent)]" />
-                                        What's your specific goal?
+                                        What&apos;s your specific goal?
                                     </label>
                                     <input
                                         value={focusGoal}
@@ -500,21 +533,45 @@ export default function LearnIndex() {
                                 </div>
                             )}
 
+                            {usage && (
+                                <div className="mt-6">
+                                    <UsageWarning feature="curricula" usage={usage} />
+                                </div>
+                            )}
+
                             <div className="mt-6 flex items-center justify-between">
                                 <div className="text-xs text-[var(--muted)] flex items-center gap-1">
-                                    <Zap size={12} className="text-[var(--accent)]" />
-                                    Costs 2 Sparks · You have {balance?.total_sparks ?? '...'}
+                                    New curriculum generation
                                 </div>
                                 <button
                                     onClick={handleBuildCurriculum}
-                                    disabled={!hasEnoughSparks}
-                                    className="h-11 px-6 rounded-xl font-semibold bg-[var(--accent)] text-white flex items-center gap-2 hover:bg-[var(--accent)]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-[var(--accent)]/20"
+                                    disabled={usageLoading}
+                                    className={`h-11 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-sm ${usage && !usage.allowed
+                                        ? 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-60'
+                                        : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-[var(--accent)]/20 shadow-lg'
+                                        }`}
                                 >
-                                    <Sparkles size={16} />
-                                    Build Curriculum
-                                    <ArrowRight size={16} />
+                                    {usageLoading ? (
+                                        <Loader2 size={16} className="animate-spin" />
+                                    ) : usage && !usage.allowed ? (
+                                        <>
+                                            <Lock size={16} /> Limit Reached
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={16} /> Build Curriculum <ArrowRight size={16} />
+                                        </>
+                                    )}
                                 </button>
                             </div>
+
+                            {usage && !usage.allowed && (
+                                <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm animate-fade-in">
+                                    <p className="font-bold mb-1">Monthly Limit Reached</p>
+                                    <p className="opacity-80">You&apos;ve generated all {usage.limit} curricula for this month. Upgrade to Pro for 5 or Pro+ for unlimited.</p>
+                                    <Link href="/pricing" className="inline-block mt-3 font-bold text-amber-800 underline">View Plans &rarr;</Link>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -551,7 +608,7 @@ export default function LearnIndex() {
                                                     {unit?.unitTitle || 'Drafting...'}
                                                 </span>
                                             </div>
-                                            {unit?.concepts?.length > 0 && (
+                                            {unit?.concepts && unit.concepts.length > 0 && (
                                                 <div className="flex flex-wrap gap-1.5 mt-2">
                                                     {unit.concepts.map((c: any, j: number) => (
                                                         <span key={j} className="text-xs px-2 py-0.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)]">
@@ -577,10 +634,26 @@ export default function LearnIndex() {
                 </div>
 
                 <div>
-                    <h2 className="text-base font-bold text-[var(--text)] mb-4 flex items-center gap-2">
-                        <BookOpen size={16} className="text-[var(--muted)]" />
-                        Your Curricula
-                    </h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-base font-bold text-[var(--text)] flex items-center gap-2">
+                            <BookOpen size={16} className="text-[var(--muted)]" />
+                            Your Curricula
+                        </h2>
+                        {curricula.length > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] uppercase font-bold text-[var(--muted)] tracking-wider">Sort by:</span>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value as any)}
+                                    className="bg-transparent text-xs font-semibold text-[var(--text)] outline-none cursor-pointer hover:text-[var(--accent)] transition-colors"
+                                >
+                                    <option value="recent">Recent</option>
+                                    <option value="progress">Progress</option>
+                                    <option value="title">Title</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
 
                     {loadingCurricula ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -590,7 +663,7 @@ export default function LearnIndex() {
                         </div>
                     ) : curricula.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {curricula.map(renderCurriculumCard)}
+                            {sortedCurricula.map(renderCurriculumCard)}
                         </div>
                     ) : (
                         <div className="text-center py-14 bg-[var(--surface)] border border-dashed border-[var(--border)] rounded-2xl">
@@ -601,6 +674,8 @@ export default function LearnIndex() {
                     )}
                 </div>
             </div>
+
+            {isGateOpen && <UsageGate feature="curricula" onClose={() => setIsGateOpen(false)} />}
         </DashboardLayout>
     );
 }

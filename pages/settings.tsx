@@ -56,21 +56,22 @@ export default function Settings() {
 
             <div className="max-w-4xl mx-auto w-full px-6 md:px-10 py-6 space-y-8 pb-24 animate-fade-in-up">
                 <header>
-                    <h1 className="text-3xl font-display text-[var(--text)]">Settings</h1>
+                    <h1 className="text-3xl font-display text-[var(--text)] font-semibold tracking-tight">Settings</h1>
+                    <p className="text-sm text-[var(--muted)] mt-1">Manage your account, preferences, and billing.</p>
                 </header>
 
-                <section className="space-y-4">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">
-                        Account
+                <section className="space-y-3">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] flex items-center gap-2">
+                        <User size={12} className="opacity-60" /> Account
                     </h2>
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
-                        <div className="p-4 flex items-center justify-between">
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
+                        <div className="p-4 flex items-center justify-between bg-gradient-to-r from-[var(--accent)]/5 to-transparent">
                             <div className="flex items-center gap-3">
-                                <div className="w-11 h-11 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-base font-bold">
-                                    {user?.displayName?.charAt(0) || 'U'}
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-lg font-bold shadow-md shadow-[var(--accent)]/20 shrink-0">
+                                    {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-lg">
+                                    <h3 className="font-bold text-base text-[var(--text)]">
                                         {user?.displayName || 'User'}
                                     </h3>
                                     <p className="text-[var(--muted)] text-sm">
@@ -78,41 +79,40 @@ export default function Settings() {
                                     </p>
                                 </div>
                             </div>
-                            <button className="px-4 py-2 border border-[var(--border)] rounded-lg text-sm font-medium hover:bg-black/5">
-                                Change Photo
+                            <button className="px-4 py-2 border border-[var(--border)] rounded-xl text-sm font-medium hover:bg-[var(--accent)]/5 hover:border-[var(--accent)]/30 transition-all">
+                                Edit Profile
                             </button>
                         </div>
-                        <div className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-all row-hover-accent">
+                        <div className="p-4 hover:bg-[var(--accent)]/5 cursor-pointer flex items-center justify-between transition-all row-hover-accent hover:shadow-sm">
                             <div className="flex items-center gap-3 font-medium">
-                                <User size={18} className="text-[var(--muted)]" /> Password
+                                <User size={18} className="text-[var(--muted)]" /> Change Password
                             </div>
-                            <div className="flex items-center text-[var(--muted)]">
-                                •••••••• <ChevronRight size={16} className="ml-2" />
+                            <div className="flex items-center text-[var(--muted)] text-sm">
+                                ●●●●●●●● <ChevronRight size={16} className="ml-2" />
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <section className="space-y-4">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">
-                        Learning Preferences
+                <section className="space-y-3">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] flex items-center gap-2">
+                        <Cpu size={12} className="opacity-60" /> Learning Preferences
                     </h2>
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
-                        <Link
-                            href="/pricing"
-                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-all row-hover-accent block"
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
+                        <div
+                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-default transition-all row-hover-accent"
                         >
                             <div>
                                 <h3 className="font-bold flex items-center gap-3">
-                                    <Cpu size={18} className="text-[var(--accent)]" /> Default
+                                    <Layout size={18} className="text-[var(--accent)]" /> Default
                                     Learning Method
                                 </h3>
                                 <p className="text-sm text-[var(--muted)] mt-1 ml-7">
-                                    Standard Mode
+                                    Standard Mode (Default)
                                 </p>
                             </div>
-                            <ChevronRight size={16} className="text-[var(--muted)]" />
-                        </Link>
+                            <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-black/5 px-2 py-1 rounded">Locked</span>
+                        </div>
 
                         <div className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors">
                             <div>
@@ -125,10 +125,10 @@ export default function Settings() {
                                         </span>
                                     )}
                                 </h3>
-                                <p className="text-sm text-[var(--muted)] mt-1 ml-7">
+                                <p className="text-sm text-[var(--muted)] mt-1 ml-7 leading-relaxed max-w-md">
                                     {user?.subscriptionTier === 'pro'
-                                        ? 'Personalized AI coaching enabled'
-                                        : 'Requires Serify Pro'}
+                                        ? 'Personalized AI coaching and active guidance enabled during sessions.'
+                                        : 'Unlock personalized AI coaching and active-recall guidance with Serify Pro.'}
                                 </p>
                             </div>
                             <label
@@ -144,16 +144,16 @@ export default function Settings() {
                             </label>
                         </div>
 
-                        <div className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors">
+                        <div className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors row-hover-accent">
                             <div>
                                 <h3 className="font-bold flex items-center gap-3">
                                     <Bell size={18} className="text-[var(--shallow)]" />{' '}
                                     Notifications
                                 </h3>
-                                <p className="text-sm text-[var(--muted)] mt-1 ml-7">
+                                <p className="text-sm text-[var(--muted)] mt-1 ml-7 leading-relaxed max-w-md">
                                     {notificationsActive
-                                        ? 'Weekly digest active'
-                                        : 'Notifications paused'}
+                                        ? 'You will receive weekly summaries of your learning progress and mastery achievements.'
+                                        : 'Notifications are currently paused. You won\'t receive weekly activity digests.'}
                                 </p>
                             </div>
                             <label className="relative inline-flex items-center cursor-pointer">
@@ -169,63 +169,68 @@ export default function Settings() {
                     </div>
                 </section>
 
-                <section className="space-y-4">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">
-                        Subscription & Billing
+                <section className="space-y-3">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] flex items-center gap-2">
+                        <CreditCard size={12} className="opacity-60" /> Subscription &amp; Billing
                     </h2>
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
-                        <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
+                        <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[var(--accent)]/5 to-transparent">
                             <div>
-                                <h3 className="font-bold flex items-center gap-3">
-                                    <CreditCard size={18} className="text-[var(--text)]" /> Current
-                                    Plan: {user?.plan === 'pro' ? 'Pro Tier' : 'Free Tier'}
+                                <h3 className="font-bold flex items-center gap-3 text-[var(--text)]">
+                                    <CreditCard size={18} className="text-[var(--accent)]" /> Current
+                                    Plan: <span className={user?.plan === 'pro' ? 'text-[var(--accent)]' : 'text-[var(--text)]'}>{user?.plan === 'pro' ? 'Pro Tier' : 'Free Tier'}</span>
                                 </h3>
                                 <p className="text-sm text-[var(--muted)] mt-1 ml-7">
-                                    {user?.plan === 'pro'
-                                        ? 'Unlimited sessions. Full Knowledge Graph.'
-                                        : '3 sessions per month. No Knowledge Graph.'}
+                                    {user?.plan === 'pro' || user?.plan === 'proplus'
+                                        ? 'Full access to all diagnostic features.'
+                                        : 'Limited diagnostic sessions per month.'}
                                 </p>
                             </div>
                             <button
                                 onClick={() => (window.location.href = '/pricing')}
-                                className="px-5 py-2.5 bg-[var(--text)] text-[var(--surface)] rounded-lg text-sm font-bold hover:bg-black/80 transition-colors shrink-0"
+                                className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-emerald-600 text-white rounded-xl text-sm font-bold hover:opacity-90 hover:shadow-lg hover:shadow-[var(--accent)]/20 hover:-translate-y-0.5 transition-all shrink-0 shadow-md shadow-[var(--accent)]/10"
                             >
                                 {user?.plan === 'pro' ? 'Manage Plan' : 'Upgrade to Pro'}
                             </button>
                         </div>
                         <Link
-                            href="/settings/sparks"
+                            href="/settings/billing"
                             className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-colors block"
                         >
                             <div className="flex items-center gap-3 font-medium">
-                                <Zap size={18} className="text-amber-500" fill="currentColor" />{' '}
-                                Spark History & Balance
+                                <CreditCard size={18} className="text-[var(--accent)]" />{' '}
+                                Plan Details & Billing History
                             </div>
-                            <ChevronRight size={16} className="text-[var(--muted)]" />
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm font-bold text-[var(--accent)] bg-[var(--accent)]/5 px-2 py-1 rounded-lg border border-[var(--accent)]/10">
+                                    {user?.plan || 'Free'}
+                                </span>
+                                <ChevronRight size={16} className="text-[var(--muted)]" />
+                            </div>
                         </Link>
                     </div>
                 </section>
 
-                <section className="space-y-4">
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">
-                        Data & Privacy
+                <section className="space-y-3">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] flex items-center gap-2">
+                        <Download size={12} className="opacity-60" /> Data &amp; Privacy
                     </h2>
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)]">
-                        <div className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-all row-hover-accent">
-                            <div className="flex items-center gap-3 font-medium">
-                                <Download size={18} className="text-[var(--text)]" /> Export Session
-                                Data
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
+                        <div className="p-4 hover:bg-amber-50/50 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
+                            <div className="flex items-center gap-3 font-medium text-[var(--muted)] group-hover:text-amber-700">
+                                <Download size={18} /> Export Session Data
                             </div>
-                            <ChevronRight size={16} className="text-[var(--muted)]" />
+                            <ChevronRight size={16} className="text-[var(--muted)] group-hover:text-amber-700" />
                         </div>
                         <div className="p-4 hover:bg-red-50 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
                             <div className="flex items-center gap-3 font-medium text-red-600">
                                 <Trash2 size={18} /> Delete Account
                             </div>
+                            <span className="text-xs font-bold text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">Permanently remove all data</span>
                         </div>
                     </div>
                 </section>
-            </div>
-        </DashboardLayout>
+            </div >
+        </DashboardLayout >
     );
 }

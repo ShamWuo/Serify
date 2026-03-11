@@ -3,7 +3,6 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
 import {
     Youtube,
     Target,
@@ -22,8 +21,9 @@ import {
 } from 'lucide-react';
 import { InlineUpgradeCard } from '@/components/billing/InlineUpgradeCard';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSparks } from '@/hooks/useSparks';
 import { useSessionMaterials } from '@/hooks/useSessionMaterials';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate } from '@/components/billing/UsageEnforcement';
 import { Zap, RotateCcw } from 'lucide-react';
 import { storage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -37,13 +37,43 @@ export default function FeedbackReport() {
     const [report, setReport] = useState<any>(null);
     const [concepts, setConcepts] = useState<any[]>([]);
     const [assessments, setAssessments] = useState<any[]>([]);
-    const { user } = useAuth();
-    const { balance } = useSparks();
+    const { user, token } = useAuth();
+    const { usage, loading: usageLoading } = useUsage('ai_messages');
     const { materials, refetch } = useSessionMaterials(id as string);
 
-    const { object, submit, isLoading } = useObject<any>({
+    const feedbackSchema = z.object({
+        summary_sentence: z.string().optional(),
+        overall_counts: z.record(z.number()).optional(),
+        strength_map: z.array(
+            z.object({
+                concept_id: z.string(),
+                mastery_state: z.string(),
+                feedback_text: z.string()
+            })
+        ).optional(),
+        cognitive_analysis: z.object({
+            strong_patterns: z.string().optional(),
+            weak_patterns: z.string().optional()
+        }).optional(),
+        misconception_displayReport: z.array(
+            z.object({
+                concept_id: z.string(),
+                implied_belief: z.string(),
+                actual_reality: z.string(),
+                why_it_matters: z.string().optional()
+            })
+        ).optional(),
+        focus_suggestions: z.array(
+            z.object({
+                title: z.string().optional(),
+                reason: z.string().optional()
+            })
+        ).optional()
+    });
+
+    const { object, submit, isLoading } = useObject({
         api: '/api/synthesize-feedback',
-        schema: z.any()
+        schema: feedbackSchema
     });
 
     const displayReport = report || object;
@@ -54,9 +84,8 @@ export default function FeedbackReport() {
         cost: number;
         name: string;
     } | null>(null);
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
-    const [outOfSparksCost, setOutOfSparksCost] = useState(1);
-    const [outOfSparksFeature, setOutOfSparksFeature] = useState('this feature');
+    const [isUsageGateOpen, setIsUsageGateOpen] = useState(false);
+    const [usageFeature, setUsageFeature] = useState<any>('ai_messages');
 
     // Share state
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -75,8 +104,6 @@ export default function FeedbackReport() {
         }
         setIsSharingLoading(true);
         try {
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
             const res = await fetch('/api/sessions/share', {
                 method: 'POST',
                 headers: {
@@ -107,8 +134,6 @@ export default function FeedbackReport() {
     const handleUnshare = async () => {
         if (!user) return;
         try {
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
             await fetch('/api/sessions/share', {
                 method: 'POST',
                 headers: {
@@ -134,12 +159,11 @@ export default function FeedbackReport() {
     const handleConfirmRegenerate = () => {
         if (!regenerateTarget) return;
 
-        // Check balance again just in case
-        if (!balance || balance.total_sparks < regenerateTarget.cost) {
+        // Check usage allowed
+        if (usage?.allowed === false) {
             setIsRegenerateModalOpen(false);
-            setOutOfSparksCost(regenerateTarget.cost);
-            setOutOfSparksFeature(regenerateTarget.name);
-            setIsOutOfSparksModalOpen(true);
+            setUsageFeature('ai_messages');
+            setIsUsageGateOpen(true);
             return;
         }
 
@@ -150,12 +174,11 @@ export default function FeedbackReport() {
     const handleFeatureClick = (e: React.MouseEvent, type: string, cost: number, name: string, exists: boolean) => {
         if (exists) return; // If it exists, let the link handle it (navigation)
 
-        if (!balance || balance.total_sparks < cost) {
+        if (usage?.allowed === false) {
             e.preventDefault();
             e.stopPropagation();
-            setOutOfSparksCost(cost);
-            setOutOfSparksFeature(name);
-            setIsOutOfSparksModalOpen(true);
+            setUsageFeature('ai_messages');
+            setIsUsageGateOpen(true);
         }
     };
 
@@ -233,6 +256,18 @@ export default function FeedbackReport() {
         }
     }, [object, isLoading]);
 
+    const [showTimeoutNotice, setShowTimeoutNotice] = useState(false);
+
+    useEffect(() => {
+        let timer: any;
+        if (isLoading && !displayReport) {
+            timer = setTimeout(() => {
+                setShowTimeoutNotice(true);
+            }, 25000); // 25 seconds
+        }
+        return () => clearTimeout(timer);
+    }, [isLoading, displayReport]);
+
     const getConceptName = (id: string) => {
         const c = concepts.find((c) => c.id === id);
         return c ? c.name : 'Concept';
@@ -241,10 +276,37 @@ export default function FeedbackReport() {
     if (!displayReport) {
         return (
             <DashboardLayout>
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] gap-6 animate-fade-in">
-                    <div className="w-10 h-10 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
-                    <div className="text-[var(--muted)] text-sm font-medium animate-pulse">
-                        Running Session Diagnostics...
+                <Head>
+                    <title>Synthesizing Feedback | Serify</title>
+                </Head>
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6 text-center animate-fade-in">
+                    <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <BrainCircuit size={24} className="text-[var(--accent)]" />
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-[var(--text)]">Synthesizing Feedback</h2>
+                            <p className="text-[var(--muted)] text-sm font-medium animate-pulse max-w-xs mx-auto">
+                                Our AI is mapping your understanding patterns and identifying cognitive gaps...
+                            </p>
+                        </div>
+
+                        {showTimeoutNotice && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <p className="text-xs text-amber-600 font-medium mb-4">
+                                    This is taking longer than expected. The AI might be deep in thought...
+                                </p>
+                                <button
+                                    onClick={() => router.push('/sessions')}
+                                    className="px-4 py-2 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold hover:bg-[var(--bg)] transition-all"
+                                >
+                                    Return to Sessions
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </DashboardLayout>
@@ -551,43 +613,69 @@ export default function FeedbackReport() {
                         <h2 className="text-3xl font-display text-[var(--text)] border-b border-[var(--border)] pb-4">
                             What to Do Next
                         </h2>
-                        <ul className="space-y-4">
-                            {displayReport.focus_suggestions
-                                ?.filter((s: any) => s.title || s.reason)
-                                .map((suggestion: any, idx: number) => (
-                                    <li key={idx} className="flex items-start gap-4">
-                                        <div className="w-8 h-8 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 font-display text-xl">
-                                            {idx + 1}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-[var(--text)]">
-                                                {suggestion.title || 'Next Step'}
-                                            </h4>
-                                            {suggestion.reason && (
-                                                <p className="text-[var(--muted)] text-[15px] mt-1">
-                                                    {suggestion.reason}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </li>
-                                ))}
-                        </ul>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                            <ul className="space-y-6">
+                                {displayReport.focus_suggestions
+                                    ?.filter((s: any) => s.title || s.reason)
+                                    .map((suggestion: any, idx: number) => (
+                                        <li key={idx} className="flex items-start gap-4">
+                                            <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 font-display text-base font-bold shadow-sm">
+                                                {idx + 1}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-[var(--text)] leading-tight">
+                                                    {suggestion.title || 'Next Step'}
+                                                </h4>
+                                                {suggestion.reason && (
+                                                    <p className="text-[var(--muted)] text-[14px] mt-1 leading-relaxed">
+                                                        {suggestion.reason}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                            </ul>
 
-                        <div className="pt-6 flex flex-wrap items-center gap-4">
+                            <div className="bg-gradient-to-br from-[var(--accent)]/5 to-transparent border border-[var(--accent)]/10 rounded-2xl p-6 space-y-4">
+                                <h4 className="font-bold text-[var(--text)] flex items-center gap-2">
+                                    <Target size={18} className="text-[var(--accent)]" />
+                                    Ready for more?
+                                </h4>
+                                <p className="text-sm text-[var(--muted)] leading-relaxed">
+                                    Your personal learning path is ready. Choose a way to address your gaps below, or start a new deep dive.
+                                </p>
+                                <div className="flex flex-col gap-3 pt-2">
+                                    <Link
+                                        href="#gaps-section"
+                                        className="w-full py-3 bg-[var(--accent)] text-white text-center rounded-xl font-bold hover:bg-[var(--accent)]/90 shadow-md shadow-[var(--accent)]/20 transition-all hover:-translate-y-0.5"
+                                    >
+                                        Practice Gaps Now
+                                    </Link>
+                                    <Link
+                                        href="/analyze"
+                                        className="w-full py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] text-center rounded-xl font-bold hover:bg-black/5 transition-all"
+                                    >
+                                        Start New Material
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-8 flex flex-wrap items-center gap-4 border-t border-[var(--border)]/50">
                             <Link
                                 href="/"
-                                className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-medium hover:bg-[var(--accent)]/90 shadow-sm transition-all hover:-translate-y-0.5"
+                                className="text-sm font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors flex items-center gap-2"
                             >
-                                Go to Dashboard &rarr;
+                                <ArrowRight size={14} className="rotate-180" /> Back to Dashboard
                             </Link>
                         </div>
                     </section>
                 )}
 
                 { }
-                <section className="mt-16 pt-8 border-t-2 border-[var(--border)]">
+                <section id="gaps-section" className="mt-16 pt-8 border-t-2 border-[var(--border)] animate-fade-in">
                     <div className="mb-8">
-                        <h2 className="text-[22px] font-display text-[var(--text)]">
+                        <h2 className="text-[26px] font-display text-[var(--text)] font-semibold">
                             Fix these gaps now
                         </h2>
                         {(() => {
@@ -622,7 +710,7 @@ export default function FeedbackReport() {
                         {(displayReport.overall_counts?.['shaky'] > 0 ||
                             displayReport.overall_counts?.['revisit'] > 0) && (
                                 <div
-                                    className={`group p-5 bg-gradient-to-br from-[#7c3aed15] to-[#4f46e510] border border-[#7c3aed55] hover:border-[#7c3aed] rounded-2xl transition-all relative overflow-hidden flex flex-col ${!balance || balance.total_sparks < 1 ? 'opacity-50 pointer-events-none' : ''}`}
+                                    className={`group p-5 bg-gradient-to-br from-[#7c3aed15] to-[#4f46e510] border border-[#7c3aed55] hover:border-[#7c3aed] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) ? 'opacity-50 pointer-events-none' : ''}`}
                                 >
                                     <div className="flex items-start justify-between mb-3 relative z-10">
                                         <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
@@ -646,8 +734,8 @@ export default function FeedbackReport() {
                                         >
                                             Start Flow &rarr;
                                         </Link>
-                                        <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 1 Spark
+                                        <span className="text-[10px] bg-indigo-50 text-indigo-600 border border-indigo-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
+                                            <Zap size={10} fill="currentColor" /> Premium
                                         </span>
                                     </div>
                                     <Link
@@ -660,7 +748,7 @@ export default function FeedbackReport() {
 
                         { }
                         <div
-                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.flashcards?.exists ? 'opacity-50 pointer-events-none' : ''}`}
+                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.flashcards?.exists ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                             <div className="flex items-start justify-between mb-3 relative z-10">
                                 <div className="w-10 h-10 rounded-xl bg-[var(--accent-light)] text-[var(--accent)] flex items-center justify-center">
@@ -705,7 +793,7 @@ export default function FeedbackReport() {
                                         </span>
                                     ) : (
                                         <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 1 Spark
+                                            <Zap size={10} fill="currentColor" /> Premium Activity
                                         </span>
                                     )}
                                 </div>
@@ -719,7 +807,7 @@ export default function FeedbackReport() {
 
                         { }
                         <div
-                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${!balance || balance.total_sparks < 1 ? 'opacity-50 pointer-events-none' : ''}`}
+                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                             <div className="flex items-start justify-between mb-3 relative z-10">
                                 <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
@@ -764,7 +852,7 @@ export default function FeedbackReport() {
                                         </span>
                                     ) : (
                                         <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 1 Spark
+                                            <Zap size={10} fill="currentColor" /> Premium Activity
                                         </span>
                                     )}
                                 </div>
@@ -778,7 +866,7 @@ export default function FeedbackReport() {
 
                         { }
                         <div
-                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${!balance || balance.total_sparks < 2 ? 'opacity-50 pointer-events-none' : ''}`}
+                            className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) ? 'opacity-50 pointer-events-none' : ''}`}
                         >
                             <div className="flex items-start justify-between mb-3 relative z-10">
                                 <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
@@ -807,7 +895,7 @@ export default function FeedbackReport() {
                                         </span>
                                     ) : (
                                         <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                            <Zap size={10} fill="currentColor" /> 2 Sparks
+                                            <Zap size={10} fill="currentColor" /> Premium Activity
                                         </span>
                                     )}
                                 </div>
@@ -845,7 +933,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.tutorConversation?.exists ? 'opacity-70' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.tutorConversation?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -888,7 +976,7 @@ export default function FeedbackReport() {
                                             </span>
                                         ) : (
                                             <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                                <Zap size={10} fill="currentColor" /> 1 Spark
+                                                <Zap size={10} fill="currentColor" /> Premium Activity
                                             </span>
                                         )}
                                     </div>
@@ -928,7 +1016,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 1) && !materials?.practiceQuiz?.exists ? 'opacity-70' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.practiceQuiz?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
@@ -973,7 +1061,7 @@ export default function FeedbackReport() {
                                             </span>
                                         ) : (
                                             <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                                <Zap size={10} fill="currentColor" /> 1 Spark
+                                                <Zap size={10} fill="currentColor" /> Premium Activity
                                             </span>
                                         )}
                                     </div>
@@ -1013,7 +1101,7 @@ export default function FeedbackReport() {
                             </div>
                         ) : (
                             <div
-                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(!balance || balance.total_sparks < 2) && !materials?.deepDive?.exists ? 'opacity-70' : ''}`}
+                                className={`group p-5 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] rounded-2xl transition-all relative overflow-hidden flex flex-col ${(usage?.allowed === false && !usageLoading) && !materials?.deepDive?.exists ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
@@ -1058,7 +1146,7 @@ export default function FeedbackReport() {
                                             </span>
                                         ) : (
                                             <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 font-bold">
-                                                <Zap size={10} fill="currentColor" /> 2 Sparks
+                                                <Zap size={10} fill="currentColor" /> Premium Activity
                                             </span>
                                         )}
                                     </div>
@@ -1229,7 +1317,7 @@ export default function FeedbackReport() {
                 </div>
             )}
 
-            {/* Spark Action Confirmation Modal */}
+            {/* Activity Action Confirmation Modal */}
             {isRegenerateModalOpen && regenerateTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
                     <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl w-full max-w-md p-6 shadow-xl animate-scale-in">
@@ -1243,11 +1331,7 @@ export default function FeedbackReport() {
                         </div>
                         <p className="text-[var(--text)] text-[15px] leading-relaxed mb-6">
                             Are you sure you want to regenerate{' '}
-                            <strong>{regenerateTarget.name}</strong>? This action will cost{' '}
-                            <strong className="text-amber-600">
-                                {regenerateTarget.cost} Spark{regenerateTarget.cost > 1 ? 's' : ''}
-                            </strong>{' '}
-                            and cannot be undone.
+                            <strong>{regenerateTarget.name}</strong>? This will use your monthly AI activity allowance and cannot be undone.
                         </p>
                         <div className="flex items-center justify-end gap-3">
                             <button
@@ -1260,18 +1344,17 @@ export default function FeedbackReport() {
                                 onClick={handleConfirmRegenerate}
                                 className="px-6 py-2 bg-[var(--accent)] text-white font-medium rounded-xl hover:bg-[var(--accent)]/90 transition-all shadow-sm"
                             >
-                                Confirm & Pay
+                                Confirm
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                cost={outOfSparksCost}
-                featureName={outOfSparksFeature}
+            <UsageGate
+                feature={usageFeature}
+                forceShow={isUsageGateOpen}
+                onClose={() => setIsUsageGateOpen(false)}
             />
         </DashboardLayout>
     );

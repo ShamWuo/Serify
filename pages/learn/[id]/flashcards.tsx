@@ -6,13 +6,14 @@
  */
 
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { CheckCircle2 } from 'lucide-react';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 export default function FlashcardsMode() {
     const router = useRouter();
@@ -104,7 +105,7 @@ export default function FlashcardsMode() {
         if (id) {
             initDeck();
         }
-    }, [id, router, token]);
+    }, [id, router, token, user]);
 
     const handleGotIt = async () => {
         const currentCard = cards[currentIndex];
@@ -288,9 +289,7 @@ export default function FlashcardsMode() {
                 </div>
             }
         >
-            <Head>
-                <title>Flashcards | Serify</title>
-            </Head>
+            <SEO title="Flashcards" />
 
             <main className="max-w-[800px] mx-auto p-6 md:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-120px)]">
                 <div className="w-full mb-12 flex items-center justify-between">
@@ -321,9 +320,9 @@ export default function FlashcardsMode() {
                         className={`absolute inset-0 w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateX(180deg)]' : ''}`}
                     >
                         <div className="absolute inset-0 w-full h-full backface-hidden p-8 md:p-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl shadow-sm">
-                            <h2 className="text-2xl md:text-[32px] font-display mb-6 text-[var(--text)] leading-tight">
-                                {currentCard.front}
-                            </h2>
+                            <div className="text-2xl md:text-[32px] font-display mb-6 text-[var(--text)] leading-tight">
+                                <MarkdownRenderer className="inline-markdown text-center">{currentCard.front}</MarkdownRenderer>
+                            </div>
                             <p className="text-[var(--muted)] text-sm absolute bottom-8 opacity-60 font-medium tracking-wide">
                                 TAP TO FLIP
                             </p>
@@ -335,9 +334,9 @@ export default function FlashcardsMode() {
                                     Answer
                                 </span>
                             </div>
-                            <p className="text-lg md:text-xl text-[var(--text)] leading-relaxed">
-                                {currentCard.back}
-                            </p>
+                            <div className="text-lg md:text-xl text-[var(--text)] leading-relaxed">
+                                <MarkdownRenderer className="inline-markdown text-center">{currentCard.back}</MarkdownRenderer>
+                            </div>
                         </div>
                     </div>
                 </div>

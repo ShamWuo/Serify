@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 
 const apiKey = process.env.GEMINI_API_KEY!;
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -21,12 +21,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const sparkCost = SPARK_COSTS.HINT_REQUEST || 1;
-    const hasSparks = await hasEnoughSparks(user, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(user, 'ai_messages')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
-            .json({ error: 'out_of_sparks', message: `You need ${sparkCost} Sparks for a hint.` });
+            .json({ error: 'limit_reached', message: 'You have reached your feature limit.' });
     }
 
     try {
@@ -57,7 +56,7 @@ Return plain text only. No markdown, no bullet points.
         const result = await model.generateContent(prompt);
         const explanation = result.response.text().trim();
 
-        await deductSparks(user, sparkCost, 'hint_request');
+        (await incrementUsage(user, 'ai_messages').then(() => ({ success: true })));
 
         res.status(200).json({ explanation });
     } catch (error) {

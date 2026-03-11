@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { generateCurriculum } from '@/lib/serify-ai';
-import { deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { checkUsage, incrementUsage } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -27,14 +27,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } = await supabaseWithAuth.auth.getUser(token);
     if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const sparkCost = SPARK_COSTS.CURRICULUM_GENERATION;
-    const hasSparks = await hasEnoughSparks(user.id, sparkCost);
-    if (!hasSparks)
+    const { data: tracking } = await supabaseWithAuth
+        .from('usage_tracking')
+        .select('plan')
+        .eq('user_id', user.id)
+        .single();
+
+    const hasUsage = (await checkUsage(user.id, 'curricula')).allowed;
+    if (!hasUsage)
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Sparks to build a curriculum.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
 
     const { userInput, inputType } = req.body;
@@ -83,7 +88,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             userInput,
             inputType,
             vaultContext,
-            userProfile
+            userProfile,
+            tracking?.plan || 'free'
         );
 
         // Map AI-generated string IDs to valid UUIDs
@@ -109,9 +115,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Update original_units to match the mapped IDs
         curriculumData.original_units = JSON.parse(JSON.stringify(curriculumData.units));
 
-        // Deduct sparks
-        const deduction = await deductSparks(user.id, sparkCost, 'curriculum_generation');
-        if (!deduction.success) return res.status(403).json({ error: 'out_of_sparks' });
+        // Record usage
+        const deduction = (await incrementUsage(user.id, 'curricula').then(() => ({ success: true })));
+        if (!deduction.success) return res.status(403).json({ error: 'limit_reached' });
 
         return res.status(200).json({ curriculum: curriculumData });
     } catch (err: any) {

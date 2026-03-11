@@ -15,6 +15,10 @@ export interface Concept {
     description: string;
     importance: 'high' | 'medium' | 'low';
     relatedConcepts: string[];
+    subConcepts?: {
+        name: string;
+        description: string;
+    }[];
 }
 
 export interface CognitiveAnalysis {
@@ -69,14 +73,22 @@ export interface ConceptSynthesis {
     sessionCount: number;
 }
 
-export interface ConceptTopic {
+export interface VaultCategory {
     id: string;
     user_id: string;
     name: string;
-    concept_count: number;
-    dominant_mastery: MasteryState | null;
-    last_updated_at: Date | string;
+    display_order: number;
     created_at: Date | string;
+    is_collapsed: boolean;
+}
+
+export interface StudySet {
+    id: string;
+    user_id: string;
+    name: string;
+    concept_ids: string[];
+    created_at: Date | string;
+    last_studied_at?: Date | string | null;
 }
 
 export interface KnowledgeNode {
@@ -85,8 +97,11 @@ export interface KnowledgeNode {
     canonical_name: string;
     display_name: string;
     definition: string | null;
-    topic_id: string | null;
-    topic_name: string | null;
+    category_id: string | null;
+    parent_concept_id: string | null;
+    is_sub_concept: boolean;
+    is_archived: boolean;
+    added_manually: boolean;
     current_mastery: MasteryState;
     mastery_history: MasteryHistoryEntry[];
     session_count: number;
@@ -161,7 +176,6 @@ export interface FlowSession {
     concepts_in_progress: string[];
     status: 'active' | 'paused' | 'completed' | 'abandoned';
     learner_profile?: SessionLearnerProfile;
-    total_sparks_spent: number;
     started_at: Date | string;
     last_activity_at: Date | string;
     completed_at?: Date | string;
@@ -185,7 +199,6 @@ export interface FlowStep {
         masterySignal?: string;
     } | null;
     ai_reasoning?: string | null;
-    spark_cost: number;
     created_at: Date | string;
 }
 
@@ -250,7 +263,6 @@ export interface Curriculum {
     started_at: Date | string;
     last_activity_at: Date | string;
     completed_at?: Date | string | null;
-    total_sparks_spent: number;
     created_at: Date | string;
 }
 
@@ -264,7 +276,6 @@ export interface CurriculumConceptProgress {
     path_taken?: 'full' | 'accelerated_solid' | 'accelerated_developing';
     flow_session_id?: string;
     mastery_at_completion?: MasteryState;
-    sparks_spent: number;
     started_at: Date | string;
     completed_at?: Date | string | null;
 }

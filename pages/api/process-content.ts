@@ -1,7 +1,7 @@
 import { streamObject, generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 export const config = {
@@ -14,9 +14,18 @@ export default async function handler(req: Request) {
     }
 
     try {
-        const { content, contentType, stream = true } = await req.json();
+        let body;
+        try {
+            body = await req.json();
+        } catch (e) {
+            console.error('Failed to parse request JSON:', e);
+            return new Response(JSON.stringify({ message: 'Invalid JSON payload' }), { status: 400 });
+        }
 
-        if (!content) {
+        const { content, contentType: providedType, type: legacyType, stream = true } = body;
+        const contentType = providedType || legacyType;
+
+        if (!content || !contentType) {
             return new Response(JSON.stringify({ message: 'Content is required' }), {
                 status: 400
             });
@@ -27,13 +36,12 @@ export default async function handler(req: Request) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        const sparkCost = SPARK_COSTS.SESSION_INGESTION || 2;
-        const hasSparks = await hasEnoughSparks(user, sparkCost);
-        if (!hasSparks) {
+        const isAllowed = (await checkUsage(user, 'sessions')).allowed;
+        if (!isAllowed) {
             return new Response(
                 JSON.stringify({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 }),
                 { status: 403 }
             );
@@ -87,7 +95,7 @@ export default async function handler(req: Request) {
             });
 
             if (object) {
-                await deductSparks(user, sparkCost, 'session_ingestion');
+                (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
             }
 
             return new Response(JSON.stringify(object), {
@@ -103,7 +111,7 @@ export default async function handler(req: Request) {
             schema,
             onFinish: async ({ object }) => {
                 if (object) {
-                    await deductSparks(user, sparkCost, 'session_ingestion');
+                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
                 }
             }
         });

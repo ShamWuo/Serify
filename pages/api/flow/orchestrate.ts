@@ -1,8 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
+import { findOrCreateConceptNode } from '@/lib/vault';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -19,14 +20,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const sparkCost = SPARK_COSTS.FLOW_MODE_ORCHESTRATE;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks)
+    const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+    if (!hasUsage)
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark to orchestrate this concept.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
 
     const { sessionId, conceptId } = req.body;
@@ -47,6 +47,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId) || {
             conceptName: 'Unknown Topic'
         };
+        const conceptName = currentConcept.conceptName || 'Unknown Topic';
+
+        // ── Ensure concept exists in vault (FK requirement) ───────
+        const node = await findOrCreateConceptNode(
+            supabaseAdmin as any,
+            userId,
+            conceptName,
+            sessionId,
+            `Learning path: ${conceptName}`
+        );
+        const vaultConceptId = node?.id || conceptId;
 
         const { data: strongNodes } = await supabaseAdmin
             .from('knowledge_nodes')
@@ -75,7 +86,8 @@ Teach (one cohesive page) → Quick Checks (2–3 inline MCQ) → Deep Check (op
 Generate a complete teaching plan as JSON:
 {
   "teach": {
-    "text": "string — full combined lesson. Use markdown headings (## What is X?, ## How it works, ## Example) to break the content into readable sections. Cover definition + mechanism + worked example in one flowing piece."
+    "text": "string — full combined lesson. Use markdown headings (## What is X?, ## How it works, ## Example) to break the content into readable sections. Cover definition + mechanism + worked example in one flowing piece.",
+    "reinforcementText": "string — a shorter, more targeted version of the lesson text to be used if the learner needs a second pass or reinforcement. Focus on the core mechanism."
   },
   "quickChecks": [
     {
@@ -137,7 +149,7 @@ FORMATTING — MANDATORY:
 
         const promptText = `
 CONCEPT TO TEACH:
-Name: ${currentConcept.conceptName}
+Name: ${conceptName}
 Definition: ${currentConcept.definition || 'Not provided'}
 Known misconceptions for this learner: ${currentConcept.prerequisiteCheck ? currentConcept.prerequisiteCheck : 'none'}
 Current mastery state: ${currentConcept.currentMastery || 'Not started'}
@@ -149,7 +161,7 @@ What this learner understands well (use as bridges): ${strongConcepts.join(', ')
 Reinforcements required so far this session: ${learnerProfile.reinforcementsRequired || 0}
 `;
 
-        await deductSparks(userId, sparkCost, 'flow_mode_orchestrate');
+        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();
@@ -189,7 +201,7 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
             .from('flow_concept_progress')
             .select('id')
             .eq('flow_session_id', sessionId)
-            .eq('concept_id', conceptId)
+            .eq('concept_id', vaultConceptId)
             .maybeSingle();
 
         let updateError;
@@ -207,7 +219,7 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
             const { error } = await supabaseAdmin.from('flow_concept_progress').insert({
                 id: progressId,
                 flow_session_id: sessionId,
-                concept_id: conceptId,
+                concept_id: vaultConceptId,
                 user_id: userId,
                 orchestrator_plan: orchestratorPlan,
                 status: 'in_progress'
@@ -220,16 +232,10 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
             return res.status(500).json({ error: 'Failed to save orchestrator plan' });
         }
 
-        await supabaseAdmin
-            .from('flow_sessions')
-            .update({ total_sparks_spent: sessionData.total_sparks_spent + sparkCost })
-            .eq('id', sessionId);
-
         return res
             .status(200)
             .json({
-                orchestratorPlan,
-                total_sparks_spent: sessionData.total_sparks_spent + sparkCost
+                orchestratorPlan
             });
     } catch (error: any) {
         console.error('Error in flow orchestrator:', error);

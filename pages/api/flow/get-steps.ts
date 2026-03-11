@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateApiRequest } from '@/lib/sparks';
+import { authenticateApiRequest } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -180,9 +180,7 @@ export default function FeynmanMode() {
                 </div>
             }
         >
-            <Head>
-                <title>Feynman Method | Serify</title>
-            </Head>
+            <SEO title="Feynman Method" />
 
             <main className="max-w-[800px] mx-auto p-6 md:p-8 pb-32">
                 {!feedback && !analyzing && (
@@ -190,7 +188,9 @@ export default function FeynmanMode() {
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 mb-8 border-l-4 border-l-purple-500 shadow-sm">
                             <p className="text-[15px] leading-relaxed text-[var(--text)] font-medium">
                                 Explain{' '}
-                                <strong className="text-purple-600">{targetConcept.name}</strong> as
+                                <strong className="text-purple-600 inline-block">
+                                    <MarkdownRenderer className="inline-markdown">{targetConcept.name}</MarkdownRenderer>
+                                </strong> as
                                 if you&apos;re teaching it to someone who has never heard of it. Use
                                 your own words. Don&apos;t look anything up. Write until you feel
                                 like you&apos;ve covered it fully.

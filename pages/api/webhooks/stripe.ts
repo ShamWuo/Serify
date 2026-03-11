@@ -2,11 +2,9 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
 import { buffer } from 'micro';
-import { addDays } from 'date-fns';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
 
 export const config = {
@@ -40,129 +38,127 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
+    // Idempotency check
+    const { data: existingEvent } = await supabase
+        .from('processed_webhook_events')
+        .select('id')
+        .eq('stripe_event_id', event.id)
+        .maybeSingle();
+
+    if (existingEvent) {
+        return res.json({ received: true, alreadyProcessed: true });
+    }
+
     try {
         switch (event.type) {
-            case 'checkout.session.completed':
+            case 'checkout.session.completed': {
                 const session = event.data.object as any;
-                const userId = session.metadata?.userId;
-
-                if (!userId) break;
-
                 if (session.mode === 'subscription') {
-                    const plan = getPlanFromPriceId(session);
+                    const subscription = await stripe.subscriptions.retrieve(session.subscription) as any;
+                    const userId = session.metadata?.userId || subscription.metadata?.userId;
+                    const plan = subscription.metadata?.plan || getPlanFromPriceId(subscription.items.data[0].price.id);
 
-                    await supabase.from('subscriptions').upsert(
-                        {
+                    if (userId) {
+                        await supabase.from('subscriptions').upsert({
                             user_id: userId,
-                            stripe_subscription_id: session.subscription as string,
                             plan: plan,
-                            status: 'active'
-                        },
-                        { onConflict: 'stripe_subscription_id' }
-                    );
-
-                    await supabase
-                        .from('profiles')
-                        .update({ subscription_tier: plan })
-                        .eq('id', userId);
-                } else if (session.mode === 'payment') {
-                    const sparkAmount = parseInt(session.metadata?.sparkAmount || '0', 10);
-                    if (sparkAmount > 0) {
-                        await supabase.rpc('add_topup_sparks', {
-                            p_user_id: userId,
-                            p_amount: sparkAmount,
-                            p_stripe_payment_intent_id: session.payment_intent as string
-                        });
-                    } else if (session.payment_intent) {
-                        await supabase.from('purchases').insert({
-                            user_id: userId,
-                            stripe_payment_intent_id: session.payment_intent as string,
-                            product: 'deepdive',
-                            amount_cents: session.amount_total || 400,
-                            expires_at: addDays(new Date(), 7).toISOString()
-                        });
-                    }
-                }
-                break;
-
-            case 'customer.subscription.created':
-            case 'customer.subscription.updated':
-                const subscription = event.data.object as any;
-                const subPlan = await getPlanFromSubscription(subscription.id);
-                const subUserId =
-                    subscription.metadata?.userId ||
-                    (await getUserIdFromCustomer(subscription.customer as string, supabase));
-
-                if (subUserId) {
-                    await supabase.from('subscriptions').upsert(
-                        {
-                            user_id: subUserId,
+                            stripe_customer_id: session.customer as string,
                             stripe_subscription_id: subscription.id,
-                            plan: subPlan,
+                            stripe_price_id: subscription.items.data[0].price.id,
                             status: subscription.status,
-                            current_period_start: new Date(
-                                subscription.current_period_start * 1000
-                            ).toISOString(),
-                            current_period_end: new Date(
-                                subscription.current_period_end * 1000
-                            ).toISOString(),
-                            cancel_at_period_end: subscription.cancel_at_period_end,
-                            seats: subscription.items.data[0]?.quantity || 1
-                        },
-                        { onConflict: 'stripe_subscription_id' }
-                    );
+                            billing_interval: subscription.items.data[0].plan.interval,
+                            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                        }, { onConflict: 'user_id' });
 
-                    await supabase
-                        .from('profiles')
-                        .update({ subscription_tier: subPlan })
-                        .eq('id', subUserId);
-                }
-                break;
-
-            case 'customer.subscription.deleted':
-                const deletedSub = event.data.object as any;
-                const delUserId =
-                    deletedSub.metadata?.userId ||
-                    (await getUserIdFromCustomer(deletedSub.customer as string, supabase));
-
-                if (delUserId) {
-                    await supabase
-                        .from('subscriptions')
-                        .update({ status: 'canceled' })
-                        .eq('stripe_subscription_id', deletedSub.id);
-                    await supabase
-                        .from('profiles')
-                        .update({ subscription_tier: 'free' })
-                        .eq('id', delUserId);
-                }
-                break;
-
-            case 'invoice.payment_succeeded':
-                const invoice = event.data.object as any;
-                if (invoice.subscription) {
-                    const subId = invoice.subscription as string;
-                    const subPlan = await getPlanFromSubscription(subId);
-
-                    const sparkGrant = subPlan === 'pro' || subPlan === 'teams' ? 150 : 0;
-
-                    if (sparkGrant > 0) {
-                        const invoiceUserId = await getUserIdFromCustomer(
-                            invoice.customer as string,
-                            supabase
-                        );
-                        if (invoiceUserId) {
-                            await supabase.rpc('refresh_subscription_sparks', {
-                                p_user_id: invoiceUserId,
-                                p_amount: sparkGrant
-                            });
-                        }
+                        await supabase
+                            .from('usage_tracking')
+                            .update({
+                                plan: plan,
+                                period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                                period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                            })
+                            .eq('user_id', userId);
                     }
                 }
                 break;
+            }
 
-            default:
-                console.log(`Unhandled event type ${event.type}`);
+            case 'invoice.payment_succeeded': {
+                const invoice = event.data.object as any;
+                if (invoice.billing_reason === 'subscription_cycle') {
+                    const userId = await getUserIdFromCustomer(invoice.customer as string, supabase);
+                    if (userId) {
+                        const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string) as any;
+                        await supabase.from('usage_tracking').update({
+                            sessions_used: 0,
+                            flashcards_used: 0,
+                            quizzes_used: 0,
+                            ai_messages_used: 0,
+                            flow_sessions_used: 0,
+                            curricula_used: 0,
+                            deep_dives_used: 0,
+                            period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                            period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                        }).eq('user_id', userId);
+                    }
+                }
+                break;
+            }
+
+            case 'customer.subscription.updated': {
+                const subscription = event.data.object as any;
+                const userId = subscription.metadata?.userId || await getUserIdFromCustomer(subscription.customer as string, supabase);
+                const newPlan = subscription.metadata?.plan || getPlanFromPriceId(subscription.items.data[0].price.id);
+
+                if (userId) {
+                    const { data: subData } = await supabase.from('subscriptions').select('plan').eq('user_id', userId).single();
+                    const oldPlan = subData?.plan || 'free';
+                    const isUpgrade = (newPlan === 'proplus' && oldPlan === 'pro') || (newPlan !== 'free' && oldPlan === 'free');
+
+                    if (isUpgrade) {
+                        await supabase.from('usage_tracking').update({ plan: newPlan }).eq('user_id', userId);
+                        await supabase.from('subscriptions').update({
+                            plan: newPlan,
+                            status: subscription.status,
+                            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                        }).eq('user_id', userId);
+                    } else {
+                        await supabase.from('subscriptions').update({
+                            pending_plan: newPlan,
+                            status: subscription.status,
+                            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+                            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                            cancel_at_period_end: subscription.cancel_at_period_end
+                        }).eq('user_id', userId);
+                    }
+                }
+                break;
+            }
+
+            case 'customer.subscription.deleted': {
+                const subscription = event.data.object as any;
+                const userId = await getUserIdFromCustomer(subscription.customer as string, supabase);
+                if (userId) {
+                    await supabase.from('usage_tracking').update({ plan: 'free' }).eq('user_id', userId);
+                    await supabase.from('subscriptions').update({ status: 'cancelled', plan: 'free' }).eq('user_id', userId);
+                }
+                break;
+            }
+
+            case 'invoice.payment_failed': {
+                const invoice = event.data.object as any;
+                const userId = await getUserIdFromCustomer(invoice.customer as string, supabase);
+                if (userId && invoice.subscription) {
+                    await supabase.from('subscriptions').update({ status: 'past_due' }).eq('user_id', userId);
+                }
+                break;
+            }
         }
+
+        // Mark event as processed
+        await supabase.from('processed_webhook_events').insert({ stripe_event_id: event.id });
 
         res.json({ received: true });
     } catch (err: any) {
@@ -171,30 +167,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 }
 
-function getPlanFromPriceId(session: any) {
-    return 'pro';
-}
-
-async function getPlanFromSubscription(subId: string) {
-    try {
-        const sub = await stripe.subscriptions.retrieve(subId);
-        const priceId = sub.items.data[0].price.id;
-
-        if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_TEAMS_MONTHLY) return 'teams';
-        if (
-            priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ||
-            priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY
-        )
-            return 'pro';
-    } catch (e) {}
-    return 'pro';
+function getPlanFromPriceId(priceId: string) {
+    if (priceId === process.env.STRIPE_PRICE_ID_PRO_MONTHLY || priceId === process.env.STRIPE_PRICE_ID_PRO_YEARLY) return 'pro';
+    if (priceId === process.env.STRIPE_PRICE_ID_PROPLUS_MONTHLY || priceId === process.env.STRIPE_PRICE_ID_PROPLUS_YEARLY) return 'proplus';
+    return 'free';
 }
 
 async function getUserIdFromCustomer(customerId: string, supabase: any) {
     const { data } = await supabase
+        .from('subscriptions')
+        .select('user_id')
+        .eq('stripe_customer_id', customerId)
+        .maybeSingle();
+
+    if (data) return data.user_id;
+
+    const { data: profile } = await supabase
         .from('profiles')
         .select('id')
         .eq('stripe_customer_id', customerId)
-        .single();
-    return data?.id;
+        .maybeSingle();
+
+    return profile?.id;
 }

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { SessionLearnerProfile, MasteryState } from '@/types/serify';
 import { findOrCreateConceptNode, updateConceptMastery } from '@/lib/vault';
@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const { data: sessionData } = await supabaseAdmin
             .from('flow_sessions')
-            .select('learner_profile, initial_plan, total_sparks_spent')
+            .select('learner_profile, initial_plan')
             .eq('id', sessionId)
             .single();
 
@@ -64,9 +64,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .order('step_number', { ascending: true });
 
         const planConcepts = sessionData.initial_plan?.concepts || [];
-        const currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId) || {
-            conceptName: 'Unknown Topic'
-        };
+
+        // Search for the concept in the plan using both the current ID (might be UUID) 
+        // and its name (if we can find it in the vault)
+        let currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId);
+
+        if (!currentConcept) {
+            // If not found by ID, try to find by name from the Vault
+            const { data: vaultNode } = await supabaseAdmin
+                .from('knowledge_nodes')
+                .select('display_name')
+                .eq('id', conceptId)
+                .maybeSingle();
+
+            if (vaultNode) {
+                currentConcept = planConcepts.find((c: any) =>
+                    c.conceptName.toLowerCase() === vaultNode.display_name.toLowerCase()
+                );
+            }
+        }
+
+        if (!currentConcept) {
+            currentConcept = { conceptName: 'Unknown Topic' };
+        }
 
         let learnerProfile: SessionLearnerProfile = sessionData.learner_profile || {
             estimatedLevel: 'average',
@@ -82,11 +102,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`
             );
 
-        let sparkCost = SPARK_COSTS.FLOW_MODE_EVAL ?? 0;
-        const hasSparks = await hasEnoughSparks(userId, sparkCost);
-        if (!hasSparks) return res.status(403).json({ error: 'out_of_sparks' });
-        await deductSparks(userId, sparkCost, 'flow_mode_eval');
-        let totalSparksSpent = sessionData.total_sparks_spent + sparkCost;
+        const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+        if (!hasUsage) return res.status(403).json({ error: 'limit_reached' });
+        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
         const evaluatorModel = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
@@ -167,18 +185,21 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
         let nextReinforceContent: string | null = null;
 
         if (evaluation.path === 'B' || evaluation.path === 'C') {
-            const reinforceCost = SPARK_COSTS.FLOW_MODE_TEACH_NEW ?? 0;
-            const hasSparksForReinforce = await hasEnoughSparks(userId, reinforceCost);
+            const hasUsageForReinforce = (await checkUsage(userId, 'flow_sessions')).allowed;
 
-            if (hasSparksForReinforce) {
-                await deductSparks(userId, reinforceCost, 'flow_mode_teach_new');
-                sparkCost += reinforceCost;
-                totalSparksSpent += reinforceCost;
+            if (hasUsageForReinforce) {
+                (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
                 const reinforceModel = genAI.getGenerativeModel({
                     model: 'gemini-2.5-flash',
-                    systemInstruction: `A learner needs a targeted re-explanation."
-Return the re-explanation text only. No JSON. No preamble.`
+                    systemInstruction: `You are Serify's adaptive reinforcement engine. Provide a targeted re-explanation of a specific concept area where the learner is struggling.
+                    
+                    RULES:
+                    - Return ONLY the re-explanation text. No JSON, no conversational filler.
+                    - MANDATORY: Use LaTeX for ALL math ($...$ for inline, $$...$$ for block).
+                    - STRUCTURE: Use bolding (**concept**) for emphasis and bullet points for lists to improve scannability.
+                    - TONE: Professional, supportive, but extremely concise. 3-5 sentences total.
+                    - No preamble (do not say "Sure", "Let's look at this", etc.).`
                 });
 
                 const { data: progressData } = await supabaseAdmin
@@ -229,7 +250,7 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
                     (learnerProfile.reinforcementsRequired || 0) + 1;
             } else {
                 nextReinforceContent =
-                    "I wanted to explain that from a new angle, but you're out of Sparks. Let's try the question again.";
+                    "I wanted to explain that from a new angle, but you've reached your feature limit for this period. Let's try the question again.";
             }
         }
 
@@ -256,8 +277,7 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
         await supabaseAdmin
             .from('flow_sessions')
             .update({
-                learner_profile: learnerProfile,
-                total_sparks_spent: totalSparksSpent
+                learner_profile: learnerProfile
             })
             .eq('id', sessionId);
 
@@ -293,7 +313,7 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
             console.error('[vault] Proactive mastery update failed:', vaultErr);
         }
 
-        return res.status(200).json({ evaluation, total_sparks_spent: totalSparksSpent });
+        return res.status(200).json({ evaluation });
     } catch (error: any) {
         console.error('Error in flow mode evaluate:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });

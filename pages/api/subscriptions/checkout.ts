@@ -1,12 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateApiRequest } from '@/lib/sparks';
+import { authenticateApiRequest } from '@/lib/usage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey =
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
     if (!supabaseUrl || !supabaseServiceKey) {
         console.error('Supabase configuration missing');
@@ -14,16 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    if (!process.env.STRIPE_SECRET_KEY) {
-        console.error('STRIPE_SECRET_KEY is missing');
-        return res.status(500).json({ error: 'Stripe is not configured on the server' });
-    }
-
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        console.error('Supabase keys are missing');
-        return res.status(500).json({ error: 'Database is not configured on the server' });
-    }
 
     if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
@@ -36,77 +25,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const { priceId, quantity = 1 } = req.body;
+        const { priceId, planName } = req.body;
         const userId = authenticatedUserId;
 
-        if (!priceId) {
+        if (!priceId || !planName) {
             return res.status(400).json({ error: 'Missing required parameters' });
         }
 
-        const { data: user, error: userError } = await supabase
+        const { data: user } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', userId)
             .single();
 
-        if (userError || !user) {
-            console.error('User not found:', userError);
-            return res.status(404).json({ error: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ error: 'User profile not found' });
         }
 
-        // Guard: block re-subscription if the user already has an active subscription
-        const isDeepDiveCheck = priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_DEEPDIVE;
-        if (!isDeepDiveCheck) {
-            const { data: existingSub } = await supabase
-                .from('subscriptions')
-                .select('id')
-                .eq('user_id', userId)
-                .in('status', ['active', 'trialing'])
-                .maybeSingle();
+        const { data: { user: authUser } } = await supabase.auth.admin.getUserById(userId);
+        const email = authUser?.email;
 
-            if (existingSub) {
-                return res.status(409).json({
-                    error: 'already_subscribed',
-                    message: 'You already have an active subscription. Manage it from your billing settings.'
-                });
+        let customerId = user.stripe_customer_id;
+
+        if (customerId) {
+            try {
+                await stripe.customers.retrieve(customerId);
+            } catch (stripeError: any) {
+                if (stripeError.statusCode === 404) customerId = null;
+                else throw stripeError;
             }
         }
 
-        let customerId = user.stripe_customer_id;
         if (!customerId) {
             const customer = await stripe.customers.create({
-                email: user.email || undefined,
+                email: email || undefined,
                 name: user.display_name || undefined,
                 metadata: { userId }
             });
             customerId = customer.id;
-
-            await supabase
-                .from('profiles')
-                .update({ stripe_customer_id: customerId })
-                .eq('id', userId);
+            await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', userId);
         }
-
-        const isDeepDive = priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_DEEPDIVE;
 
         const session = await stripe.checkout.sessions.create({
             customer: customerId,
-            mode: isDeepDive ? 'payment' : 'subscription',
-            line_items: [
-                {
-                    price: priceId,
-                    quantity: quantity
-                }
-            ],
+            mode: 'subscription',
+            line_items: [{ price: priceId, quantity: 1 }],
             success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/settings/billing?success=true`,
             cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/settings/billing?canceled=true`,
             allow_promotion_codes: true,
-            subscription_data: !isDeepDive
-                ? {
-                    metadata: { userId }
-                }
-                : undefined,
-            metadata: { userId }
+            subscription_data: {
+                metadata: { userId, plan: planName }
+            },
+            metadata: { userId, plan: planName }
         });
 
         return res.status(200).json({ url: session.url });

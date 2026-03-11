@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { parseJSON } from '@/lib/serify-ai';
 
@@ -20,14 +20,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const sparkCost = SPARK_COSTS.FEYNMAN_SUBMISSION;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Sparks to evaluate this explanation.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -80,13 +79,13 @@ Student's Feynman explanation:
 "${userExplanation}"
 `;
 
-        const deduction = await deductSparks(userId, sparkCost, 'feynman_evaluate', concept.id);
+        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks to evaluate this explanation.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

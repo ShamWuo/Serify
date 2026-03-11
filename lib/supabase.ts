@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '@/types/db_types_new'; // Correct path for DB types
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -33,6 +34,64 @@ const projectRef = supabaseUrl.includes('supabase.co')
     ? supabaseUrl.split('.')[0].split('//')[1]
     : 'local';
 
+// Custom fetch wrapper to handle timeouts
+const fetchWithTimeout = async (url: string | URL | Request, options?: RequestInit) => {
+    const timeout = 15000; // 15 second timeout for auth/DB calls
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+};
+
+// Singleton pattern to prevent multiple instances during Fast Refresh
+const createSupabaseClient = () => {
+    return createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+            detectSessionInUrl: true,
+            autoRefreshToken: true,
+            persistSession: true,
+            storageKey: `sb-${projectRef}-auth-token`,
+            flowType: 'pkce'
+        },
+        global: {
+            fetch: fetchWithTimeout
+        }
+    });
+};
+
+const globalForSupabase = globalThis as unknown as {
+    supabase: ReturnType<typeof createSupabaseClient> | undefined;
+};
+
+export const supabase = globalForSupabase.supabase ?? createSupabaseClient();
+
+// Admin client for server-side operations that need to bypass RLS
+// We only initialize this if the SUPABASE_SERVICE_ROLE_KEY is present
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+export const supabaseAdmin = (supabaseUrl && supabaseServiceKey) 
+    ? createClient<Database>(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    })
+    : null;
+
+if (process.env.NODE_ENV !== 'production') {
+    globalForSupabase.supabase = supabase;
+}
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     console.log('Supabase client initialized:', {
         url: supabaseUrl,
@@ -49,13 +108,3 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         );
     }
 }
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        detectSessionInUrl: true,
-        autoRefreshToken: true,
-        persistSession: true,
-        storageKey: `sb-${projectRef}-auth-token`,
-        flowType: 'pkce'
-    }
-});

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { getGeminiModel } from '@/lib/serify-ai';
 
@@ -26,14 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing messages or session context' });
     }
 
-    const sparkCost = SPARK_COSTS.AI_TUTOR_MESSAGE * (proMode ? 5 : 1);
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Spark to continue chatting.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -86,13 +85,13 @@ Your role:
 Tone: direct, warm, intellectually engaged.`
         );
 
-        const deduction = await deductSparks(userId, sparkCost, 'ai_tutor_message');
+        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Spark to continue chatting.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

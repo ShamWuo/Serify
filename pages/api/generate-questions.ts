@@ -1,7 +1,7 @@
 import { streamObject, generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { authenticateApiRequest, deductSparks, hasEnoughSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 
 export const config = {
     runtime: 'edge'
@@ -26,13 +26,12 @@ export default async function handler(req: Request) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        const sparkCost = SPARK_COSTS.QUESTION_GENERATION || 1;
-        const hasSparks = await hasEnoughSparks(user, sparkCost);
-        if (!hasSparks) {
+        const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+        if (!hasUsage) {
             return new Response(
                 JSON.stringify({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 }),
                 { status: 403 }
             );
@@ -77,7 +76,7 @@ export default async function handler(req: Request) {
             });
 
             if (object) {
-                await deductSparks(user, sparkCost, 'question_generation');
+                (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
             }
 
             return new Response(JSON.stringify(object), {
@@ -92,7 +91,7 @@ export default async function handler(req: Request) {
             schema,
             onFinish: async ({ object }) => {
                 if (object) {
-                    await deductSparks(user, sparkCost, 'question_generation');
+                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
                 }
             }
         });

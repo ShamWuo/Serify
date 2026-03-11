@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { authenticateApiRequest, hasEnoughSparks, deductSparks, SPARK_COSTS } from '@/lib/sparks';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
 import { parseJSON } from '@/lib/serify-ai';
 
@@ -47,14 +47,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json(existing);
     }
 
-    const sparkCost = SPARK_COSTS.CONCEPT_DEEP_DIVE;
-    const hasSparks = await hasEnoughSparks(userId, sparkCost);
-    if (!hasSparks) {
+    const hasUsage = (await checkUsage(userId, 'deep_dives')).allowed;
+    if (!hasUsage) {
         return res
             .status(403)
             .json({
-                error: 'out_of_sparks',
-                message: `You need ${sparkCost} Sparks for a Concept Deep Dive.`
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
             });
     }
 
@@ -85,13 +84,13 @@ Student's struggle/misconception: ${concept.feedbackNote || 'No specific feedbac
 Generate the deep dive JSON.
 `;
 
-        const deduction = await deductSparks(userId, sparkCost, 'concept_deep_dive', conceptId);
+        const deduction = (await incrementUsage(userId, 'deep_dives').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)
                 .json({
-                    error: 'out_of_sparks',
-                    message: `You need ${sparkCost} Sparks for a Concept Deep Dive.`
+                    error: 'limit_reached',
+                    message: 'You have reached your feature limit.'
                 });
         }
 

@@ -9,23 +9,27 @@ import {
 } from '../types/serify';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const defaultModel = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
-  generationConfig: {
-    temperature: 0.1,
-    responseMimeType: 'application/json'
-  }
-});
 
-export function getGeminiModel(proMode: boolean = false, systemInstruction?: string) {
+export function getGeminiModel(plan: string = 'free', systemInstruction?: string) {
+  let modelName = 'gemini-2.5-flash';
+  
+  if (plan === 'pro') {
+    modelName = 'gemini-2.5-pro';
+  } else if (plan === 'proplus') {
+    modelName = 'gemini-2.5-pro'; // Or gemini-1.5-pro-latest if preferred for Pro+
+  }
+
   return genAI.getGenerativeModel({
-    model: proMode ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
+    model: modelName,
     systemInstruction,
     generationConfig: {
-      temperature: proMode ? 0.3 : 0.1, // slightly higher temp for pro reasoning
+      temperature: plan === 'free' ? 0.1 : 0.3,
+      responseMimeType: 'application/json'
     }
   });
 }
+
+const defaultModel = getGeminiModel('free');
 
 export function parseJSON<T>(text: string): T {
   // Try to extract JSON between markdown code blocks if they exist
@@ -38,11 +42,25 @@ export function parseJSON<T>(text: string): T {
     return JSON.parse(cleaned);
   } catch (err) {
     console.error('Failed to parse JSON from AI response:', text);
-    throw err;
+    // If it's a common "AI added a comment" error, try one last aggressive strip
+    try {
+      const aggressive = cleaned.substring(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);
+      return JSON.parse(aggressive);
+    } catch (innerErr) {
+      throw err;
+    }
   }
 }
 
-export async function extractConcepts(content: ContentSource, transcript?: string): Promise<Concept[]> {
+export async function extractConcepts(content: ContentSource, plan: string = 'free', transcript?: string, vaultContext?: string): Promise<Concept[]> {
+  const contextInstruction = vaultContext 
+    ? `EXISTING KNOWLEDGE STRUCTURE:
+The user already has the following broad categories (Pillars) and sub-concepts in their vault:
+${vaultContext}
+
+REUSE EXISTING CATEGORIES: If the new material fits into any of the existing Pillars above, you MUST reuse them by name exactly. Only create a NEW Pillar if the content covers a thematic domain that is fundamentally different from what is already in the vault.`
+    : `The user's knowledge vault is currently empty. Create a fresh, logical structure of themes.`;
+
   const contentDescription =
     content.type === 'text'
       ? `Here are the user's notes:\n\n${content.content}`
@@ -53,29 +71,46 @@ export async function extractConcepts(content: ContentSource, transcript?: strin
   const prompt = `You are an expert knowledge analyst.
 ${contentDescription}
 
-Extract 4 to 6 key concepts that represent the core pillars of this material. Return a JSON array.
+${contextInstruction}
+
+Your task is to extract 3 to 5 broad "Mastery Pillars" (Broad Categories) that represent the major themes or domains of this material. 
+For each pillar, identify 2 to 4 specific sub-categories (sub-concepts) that fall under it.
+
+Refinement Rules:
+- A Mastery Pillar must be a broad, high-level theme (e.g., "Calculus Fundamentals", "Derivatives", "Quantum Mechanics").
+- Sub-concepts must be specific, actionable components of that pillar (e.g., "Related Rates", "Implicit Differentiation", "Wave-Particle Duality").
+- If the content is very narrow, you might only extract 1-2 pillars, but ensure they are correctly categorized.
+- REUSE existing Pillar names from the provided context whenever possible.
+
+Return a JSON array of Mastery Pillars.
 
 Format:
 [
   {
-    "id": "c1",
-    "name": "Concept Name",
-    "definition": "A clear, standalone definition (1-2 sentences).",
+    "id": "pillar-1", 
+    "name": "Pillar Name",
+    "description": "A broad, comprehensive definition of this knowledge pillar (1-2 sentences).",
     "importance": "high" | "medium" | "low",
-    "relatedConcepts": ["c2"]
+    "relatedConcepts": ["pillar-2"],
+    "subConcepts": [
+      {
+        "name": "Sub-concept name",
+        "description": "A concise explanation of how this fits into the pillar."
+      }
+    ]
   }
 ]
 
 Rules:
-- Use concept IDs c1, c2, c3, etc.
-- "definition": Provide a high-quality definition even if the source is brief.
-- "importance": "high" for the most central ideas.
-- "relatedConcepts": IDs of other extracted concepts that this one builds upon or connects to.`;
-
+- "id": Use short semantic strings like "pillar-1", "pillar-2".
+- "description": Provide a high-quality definition.
+- "importance": "high" for the most central pillars.
+- "relatedConcepts": valid IDs of other extracted pillars that this one builds upon or connects to.
+- Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
 
   const result = await defaultModel.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1000 }
+    generationConfig: { maxOutputTokens: 2000 }
   });
   const text = result.response.text();
 
@@ -89,23 +124,29 @@ export async function generateSessionTitle(content: string, type: string): Promi
   CONTENT:
   ${content.substring(0, 2000)}
   
-  Return ONLY the title string, no quotes or prefix.`;
+  Return ONLY the title string as a JSON object: {"title": "The Title Here"}`;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel('free');
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 50 }
+    generationConfig: { maxOutputTokens: 100 }
   });
 
-  return result.response.text().trim().replace(/^"|"$/g, '');
+  const parsed = parseJSON<{ title: string }>(result.response.text());
+  return parsed.title.trim().replace(/^"|"$/g, '');
 }
 
 export async function generateAssessment(
   concepts: Concept[],
+  plan: string = 'free',
   preferences?: { tone?: string; questionCount?: number }
 ): Promise<AssessmentQuestion[]> {
   const tone = preferences?.tone ?? 'supportive';
   const count = preferences?.questionCount ?? 6;
-  const conceptList = concepts.map((c) => `- ${c.name}: ${c.description}`).join('\n');
+  const conceptList = concepts.map((c) => {
+    const subText = c.subConcepts?.map(sc => `  - ${sc.name}: ${sc.description}`).join('\n') || '';
+    return `- ${c.name} (ID: ${c.id}): ${c.description}${subText ? `\n${subText}` : ''}`;
+  }).join('\n');
 
   const toneInstruction =
     tone === 'challenging'
@@ -122,21 +163,23 @@ Tone: ${toneInstruction}
 JSON Format:
 [
   {
-    "id": "q1",
+    "id": "q-1",
     "type": "retrieval" | "application" | "misconception",
     "text": "Question text",
-    "relatedConcepts": ["c1"]
+    "relatedConcepts": ["pillar-1"]
   }
 ]
 
 Rules:
+- "id": Use short semantic strings like "q-1", "q-2".
 - Retrieval: recall/explain. Application: scenario. Misconception: fix wrong framing.
 - One clear sentence per question.
 - Answers should require a few sentences.`;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1200 }
+    generationConfig: { maxOutputTokens: 1500 }
   });
   const text = result.response.text();
 
@@ -145,7 +188,8 @@ Rules:
 }
 
 export async function analyzeAnswers(
-  session: ReflectionSession
+  session: ReflectionSession,
+  plan: string = 'free'
 ): Promise<{ analysis: CognitiveAnalysis; depthScore: number }> {
   const conceptMap = Object.fromEntries(session.extractedConcepts.map((c) => [c.id, c.name]));
   const qAndA = session.assessmentQuestions
@@ -177,7 +221,8 @@ Rules:
 - 3-5 insights, 2-4 focusSuggestions (start with verb).
 - Constructive tone.`;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: { maxOutputTokens: 1500 }
   });
@@ -197,7 +242,8 @@ export async function generateCurriculum(
     shakyConcepts: { name: string }[];
     revisitConcepts: { name: string }[];
   },
-  userProfile?: { userType?: string; learningContext?: string }
+  userProfile?: { userType?: string; learningContext?: string },
+  plan: string = 'free'
 ): Promise<
   Omit<
     Curriculum,
@@ -208,7 +254,6 @@ export async function generateCurriculum(
     | 'started_at'
     | 'last_activity_at'
     | 'completed_at'
-    | 'total_sparks_spent'
   >
 > {
   const { strongConcepts, shakyConcepts, revisitConcepts } = vaultContext;
@@ -223,13 +268,13 @@ USER INPUT: "${userInput}"
 INPUT TYPE: "${inputType}" 
 
 USER'S CURRENT KNOWLEDGE (from Concept Vault):
-Strong concepts: ${strongConcepts.map((c) => c.name).join(', ') || 'none yet'}
-Shaky concepts: ${shakyConcepts.map((c) => c.name).join(', ') || 'none'}
-Revisit concepts: ${revisitConcepts.map((c) => c.name).join(', ') || 'none'}
+Strong: ${strongConcepts.map((c) => c.name).join(', ') || 'none'}
+Shaky: ${shakyConcepts.map((c) => c.name).join(', ') || 'none'}
+Revisit: ${revisitConcepts.map((c) => c.name).join(', ') || 'none'}
 User type: ${userType || 'not specified'}
 Learning context: ${learningContext || 'not specified'}
 
-Generate a complete curriculum as JSON:
+JSON Format:
 {
   "title": string,
   "target_description": string,
@@ -241,13 +286,13 @@ Generate a complete curriculum as JSON:
       "unitSummary": string,
       "concepts": [
         {
-          "id": string,
+          "id": "intro",
           "name": string,
           "definition": string,
           "difficulty": "simple" | "moderate" | "complex",
           "estimatedMinutes": number,
           "isPrerequisite": boolean,
-          "prerequisiteFor": string[],
+          "prerequisiteFor": ["advanced-concept"],
           "alreadyInVault": boolean,
           "vaultMasteryState": string | null,
           "whyIncluded": string,
@@ -261,38 +306,17 @@ Generate a complete curriculum as JSON:
   "scope_note": string | null
 }
 
-CURRICULUM DESIGN RULES:
-- Order concepts from foundational to advanced — never introduce a concept
-  before its prerequisites
-- For a single concept input: include the concept + 2-4 prerequisites if needed
-  + 1-2 natural extensions. Total: 3-7 concepts. One unit, no grouping needed.
-- For a broad topic: break into 3-5 units of 3-5 concepts each. Total: 10-20 concepts.
-- For a goal: include exactly the concepts needed to achieve that goal.
-  No extras. No tangents. Be surgical.
-- For a question: treat the answer as the goal. Build the minimum curriculum
-  that gives the user the conceptual foundation to genuinely understand the answer.
-- Never include a concept the user already has Solid mastery on UNLESS it's a
-  direct prerequisite that needs reinforcement before continuing.
-- estimatedMinutes should reflect Flow Mode pacing: simple concepts 5-8 min,
-  moderate 8-15 min, complex 12-20 min.
-- misconceptionRisk should be high for concepts that are commonly misunderstood
-  or that build on misconception-prone prerequisites.
-- For 'id' inside concepts, generate a stable unique string (like a clean slug or uuid).
-
-SCOPING RULES:
-- Input "derivatives" → 5-7 concepts (concept + prerequisites + extensions)
-- Input "calculus" → 12-18 concepts (full foundations curriculum)
-- Input "understand how neural networks learn" → 8-12 concepts (targeted)
-- Input "why does compounding interest matter?" → 4-6 concepts (minimum to answer)
-- If the scope would exceed 20 concepts, split into Part 1 and Part 2 and
-  note this in scope_note. Never generate more than 20 concepts in one curriculum.
-
-Return only valid JSON. No preamble.
+RULES:
+- "id": Use short semantic strings (e.g. "unit1-concept1", "foundations").
+- Order concepts foundational to advanced.
+- Max 20 concepts total across all units.
+- estimatedMinutes: simple (5-8), moderate (8-15), complex (12-20).
 `;
 
-  const result = await defaultModel.generateContent({
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 8192, responseMimeType: 'application/json' } // curricula can be long, so allowing more tokens
+    generationConfig: { maxOutputTokens: 8000 }
   });
 
   const text = result.response.text();

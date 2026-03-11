@@ -5,10 +5,10 @@
  * as context. Updates concept mastery based on user feedback on the explanation's clarity.
  */
 
-import { useState, useEffect } from 'react';
-import Head from 'next/head';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -29,6 +29,42 @@ export default function ExplainMode() {
     const [currentExplanation, setCurrentExplanation] = useState<string | null>(null);
     const [generating, setGenerating] = useState(false);
     const [isComplete, setIsComplete] = useState(false);
+
+    const generateExplanation = useCallback(async (concept: any, strong: any[]) => {
+        setGenerating(true);
+        setCurrentExplanation(null);
+        try {
+            const {
+                data: { session }
+            } = await supabase.auth.getSession();
+            const token = session?.access_token;
+            const headers: any = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const isRegenerating = router.query.regenerate === 'true';
+
+            const res = await fetch(
+                `/api/sessions/${id}/explanations/${concept.id}/generate${isRegenerating ? '?regenerate=true' : ''}`,
+                {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ concept, strongConcepts: strong })
+                }
+            );
+
+            if (res.ok) {
+                const data = await res.json();
+                setCurrentExplanation(data.content);
+            } else {
+                const errorData = await res.json().catch(() => ({}));
+                setError(errorData.error || 'Failed to generate explanation.');
+            }
+        } catch (e: any) {
+            setError(e.message || 'An unexpected error occurred.');
+        } finally {
+            setGenerating(false);
+        }
+    }, [id, router]);
 
     useEffect(() => {
         if (!id) return;
@@ -87,43 +123,7 @@ export default function ExplainMode() {
         };
 
         initDeck();
-    }, [id, router]);
-
-    const generateExplanation = async (concept: any, strong: any[]) => {
-        setGenerating(true);
-        setCurrentExplanation(null);
-        try {
-            const {
-                data: { session }
-            } = await supabase.auth.getSession();
-            const token = session?.access_token;
-            const headers: any = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-
-            const isRegenerating = router.query.regenerate === 'true';
-
-            const res = await fetch(
-                `/api/sessions/${id}/explanations/${concept.id}/generate${isRegenerating ? '?regenerate=true' : ''}`,
-                {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ concept, strongConcepts: strong })
-                }
-            );
-
-            if (res.ok) {
-                const data = await res.json();
-                setCurrentExplanation(data.content);
-            } else {
-                const errorData = await res.json().catch(() => ({}));
-                setError(errorData.error || 'Failed to generate explanation.');
-            }
-        } catch (e: any) {
-            setError(e.message || 'An unexpected error occurred.');
-        } finally {
-            setGenerating(false);
-        }
-    };
+    }, [id, router, user, generateExplanation]);
 
     const handleResponse = async (gotIt: boolean) => {
         const currentConcept = weakConcepts[currentIndex];
@@ -233,9 +233,7 @@ export default function ExplainMode() {
                 </div>
             }
         >
-            <Head>
-                <title>Explain It To Me | Serify</title>
-            </Head>
+            <SEO title="Explain It To Me" />
 
             <main className="max-w-[700px] mx-auto p-6 md:p-12 pb-32">
                 <h1 className="text-3xl md:text-4xl font-display mb-8 text-[var(--text)]">

@@ -7,11 +7,15 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { DefaultChatTransport } from 'ai';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import Head from 'next/head';
 import Link from 'next/link';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import SEO from '@/components/Layout/SEO';
+import { formatDistanceToNow } from 'date-fns';
+import { useUsage } from '@/hooks/useUsage';
+import { UsageGate } from '@/components/billing/UsageEnforcement';
 import {
     Zap,
     History,
@@ -35,12 +39,10 @@ import {
 } from 'lucide-react';
 import { storage, SessionSummary } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
-import { useSparks } from '@/hooks/useSparks';
 import { KnowledgeNode } from '@/types/serify';
 import LandingPage from '@/components/LandingPage';
-import OutOfSparksModal from '@/components/sparks/OutOfSparksModal';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
 
 type DetectedType = 'youtube' | 'article' | 'text' | 'pdf' | null;
 
@@ -62,8 +64,8 @@ function getMasteryColor(state: string) {
     switch (state) {
         case 'solid': return 'bg-emerald-500';
         case 'developing': return 'bg-blue-400';
-        case 'shaky': return 'bg-amber-400';
-        case 'revisit': return 'bg-red-400';
+        case 'shaky': return 'bg-orange-500';
+        case 'revisit': return 'bg-red-500';
         default: return 'bg-gray-300';
     }
 }
@@ -96,10 +98,10 @@ function stripActionBlocks(text: string): string {
 }
 
 const STARTER_PROMPTS = [
-    { icon: BookOpen, label: 'Learn a topic', prompt: 'Help me learn how transformers in AI work' },
-    { icon: Youtube, label: 'Analyze a video', prompt: 'Analyze this YouTube video: ' },
-    { icon: Sparkles, label: 'Deep dive', prompt: 'Help me deeply understand: ' },
-    { icon: FileText, label: 'Break down notes', prompt: 'I just read this — help me understand it: ' },
+    { icon: BookOpen, label: 'Learn a topic', description: 'I\'ll craft a personalized session', prompt: 'Help me learn how transformers in AI work' },
+    { icon: Youtube, label: 'Analyze a video', description: 'Paste a YouTube URL', prompt: 'Analyze this YouTube video: ' },
+    { icon: Sparkles, label: 'Deep dive', description: 'Go beyond surface-level understanding', prompt: 'Help me deeply understand: ' },
+    { icon: FileText, label: 'Break down notes', description: 'Paste anything you\'ve been studying', prompt: 'I just read this — help me understand it: ' },
 ];
 
 export default function Home() {
@@ -107,53 +109,22 @@ export default function Home() {
     const router = useRouter();
     const { demo } = router.query;
     const isDemo = demo === 'true';
-    const { balance } = useSparks();
+    const { usage, refresh: refreshUsage } = useUsage('ai_messages');
 
     const [latestSessions, setLatestSessions] = useState<SessionSummary[]>([]);
-    const [activeCurriculum, setActiveCurriculum] = useState<any>(null);
+    const [activeCurriculum, setActiveCurriculum] = useState<{
+        id: string;
+        title: string;
+        status: string;
+        progress: number;
+        last_activity_at?: string;
+    } | null>(null);
     const [focusConcepts, setFocusConcepts] = useState<KnowledgeNode[]>([]);
+    const [vaultCount, setVaultCount] = useState<number | null>(null);
     const [activityDays, setActivityDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
 
-    const [inputValue, setInputValue] = useState('');
-    const [isOutOfSparksModalOpen, setIsOutOfSparksModalOpen] = useState(false);
-    const [outOfSparksError, setOutOfSparksError] = useState(false);
+    const [isGateOpen, setIsGateOpen] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
-    const chatScrollRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLTextAreaElement>(null);
-
-    const transport = useMemo(() => {
-        if (!token && !isDemo) return undefined;
-
-        const headers: Record<string, string> = {};
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        }
-        if (isDemo) {
-            headers['x-serify-demo'] = 'true';
-        }
-
-        return new DefaultChatTransport({
-            api: '/api/home-chat',
-            headers,
-        });
-    }, [token, isDemo]);
-
-    const { messages, sendMessage, status, error, setMessages } = useChat({
-        transport,
-        onError: (err: Error) => {
-            if (err.message?.includes('out_of_sparks') || err.message?.includes('403')) {
-                setOutOfSparksError(true);
-            }
-        },
-    });
-
-    const isLoading = status === 'submitted' || status === 'streaming';
-
-    useEffect(() => {
-        if (chatScrollRef.current) {
-            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-        }
-    }, [messages, isLoading]);
 
     useEffect(() => {
         if (!user) {
@@ -162,33 +133,75 @@ export default function Home() {
             return;
         }
 
-        supabase.from('reflection_sessions')
-            .select('id, title, content_type, created_at, status, depth_score')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(8)
-            .then(({ data, error }) => {
-                if (!error && data) {
-                    const mapped: SessionSummary[] = data.map(s => ({
-                        id: s.id,
-                        title: s.title && s.title !== 'No Learning Material Provided' ? s.title : 'Untitled Analysis',
-                        type: s.content_type === 'youtube' ? 'YouTube Video' : s.content_type === 'pdf' ? 'PDF Upload' : s.content_type === 'article' ? 'Article URL' : 'Notes',
-                        date: new Date(s.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                        status: s.status === 'feedback' || s.status === 'complete' ? 'Completed' : 'In Progress',
-                        result: s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found',
-                    }));
-                    setLatestSessions(mapped);
-                }
-            });
+        // Fetch both reflection and flow sessions
+        const fetchSessions = async () => {
+            try {
+                const [reflectionRes, flowRes] = await Promise.all([
+                    supabase.from('reflection_sessions')
+                        .select('id, title, content_type, created_at, status, depth_score')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(8),
+                    supabase.from('flow_sessions')
+                        .select('id, created_at, status, last_activity_at')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(8)
+                ]);
 
-        supabase.from('curricula')
-            .select('id, title, status, last_activity_at')
-            .eq('user_id', user.id)
-            .eq('status', 'active')
-            .order('last_activity_at', { ascending: false })
-            .limit(1)
-            .maybeSingle()
-            .then(({ data }) => setActiveCurriculum(data));
+                let allSessions: SessionSummary[] = [];
+
+                if (reflectionRes.data) {
+                    allSessions = [...allSessions, ...reflectionRes.data.map(s => {
+                        const dateObj = new Date(s.created_at);
+                        const isRecent = (new Date().getTime() - dateObj.getTime()) < 24 * 60 * 60 * 1000;
+                        return {
+                            id: s.id,
+                            title: s.title && s.title !== 'No Learning Material Provided' ? s.title : 'Untitled Analysis',
+                            type: s.content_type === 'youtube' ? 'YouTube Video' : s.content_type === 'pdf' ? 'PDF Upload' : s.content_type === 'article' ? 'Article URL' : 'Notes',
+                            date: isRecent
+                                ? `${formatDistanceToNow(dateObj, { addSuffix: true })}`
+                                : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                            status: (s.status === 'feedback' || s.status === 'complete')
+                                ? 'Completed'
+                                : (s.status === 'questions' || s.status === 'assessment')
+                                    ? 'Practicing'
+                                    : (isRecent && (new Date().getTime() - dateObj.getTime()) > 60 * 60 * 1000)
+                                        ? 'In Progress'
+                                        : 'Analyzing' as SessionSummary['status'],
+                            result: (s.depth_score && s.depth_score > 70 ? 'Strong' : 'Gaps Found') as SessionSummary['result'],
+                            last_activity: s.created_at
+                        };
+                    })];
+                }
+
+                if (flowRes.data) {
+                    allSessions = [...allSessions, ...(flowRes.data as any[]).map(s => {
+                        const dateObj = new Date(s.created_at);
+                        const isRecent = (new Date().getTime() - dateObj.getTime()) < 24 * 60 * 60 * 1000;
+                        return {
+                            id: s.id,
+                            title: 'Learning Flow',
+                            type: 'Flow',
+                            date: isRecent
+                                ? `${formatDistanceToNow(dateObj, { addSuffix: true })}`
+                                : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                            status: (s.status === 'completed' ? 'Completed' : 'In Progress') as SessionSummary['status'],
+                            result: 'Ongoing' as SessionSummary['result'],
+                            last_activity: s.last_activity_at || s.created_at
+                        };
+                    })];
+                }
+
+                // Sort by last activity and limit
+                allSessions.sort((a, b) => new Date(b.last_activity).getTime() - new Date(a.last_activity).getTime());
+                setLatestSessions(allSessions.slice(0, 8));
+            } catch (err) {
+                console.error('Failed to fetch sessions:', err);
+            }
+        };
+
+        fetchSessions();
 
         supabase.from('knowledge_nodes')
             .select('id, display_name, current_mastery, session_count')
@@ -197,6 +210,37 @@ export default function Home() {
             .order('session_count', { ascending: false })
             .limit(3)
             .then(({ data }) => setFocusConcepts((data as any) || []));
+
+        supabase.from('knowledge_nodes')
+            .select('count', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .then(({ count }) => setVaultCount(count));
+
+        supabase.from('curricula')
+            .select('id, title, status, last_activity_at')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .order('last_activity_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+            .then(async ({ data: currData }) => {
+                if (currData) {
+                    const { count: total } = await supabase
+                        .from('curriculum_concept_progress')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('curriculum_id', currData.id);
+                    const { count: mastered } = await supabase
+                        .from('curriculum_concept_progress')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('curriculum_id', currData.id)
+                        .eq('status', 'mastered');
+
+                    setActiveCurriculum({
+                        ...currData,
+                        progress: total ? Math.round(((mastered || 0) / (total || 1)) * 100) : 0
+                    });
+                }
+            });
 
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
@@ -218,21 +262,6 @@ export default function Home() {
             });
     }, [user]);
 
-    const handleSend = useCallback(() => {
-        const text = inputValue.trim();
-        if (!text || isLoading || (!token && !isDemo)) return;
-        setOutOfSparksError(false);
-        setInputValue('');
-        sendMessage({ text });
-    }, [inputValue, isLoading, sendMessage, token, isDemo]);
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
-
     const handleAction = useCallback(async (action: ParsedAction) => {
         if (isNavigating) return;
         setIsNavigating(true);
@@ -241,26 +270,28 @@ export default function Home() {
             const content = action.payload.content || '';
             const type = detectInputType(content);
 
-            if (balance && balance.total_sparks < 2) {
-                setIsOutOfSparksModalOpen(true);
-                setIsNavigating(false);
-                return;
-            }
-
             try {
-                const formData = new FormData();
-                formData.append('content', content);
-                formData.append('type', type || 'text');
-                formData.append('mode', 'analyze');
-                const res = await fetch('/api/process-content', {
+                const res = await fetch('/api/serify/extract', {
                     method: 'POST',
-                    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-                    body: formData,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({
+                        content: type === 'text' ? content : undefined,
+                        url: type !== 'text' ? content : undefined,
+                        contentType: type || 'text',
+                        title: content.substring(0, 50) + (content.length > 50 ? '...' : '')
+                    }),
                 });
-                if (!res.ok) throw new Error('Failed to process');
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.message || 'Failed to process');
+                }
                 const { sessionId } = await res.json();
                 router.push(`/session/${sessionId}`);
-            } catch {
+            } catch (err: any) {
+                console.error('Action processing failed:', err);
                 setIsNavigating(false);
             }
         } else if (action.type === 'START_LEARN') {
@@ -271,27 +302,7 @@ export default function Home() {
             if (action.payload.skipTopics) params.set('skipTopics', action.payload.skipTopics);
             router.push(`/learn?${params.toString()}`);
         }
-    }, [isNavigating, balance, token, router]);
-
-    const handleTestSubscription = async () => {
-        try {
-            const res = await fetch('/api/subscriptions/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify({
-                    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_TEST || process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY,
-                    successUrl: `${window.location.origin}/settings?session_id={CHECKOUT_SESSION_ID}`,
-                    cancelUrl: `${window.location.origin}/pricing`,
-                }),
-            });
-            const { url } = await res.json();
-            if (url) window.location.href = url;
-        } catch (error) {
-        }
-    };
+    }, [isNavigating, router, token]);
 
     if (loading) return null;
     if (!user && !isDemo) return <LandingPage />;
@@ -304,223 +315,96 @@ export default function Home() {
     };
 
     const weekDayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const sparkPct = Math.min(100, ((balance?.total_sparks ?? 0) / 50) * 100);
-    const hasMessages = messages.length > 0;
 
     return (
         <DashboardLayout>
-            <Head><title>Dashboard | Serify</title></Head>
+            <SEO title="Dashboard" />
+            <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-8 pb-28 md:pb-16 page-transition">
 
-            <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-10 pb-28 md:pb-16 page-transition">
-
-                {isDemo && (
-                    <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2 mb-6 shadow-sm">
-                        <Zap size={15} fill="currentColor" />
-                        <span>You&apos;re in demo mode — <strong>sign up</strong> to save progress and unlock full features.</span>
-                    </div>
-                )}
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight">
-                            {getGreeting()}, {user?.displayName?.split(' ')[0] || 'Learner'} 👋
+                        <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight flex items-center gap-2">
+                            {getGreeting()}, <span className="text-[var(--accent)]">{user?.displayName?.split(' ')[0] || 'Learner'}</span> 👋
+                            {user?.subscriptionTier && (
+                                <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.15em] rounded-md border ml-2 ${user.subscriptionTier === 'proplus'
+                                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/20 shadow-[0_0_12px_rgba(var(--accent-rgb),0.1)]'
+                                    : user.subscriptionTier === 'pro'
+                                        ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                        : 'bg-[var(--muted)]/5 text-[var(--muted)] border-[var(--border)]'
+                                    }`}>
+                                    {user.subscriptionTier === 'proplus' ? 'Pro+' : user.subscriptionTier === 'pro' ? 'Pro' : 'Free'}
+                                </span>
+                            )}
                         </h1>
-                        <p className="text-[var(--muted)] text-sm mt-0.5">Your AI tutor is ready. What are you working on?</p>
+                        <p className="text-[var(--muted)] text-sm mt-1">Your AI tutor is ready. What are you working on?</p>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                        <Link href="/sparks" className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 border border-amber-200/60 rounded-xl hover:border-amber-300 transition-all shadow-sm">
-                            <Zap size={14} className="text-amber-500" fill="currentColor" />
-                            <span className="text-sm font-bold text-amber-700">{balance?.total_sparks ?? '...'}</span>
-                            <span className="text-[10px] text-amber-500 font-medium">sparks</span>
+                    <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-2xl shadow-sm max-w-full">
+                        <Link href="/settings/billing" className="flex items-center gap-3 px-3 py-1.5 hover:bg-[var(--bg)] rounded-xl transition-all group shrink-0 relative overflow-hidden">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors leading-none mb-1">AI Usage</span>
+                                <span className="text-[11px] font-black text-[var(--text)] whitespace-nowrap leading-none flex items-center gap-1.5">
+                                    {usage?.used ?? 0} <span className="text-[var(--muted)] font-bold">/ {usage?.limit ?? '∞'}</span>
+                                    {usage?.limit && (
+                                        <div className="w-8 h-1 bg-[var(--border)] rounded-full overflow-hidden hidden xs:block">
+                                            <div
+                                                className="h-full bg-[var(--accent)] transition-all duration-1000"
+                                                style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                </span>
+                            </div>
+                            <div className="w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)]/30 transition-all">
+                                <Zap size={14} className={usage?.limit && (usage.used / usage.limit) > 0.8 ? 'text-orange-500 animate-pulse' : ''} />
+                            </div>
                         </Link>
+
+                        <div className="w-px h-4 bg-[var(--border)] mx-1" />
 
                         {activeCurriculum && (
                             <Link
                                 href={`/learn/curriculum/${activeCurriculum.id}`}
-                                className="group flex items-center gap-2 px-3.5 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl hover:border-[var(--accent)]/30 transition-all shadow-sm"
+                                className="group flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg)] rounded-xl transition-all shrink-0 max-w-[200px]"
                             >
-                                <div className="w-6 h-6 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
-                                    <Play size={12} fill="currentColor" />
+                                <div className="w-5 h-5 rounded-md bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-sm">
+                                    <Play size={10} fill="currentColor" />
                                 </div>
-                                <span className="text-xs font-semibold truncate max-w-[140px]">{activeCurriculum.title}</span>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-[10px] font-bold truncate leading-tight">{activeCurriculum.title}</span>
+                                    <span className="text-[8px] text-[var(--accent)] font-bold uppercase tracking-wider">{activeCurriculum.progress}%</span>
+                                </div>
                             </Link>
+                        )}
+
+                        {latestSessions.length > 0 && latestSessions[0].status !== 'Completed' && (
+                            <>
+                                <div className="w-px h-4 bg-[var(--border)] mx-1" />
+                                <Link
+                                    href={`/session/${latestSessions[0].id}`}
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-[var(--accent)] text-white rounded-xl hover:bg-[var(--accent)]/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[var(--accent)]/20 shrink-0"
+                                >
+                                    <Sparkles size={11} fill="currentColor" />
+                                    <span className="text-[10px] font-bold">Resume</span>
+                                </Link>
+                            </>
                         )}
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8">
 
-                    <div className="flex flex-col gap-12">
+                    <div className="flex flex-col gap-10">
+                        <DashboardChat
+                            token={token}
+                            isDemo={isDemo}
+                            refreshUsage={refreshUsage}
+                            handleAction={handleAction}
+                            isNavigating={isNavigating}
+                            displayName={user?.displayName || 'Learner'}
+                        />
 
-                        <section
-                            className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col"
-                            style={{ minHeight: '560px', maxHeight: '720px' }}
-                        >
-                            
-
-                            <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4 scroll-smooth">
-
-                                {!hasMessages && (
-                                    <div className="flex flex-col items-center justify-center h-full text-center py-6">
-                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-emerald-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
-                                            <Brain size={34} />
-                                        </div>
-                                        <h3 className="font-display text-lg text-[var(--text)] mb-1.5">Ask me anything</h3>
-                                        <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed mb-6">
-                                            Tell me what you want to learn, or paste something you&apos;ve been studying. I&apos;ll guide you from there.
-                                        </p>
-
-                                        <div className="grid grid-cols-2 gap-2 w-full max-w-lg px-2">
-                                            {STARTER_PROMPTS.map((sp, i) => (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => {
-                                                        setInputValue(sp.prompt);
-                                                        setTimeout(() => inputRef.current?.focus(), 50);
-                                                    }}
-                                                    className="group flex flex-col gap-2 p-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)]/40 transition-all"
-                                                >
-                                                    <div className="w-8 h-8 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all">
-                                                        <sp.icon size={14} className="text-[var(--muted)] group-hover:text-white transition-colors" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">{sp.label}</p>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {messages.map((msg, idx) => {
-                                    const isUser = msg.role === 'user';
-                                    const textContent = (msg.parts ?? [])
-                                        .filter((p: any) => p.type === 'text')
-                                        .map((p: any) => p.text)
-                                        .join('');
-                                    const displayText = isUser ? textContent : stripActionBlocks(textContent);
-                                    const actions = isUser ? [] : parseActionBlocks(textContent);
-
-                                    return (
-                                        <div
-                                            key={msg.id ?? idx}
-                                            className={`flex gap-3 chat-bubble-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-                                        >
-                                            {!isUser && (
-                                                <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-[var(--accent)]/20">
-                                                    <Brain size={14} />
-                                                </div>
-                                            )}
-
-                                            <div className={`flex flex-col gap-2 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
-                                                {displayText && (
-                                                    <div
-                                                        className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser
-                                                            ? 'bg-[var(--accent)] text-white rounded-br-sm shadow-md shadow-[var(--accent)]/20'
-                                                            : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm'
-                                                            }`}
-                                                    >
-                                                        {displayText}
-                                                    </div>
-                                                )}
-
-                                                {actions.map((action, ai) => (
-                                                    <button
-                                                        key={ai}
-                                                        onClick={() => handleAction(action)}
-                                                        disabled={isNavigating}
-                                                        className="group flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[var(--accent)] text-white text-xs font-bold shadow-lg shadow-[var(--accent)]/25 hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[var(--accent)]/30 active:translate-y-0 transition-all disabled:opacity-60"
-                                                    >
-                                                        <CornerDownRight size={14} />
-                                                        {action.type === 'START_ANALYZE'
-                                                            ? `Analyze: "${(action.payload.content || '').slice(0, 36)}${(action.payload.content || '').length > 36 ? '…' : ''}"`
-                                                            : `▶ Start Learning: ${action.payload.q || 'this topic'}`
-                                                        }
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {isUser && (
-                                                <div className="w-8 h-8 rounded-xl bg-[var(--border)] flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-[var(--muted)]">
-                                                    {user?.displayName?.charAt(0) || 'U'}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-
-                                {isLoading && (
-                                    <div className="flex gap-3 chat-bubble-in">
-                                        <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-md shadow-[var(--accent)]/20">
-                                            <Brain size={14} />
-                                        </div>
-                                        <div className="px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl rounded-bl-sm flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '300ms' }} />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {(outOfSparksError || (error && !outOfSparksError)) && (
-                                    <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4 chat-bubble-in">
-                                        <Zap size={16} className="text-amber-500 shrink-0 mt-0.5" fill="currentColor" />
-                                        <div className="flex-1">
-                                            <p className="text-sm font-semibold text-amber-800">
-                                                {outOfSparksError ? "You're out of Sparks" : "Something went wrong"}
-                                            </p>
-                                            <p className="text-xs text-amber-600 mt-0.5">
-                                                {outOfSparksError ? 'Sparks power every AI interaction.' : error?.message}
-                                            </p>
-                                        </div>
-                                        {outOfSparksError && (
-                                            <button
-                                                onClick={() => { setIsOutOfSparksModalOpen(true); setOutOfSparksError(false); }}
-                                                className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition-colors shrink-0"
-                                            >
-                                                Refill
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="px-4 pb-4 pt-3 border-t border-[var(--border)]/50 shrink-0 bg-[var(--surface)]">
-                                <div className="relative flex items-end gap-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-2 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
-                                    <textarea
-                                        ref={inputRef}
-                                        value={inputValue}
-                                        onChange={e => setInputValue(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="Ask me anything… or paste a YouTube link, URL, or notes"
-                                        rows={1}
-                                        className="flex-1 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed max-h-32"
-                                        style={{ overflowY: 'auto' }}
-                                        disabled={isLoading}
-                                    />
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <div className="hidden sm:flex items-center gap-1 text-[10px] text-[var(--muted)]/60 font-medium">
-                                            <Zap size={9} className="text-amber-400" fill="currentColor" />
-                                            1 spark
-                                        </div>
-                                        <button
-                                            onClick={handleSend}
-                                            disabled={!inputValue.trim() || isLoading}
-                                            className="w-8 h-8 rounded-xl bg-[var(--text)] text-[var(--surface)] disabled:opacity-30 flex items-center justify-center hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/10"
-                                        >
-                                            <ArrowUp size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                                <p className="text-[10px] text-[var(--muted)]/40 text-center mt-2 font-medium">
-                                    <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send ·{' '}
-                                    <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Shift+Enter</kbd> for newline
-                                </p>
-                            </div>
-                        </section>
-
-                        {latestSessions.length > 0 && (
+                        {latestSessions.length > 0 ? (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-display text-[var(--text)]">Recent Sessions</h2>
@@ -528,7 +412,7 @@ export default function Home() {
                                         View all <ChevronRight size={13} />
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4 stagger-children">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children">
                                     {latestSessions.map((session) => (
                                         <Link
                                             key={session.id}
@@ -540,24 +424,26 @@ export default function Home() {
                                                     {getSessionIcon(session.type)}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <h4 className="text-xs font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
+                                                    <h4 className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
                                                         {session.title}
                                                     </h4>
-                                                    <p className="text-[9px] text-[var(--muted)] mt-0.5 font-medium uppercase tracking-wider">{session.date}</p>
+                                                    <p className="text-xs text-[var(--muted)] mt-0.5 font-medium tracking-tight">{session.date}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between pt-2.5 border-t border-[var(--border)]/30">
                                                 {session.status === 'Completed' ? (
                                                     <div className="flex items-center gap-1.5">
-                                                        <CheckCircle2 size={10} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
-                                                        <span className={`text-[9px] font-bold uppercase tracking-wider ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                                            {session.result === 'Strong' ? 'Mastered' : 'Gaps'}
+                                                        <CheckCircle2 size={12} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
+                                                        <span className={`text-xs font-bold tracking-tight ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                            {session.result === 'Strong' ? 'Mastered' : 'Gaps Found'}
                                                         </span>
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-1.5">
-                                                        <div className="w-1 h-1 rounded-full bg-blue-500 animate-pulse" />
-                                                        <span className="text-[9px] font-bold uppercase tracking-wider text-blue-600">Active</span>
+                                                        <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${session.status === 'Practicing' ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                                                        <span className={`text-xs font-bold tracking-tight ${session.status === 'Practicing' ? 'text-blue-600' : 'text-amber-600'}`}>
+                                                            {session.status}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 <ChevronRight size={12} className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors" />
@@ -566,9 +452,7 @@ export default function Home() {
                                     ))}
                                 </div>
                             </div>
-                        )}
-
-                        {latestSessions.length === 0 && hasMessages && (
+                        ) : (
                             <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-2xl p-10 text-center">
                                 <div className="w-12 h-12 rounded-full bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center mx-auto mb-4 text-[var(--muted)]/50">
                                     <History size={22} />
@@ -580,113 +464,380 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-6">
-                        <div className="premium-card rounded-2xl p-5 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-20 h-20 bg-amber-400/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-1.5">
-                                    <Zap size={11} fill="currentColor" /> Spark Balance
-                                </h3>
-                                <Link href="/sparks" className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-colors">
-                                    Refill
-                                </Link>
-                            </div>
-                            <div className="flex items-end gap-1.5 mb-2">
-                                <span className="text-3xl font-display text-[var(--text)]">{balance?.total_sparks ?? '—'}</span>
-                                <span className="text-[var(--muted)] text-sm pb-1 font-medium">sparks</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-[var(--bg)] rounded-full overflow-hidden mb-3 border border-[var(--border)]">
-                                <div
-                                    className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-1000 rounded-full"
-                                    style={{ width: `${sparkPct}%` }}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-[var(--muted)]">Subscription</span>
-                                    <span className="font-bold">{balance?.subscription_sparks ?? 0}</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-[var(--muted)]">Top-up</span>
-                                    <span className="font-bold">{balance?.topup_sparks ?? 0}</span>
-                                </div>
-                            </div>
-                        </div>
-
                         {focusConcepts.length > 0 && (
                             <section className="premium-card rounded-2xl p-5">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
-                                        <ShieldAlert size={11} /> Needs Attention
+                                    <h3 className="text-xs font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
+                                        <ShieldAlert size={12} /> Needs Attention
                                     </h3>
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                                 </div>
-                                <div className="space-y-3.5">
+                                <div className="space-y-5">
                                     {focusConcepts.map(concept => (
-                                        <div key={concept.id}>
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span className="text-xs font-semibold text-[var(--text)] truncate pr-3">{concept.display_name}</span>
-                                                <span className="text-[9px] font-black uppercase text-red-400 tracking-tight shrink-0">Shaky</span>
+                                        <div key={concept.id} className="group cursor-pointer">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${concept.current_mastery === 'revisit' ? 'bg-red-500' : 'bg-orange-500'}`} />
+                                                    <span className="text-xs font-bold text-[var(--text)] truncate">{concept.display_name}</span>
+                                                </div>
+                                                <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-tight shrink-0 px-1.5 py-0.5 rounded-md ${concept.current_mastery === 'revisit' ? 'bg-red-50 text-red-500' : 'bg-orange-50 text-orange-500'}`}>
+                                                    <AlertTriangle size={10} />
+                                                    {concept.current_mastery === 'shaky' ? 'Shaky' : 'Revisit'}
+                                                </div>
                                             </div>
-                                            <div className="h-1 bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
-                                                <div className={`h-full ${getMasteryColor(concept.current_mastery)} rounded-full`} style={{ width: '28%' }} />
+                                            <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)] shadow-inner">
+                                                <div
+                                                    className={`h-full ${getMasteryColor(concept.current_mastery)} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)] transition-all duration-500`}
+                                                    style={{ width: concept.current_mastery === 'revisit' ? '15%' : '35%' }}
+                                                />
                                             </div>
                                         </div>
                                     ))}
                                 </div>
+                                <button
+                                    onClick={() => handleAction({ type: 'START_LEARN', payload: { q: focusConcepts.map(c => c.display_name).join(', ') } })}
+                                    className="w-full mt-4 flex items-center justify-center gap-2 py-3 bg-red-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-red-500/20"
+                                >
+                                    <Play size={14} fill="currentColor" /> Start Review Session
+                                </button>
                                 <Link
                                     href="/vault"
-                                    className="mt-4 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] border border-dashed border-[var(--border)] hover:border-[var(--accent)]/40 rounded-xl py-2.5 transition-all"
+                                    className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-all"
                                 >
-                                    Open Concept Vault <ChevronRight size={11} />
+                                    Open Concept Vault <ChevronRight size={12} />
                                 </Link>
                             </section>
                         )}
 
                         <div className="premium-card rounded-2xl p-5">
-                            <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] mb-3">Tools & Launch</h3>
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mb-4">Tools & Launch</h3>
                             <div className="space-y-1">
                                 {[
-                                    { href: '/knowledge-map', icon: <Network size={14} />, label: 'Knowledge Map', sub: 'viz', color: 'text-[var(--accent)]' },
-                                    { href: '/flow', icon: <Sparkles size={14} />, label: 'Flow Mode', sub: '1/Q', color: 'text-purple-500' },
-                                    { href: '/vault', icon: <BookOpen size={14} />, label: 'Concept Vault', sub: 'free', color: 'text-emerald-500' },
-                                    { href: '/sessions', icon: <History size={14} />, label: 'All Sessions', sub: 'history', color: 'text-blue-500' },
+                                    { href: '/knowledge-map', icon: <Network size={14} />, label: 'Knowledge Map', sub: 'viz', color: 'bg-indigo-50 text-indigo-500' },
+                                    { href: '/vault', icon: <BookOpen size={14} />, label: 'Concept Vault', sub: vaultCount !== null ? `${vaultCount} items` : 'free', color: 'bg-emerald-50 text-emerald-500' },
+                                    { href: '/sessions', icon: <History size={14} />, label: 'All Sessions', sub: 'history', color: 'bg-blue-50 text-blue-500' },
                                 ].map(item => (
                                     <Link
                                         key={item.href}
                                         href={item.href}
-                                        className="group flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[var(--bg)] transition-all"
+                                        className="group flex items-center justify-between px-3 py-3 rounded-xl hover:bg-[var(--bg)] transition-all border border-transparent hover:border-[var(--border)] active:scale-[0.98]"
                                     >
-                                        <div className="flex items-center gap-2.5">
-                                            <div className={`${item.color} group-hover:scale-110 transition-transform`}>{item.icon}</div>
-                                            <span className="text-xs font-semibold text-[var(--text)]">{item.label}</span>
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>{item.icon}</div>
+                                            <span className="text-xs font-bold text-[var(--text)]">{item.label}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <span className="text-[9px] text-[var(--muted)] font-medium">{item.sub}</span>
-                                            <ChevronRight size={11} className="text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <span className="text-xs text-[var(--muted)] font-medium">{item.sub}</span>
+                                            <ChevronRight size={13} className="text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </div>
                                     </Link>
                                 ))}
                             </div>
+                        </div>
 
-                            {process.env.NODE_ENV === 'development' && (
-                                <button
-                                    onClick={handleTestSubscription}
-                                    className="w-full mt-4 flex items-center justify-center gap-2 py-2 px-3 border border-dashed border-purple-200 rounded-xl text-[9px] font-bold uppercase tracking-widest text-purple-400 hover:text-purple-600 hover:border-purple-400 transition-all"
-                                >
-                                    <Zap size={10} fill="currentColor" /> Test Upgrade
-                                </button>
-                            )}
+                        <div className="premium-card rounded-2xl p-6 bg-gradient-to-br from-[var(--accent)] to-teal-700 text-white relative overflow-hidden group">
+                            <div className="absolute -right-8 -bottom-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                                <Brain size={120} />
+                            </div>
+                            <h3 className="text-lg font-display mb-2">Build a Roadmap</h3>
+                            <p className="text-white/80 text-xs mb-6 leading-relaxed">
+                                Not sure where to start? Tell the AI your goal and it will generate a structured multi-session curriculum for you.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    const el = document.querySelector('textarea');
+                                    if (el) {
+                                        el.focus();
+                                        el.value = "Help me build a learning roadmap for ";
+                                    }
+                                }}
+                                className="w-full py-2.5 bg-white text-[var(--accent)] rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Plus size={14} /> Create Roadmap
+                            </button>
+                        </div>
+
+                        <div className="premium-card rounded-2xl p-6 border-dashed border-2 flex flex-col items-center justify-center text-center gap-3 py-8">
+                            <div className="w-12 h-12 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
+                                <Activity size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold">Activity Streak</h4>
+                                <p className="text-[10px] text-[var(--muted)] mt-1">Study 3 more days for a week streak!</p>
+                            </div>
+                            <div className="flex gap-1.5 mt-2">
+                                {activityDays.map((active, i) => (
+                                    <div
+                                        key={i}
+                                        className={`w-2.5 h-2.5 rounded-full border border-[var(--border)] ${active ? 'bg-[var(--accent)] shadow-[0_0_8px_rgba(var(--accent-rgb),0.3)]' : 'bg-[var(--surface)]'}`}
+                                        title={weekDayLabels[i]}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <OutOfSparksModal
-                isOpen={isOutOfSparksModalOpen}
-                onClose={() => setIsOutOfSparksModalOpen(false)}
-                cost={1}
-                featureName="AI Tutor Chat"
-            />
+            {isGateOpen && (
+                <UsageGate
+                    feature="ai_messages"
+                    onClose={() => setIsGateOpen(false)}
+                />
+            )}
         </DashboardLayout>
+    );
+}
+
+import { Activity } from 'lucide-react';
+
+interface DashboardChatProps {
+    token: string | null;
+    isDemo: boolean;
+    refreshUsage: () => void;
+    handleAction: (action: ParsedAction) => void;
+    isNavigating: boolean;
+    displayName: string;
+}
+
+function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating, displayName }: DashboardChatProps) {
+    const router = useRouter();
+    const [input, setInput] = useState('');
+    const [isInternalGateOpen, setIsInternalGateOpen] = useState(false);
+    const chatScrollRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    const transport = useMemo(() => new DefaultChatTransport({
+        api: '/api/home-chat',
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(isDemo ? { 'x-serify-demo': 'true' } : {})
+        }
+    }), [token, isDemo]);
+
+    const { messages, sendMessage, status, error } = useChat({
+        transport,
+        onError: (err: any) => {
+            if (err.message?.includes('limit_reached') || err.message?.includes('403')) {
+                setIsInternalGateOpen(true);
+            }
+        },
+        onFinish: () => {
+            refreshUsage();
+        }
+    });
+
+    const isLoading = status === 'submitted' || status === 'streaming';
+    const hasMessages = messages.length > 0;
+
+    useEffect(() => {
+        if (chatScrollRef.current) {
+            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+    }, [messages, isLoading]);
+
+    // Auto-scale textarea
+    useEffect(() => {
+        const textarea = inputRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+        }
+    }, [input]);
+
+    const onSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!token && !isDemo) return;
+        if (!input.trim()) return;
+
+        sendMessage({ text: input });
+        setInput('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (input?.trim()) {
+                onSubmit(e as any);
+            }
+        }
+    };
+
+    return (
+        <>
+            <section
+                className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col h-[520px] md:h-[600px] lg:h-[680px]"
+            >
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 scroll-smooth">
+                    {!hasMessages && (
+                        <div className="flex flex-col items-center justify-center h-full text-center py-6">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-emerald-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
+                                <Brain size={34} />
+                            </div>
+                            <h3 className="font-display text-lg text-[var(--text)] mb-1.5">Ask me anything</h3>
+                            <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed mb-6">
+                                Tell me what you want to learn, or paste something you&apos;ve been studying. I&apos;ll guide you from there.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3 w-full max-w-lg px-2">
+                                {STARTER_PROMPTS.map((sp, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => {
+                                            if (sp.label.toLowerCase().includes('analyze')) {
+                                                router.push('/analyze');
+                                            } else {
+                                                router.push(`/learn?q=${encodeURIComponent(sp.prompt)}`);
+                                            }
+                                        }}
+                                        className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/0 to-[var(--accent)]/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all shadow-sm">
+                                            <sp.icon size={16} className="text-[var(--muted)] group-hover:text-white transition-colors" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
+                                            <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug">{sp.description}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {(messages as any).map((msg: any, idx: number) => {
+                        const isUser = msg.role === 'user';
+                        const textContent = msg.content || (msg.parts ?? [])
+                            .filter((p: any) => p.type === 'text')
+                            .map((p: any) => p.text)
+                            .join('');
+                        const displayText = isUser ? textContent : stripActionBlocks(textContent);
+                        const actions = isUser ? [] : parseActionBlocks(textContent);
+
+                        return (
+                            <div
+                                key={msg.id ?? idx}
+                                className={`flex gap-2.5 chat-bubble-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                            >
+                                {!isUser && (
+                                    <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-[var(--accent)]/20">
+                                        <Brain size={14} />
+                                    </div>
+                                )}
+
+                                <div className={`flex flex-col gap-2 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+                                    {displayText && (
+                                        <div
+                                            className={`px-4 py-3 rounded-2xl text-[13px] sm:text-sm leading-relaxed break-words ${isUser
+                                                ? 'bg-[var(--accent)] text-white rounded-br-sm shadow-md shadow-[var(--accent)]/20 whitespace-pre-wrap'
+                                                : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm'
+                                                }`}
+                                        >
+                                            {isUser ? (
+                                                displayText
+                                            ) : (
+                                                <MarkdownRenderer>{displayText}</MarkdownRenderer>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {actions.map((action, ai) => (
+                                        <button
+                                            key={ai}
+                                            onClick={() => handleAction(action)}
+                                            disabled={isNavigating}
+                                            className="group flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[var(--accent)] text-white text-xs font-bold shadow-lg shadow-[var(--accent)]/25 hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[var(--accent)]/30 active:translate-y-0 transition-all disabled:opacity-60"
+                                        >
+                                            <CornerDownRight size={14} />
+                                            {action.type === 'START_ANALYZE'
+                                                ? `Analyze: "${(action.payload.content || '').slice(0, 36)}${(action.payload.content || '').length > 36 ? '…' : ''}"`
+                                                : `▶ Start Learning: ${action.payload.q || 'this topic'}`
+                                            }
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {isUser && (
+                                    <div className="w-8 h-8 rounded-xl bg-[var(--border)] flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-[var(--muted)]">
+                                        {displayName.charAt(0) || 'U'}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {isLoading && (
+                        <div className="flex gap-3 chat-bubble-in">
+                            <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-md shadow-[var(--accent)]/20">
+                                <Brain size={14} />
+                            </div>
+                            <div className="px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl rounded-bl-sm flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                        </div>
+                    )}
+
+                    {(error) && (
+                        <div className="flex items-start gap-3 bg-[var(--warn-light)] border border-[var(--warn)]/20 rounded-2xl p-4 chat-bubble-in">
+                            <AlertTriangle size={16} className="text-[var(--warn)] shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-[var(--warn)]">
+                                    Something went wrong
+                                </p>
+                                <p className="text-xs text-[var(--warn)]/70 mt-0.5">
+                                    {(error?.message?.startsWith('{')
+                                        ? (JSON.parse(error.message).error || JSON.parse(error.message).message || "An unexpected error occurred")
+                                        : (error?.message || "An unexpected error occurred"))
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-3 pb-3 pt-2 border-t border-[var(--border)]/30 shrink-0 bg-[var(--surface)]">
+                    <div className="relative flex items-end gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
+                        <textarea
+                            ref={inputRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="What would you like to learn?"
+                            rows={1}
+                            className="flex-1 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed"
+                            style={{ minHeight: '24px' }}
+                            disabled={isLoading}
+                        />
+                        <div className="flex items-center gap-2 shrink-0">
+                            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--muted)] font-bold bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
+                                <Sparkles size={11} className="text-[var(--accent)]" />
+                                AI Tutor
+                            </div>
+                            <button
+                                onClick={(e) => onSubmit(e as any)}
+                                disabled={!input?.trim() || isLoading}
+                                className="w-8 h-8 rounded-xl bg-[var(--text)] text-[var(--surface)] disabled:opacity-30 flex items-center justify-center hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/10"
+                            >
+                                <ArrowUp size={16} />
+                            </button>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-[var(--muted)]/50 text-center mt-2 font-medium">
+                        Ask anything, paste a link, or upload notes ·{' '}
+                        <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send
+                    </p>
+                </div>
+            </section>
+
+            {isInternalGateOpen && (
+                <UsageGate
+                    feature="ai_messages"
+                    onClose={() => setIsInternalGateOpen(false)}
+                />
+            )}
+        </>
     );
 }
