@@ -77,7 +77,10 @@ export default function Login() {
             <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] right-[-100px]" />
             <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] left-[-100px]" />
             <div className="auth-bg-blob w-[300px] h-[300px] bg-[#b8860b] top-[40%] left-[60%]" />
-            <SEO title="Log In" />
+            <SEO 
+                title="Log In" 
+                description="Log in to Serify to access your personalized learning dashboard and concept vault." 
+            />
 
             <div className="w-full max-w-sm relative z-10 animate-fade-in-up">
                 <div className="mb-10 text-center">

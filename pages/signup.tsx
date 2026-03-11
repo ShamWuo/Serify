@@ -78,7 +78,10 @@ export default function Signup() {
             <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] left-[-100px]" />
             <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] right-[-100px]" />
             <div className="auth-bg-blob w-[300px] h-[300px] bg-[#b8860b] top-[50%] right-[40%]" />
-            <SEO title="Sign Up" />
+            <SEO 
+                title="Sign Up" 
+                description="Create a free Serify account to start learning faster and mapping your knowledge." 
+            />
 
             <div className="w-full max-w-[400px] relative z-10 animate-fade-in-up">
                 <div className="mb-10 text-center">

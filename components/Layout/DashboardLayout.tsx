@@ -178,7 +178,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                                         ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true`
                                         : item.href}
                                     className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${isActive
-                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold shadow-sm'
+                                        ? 'bg-[var(--accent)]/5 text-[var(--accent)] font-semibold shadow-sm'
                                         : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'
                                         }`}
                                 >
@@ -231,7 +231,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20">Active</span>
                                     </div>
                                     <div className="py-1">
-                                        <div className="text-sm font-display bg-gradient-to-r from-[var(--accent)] to-[#a855f7] bg-clip-text text-transparent font-bold">
+                                        <div className="text-sm font-sans bg-gradient-to-r from-[var(--accent)] to-[#a855f7] bg-clip-text text-transparent font-bold">
                                             Unlimited Access
                                         </div>
                                         <p className="text-[10px] text-[var(--muted)] mt-0.5">Priority AI & Best Models</p>

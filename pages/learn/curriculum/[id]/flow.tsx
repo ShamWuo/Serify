@@ -14,6 +14,7 @@ import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
 import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
 import { useUsage } from '@/hooks/useUsage';
 import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
+import confetti from 'canvas-confetti';
 
 // ────────────────────────────────────────────────────────────
 // Small utilities
@@ -144,6 +145,13 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                     </div>
 
                     <div className="p-5">
+                        {content.accelerated && (
+                            <div className="flex items-center gap-1.5 mb-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-1.5 rounded-lg w-fit animate-in fade-in slide-in-from-top-2 duration-500">
+                                <Zap size={14} className="text-amber-500 fill-amber-500" />
+                                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Accelerated Path — Based on your mastery</span>
+                            </div>
+                        )}
+
                         <div className="text-[15px] font-semibold text-[var(--text)] mb-5 leading-snug">
                             <MarkdownRenderer>{currentQ?.question}</MarkdownRenderer>
                         </div>
@@ -589,13 +597,21 @@ export default function CurriculumFlowSessionPage() {
 
                 if (!alreadyDone) {
                     setConceptJustCompleted(true);
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 },
+                        colors: ['#3b82f6', '#10b981', '#6366f1']
+                    });
                 }
             } else {
                 setConceptStatuses((prev) => ({ ...prev, [currentConcept.conceptId]: 'in_progress' }));
             }
         } catch (err: any) {
             console.error('Flow step error:', err);
-            setFetchError(err.message || 'An unexpected error occurred');
+            const msg = err.message || 'An unexpected error occurred';
+            setFetchError(msg);
+            setStatusMessage(`Error: ${msg}`);
         } finally {
             setStepping(false);
         }

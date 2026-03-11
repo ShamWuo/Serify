@@ -318,83 +318,15 @@ export default function Home() {
 
     return (
         <DashboardLayout>
-            <SEO title="Dashboard" />
-            <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-8 pb-28 md:pb-16 page-transition">
+            <SEO 
+                title="Dashboard" 
+                description="Your personal learning dashboard. Track your progress, review past sessions, and start new learning paths." 
+            />
+            <div className="w-full h-[calc(100dvh-64px)] md:h-screen md:max-h-screen page-transition flex flex-col overflow-hidden">
 
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight flex items-center gap-2">
-                            {getGreeting()}, <span className="text-[var(--accent)]">{user?.displayName?.split(' ')[0] || 'Learner'}</span> 👋
-                            {user?.subscriptionTier && (
-                                <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.15em] rounded-md border ml-2 ${user.subscriptionTier === 'proplus'
-                                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/20 shadow-[0_0_12px_rgba(var(--accent-rgb),0.1)]'
-                                    : user.subscriptionTier === 'pro'
-                                        ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                                        : 'bg-[var(--muted)]/5 text-[var(--muted)] border-[var(--border)]'
-                                    }`}>
-                                    {user.subscriptionTier === 'proplus' ? 'Pro+' : user.subscriptionTier === 'pro' ? 'Pro' : 'Free'}
-                                </span>
-                            )}
-                        </h1>
-                        <p className="text-[var(--muted)] text-sm mt-1">Your AI tutor is ready. What are you working on?</p>
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] flex-1 min-h-0 bg-[var(--surface)]">
 
-                    <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar bg-[var(--surface)] border border-[var(--border)] p-1.5 rounded-2xl shadow-sm max-w-full">
-                        <Link href="/settings/billing" className="flex items-center gap-3 px-3 py-1.5 hover:bg-[var(--bg)] rounded-xl transition-all group shrink-0 relative overflow-hidden">
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors leading-none mb-1">AI Usage</span>
-                                <span className="text-[11px] font-black text-[var(--text)] whitespace-nowrap leading-none flex items-center gap-1.5">
-                                    {usage?.used ?? 0} <span className="text-[var(--muted)] font-bold">/ {usage?.limit ?? '∞'}</span>
-                                    {usage?.limit && (
-                                        <div className="w-8 h-1 bg-[var(--border)] rounded-full overflow-hidden hidden xs:block">
-                                            <div
-                                                className="h-full bg-[var(--accent)] transition-all duration-1000"
-                                                style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
-                                            />
-                                        </div>
-                                    )}
-                                </span>
-                            </div>
-                            <div className="w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)]/30 transition-all">
-                                <Zap size={14} className={usage?.limit && (usage.used / usage.limit) > 0.8 ? 'text-orange-500 animate-pulse' : ''} />
-                            </div>
-                        </Link>
-
-                        <div className="w-px h-4 bg-[var(--border)] mx-1" />
-
-                        {activeCurriculum && (
-                            <Link
-                                href={`/learn/curriculum/${activeCurriculum.id}`}
-                                className="group flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg)] rounded-xl transition-all shrink-0 max-w-[200px]"
-                            >
-                                <div className="w-5 h-5 rounded-md bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-sm">
-                                    <Play size={10} fill="currentColor" />
-                                </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className="text-[10px] font-bold truncate leading-tight">{activeCurriculum.title}</span>
-                                    <span className="text-[8px] text-[var(--accent)] font-bold uppercase tracking-wider">{activeCurriculum.progress}%</span>
-                                </div>
-                            </Link>
-                        )}
-
-                        {latestSessions.length > 0 && latestSessions[0].status !== 'Completed' && (
-                            <>
-                                <div className="w-px h-4 bg-[var(--border)] mx-1" />
-                                <Link
-                                    href={`/session/${latestSessions[0].id}`}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-[var(--accent)] text-white rounded-xl hover:bg-[var(--accent)]/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[var(--accent)]/20 shrink-0"
-                                >
-                                    <Sparkles size={11} fill="currentColor" />
-                                    <span className="text-[10px] font-bold">Resume</span>
-                                </Link>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8">
-
-                    <div className="flex flex-col gap-10">
+                    <div className="flex flex-col min-h-0">
                         <DashboardChat
                             token={token}
                             isDemo={isDemo}
@@ -402,90 +334,93 @@ export default function Home() {
                             handleAction={handleAction}
                             isNavigating={isNavigating}
                             displayName={user?.displayName || 'Learner'}
-                        />
+                            headerContent={
+                                <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+                                    <div>
+                                        <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight flex items-center gap-2">
+                                            {getGreeting()}, <span className="text-[var(--accent)] font-display">{user?.displayName?.split(' ')[0] || 'Learner'}</span> 👋
+                                        </h1>
+                                        <p className="text-[var(--muted)] text-sm mt-1">Your AI tutor is ready. What are you working on?</p>
+                                    </div>
 
-                        {latestSessions.length > 0 ? (
-                            <div>
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-display text-[var(--text)]">Recent Sessions</h2>
-                                    <Link href="/sessions" className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-colors flex items-center gap-1">
-                                        View all <ChevronRight size={13} />
-                                    </Link>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 stagger-children">
-                                    {latestSessions.map((session) => (
-                                        <Link
-                                            key={session.id}
-                                            href={session.status === 'Completed' ? `/session/${session.id}/feedback` : `/session/${session.id}`}
-                                            className="group flex flex-col justify-between bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 hover:border-[var(--accent)]/30 hover:shadow-lg transition-all duration-200"
-                                        >
-                                            <div className="flex items-start gap-3 mb-3">
-                                                <div className="w-9 h-9 rounded-xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                                    {getSessionIcon(session.type)}
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <h4 className="text-sm font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
-                                                        {session.title}
-                                                    </h4>
-                                                    <p className="text-xs text-[var(--muted)] mt-0.5 font-medium tracking-tight">{session.date}</p>
-                                                </div>
+                                    <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar bg-[var(--bg)] border border-[var(--border)] p-2 rounded-2xl shadow-sm max-w-full">
+                                        <Link href="/settings/billing" className="flex items-center gap-3 px-3 py-1.5 hover:bg-[var(--surface)] rounded-xl transition-all group shrink-0 relative overflow-hidden">
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors leading-none mb-1">AI Usage</span>
+                                                <span className="text-[11px] font-black text-[var(--text)] whitespace-nowrap leading-none flex items-center gap-1.5">
+                                                    {usage?.used ?? 0} <span className="text-[var(--muted)] font-bold">/ {usage?.limit ?? '∞'}</span>
+                                                    {usage?.limit && (
+                                                        <div className="w-8 h-1 bg-[var(--border)] rounded-full overflow-hidden hidden xs:block">
+                                                            <div
+                                                                className="h-full bg-[var(--accent)] transition-all duration-1000"
+                                                                style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </span>
                                             </div>
-                                            <div className="flex items-center justify-between pt-2.5 border-t border-[var(--border)]/30">
-                                                {session.status === 'Completed' ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <CheckCircle2 size={12} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
-                                                        <span className={`text-xs font-bold tracking-tight ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                                                            {session.result === 'Strong' ? 'Mastered' : 'Gaps Found'}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${session.status === 'Practicing' ? 'bg-blue-500' : 'bg-amber-500'}`} />
-                                                        <span className={`text-xs font-bold tracking-tight ${session.status === 'Practicing' ? 'text-blue-600' : 'text-amber-600'}`}>
-                                                            {session.status}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                                <ChevronRight size={12} className="text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors" />
+                                            <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)]/30 transition-all">
+                                                <Zap size={14} className={usage?.limit && (usage.used / usage.limit) > 0.8 ? 'text-orange-500 animate-pulse' : ''} />
                                             </div>
                                         </Link>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-2xl p-10 text-center">
-                                <div className="w-12 h-12 rounded-full bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center mx-auto mb-4 text-[var(--muted)]/50">
-                                    <History size={22} />
-                                </div>
-                                <h3 className="font-display text-base text-[var(--text)] mb-1">No sessions yet</h3>
-                                <p className="text-sm text-[var(--muted)]">Use the chat above to start your first session.</p>
-                            </div>
-                        )}
-                    </div>
 
-                    <div className="space-y-6">
+                                        <div className="w-px h-4 bg-[var(--border)] mx-1" />
+
+                                        {activeCurriculum && (
+                                            <Link
+                                                href={`/learn/curriculum/${activeCurriculum.id}`}
+                                                className="group flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--surface)] rounded-xl transition-all shrink-0 max-w-[200px]"
+                                            >
+                                                <div className="w-5 h-5 rounded-md bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-sm">
+                                                    <Play size={10} fill="currentColor" />
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-[10px] font-bold truncate leading-tight">{activeCurriculum.title}</span>
+                                                    <span className="text-[8px] text-[var(--accent)] font-bold uppercase tracking-wider">{activeCurriculum.progress}%</span>
+                                                </div>
+                                            </Link>
+                                        )}
+
+                                        {latestSessions.length > 0 && latestSessions[0].status !== 'Completed' && (
+                                            <>
+                                                <div className="w-px h-4 bg-[var(--border)] mx-1" />
+                                                <Link
+                                                    href={`/session/${latestSessions[0].id}`}
+                                                    className="flex items-center gap-2 px-3 py-1.5 bg-[var(--accent)] text-white rounded-xl hover:bg-[var(--accent)]/90 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-[var(--accent)]/20 shrink-0"
+                                                >
+                                                    <Sparkles size={11} fill="currentColor" />
+                                                    <span className="text-[10px] font-bold">Resume</span>
+                                                </Link>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            }
+                        />
+
+                    </div>
+                    <div className="flex flex-col min-h-0 bg-[var(--surface)] border-t lg:border-t-0 lg:border-l border-[var(--border)] overflow-y-auto">
                         {focusConcepts.length > 0 && (
-                            <section className="premium-card rounded-2xl p-5">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-xs font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
+                            <section className="p-5 border-b border-[var(--border)] hover:bg-[var(--bg)]/50 transition-colors">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
                                         <ShieldAlert size={12} /> Needs Attention
                                     </h3>
                                     <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                                 </div>
-                                <div className="space-y-5">
+                                <div className="space-y-4">
                                     {focusConcepts.map(concept => (
                                         <div key={concept.id} className="group cursor-pointer">
                                             <div className="flex items-center justify-between mb-2">
                                                 <div className="flex items-center gap-2 min-w-0">
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${concept.current_mastery === 'revisit' ? 'bg-red-500' : 'bg-orange-500'}`} />
-                                                    <span className="text-xs font-bold text-[var(--text)] truncate">{concept.display_name}</span>
+                                                    <span className="text-xs font-bold text-[var(--text)] truncate hover:text-[var(--accent)] transition-colors">{concept.display_name}</span>
                                                 </div>
-                                                <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-tight shrink-0 px-1.5 py-0.5 rounded-md ${concept.current_mastery === 'revisit' ? 'bg-red-50 text-red-500' : 'bg-orange-50 text-orange-500'}`}>
+                                                <div className={`flex items-center gap-0.5 text-[9px] font-black uppercase tracking-tight shrink-0 px-1.5 py-0.5 rounded ${concept.current_mastery === 'revisit' ? 'bg-red-50 text-red-500' : 'bg-orange-50 text-orange-500'}`}>
                                                     <AlertTriangle size={10} />
-                                                    {concept.current_mastery === 'shaky' ? 'Shaky' : 'Revisit'}
+                                                    {concept.current_mastery}
                                                 </div>
                                             </div>
-                                            <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)] shadow-inner">
+                                            <div className="h-1 bg-[var(--border)] rounded-full overflow-hidden shadow-inner">
                                                 <div
                                                     className={`h-full ${getMasteryColor(concept.current_mastery)} rounded-full shadow-[0_0_8px_rgba(0,0,0,0.1)] transition-all duration-500`}
                                                     style={{ width: concept.current_mastery === 'revisit' ? '15%' : '35%' }}
@@ -496,52 +431,103 @@ export default function Home() {
                                 </div>
                                 <button
                                     onClick={() => handleAction({ type: 'START_LEARN', payload: { q: focusConcepts.map(c => c.display_name).join(', ') } })}
-                                    className="w-full mt-4 flex items-center justify-center gap-2 py-3 bg-red-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-red-500/20"
+                                    className="w-full mt-5 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-red-600 transition-all shadow-md shadow-red-500/10"
                                 >
-                                    <Play size={14} fill="currentColor" /> Start Review Session
+                                    <Play size={12} fill="currentColor" /> Start Review
                                 </button>
                                 <Link
                                     href="/vault"
-                                    className="mt-3 flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-all"
+                                    className="mt-3 w-full flex items-center justify-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-all"
                                 >
                                     Open Concept Vault <ChevronRight size={12} />
                                 </Link>
                             </section>
                         )}
 
-                        <div className="premium-card rounded-2xl p-5">
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mb-4">Tools & Launch</h3>
-                            <div className="space-y-1">
+                        {latestSessions.length > 0 && (
+                            <div className="flex flex-col border-b border-[var(--border)] bg-[var(--surface)]">
+                                <div className="flex items-center justify-between p-4 px-5 border-b border-[var(--border)]/40 bg-[var(--bg)]/30">
+                                    <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Recent Sessions</h3>
+                                    <Link href="/sessions" className="text-[9px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-colors flex items-center">
+                                        View all <ChevronRight size={11} />
+                                    </Link>
+                                </div>
+                                <div className="flex flex-col">
+                                    {latestSessions.slice(0, 4).map((session, i) => (
+                                        <Link
+                                            key={session.id}
+                                            href={session.status === 'Completed' ? `/session/${session.id}/feedback` : `/session/${session.id}`}
+                                            className={`group flex flex-col px-5 py-3.5 transition-all ${i !== Math.min(latestSessions.length, 4) - 1 ? 'border-b border-[var(--border)]/40' : ''} hover:bg-[var(--bg)]`}
+                                        >
+                                            <div className="flex items-start gap-3 mb-2">
+                                                <div className="w-6 h-6 rounded border border-[var(--border)] flex items-center justify-center shrink-0 bg-[var(--surface)] shadow-sm group-hover:border-[var(--accent)]/30 transition-colors">
+                                                    {getSessionIcon(session.type)}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h4 className="text-[11px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors truncate">
+                                                        {session.title}
+                                                    </h4>
+                                                    <p className="text-[9px] text-[var(--muted)] mt-0.5 font-medium tracking-tight uppercase">{session.date}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-1 pl-9">
+                                                {session.status === 'Completed' ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <CheckCircle2 size={10} className={session.result === 'Strong' ? 'text-emerald-500' : 'text-amber-500'} />
+                                                        <span className={`text-[9px] font-black uppercase tracking-wider ${session.result === 'Strong' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                            {session.result === 'Strong' ? 'Mastered' : 'Gaps'}
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-1">
+                                                        <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${session.status === 'Practicing' ? 'bg-blue-500' : 'bg-amber-500'}`} />
+                                                        <span className={`text-[9px] font-black uppercase tracking-wider ${session.status === 'Practicing' ? 'text-blue-600' : 'text-amber-600'}`}>
+                                                            {session.status}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <ChevronRight size={11} className="text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0" />
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col border-b border-[var(--border)]">
+                            <div className="p-4 px-5 border-b border-[var(--border)]/40 bg-[var(--bg)]/30">
+                                <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Tools & Launch</h3>
+                            </div>
+                            <div className="flex flex-col">
                                 {[
-                                    { href: '/knowledge-map', icon: <Network size={14} />, label: 'Knowledge Map', sub: 'viz', color: 'bg-indigo-50 text-indigo-500' },
-                                    { href: '/vault', icon: <BookOpen size={14} />, label: 'Concept Vault', sub: vaultCount !== null ? `${vaultCount} items` : 'free', color: 'bg-emerald-50 text-emerald-500' },
-                                    { href: '/sessions', icon: <History size={14} />, label: 'All Sessions', sub: 'history', color: 'bg-blue-50 text-blue-500' },
-                                ].map(item => (
+                                    { href: '/knowledge-map', icon: <Network size={14} />, label: 'Knowledge Map', sub: 'viz', color: 'bg-indigo-50 text-indigo-500', hover: 'hover:bg-indigo-50 hover:border-indigo-100' },
+                                    { href: '/vault', icon: <BookOpen size={14} />, label: 'Concept Vault', sub: vaultCount !== null ? `${vaultCount} items` : 'free', color: 'bg-emerald-50 text-emerald-500', hover: 'hover:bg-emerald-50 hover:border-emerald-100' },
+                                    { href: '/sessions', icon: <History size={14} />, label: 'All Sessions', sub: 'history', color: 'bg-blue-50 text-blue-500', hover: 'hover:bg-blue-50 hover:border-blue-100' },
+                                ].map((item, i) => (
                                     <Link
                                         key={item.href}
                                         href={item.href}
-                                        className="group flex items-center justify-between px-3 py-3 rounded-xl hover:bg-[var(--bg)] transition-all border border-transparent hover:border-[var(--border)] active:scale-[0.98]"
+                                        className={`group flex items-center justify-between px-5 py-3.5 transition-all ${i !== 2 ? 'border-b border-[var(--border)]/40' : ''} hover:bg-[var(--bg)]`}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>{item.icon}</div>
+                                            <div className={`w-8 h-8 rounded-lg ${item.color} flex items-center justify-center group-hover:scale-105 transition-transform`}>{item.icon}</div>
                                             <span className="text-xs font-bold text-[var(--text)]">{item.label}</span>
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <span className="text-xs text-[var(--muted)] font-medium">{item.sub}</span>
-                                            <ChevronRight size={13} className="text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <span className="text-[9px] font-black text-[var(--muted)]/80 uppercase tracking-widest px-2 py-0.5 rounded-full border border-[var(--border)] bg-[var(--surface)]">{item.sub}</span>
+                                            <ChevronRight size={13} className="text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-all translate-x-1 group-hover:translate-x-0" />
                                         </div>
                                     </Link>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="premium-card rounded-2xl p-6 bg-gradient-to-br from-[var(--accent)] to-teal-700 text-white relative overflow-hidden group">
-                            <div className="absolute -right-8 -bottom-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
-                                <Brain size={120} />
-                            </div>
-                            <h3 className="text-lg font-display mb-2">Build a Roadmap</h3>
-                            <p className="text-white/80 text-xs mb-6 leading-relaxed">
-                                Not sure where to start? Tell the AI your goal and it will generate a structured multi-session curriculum for you.
+                        <div className="p-5 relative overflow-hidden group flex-1 flex flex-col justify-center border-b border-[var(--border)] lg:border-b-0 min-h-[160px] bg-gradient-to-b from-[var(--surface)] to-[var(--bg)]/50">
+                            <h3 className="text-sm font-bold text-[var(--text)] mb-2 flex items-center gap-2">
+                                <Sparkles size={14} className="text-[var(--accent)]" /> Build a Roadmap
+                            </h3>
+                            <p className="text-[var(--muted)] text-[11px] mb-4 leading-relaxed font-medium">
+                                Give the AI your goal and it will generate a structured multi-session curriculum.
                             </p>
                             <button
                                 onClick={() => {
@@ -551,30 +537,30 @@ export default function Home() {
                                         el.value = "Help me build a learning roadmap for ";
                                     }
                                 }}
-                                className="w-full py-2.5 bg-white text-[var(--accent)] rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+                                className="mt-auto w-full py-2.5 bg-white border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold shadow-sm hover:border-[var(--accent)]/50 hover:text-[var(--accent)] transition-all flex items-center justify-center gap-2"
                             >
                                 <Plus size={14} /> Create Roadmap
                             </button>
                         </div>
 
-                        <div className="premium-card rounded-2xl p-6 border-dashed border-2 flex flex-col items-center justify-center text-center gap-3 py-8">
-                            <div className="w-12 h-12 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
-                                <Activity size={20} />
+                        <div className="p-4 px-5 flex items-center gap-4 hover:bg-[var(--bg)] transition-colors border-t border-[var(--border)] bg-[var(--surface)] shrink-0">
+                            <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shadow-sm shrink-0">
+                                <Activity size={16} />
                             </div>
-                            <div>
-                                <h4 className="text-sm font-bold">Activity Streak</h4>
-                                <p className="text-[10px] text-[var(--muted)] mt-1">Study 3 more days for a week streak!</p>
-                            </div>
-                            <div className="flex gap-1.5 mt-2">
-                                {activityDays.map((active, i) => (
-                                    <div
-                                        key={i}
-                                        className={`w-2.5 h-2.5 rounded-full border border-[var(--border)] ${active ? 'bg-[var(--accent)] shadow-[0_0_8px_rgba(var(--accent-rgb),0.3)]' : 'bg-[var(--surface)]'}`}
-                                        title={weekDayLabels[i]}
-                                    />
-                                ))}
+                            <div className="min-w-0 flex-1">
+                                <h4 className="text-[11px] font-bold text-[var(--text)] mb-1 uppercase tracking-widest">Activity Streak</h4>
+                                <div className="flex gap-1">
+                                    {activityDays.map((active, i) => (
+                                        <div
+                                            key={i}
+                                            className={`w-2 h-2 rounded-full border transition-colors ${active ? 'bg-[var(--accent)] border-[var(--accent)] shadow-[0_0_8px_rgba(var(--accent-rgb),0.3)]' : 'bg-[var(--bg)] border-[var(--border)]'}`}
+                                            title={weekDayLabels[i]}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -598,9 +584,10 @@ interface DashboardChatProps {
     handleAction: (action: ParsedAction) => void;
     isNavigating: boolean;
     displayName: string;
+    headerContent?: React.ReactNode;
 }
 
-function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating, displayName }: DashboardChatProps) {
+function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating, displayName, headerContent }: DashboardChatProps) {
     const router = useRouter();
     const [input, setInput] = useState('');
     const [isInternalGateOpen, setIsInternalGateOpen] = useState(false);
@@ -666,13 +653,18 @@ function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating
     return (
         <>
             <section
-                className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col h-[520px] md:h-[600px] lg:h-[680px]"
+                className="relative bg-[var(--surface)] flex flex-col h-full min-h-0"
             >
+                {headerContent && (
+                    <div className="sticky top-0 z-20 bg-[var(--surface)]/95 backdrop-blur-xl border-b border-[var(--border)] px-4 py-4 xl:py-5 lg:pl-8">
+                        {headerContent}
+                    </div>
+                )}
                 <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 scroll-smooth">
                     {!hasMessages && (
                         <div className="flex flex-col items-center justify-center h-full text-center py-6">
-                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-emerald-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
-                                <Brain size={34} />
+                            <div className="w-14 h-14 rounded-2xl bg-[var(--accent)] text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
+                                <Brain size={34} strokeWidth={1.5} />
                             </div>
                             <h3 className="font-display text-lg text-[var(--text)] mb-1.5">Ask me anything</h3>
                             <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed mb-6">
@@ -690,15 +682,15 @@ function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating
                                                 router.push(`/learn?q=${encodeURIComponent(sp.prompt)}`);
                                             }
                                         }}
-                                        className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden"
+                                        className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden shadow-sm"
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/0 to-[var(--accent)]/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
                                         <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all shadow-sm">
-                                            <sp.icon size={16} className="text-[var(--muted)] group-hover:text-white transition-colors" />
+                                            <sp.icon size={16} strokeWidth={1.5} className="text-[var(--muted)] group-hover:text-white transition-colors" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
-                                            <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug">{sp.description}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
+                                            <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug font-medium">{sp.description}</p>
                                         </div>
                                     </button>
                                 ))}
