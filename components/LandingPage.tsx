@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
+import SEO from '@/components/Layout/SEO';
 import {
     Brain,
     Sparkles,
@@ -57,6 +58,7 @@ export default function LandingPage() {
 
     return (
         <div ref={revealRef} className="min-h-screen bg-[var(--bg)] text-[var(--text)] font-sans overflow-x-hidden">
+            <SEO />
             {/* ─── NAVBAR ─── */}
             <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[var(--bg)]/80 border-b border-[var(--border)]/50">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">

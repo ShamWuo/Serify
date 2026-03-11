@@ -138,7 +138,10 @@ export default function PricingPage() {
 
     return (
         <DashboardLayout>
-            <SEO title="Pricing" />
+            <SEO 
+                title="Pricing" 
+                description="Simple, transparent pricing. Start free and upgrade when you're ready for deeper AI diagnostic learning."
+            />
 
             <div className="mx-auto max-w-6xl py-12 px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-16">

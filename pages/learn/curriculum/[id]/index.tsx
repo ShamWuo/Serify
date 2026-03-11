@@ -19,7 +19,8 @@ import {
     BookOpen,
     PlayCircle,
     Lock,
-    ListChecks
+    ListChecks,
+    Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +37,8 @@ export default function CurriculumView() {
     const [isEditing, setIsEditing] = useState(false);
     const [copied, setCopied] = useState(false);
     const [expandedUnits, setExpandedUnits] = useState<Set<number>>(new Set([0]));
+    const [editUnits, setEditUnits] = useState<any[]>([]);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (id) fetchCurriculum();
@@ -44,13 +47,14 @@ export default function CurriculumView() {
 
     useEffect(() => {
         if (curriculum) {
+            setEditUnits(JSON.parse(JSON.stringify(curriculum.units)));
             // Auto-expand the unit containing the current concept
-            const allConcepts = curriculum.units.flatMap((u: any) => u.concepts);
-            const currentIndex = curriculum.current_concept_index || 0;
-            const currentConcept = allConcepts[currentIndex];
+            const allConceptsResolved = curriculum.units.flatMap((u: any) => u.concepts);
+            const currIdx = curriculum.current_concept_index || 0;
+            const currentConcept = allConceptsResolved[currIdx];
             if (currentConcept) {
                 const unitIdx = curriculum.units.findIndex((u: any) =>
-                    u.concepts.some((c: any) => c.id === currentConcept.id)
+                    u.concepts.some((c: any) => (c.id === currentConcept.id || c.name === currentConcept.name))
                 );
                 if (unitIdx !== -1) setExpandedUnits(new Set([unitIdx]));
             }
@@ -114,6 +118,54 @@ export default function CurriculumView() {
             next.has(idx) ? next.delete(idx) : next.add(idx);
             return next;
         });
+    };
+
+    const removeConcept = (uIdx: number, cIdx: number) => {
+        const next = [...editUnits];
+        next[uIdx].concepts.splice(cIdx, 1);
+        if (next[uIdx].concepts.length === 0) next.splice(uIdx, 1);
+        setEditUnits(next);
+    };
+
+    const moveConcept = (uIdx: number, cIdx: number, dir: 'up' | 'down') => {
+        const next = [...editUnits];
+        const flatIndices = next.flatMap((u, ui) => u.concepts.map((c: any, ci: number) => ({ ui, ci })));
+        const flatIdx = flatIndices.findIndex(item => item.ui === uIdx && item.ci === cIdx);
+
+        if (dir === 'up' && flatIdx > 0) {
+            const target = flatIndices[flatIdx - 1];
+            const temp = next[uIdx].concepts[cIdx];
+            next[uIdx].concepts[cIdx] = next[target.ui].concepts[target.ci];
+            next[target.ui].concepts[target.ci] = temp;
+        } else if (dir === 'down' && flatIdx < flatIndices.length - 1) {
+            const target = flatIndices[flatIdx + 1];
+            const temp = next[uIdx].concepts[cIdx];
+            next[uIdx].concepts[cIdx] = next[target.ui].concepts[target.ci];
+            next[target.ui].concepts[target.ci] = temp;
+        }
+        setEditUnits(next);
+    };
+
+    const saveChanges = async () => {
+        setSaving(true);
+        const newTotalCount = editUnits.reduce((acc, u) => acc + u.concepts.length, 0);
+        const { error } = await supabase
+            .from('curricula')
+            .update({
+                units: editUnits,
+                concept_count: newTotalCount,
+                edit_count: (curriculum.edit_count || 0) + 1,
+                last_activity_at: new Date().toISOString()
+            })
+            .eq('id', curriculum.id);
+
+        if (error) {
+            alert('Failed to save changes: ' + error.message);
+        } else {
+            await fetchCurriculum();
+            setIsEditing(false);
+        }
+        setSaving(false);
     };
 
     const getMasteryBadge = (state: string | null) => {
@@ -389,26 +441,68 @@ export default function CurriculumView() {
                             </button>
                         </div>
                         <div className="p-6 flex-1 overflow-y-auto">
-                            <p className="text-sm text-[var(--muted)] mb-6">Drag to reorder. Click × to remove. Edits are cosmetic only.</p>
-                            <div className="space-y-2">
-                                {allConcepts.map((c: any, idx: number) => (
-                                    <div key={idx} className="flex items-center bg-[var(--bg)] border border-[var(--border)] p-3 rounded-xl group">
-                                        <GripVertical size={16} className="text-[var(--muted)] mr-3 shrink-0" />
-                                        <div className="w-6 text-xs text-[var(--muted)] font-mono shrink-0">{idx + 1}</div>
-                                        <div className="flex-1 truncate text-sm font-medium text-[var(--text)]">{c.name}</div>
-                                        <button className="p-1.5 text-[var(--muted)] hover:text-red-500 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100 shrink-0">
-                                            <X size={14} />
-                                        </button>
+                            <p className="text-sm text-[var(--muted)] mb-6">Reorder concepts or remove them from your path. Changes will update your progress mapping.</p>
+                            <div className="space-y-4">
+                                {editUnits.map((unit, uIdx) => (
+                                    <div key={uIdx} className="space-y-2">
+                                        <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] flex items-center gap-2">
+                                            <div className="h-px flex-1 bg-[var(--border)]" />
+                                            {unit.unitTitle}
+                                            <div className="h-px flex-1 bg-[var(--border)]" />
+                                        </div>
+                                        {unit.concepts.map((c: any, cIdx: number) => {
+                                            const flatIndices = editUnits.flatMap((u, ui) => u.concepts.map((_: any, ci: number) => ({ ui, ci })));
+                                            const flatIdx = flatIndices.findIndex(item => item.ui === uIdx && item.ci === cIdx);
+
+                                            return (
+                                                <div key={cIdx} className="flex items-center bg-[var(--bg)] border border-[var(--border)] p-3 rounded-xl group transition-all">
+                                                    <div className="flex flex-col gap-0.5 mr-3">
+                                                        <button
+                                                            onClick={() => moveConcept(uIdx, cIdx, 'up')}
+                                                            disabled={flatIdx === 0}
+                                                            className="text-[var(--muted)] hover:text-[var(--accent)] disabled:opacity-0 transition-colors"
+                                                        >
+                                                            <ChevronUp size={14} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => moveConcept(uIdx, cIdx, 'down')}
+                                                            disabled={flatIdx === flatIndices.length - 1}
+                                                            className="text-[var(--muted)] hover:text-[var(--accent)] disabled:opacity-0 transition-colors"
+                                                        >
+                                                            <ChevronDown size={14} />
+                                                        </button>
+                                                    </div>
+                                                    <div className="w-6 text-xs text-[var(--muted)] font-mono shrink-0">{flatIdx + 1}</div>
+                                                    <div className="flex-1 truncate text-sm font-medium text-[var(--text)]">{c.name}</div>
+                                                    <button
+                                                        onClick={() => removeConcept(uIdx, cIdx)}
+                                                        className="p-1.5 text-[var(--muted)] hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div className="p-6 border-t border-[var(--border)] flex justify-end">
+                        <div className="p-6 border-t border-[var(--border)] flex flex-col gap-3">
                             <button
-                                onClick={() => setIsEditing(false)}
-                                className="px-6 py-2.5 bg-[var(--accent)] text-white font-medium rounded-xl hover:bg-[var(--accent)]/90 transition-colors"
+                                onClick={saveChanges}
+                                disabled={saving}
+                                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[var(--accent)] text-white font-bold rounded-xl hover:bg-[var(--accent)]/90 transition-all shadow-lg shadow-[var(--accent)]/20 disabled:opacity-50"
                             >
-                                Done →
+                                {saving ? <Loader2 size={18} className="animate-spin" /> : <><Check size={18} />Save Changes</>}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setEditUnits(JSON.parse(JSON.stringify(curriculum.units)));
+                                    setIsEditing(false);
+                                }}
+                                className="w-full py-2.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                            >
+                                Cancel
                             </button>
                         </div>
                     </div>

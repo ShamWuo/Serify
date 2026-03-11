@@ -176,7 +176,8 @@ Generate a complete teaching plan as JSON:
     "questionText": "string",
     "whyThisIsHarder": "string"
   },
-  "anglesAvailable": ["string", "string", "string", "string"]
+  "anglesAvailable": ["string", "string", "string", "string"],
+  "accelerated": boolean
 }
 
 RULES YOU MUST FOLLOW:
@@ -207,7 +208,7 @@ LOGIC:
 - Application checks ONLY if learner level is 'strong' OR unlocksAfter includes both 'recall' and 'mechanism'.
 - NEVER write an application check as the first or only check.
 - Confirm question must be harder than any check question.
-- ACCELERATED PATH: If mastery state is 'solid' or 'developing', keep teach very short (just the key formula/definition), use only 1 quickCheck, and go straight to confirm.
+- ACCELERATED PATH: If mastery state is 'solid' or 'developing', keep teach very short (just the key formula/definition), use only 1 quickCheck, go straight to confirm, AND set "accelerated": true. Otherwise set it to false.
 
 FORMATTING — MANDATORY:
 1. ALL math must use LaTeX: inline $...$, block $$...$$ on its own line. NEVER write math as plain text.

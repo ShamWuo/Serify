@@ -165,14 +165,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         state.current.isMounted = true;
 
-        const init = async () => {
-            // Check for OAuth flow tokens/codes in URL
-            const isOAuth =
-                typeof window !== 'undefined' &&
-                (window.location.hash.includes('access_token=') ||
-                    window.location.hash.includes('type=recovery') ||
-                    window.location.search.includes('code='));
+        const isOAuth =
+            typeof window !== 'undefined' &&
+            (window.location.hash.includes('access_token=') ||
+                window.location.hash.includes('type=recovery') ||
+                window.location.search.includes('code='));
 
+        const init = async () => {
             // If OAuth, we wait a bit for the internal Supabase client to process the URL
             if (isOAuth) {
                 syncLoading(true);
@@ -180,10 +179,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             try {
-                // We no longer call getSession() here to avoid competing for the LockManager lock.
-                // Supabase's onAuthStateChange with event === 'INITIAL_SESSION' will handle 
-                // the initial hydrating session automatically.
-
                 // If we aren't in an OAuth flow, we can just wait for the listener
                 if (!isOAuth) {
                     // Just a small safety timeout to ensure we don't stay loading forever 
@@ -218,7 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!state.current.isMounted) return;
 
-            console.log('Auth state change:', event);
+            console.log('Auth state change:', event, !!session);
 
             if (event === 'SIGNED_OUT') {
                 syncUser(null);
@@ -228,9 +223,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setToken(session.access_token);
                 await ensureProfile(session.user.id, session.user.email || '');
             } else if (event === 'INITIAL_SESSION' && !session) {
-                syncLoading(false);
+                // If we're in an OAuth flow, we don't want to stop loading until we get a SIGNED_IN event
+                if (!isOAuth) {
+                    syncLoading(false);
+                }
             } else if (event === 'SIGNED_IN' && !session) {
-                syncLoading(false);
+                if (!isOAuth) {
+                    syncLoading(false);
+                }
             }
         });
 
