@@ -52,7 +52,15 @@ export function parseJSON<T>(text: string): T {
   }
 }
 
-export async function extractConcepts(content: ContentSource, plan: string = 'free', transcript?: string): Promise<Concept[]> {
+export async function extractConcepts(content: ContentSource, plan: string = 'free', transcript?: string, vaultContext?: string): Promise<Concept[]> {
+  const contextInstruction = vaultContext 
+    ? `EXISTING KNOWLEDGE STRUCTURE:
+The user already has the following broad categories (Pillars) and sub-concepts in their vault:
+${vaultContext}
+
+REUSE EXISTING CATEGORIES: If the new material fits into any of the existing Pillars above, you MUST reuse them by name exactly. Only create a NEW Pillar if the content covers a thematic domain that is fundamentally different from what is already in the vault.`
+    : `The user's knowledge vault is currently empty. Create a fresh, logical structure of themes.`;
+
   const contentDescription =
     content.type === 'text'
       ? `Here are the user's notes:\n\n${content.content}`
@@ -63,8 +71,16 @@ export async function extractConcepts(content: ContentSource, plan: string = 'fr
   const prompt = `You are an expert knowledge analyst.
 ${contentDescription}
 
-Extract 3 to 5 broad "Mastery Pillars" that represent the major themes or domains of this material. 
+${contextInstruction}
+
+Your task is to extract 3 to 5 broad "Mastery Pillars" (Broad Categories) that represent the major themes or domains of this material. 
 For each pillar, identify 2 to 4 specific sub-categories (sub-concepts) that fall under it.
+
+Refinement Rules:
+- A Mastery Pillar must be a broad, high-level theme (e.g., "Calculus Fundamentals", "Derivatives", "Quantum Mechanics").
+- Sub-concepts must be specific, actionable components of that pillar (e.g., "Related Rates", "Implicit Differentiation", "Wave-Particle Duality").
+- If the content is very narrow, you might only extract 1-2 pillars, but ensure they are correctly categorized.
+- REUSE existing Pillar names from the provided context whenever possible.
 
 Return a JSON array of Mastery Pillars.
 
@@ -90,8 +106,7 @@ Rules:
 - "description": Provide a high-quality definition.
 - "importance": "high" for the most central pillars.
 - "relatedConcepts": valid IDs of other extracted pillars that this one builds upon or connects to.
-- Focus on breadth for the pillars and depth for the sub-concepts.`;
-
+- Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
 
   const result = await defaultModel.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],

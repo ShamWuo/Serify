@@ -39,7 +39,7 @@ export default async function handler(req: Request) {
             return new Response(
                 JSON.stringify({
                     error: 'limit_reached',
-                    message: 'You have reached your feature limit.'
+                    message: 'You have reached your usage limit.'
                 }),
                 { status: 403 }
             );

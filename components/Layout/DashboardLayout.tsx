@@ -73,6 +73,8 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             router.push('/onboarding');
         }
 
+        if (!token) return;
+
         fetch('/api/vault/stats', { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => (r.ok ? r.json() : null))
             .then((d) => {
@@ -123,8 +125,8 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                             {backLinkText || 'Back'}
                         </Link>
                     ) : (
-                        <Link 
-                            href={router.query.demo === 'true' ? '/?demo=true' : '/'} 
+                        <Link
+                            href={router.query.demo === 'true' ? '/?demo=true' : '/'}
                             className="inline-flex items-center gap-3 group mb-2 text-left"
                         >
                             {!logoError && (

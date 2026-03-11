@@ -2,6 +2,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 
 interface MarkdownRendererProps {
@@ -33,13 +34,13 @@ export default function MarkdownRenderer({ children, className = '' }: MarkdownR
         <div className={`flow-markdown prose-content ${className}`}>
             <ReactMarkdown
                 remarkPlugins={[remarkMath, remarkGfm]}
-                rehypePlugins={[rehypeKatex]}
+                rehypePlugins={[rehypeKatex, rehypeRaw]}
                 components={{
                     // Open links in new tab
                     a: ({ node, ...props }) => (
                         <a {...props} target="_blank" rel="noopener noreferrer" />
                     ),
-                    // Style code blocks
+                    
                     code: ({ node, className, children, ...props }) => {
                         const isInline = !className;
                         if (isInline) {
@@ -81,7 +82,7 @@ export default function MarkdownRenderer({ children, className = '' }: MarkdownR
                             {children}
                         </pre>
                     ),
-                    // Better blockquotes
+
                     blockquote: ({ node, children, ...props }) => (
                         <blockquote
                             style={{

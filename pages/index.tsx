@@ -41,6 +41,7 @@ import { storage, SessionSummary } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 import { KnowledgeNode } from '@/types/serify';
 import LandingPage from '@/components/LandingPage';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useChat } from '@ai-sdk/react';
 
 type DetectedType = 'youtube' | 'article' | 'text' | 'pdf' | null;
@@ -111,42 +112,19 @@ export default function Home() {
     const { usage, refresh: refreshUsage } = useUsage('ai_messages');
 
     const [latestSessions, setLatestSessions] = useState<SessionSummary[]>([]);
-    const [activeCurriculum, setActiveCurriculum] = useState<any>(null);
+    const [activeCurriculum, setActiveCurriculum] = useState<{
+        id: string;
+        title: string;
+        status: string;
+        progress: number;
+        last_activity_at?: string;
+    } | null>(null);
     const [focusConcepts, setFocusConcepts] = useState<KnowledgeNode[]>([]);
     const [vaultCount, setVaultCount] = useState<number | null>(null);
     const [activityDays, setActivityDays] = useState<boolean[]>([false, false, false, false, false, false, false]);
 
-    const [input, setInput] = useState('');
     const [isGateOpen, setIsGateOpen] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
-    const chatScrollRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLTextAreaElement>(null);
-
-    const { messages, sendMessage, status, error } = useChat({
-        transport: new DefaultChatTransport({
-            api: '/api/home-chat',
-            headers: {
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                ...(isDemo ? { 'x-serify-demo': 'true' } : {})
-            }
-        }),
-        onError: (err: any) => {
-            if (err.message?.includes('limit_reached') || err.message?.includes('403')) {
-                setIsGateOpen(true);
-            }
-        },
-        onFinish: () => {
-            refreshUsage();
-        }
-    });
-
-    const isLoading = status === 'submitted' || status === 'streaming';
-
-    useEffect(() => {
-        if (chatScrollRef.current) {
-            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-        }
-    }, [messages, isLoading]);
 
     useEffect(() => {
         if (!user) {
@@ -165,7 +143,7 @@ export default function Home() {
                         .order('created_at', { ascending: false })
                         .limit(8),
                     supabase.from('flow_sessions')
-                        .select('id, title, created_at, status, last_activity_at')
+                        .select('id, created_at, status, last_activity_at')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false })
                         .limit(8)
@@ -198,12 +176,12 @@ export default function Home() {
                 }
 
                 if (flowRes.data) {
-                    allSessions = [...allSessions, ...flowRes.data.map(s => {
+                    allSessions = [...allSessions, ...(flowRes.data as any[]).map(s => {
                         const dateObj = new Date(s.created_at);
                         const isRecent = (new Date().getTime() - dateObj.getTime()) < 24 * 60 * 60 * 1000;
                         return {
                             id: s.id,
-                            title: s.title || 'Learning Flow',
+                            title: 'Learning Flow',
                             type: 'Flow',
                             date: isRecent
                                 ? `${formatDistanceToNow(dateObj, { addSuffix: true })}`
@@ -284,25 +262,6 @@ export default function Home() {
             });
     }, [user]);
 
-    // We use sendMessage from useChat since managed state is not available
-    const onSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!token && !isDemo) return;
-        if (!input.trim()) return;
-
-        sendMessage({ text: input });
-        setInput('');
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            if (input?.trim()) {
-                onSubmit(e as any);
-            }
-        }
-    };
-
     const handleAction = useCallback(async (action: ParsedAction) => {
         if (isNavigating) return;
         setIsNavigating(true);
@@ -345,8 +304,6 @@ export default function Home() {
         }
     }, [isNavigating, router, token]);
 
-
-
     if (loading) return null;
     if (!user && !isDemo) return <LandingPage />;
 
@@ -358,16 +315,13 @@ export default function Home() {
     };
 
     const weekDayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-    const hasMessages = messages.length > 0;
 
     return (
         <DashboardLayout>
             <SEO title="Dashboard" />
-            <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-10 pb-28 md:pb-16 page-transition">
+            <div className="max-w-[1400px] mx-auto w-full px-6 md:px-10 py-8 pb-28 md:pb-16 page-transition">
 
-
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                     <div>
                         <h1 className="text-2xl md:text-3xl font-display text-[var(--text)] tracking-tight flex items-center gap-2">
                             {getGreeting()}, <span className="text-[var(--accent)]">{user?.displayName?.split(' ')[0] || 'Learner'}</span> 👋
@@ -438,189 +392,19 @@ export default function Home() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-10">
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-8">
 
-                    <div className="flex flex-col gap-12">
+                    <div className="flex flex-col gap-10">
+                        <DashboardChat
+                            token={token}
+                            isDemo={isDemo}
+                            refreshUsage={refreshUsage}
+                            handleAction={handleAction}
+                            isNavigating={isNavigating}
+                            displayName={user?.displayName || 'Learner'}
+                        />
 
-                        <section
-                            className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col h-[560px] md:h-[640px] lg:h-[720px]"
-                        >
-
-
-                            <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-5 space-y-4 scroll-smooth">
-
-                                {!hasMessages && (
-                                    <div className="flex flex-col items-center justify-center h-full text-center py-6">
-                                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-emerald-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
-                                            <Brain size={34} />
-                                        </div>
-                                        <h3 className="font-display text-lg text-[var(--text)] mb-1.5">Ask me anything</h3>
-                                        <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed mb-6">
-                                            Tell me what you want to learn, or paste something you&apos;ve been studying. I&apos;ll guide you from there.
-                                        </p>
-
-                                        <div className="grid grid-cols-2 gap-3 w-full max-w-lg px-2">
-                                            {STARTER_PROMPTS.map((sp, i) => (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => {
-                                                        if (sp.label.toLowerCase().includes('analyze')) {
-                                                            router.push('/analyze');
-                                                        } else {
-                                                            router.push(`/learn?q=${encodeURIComponent(sp.prompt)}`);
-                                                        }
-                                                    }}
-                                                    className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden"
-                                                >
-                                                    <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/0 to-[var(--accent)]/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                    <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all shadow-sm">
-                                                        <sp.icon size={16} className="text-[var(--muted)] group-hover:text-white transition-colors" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
-                                                        <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug">{sp.description}</p>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {messages.map((msg: any, idx: number) => {
-                                    const isUser = msg.role === 'user';
-                                    const textContent = (msg.parts ?? [])
-                                        .filter((p: any) => p.type === 'text')
-                                        .map((p: any) => p.text)
-                                        .join('');
-                                    const displayText = isUser ? textContent : stripActionBlocks(textContent);
-                                    const actions = isUser ? [] : parseActionBlocks(textContent);
-
-                                    return (
-                                        <div
-                                            key={msg.id ?? idx}
-                                            className={`flex gap-3 chat-bubble-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-                                        >
-                                            {!isUser && (
-                                                <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-[var(--accent)]/20">
-                                                    <Brain size={14} />
-                                                </div>
-                                            )}
-
-                                            <div className={`flex flex-col gap-2 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
-                                                {displayText && (
-                                                    <div
-                                                        className={`px-4 py-3 rounded-2xl text-[13px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser
-                                                            ? 'bg-[var(--accent)] text-white rounded-br-sm shadow-md shadow-[var(--accent)]/20'
-                                                            : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm'
-                                                            }`}
-                                                    >
-                                                        {displayText}
-                                                    </div>
-                                                )}
-
-                                                {actions.map((action, ai) => (
-                                                    <button
-                                                        key={ai}
-                                                        onClick={() => handleAction(action)}
-                                                        disabled={isNavigating}
-                                                        className="group flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[var(--accent)] text-white text-xs font-bold shadow-lg shadow-[var(--accent)]/25 hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[var(--accent)]/30 active:translate-y-0 transition-all disabled:opacity-60"
-                                                    >
-                                                        <CornerDownRight size={14} />
-                                                        {action.type === 'START_ANALYZE'
-                                                            ? `Analyze: "${(action.payload.content || '').slice(0, 36)}${(action.payload.content || '').length > 36 ? '…' : ''}"`
-                                                            : `▶ Start Learning: ${action.payload.q || 'this topic'}`
-                                                        }
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {isUser && (
-                                                <div className="w-8 h-8 rounded-xl bg-[var(--border)] flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-[var(--muted)]">
-                                                    {user?.displayName?.charAt(0) || 'U'}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-
-                                {isLoading && (
-                                    <div className="flex gap-3 chat-bubble-in">
-                                        <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-md shadow-[var(--accent)]/20">
-                                            <Brain size={14} />
-                                        </div>
-                                        <div className="px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl rounded-bl-sm flex items-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '0ms' }} />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '150ms' }} />
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '300ms' }} />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {(error) && (
-                                    <div className="flex items-start gap-3 bg-[var(--warn-light)] border border-[var(--warn)]/20 rounded-2xl p-4 chat-bubble-in">
-                                        <AlertTriangle size={16} className="text-[var(--warn)] shrink-0 mt-0.5" />
-                                        <div className="flex-1">
-                                            <p className="text-sm font-semibold text-[var(--warn)]">
-                                                Something went wrong
-                                            </p>
-                                            <p className="text-xs text-[var(--warn)]/70 mt-0.5">
-                                                {(error?.message?.startsWith('{')
-                                                    ? (JSON.parse(error.message).error || JSON.parse(error.message).message || "An unexpected error occurred")
-                                                    : (error?.message || "An unexpected error occurred"))
-                                                }
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="px-4 pb-4 pt-3 border-t border-[var(--border)]/50 shrink-0 bg-[var(--surface)]">
-                                <div className="relative flex items-end gap-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-2 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
-                                    <textarea
-                                        ref={inputRef}
-                                        value={input}
-                                        onChange={(e) => setInput(e.target.value)}
-                                        onKeyDown={handleKeyDown}
-                                        placeholder="What would you like to learn?"
-                                        rows={1}
-                                        className="flex-1 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed max-h-32"
-                                        style={{ overflowY: 'auto' }}
-                                        disabled={isLoading}
-                                    />
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--muted)] font-bold bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
-                                            <Sparkles size={11} className="text-[var(--accent)]" />
-                                            AI Tutor
-                                        </div>
-                                        <button
-                                            onClick={(e) => onSubmit(e as any)}
-                                            disabled={!input?.trim() || isLoading}
-                                            className="w-8 h-8 rounded-xl bg-[var(--text)] text-[var(--surface)] disabled:opacity-30 flex items-center justify-center hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/10"
-                                        >
-                                            <ArrowUp size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                                <p className="text-[10px] text-[var(--muted)]/50 text-center mt-2 font-medium">
-                                    Ask anything, paste a link, or upload notes ·{' '}
-                                    <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send
-                                </p>
-                            </div>
-                        </section>
-
-                        {loading ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="h-6 bg-[var(--border)] rounded w-32 animate-pulse" />
-                                    <div className="h-4 bg-[var(--border)] rounded w-16 animate-pulse" />
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-4">
-                                    {[...Array(4)].map((_, i) => (
-                                        <div key={i} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 h-28 animate-pulse" />
-                                    ))}
-                                </div>
-                            </div>
-                        ) : latestSessions.length > 0 ? (
+                        {latestSessions.length > 0 ? (
                             <div>
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-display text-[var(--text)]">Recent Sessions</h2>
@@ -668,9 +452,7 @@ export default function Home() {
                                     ))}
                                 </div>
                             </div>
-                        ) : null}
-
-                        {latestSessions.length === 0 && hasMessages && (
+                        ) : (
                             <div className="bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-2xl p-10 text-center">
                                 <div className="w-12 h-12 rounded-full bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center mx-auto mb-4 text-[var(--muted)]/50">
                                     <History size={22} />
@@ -682,16 +464,7 @@ export default function Home() {
                     </div>
 
                     <div className="space-y-6">
-                        {loading ? (
-                            <section className="premium-card rounded-2xl p-5 animate-pulse">
-                                <div className="h-4 bg-[var(--border)] rounded w-1/2 mb-4" />
-                                <div className="space-y-4">
-                                    {[...Array(3)].map((_, i) => (
-                                        <div key={i} className="h-10 bg-[var(--border)] rounded" />
-                                    ))}
-                                </div>
-                            </section>
-                        ) : focusConcepts.length > 0 ? (
+                        {focusConcepts.length > 0 && (
                             <section className="premium-card rounded-2xl p-5">
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-bold uppercase tracking-widest text-red-500 flex items-center gap-1.5">
@@ -734,7 +507,7 @@ export default function Home() {
                                     Open Concept Vault <ChevronRight size={12} />
                                 </Link>
                             </section>
-                        ) : null}
+                        )}
 
                         <div className="premium-card rounded-2xl p-5">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mb-4">Tools & Launch</h3>
@@ -760,7 +533,47 @@ export default function Home() {
                                     </Link>
                                 ))}
                             </div>
+                        </div>
 
+                        <div className="premium-card rounded-2xl p-6 bg-gradient-to-br from-[var(--accent)] to-teal-700 text-white relative overflow-hidden group">
+                            <div className="absolute -right-8 -bottom-8 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                                <Brain size={120} />
+                            </div>
+                            <h3 className="text-lg font-display mb-2">Build a Roadmap</h3>
+                            <p className="text-white/80 text-xs mb-6 leading-relaxed">
+                                Not sure where to start? Tell the AI your goal and it will generate a structured multi-session curriculum for you.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    const el = document.querySelector('textarea');
+                                    if (el) {
+                                        el.focus();
+                                        el.value = "Help me build a learning roadmap for ";
+                                    }
+                                }}
+                                className="w-full py-2.5 bg-white text-[var(--accent)] rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/90 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Plus size={14} /> Create Roadmap
+                            </button>
+                        </div>
+
+                        <div className="premium-card rounded-2xl p-6 border-dashed border-2 flex flex-col items-center justify-center text-center gap-3 py-8">
+                            <div className="w-12 h-12 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
+                                <Activity size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold">Activity Streak</h4>
+                                <p className="text-[10px] text-[var(--muted)] mt-1">Study 3 more days for a week streak!</p>
+                            </div>
+                            <div className="flex gap-1.5 mt-2">
+                                {activityDays.map((active, i) => (
+                                    <div
+                                        key={i}
+                                        className={`w-2.5 h-2.5 rounded-full border border-[var(--border)] ${active ? 'bg-[var(--accent)] shadow-[0_0_8px_rgba(var(--accent-rgb),0.3)]' : 'bg-[var(--surface)]'}`}
+                                        title={weekDayLabels[i]}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -773,5 +586,258 @@ export default function Home() {
                 />
             )}
         </DashboardLayout>
+    );
+}
+
+import { Activity } from 'lucide-react';
+
+interface DashboardChatProps {
+    token: string | null;
+    isDemo: boolean;
+    refreshUsage: () => void;
+    handleAction: (action: ParsedAction) => void;
+    isNavigating: boolean;
+    displayName: string;
+}
+
+function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating, displayName }: DashboardChatProps) {
+    const router = useRouter();
+    const [input, setInput] = useState('');
+    const [isInternalGateOpen, setIsInternalGateOpen] = useState(false);
+    const chatScrollRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    const transport = useMemo(() => new DefaultChatTransport({
+        api: '/api/home-chat',
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(isDemo ? { 'x-serify-demo': 'true' } : {})
+        }
+    }), [token, isDemo]);
+
+    const { messages, sendMessage, status, error } = useChat({
+        transport,
+        onError: (err: any) => {
+            if (err.message?.includes('limit_reached') || err.message?.includes('403')) {
+                setIsInternalGateOpen(true);
+            }
+        },
+        onFinish: () => {
+            refreshUsage();
+        }
+    });
+
+    const isLoading = status === 'submitted' || status === 'streaming';
+    const hasMessages = messages.length > 0;
+
+    useEffect(() => {
+        if (chatScrollRef.current) {
+            chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+    }, [messages, isLoading]);
+
+    // Auto-scale textarea
+    useEffect(() => {
+        const textarea = inputRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+        }
+    }, [input]);
+
+    const onSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!token && !isDemo) return;
+        if (!input.trim()) return;
+
+        sendMessage({ text: input });
+        setInput('');
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (input?.trim()) {
+                onSubmit(e as any);
+            }
+        }
+    };
+
+    return (
+        <>
+            <section
+                className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm flex flex-col h-[520px] md:h-[600px] lg:h-[680px]"
+            >
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 scroll-smooth">
+                    {!hasMessages && (
+                        <div className="flex flex-col items-center justify-center h-full text-center py-6">
+                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-emerald-600 text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
+                                <Brain size={34} />
+                            </div>
+                            <h3 className="font-display text-lg text-[var(--text)] mb-1.5">Ask me anything</h3>
+                            <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed mb-6">
+                                Tell me what you want to learn, or paste something you&apos;ve been studying. I&apos;ll guide you from there.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3 w-full max-w-lg px-2">
+                                {STARTER_PROMPTS.map((sp, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => {
+                                            if (sp.label.toLowerCase().includes('analyze')) {
+                                                router.push('/analyze');
+                                            } else {
+                                                router.push(`/learn?q=${encodeURIComponent(sp.prompt)}`);
+                                            }
+                                        }}
+                                        className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--bg)] hover:border-[var(--accent)]/40 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden"
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/0 to-[var(--accent)]/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all shadow-sm">
+                                            <sp.icon size={16} className="text-[var(--muted)] group-hover:text-white transition-colors" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
+                                            <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug">{sp.description}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {(messages as any).map((msg: any, idx: number) => {
+                        const isUser = msg.role === 'user';
+                        const textContent = msg.content || (msg.parts ?? [])
+                            .filter((p: any) => p.type === 'text')
+                            .map((p: any) => p.text)
+                            .join('');
+                        const displayText = isUser ? textContent : stripActionBlocks(textContent);
+                        const actions = isUser ? [] : parseActionBlocks(textContent);
+
+                        return (
+                            <div
+                                key={msg.id ?? idx}
+                                className={`flex gap-2.5 chat-bubble-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                            >
+                                {!isUser && (
+                                    <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-[var(--accent)]/20">
+                                        <Brain size={14} />
+                                    </div>
+                                )}
+
+                                <div className={`flex flex-col gap-2 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+                                    {displayText && (
+                                        <div
+                                            className={`px-4 py-3 rounded-2xl text-[13px] sm:text-sm leading-relaxed break-words ${isUser
+                                                ? 'bg-[var(--accent)] text-white rounded-br-sm shadow-md shadow-[var(--accent)]/20 whitespace-pre-wrap'
+                                                : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm'
+                                                }`}
+                                        >
+                                            {isUser ? (
+                                                displayText
+                                            ) : (
+                                                <MarkdownRenderer>{displayText}</MarkdownRenderer>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {actions.map((action, ai) => (
+                                        <button
+                                            key={ai}
+                                            onClick={() => handleAction(action)}
+                                            disabled={isNavigating}
+                                            className="group flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[var(--accent)] text-white text-xs font-bold shadow-lg shadow-[var(--accent)]/25 hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[var(--accent)]/30 active:translate-y-0 transition-all disabled:opacity-60"
+                                        >
+                                            <CornerDownRight size={14} />
+                                            {action.type === 'START_ANALYZE'
+                                                ? `Analyze: "${(action.payload.content || '').slice(0, 36)}${(action.payload.content || '').length > 36 ? '…' : ''}"`
+                                                : `▶ Start Learning: ${action.payload.q || 'this topic'}`
+                                            }
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {isUser && (
+                                    <div className="w-8 h-8 rounded-xl bg-[var(--border)] flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-[var(--muted)]">
+                                        {displayName.charAt(0) || 'U'}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {isLoading && (
+                        <div className="flex gap-3 chat-bubble-in">
+                            <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 shadow-md shadow-[var(--accent)]/20">
+                                <Brain size={14} />
+                            </div>
+                            <div className="px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl rounded-bl-sm flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '150ms' }} />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--muted)]/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                        </div>
+                    )}
+
+                    {(error) && (
+                        <div className="flex items-start gap-3 bg-[var(--warn-light)] border border-[var(--warn)]/20 rounded-2xl p-4 chat-bubble-in">
+                            <AlertTriangle size={16} className="text-[var(--warn)] shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-semibold text-[var(--warn)]">
+                                    Something went wrong
+                                </p>
+                                <p className="text-xs text-[var(--warn)]/70 mt-0.5">
+                                    {(error?.message?.startsWith('{')
+                                        ? (JSON.parse(error.message).error || JSON.parse(error.message).message || "An unexpected error occurred")
+                                        : (error?.message || "An unexpected error occurred"))
+                                    }
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-3 pb-3 pt-2 border-t border-[var(--border)]/30 shrink-0 bg-[var(--surface)]">
+                    <div className="relative flex items-end gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
+                        <textarea
+                            ref={inputRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="What would you like to learn?"
+                            rows={1}
+                            className="flex-1 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed"
+                            style={{ minHeight: '24px' }}
+                            disabled={isLoading}
+                        />
+                        <div className="flex items-center gap-2 shrink-0">
+                            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--muted)] font-bold bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
+                                <Sparkles size={11} className="text-[var(--accent)]" />
+                                AI Tutor
+                            </div>
+                            <button
+                                onClick={(e) => onSubmit(e as any)}
+                                disabled={!input?.trim() || isLoading}
+                                className="w-8 h-8 rounded-xl bg-[var(--text)] text-[var(--surface)] disabled:opacity-30 flex items-center justify-center hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/10"
+                            >
+                                <ArrowUp size={16} />
+                            </button>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-[var(--muted)]/50 text-center mt-2 font-medium">
+                        Ask anything, paste a link, or upload notes ·{' '}
+                        <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send
+                    </p>
+                </div>
+            </section>
+
+            {isInternalGateOpen && (
+                <UsageGate
+                    feature="ai_messages"
+                    onClose={() => setIsInternalGateOpen(false)}
+                />
+            )}
+        </>
     );
 }

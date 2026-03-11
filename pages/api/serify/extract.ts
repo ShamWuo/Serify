@@ -221,6 +221,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
         }
 
+        // 2. Fetch Vault Context for better hierarchical sorting
+        let vaultContextString = '';
+        try {
+            const { data: categories } = await supabaseWithAuth
+                .from('vault_categories')
+                .select('id, name')
+                .eq('user_id', user.id);
+            
+            if (categories && categories.length > 0) {
+                const categoryIds = categories.map(c => c.id);
+                const { data: nodes } = await supabaseWithAuth
+                    .from('knowledge_nodes')
+                    .select('display_name, category_id')
+                    .eq('user_id', user.id)
+                    .in('category_id', categoryIds)
+                    .is('is_archived', false);
+                
+                vaultContextString = categories.map(cat => {
+                    const catNodes = nodes?.filter(n => n.category_id === cat.id) || [];
+                    const nodeNames = catNodes.map(n => n.display_name).join(', ');
+                    return `- ${cat.name}${nodeNames ? `: ${nodeNames}` : ''}`;
+                }).join('\n');
+            }
+        } catch (vErr) {
+            console.error('Error fetching vault context:', vErr);
+        }
+
         const { data: tracking } = await supabaseWithAuth
             .from('usage_tracking')
             .select('plan')
@@ -255,7 +282,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } else {
             console.log('Extracting concepts via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
-            const extracted = await extractConcepts(contentSource, tracking?.plan || 'free', processedTranscript);
+            const extracted = await extractConcepts(contentSource, tracking?.plan || 'free', processedTranscript, vaultContextString);
             console.log('Concepts extracted:', extracted.length);
             finalConcepts = extracted;
 
