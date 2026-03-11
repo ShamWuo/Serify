@@ -225,7 +225,7 @@ export default function LearnIndex() {
             setIsGenerating(true);
             submit(payload);
         }
-    }, [router.query, token, submit]);
+    }, [router.query, token, submit, usage, refreshUsage]);
 
     const fetchCurricula = async () => {
         setLoadingCurricula(true);

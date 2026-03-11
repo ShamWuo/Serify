@@ -119,7 +119,7 @@ export default function PracticeMode() {
         if (isAllowed !== undefined) {
             initQuiz();
         }
-    }, [id, router, user, isAllowed]);
+    }, [id, router, user, isAllowed, increment, refresh]);
 
     const handleSelectOption = (index: number) => {
         if (isAnswered) return;
