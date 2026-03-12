@@ -309,8 +309,8 @@ export default function LandingPage() {
                                 <div className="space-y-6">
                                     <div className="p-5 rounded-2xl bg-[var(--bg)] border border-[var(--border)] border-l-4 border-l-purple-500">
                                         <div className="text-[10px] font-bold text-purple-600 uppercase tracking-widest mb-2">Misconception Report</div>
-                                        <p className="text-sm font-bold text-[var(--text)] mb-1">Concept: "Sinusoidal Encoding"</p>
-                                        <p className="text-xs text-[var(--muted)] italic">"You are treating positional encodings as simple indices. In reality, they are frequency patterns that allow the model to scale to any sequence length..."</p>
+                                        <p className="text-sm font-bold text-[var(--text)] mb-1">Concept: &quot;Sinusoidal Encoding&quot;</p>
+                                        <p className="text-xs text-[var(--muted)] italic">&quot;You are treating positional encodings as simple indices. In reality, they are frequency patterns that allow the model to scale to any sequence length...&quot;</p>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -330,7 +330,7 @@ export default function LandingPage() {
                                             <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] flex items-center justify-center">
                                                 <Zap size={16} className="text-[var(--accent)]" />
                                             </div>
-                                            <span className="text-xs font-bold text-[var(--text)]">Scenario: "Explain periodicity to a 5-year old"</span>
+                                            <span className="text-xs font-bold text-[var(--text)]">Scenario: &quot;Explain periodicity to a 5-year old&quot;</span>
                                         </div>
                                     </div>
                                 </div>

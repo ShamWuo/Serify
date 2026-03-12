@@ -380,9 +380,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
-        syncUser(null);
-        setToken(null);
+        try {
+            await supabase.auth.signOut();
+        } catch (err) {
+            console.error('[Auth] Sign out error:', err);
+        } finally {
+            syncUser(null);
+            setToken(null);
+            // Clear any potentially lingering session data
+            if (typeof window !== 'undefined') {
+                const projectRef = process.env.NEXT_PUBLIC_SUPABASE_URL?.split('.')[0].split('//')[1] || 'local';
+                localStorage.removeItem(`sb-${projectRef}-auth-token`);
+            }
+        }
     };
 
     const updatePreferences = async (prefs: Partial<UserProfile['preferences']>) => {

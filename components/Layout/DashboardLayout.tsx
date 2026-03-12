@@ -97,8 +97,9 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             .catch(() => { });
     }, [user, token, authLoading, router]);
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        setIsProfileOpen(false);
+        await logout();
         router.push('/');
     };
 

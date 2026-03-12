@@ -71,6 +71,7 @@ REUSE EXISTING CATEGORIES: If the new material fits into any of the existing Pil
   const prompt = `You are an expert knowledge analyst.
 ${contentDescription}
 
+
 ${contextInstruction}
 
 Your task is to extract 3 to 5 broad "Mastery Pillars" (Broad Categories) that represent the major themes or domains of this material. 
