@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
 
         const { data: savedCurriculum, error: saveError } = await supabase
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .insert({
                 user_id: user,
                 user_input: userInput,

@@ -163,7 +163,8 @@ export async function consumeTokens(
 export async function processAssistantMessage(
   userId: string,
   message: string,
-  isFollowUpInTier3: boolean = false
+  isFollowUpInTier3: boolean = false,
+  consumeImmediately: boolean = true
 ): Promise<{ allowed: boolean; tier: MessageTier; remaining: number | null }> {
   if (userId === 'demo-user') {
       return { allowed: true, tier: 'tier1', remaining: null };
@@ -191,6 +192,17 @@ export async function processAssistantMessage(
 
   if (action === 'ai_message_tier1') {
       return { allowed: true, tier, remaining: null };
+  }
+
+  if (!consumeImmediately) {
+      const affordability = await canAfford(userId, action as TokenAction);
+      return {
+          allowed: affordability.allowed,
+          tier,
+          remaining: affordability.monthlyLimit
+              ? affordability.monthlyLimit - affordability.tokensUsed
+              : null
+      };
   }
 
   const result = await consumeTokens(userId, action as TokenAction);

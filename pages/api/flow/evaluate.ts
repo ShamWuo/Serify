@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const conceptId = step.concept_id;
 
         const { data: sessionData } = await supabaseAdmin
-            .from('flow_mode_session')
+            .from('flow_sessions')
             .select('learner_profile, initial_plan')
             .eq('id', sessionId)
             .single();
@@ -275,7 +275,7 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
         }
 
         await supabaseAdmin
-            .from('flow_mode_session')
+            .from('flow_sessions')
             .update({
                 learner_profile: learnerProfile
             })

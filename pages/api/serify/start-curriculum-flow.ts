@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         // Fetch curriculum
         const { data: curriculum, error: currErr } = await supabaseAdmin
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .select('*')
             .eq('id', curriculumId)
             .eq('user_id', userId)
@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // STRATEGY: Try to find any EXISTING active flow session for this curriculum 
         // that the user might have started previously.
         const { data: existingSession } = await supabaseAdmin
-            .from('flow_mode_session')
+            .from('flow_sessions')
             .select('id')
             .eq('user_id', userId)
             .eq('source_type', 'curriculum')
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             const sessionId = uuidv4();
             const { data: flowSession, error: fsErr } = await supabaseAdmin
-                .from('flow_mode_session')
+                .from('flow_sessions')
                 .insert({
                     id: sessionId,
                     user_id: userId,

@@ -230,7 +230,7 @@ export default function LearnIndex() {
     const fetchCurricula = async () => {
         setLoadingCurricula(true);
         const { data, error } = await supabase
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .select('*')
             .order('last_activity_at', { ascending: false });
         if (!error && data) {
@@ -262,7 +262,7 @@ export default function LearnIndex() {
         if (!curriculumToDelete) return;
         setIsDeleting(true);
         try {
-            await supabase.from('learn_mode_curriculum').delete().eq('id', curriculumToDelete.id);
+            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
             setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
             setDeleteModalOpen(false);
             setCurriculumToDelete(null);

@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const { data: sessionData, error: sessionError } = await supabaseAdmin
-            .from('flow_mode_session')
+            .from('flow_sessions')
             .select('*')
             .eq('id', sessionId)
             .single();

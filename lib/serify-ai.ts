@@ -142,8 +142,13 @@ export type MessageTier = 'tier1' | 'tier2' | 'tier3';
 
 export const classifyMessage = async (message: string, isFollowUpInTier3: boolean = false): Promise<MessageTier> => {
   // Edge cases
-  // Message contains pasted content (over 200 characters) -> Tier 3
-  if (message.length > 200) {
+  // Message contains likely pasted content (long + structured/non-question text) -> Tier 3
+  const trimmedMessage = message.trim();
+  const looksQuestionLike =
+    /\?/.test(trimmedMessage) ||
+    /^(what|why|how|can|could|would|should|is|are|do|does|did|where|when)\b/i.test(trimmedMessage);
+  const looksPasted = /```|\n|https?:\/\/|www\./i.test(trimmedMessage);
+  if (trimmedMessage.length > 200 && (looksPasted || !looksQuestionLike)) {
     return 'tier3';
   }
 

@@ -63,7 +63,7 @@ export default function CurriculumView() {
 
     const fetchCurriculum = async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('learn_mode_curriculum').select('*').eq('id', id).single();
+        const { data, error } = await supabase.from('curricula').select('*').eq('id', id).single();
         if (error || !data) {
             setErrorMsg('Curriculum not found or you do not have permission to view it.');
         } else {
@@ -150,7 +150,7 @@ export default function CurriculumView() {
         setSaving(true);
         const newTotalCount = editUnits.reduce((acc, u) => acc + u.concepts.length, 0);
         const { error } = await supabase
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .update({
                 units: editUnits,
                 concept_count: newTotalCount,

@@ -8,7 +8,7 @@
 
 import { streamText, convertToModelMessages } from 'ai';
 import { google } from '@ai-sdk/google';
-import { authenticateApiRequest, processAssistantMessage } from '@/lib/usage';
+import { authenticateApiRequest, consumeTokens, processAssistantMessage } from '@/lib/usage';
 
 export const config = {
     runtime: 'edge',
@@ -36,7 +36,7 @@ export default async function handler(req: Request) {
         }
         
         const lastUserMessage = messages.filter((m: { role: string; content: string }) => m.role === 'user').pop()?.content || '';
-        const usageCheck = await processAssistantMessage(user, lastUserMessage);
+        const usageCheck = await processAssistantMessage(user, lastUserMessage, false, false);
         
         if (!usageCheck.allowed) {
             return new Response(
@@ -78,6 +78,18 @@ GUIDELINES:
 
 Tone: Friendly, helpful, concise, probing. Do not be overly chatty.`,
             messages: await convertToModelMessages(messages),
+            onFinish: async (event) => {
+                if (usageCheck.tier === 'tier1' || (event as any).isAborted) {
+                    return;
+                }
+
+                const action = usageCheck.tier === 'tier3' ? 'ai_message_tier3' : 'ai_message_tier2';
+                try {
+                    await consumeTokens(user, action);
+                } catch (billingError) {
+                    console.error('[home-chat] Failed to consume tokens after streaming:', billingError);
+                }
+            }
         });
 
         return result.toUIMessageStreamResponse();
