@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
+import type { NextApiResponse } from 'next';
 
 export type ApiErrorResponse = {
   error: string;
   message: string;
-  details?: any;
+  details?: unknown;
   code?: string;
 };
 
@@ -11,7 +12,7 @@ export function createErrorResponse(
   message: string,
   status: number = 500,
   error: string = 'Internal Server Error',
-  details?: any,
+  details?: unknown,
   code?: string
 ) {
   const body: ApiErrorResponse = { error, message };
@@ -24,7 +25,7 @@ export function createErrorResponse(
   });
 }
 
-export function createSuccessResponse(data: any, status: number = 200) {
+export function createSuccessResponse(data: unknown, status: number = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { 'Content-Type': 'application/json' },
@@ -33,11 +34,11 @@ export function createSuccessResponse(data: any, status: number = 200) {
 
 // For standard Next.js API routes (not Edge)
 export function sendError(
-  res: any,
+  res: NextApiResponse,
   message: string,
   status: number = 500,
   error: string = 'Internal Server Error',
-  details?: any,
+  details?: unknown,
   code?: string
 ) {
   const body: ApiErrorResponse = { error, message };

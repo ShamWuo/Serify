@@ -15,8 +15,8 @@ export function calculateMasteryState(history: MasteryHistoryEntry[]): MasterySt
 
     const totalWeight = weights.reduce((a, b) => a + b, 0);
 
-    const stateScores = { solid: 0, developing: 0, shaky: 0, revisit: 0 };
-    const stateValues = { solid: 3, developing: 2, shaky: 1, revisit: 0 };
+    const stateScores: Record<MasteryState, number> = { mastered: 0, solid: 0, developing: 0, shaky: 0, revisit: 0 };
+    const stateValues: Record<MasteryState, number> = { mastered: 4, solid: 3, developing: 2, shaky: 1, revisit: 0 };
 
     history.forEach((entry, index) => {
         stateScores[entry.state] += weights[index];
@@ -34,16 +34,24 @@ export function calculateMasteryState(history: MasteryHistoryEntry[]): MasterySt
     }
 
     let calcState: MasteryState = 'revisit';
-    if (weightedScore >= 2.5) calcState = 'solid';
+    if (weightedScore >= 3.5) calcState = 'mastered';
+    else if (weightedScore >= 2.5) calcState = 'solid';
     else if (weightedScore >= 1.5) calcState = 'developing';
     else if (weightedScore >= 0.75) calcState = 'shaky';
     else calcState = 'revisit';
+
+    if (calcState === 'mastered' && history.filter((h) => h.state === 'mastered').length < 2) {
+        return 'solid';
+    }
 
     if (calcState === 'solid' && history.filter((h) => h.state === 'solid').length < 2) {
         return 'developing';
     }
 
     const lastThree = history.slice(-3);
+    if (lastThree.length === 3 && lastThree.every((h) => h.state === 'mastered')) {
+        return 'mastered';
+    }
     if (lastThree.length === 3 && lastThree.every((h) => h.state === 'solid')) {
         return 'solid';
     }
@@ -55,7 +63,7 @@ export async function findSimilarConcept(
     db: DbClient,
     userId: string,
     conceptName: string
-): Promise<any | null> {
+): Promise<Database['public']['Tables']['knowledge_nodes']['Row'] | null> {
     const { data } = await db
         .from('knowledge_nodes')
         .select('*')
@@ -74,7 +82,7 @@ export async function findOrCreateConceptNode(
     sessionId: string,
     definition: string,
     parentConceptId?: string
-): Promise<any> {
+): Promise<Database['public']['Tables']['knowledge_nodes']['Row'] | null> {
     try {
         const { data: exact, error: exactError } = await db
             .from('knowledge_nodes')
@@ -97,10 +105,10 @@ export async function findOrCreateConceptNode(
 
         if (similar) {
             const updatedSessionIds = Array.from(new Set([...(similar.session_ids || []), sessionId]));
-            const updatePayload: any = {
+            const updatePayload: Partial<Database['public']['Tables']['knowledge_nodes']['Update']> = {
                 display_name: conceptName,
                 session_count: (similar.session_count || 0) + 1,
-                session_ids: updatedSessionIds as any,
+                session_ids: updatedSessionIds,
                 last_seen_at: new Date().toISOString()
             };
 
@@ -130,7 +138,7 @@ export async function findOrCreateConceptNode(
                 current_mastery: 'revisit',
                 mastery_history: [],
                 session_count: 1,
-                session_ids: [sessionId] as any,
+                session_ids: [sessionId],
                 first_seen_at: new Date().toISOString(),
                 last_seen_at: new Date().toISOString(),
                 created_at: new Date().toISOString(),
@@ -152,14 +160,14 @@ export async function findOrCreateConceptNode(
                 .maybeSingle();
             return retryFetch;
         }
-        return inserted;
+        return inserted!;
     } catch (err) {
         console.error('Critical error in findOrCreateConceptNode:', err);
         return null;
     }
 }
 
-export async function upsertCategory(db: DbClient, userId: string, categoryName: string): Promise<any> {
+export async function upsertCategory(db: DbClient, userId: string, categoryName: string): Promise<Database['public']['Tables']['vault_categories']['Row']> {
     const { data: existing } = await db
         .from('vault_categories')
         .select('*')
@@ -179,10 +187,10 @@ export async function upsertCategory(db: DbClient, userId: string, categoryName:
         .select()
         .single();
 
-    return inserted;
+    return inserted!;
 }
 
-export async function upsertParentConcept(db: DbClient, userId: string, categoryId: string, parentName: string, parentDefinition: string): Promise<any> {
+export async function upsertParentConcept(db: DbClient, userId: string, categoryId: string, parentName: string, parentDefinition: string): Promise<Database['public']['Tables']['knowledge_nodes']['Row']> {
     const { data: existing } = await db
         .from('knowledge_nodes')
         .select('*')
@@ -220,7 +228,7 @@ export async function upsertParentConcept(db: DbClient, userId: string, category
         .select()
         .single();
 
-    return inserted;
+    return inserted!;
 }
 
 export async function updateVaultHierarchy(db: DbClient, userId: string) {
@@ -245,7 +253,7 @@ export async function updateVaultHierarchy(db: DbClient, userId: string) {
         const { data: existingCategories } = await db.from('vault_categories').select('name').eq('user_id', userId);
         const { data: existingParents } = await db.from('knowledge_nodes').select('display_name').eq('user_id', userId).eq('is_sub_concept', false);
 
-        const catList = (existingCategories || []).map((c: any) => c.name).join(', ');
+        const catList = (existingCategories || []).map((c: { name: string }) => c.name).join(', ');
         const parentList = (existingParents || []).map(p => p.display_name).join(', ');
 
         const prompt = `

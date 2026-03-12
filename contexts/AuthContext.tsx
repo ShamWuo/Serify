@@ -19,6 +19,9 @@ interface UserProfile {
     preferences: { tone: string; questionCount: number };
     onboardingCompleted: boolean;
     userType?: string;
+    tokensUsed: number;
+    monthlyLimit: number;
+    percentUsed: number;
 }
 
 interface AuthContextType {
@@ -31,6 +34,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     updatePreferences: (prefs: Partial<UserProfile['preferences']>) => Promise<void>;
     markOnboardingComplete: () => Promise<void>;
+    refreshUsage: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,6 +57,17 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
         } else {
             profile = data;
         }
+
+        // Fetch usage tracking
+        const { data: usage, error: usageError } = await supabase
+            .from('usage_tracking')
+            .select('tokens_used, monthly_limit')
+            .eq('user_id', userId)
+            .single();
+
+        if (!usageError && usage) {
+            profile = { ...profile, ...usage };
+        }
     } catch (err: any) {
     }
 
@@ -69,9 +84,16 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
             subscriptionTier: 'free',
             plan: 'free',
             preferences: { tone: 'supportive', questionCount: 6 },
-            onboardingCompleted: false
+            onboardingCompleted: false,
+            tokensUsed: 0,
+            monthlyLimit: 50,
+            percentUsed: 0
         };
     }
+
+    const tokensUsed = (profile as any).tokens_used || 0;
+    const monthlyLimit = (profile as any).monthly_limit || 50;
+    const percentUsed = monthlyLimit > 0 ? (tokensUsed / monthlyLimit) * 100 : 0;
 
     const formatDisplayName = (
         name: string | null | undefined,
@@ -100,7 +122,10 @@ async function loadProfile(userId: string, email: string): Promise<UserProfile |
         plan: profile.subscription_tier ?? 'free',
         preferences: profile.preferences ?? { tone: 'supportive', questionCount: 6 },
         onboardingCompleted: profile.onboarding_completed ?? false,
-        userType: profile.user_type ?? undefined
+        userType: profile.user_type ?? undefined,
+        tokensUsed,
+        monthlyLimit,
+        percentUsed
     };
 }
 
@@ -180,16 +205,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             try {
                 // If we aren't in an OAuth flow, we can just wait for the listener
-                if (!isOAuth) {
-                    // Just a small safety timeout to ensure we don't stay loading forever 
-                    // if Supabase listener fails to fire INITIAL_SESSION
-                    setTimeout(() => {
-                        if (state.current.isMounted && loading) {
-                            console.log('Auth hydration fallback triggered');
-                            syncLoading(false);
-                        }
-                    }, 5000);
-                }
+                // Safety timeout to ensure we don't stay loading forever 
+                // if Supabase listener fails to fire INITIAL_SESSION or SIGNED_IN
+                setTimeout(() => {
+                    if (state.current.isMounted) {
+                        setLoading(prev => {
+                            if (prev) console.log('Auth hydration fallback triggered');
+                            return false;
+                        });
+                    }
+                }, isOAuth ? 10000 : 5000); 
             } catch (err: any) {
                 // Also catch if the promise itself rejects (like the Navigator Lock timeout sometimes does)
                 if (err?.message?.includes('LockManager') || err?.message?.includes('timeout')) {
@@ -394,6 +419,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const refreshUsage = async () => {
+        if (!user) return;
+        const updated = await loadProfile(user.id, user.email);
+        if (updated) syncUser(updated);
+    };
+
+
     return (
         <AuthContext.Provider
             value={{
@@ -405,7 +437,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 loginWithGoogle,
                 logout,
                 updatePreferences,
-                markOnboardingComplete
+                markOnboardingComplete,
+                refreshUsage
             }}
         >
             {children}

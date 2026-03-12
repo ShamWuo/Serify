@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing session context' });
     }
 
-    const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+    const hasUsage = (await checkUsage(userId, 'ai_message_tier1')).allowed;
     if (!hasUsage) {
         return res.status(403).json({
             error: 'limit_reached',
@@ -73,7 +73,7 @@ Return a pure JSON array of mastery updates without markdown formatting. For eac
 Only include concepts that were actually discussed and demonstrated by the user in this conversation.
 `;
 
-        (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
+        (await incrementUsage(userId, 'ai_message_tier1').then(() => ({ success: true })));
 
         const result = await model.generateContent(analysisPrompt);
         const text = result.response.text();

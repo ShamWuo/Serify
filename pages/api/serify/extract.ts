@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { extractConcepts, generateSessionTitle } from '@/lib/serify-ai';
 import { ContentSource } from '@/types/serify';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 import { YoutubeTranscript } from 'youtube-transcript';
 import { sendError } from '@/lib/api-utils';
 import { z } from 'zod';
@@ -73,16 +73,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return sendError(res, 'Unauthorized', 401, 'Unauthorized');
     }
 
-    const hasUsage = (await checkUsage(user.id, 'sessions')).allowed;
-    if (!hasUsage) {
-        return sendError(res, 'You have reached your feature limit.', 403, 'limit_reached');
-    }
-
-    if (!checkRateLimit(user.id)) {
-        return sendError(res, 'Too many requests. Try again in a minute.', 429, 'Rate Limit Exceeded');
-    }
-
     let { contentType, content, url, title, difficulty } = validatedBody.data;
+
+    // Unified usage check (Gated by consumeTokens)
+    const action = contentType === 'pdf' ? 'session_pdf' : 'session_standard';
+    const usageResult = await consumeTokens(user.id, action);
     console.log('Request body:', {
         contentType,
         hasContent: !!content,
@@ -211,15 +206,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Session created:', session.id);
 
-        const deduction = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
-        if (!deduction.success) {
-            return res
-                .status(403)
-                .json({
-                    error: 'limit_reached',
-                    message: 'You have reached your feature limit.'
-                });
-        }
+        // Token deduction handled at start
 
         // 2. Fetch Vault Context for better hierarchical sorting
         let vaultContextString = '';

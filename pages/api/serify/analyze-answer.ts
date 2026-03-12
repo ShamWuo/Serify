@@ -47,7 +47,7 @@ export default async function handler(req: Request) {
             return createErrorResponse('Unauthorized', 401, 'Unauthorized');
         }
 
-        const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+        const hasUsage = (await checkUsage(user, 'session_standard')).allowed;
         if (!hasUsage) {
             return createErrorResponse('You have reached your limit for analyzing answers.', 403, 'limit_reached');
         }
@@ -92,7 +92,7 @@ export default async function handler(req: Request) {
             }),
             onFinish: async ({ object }) => {
                 if (object?.assessment) {
-                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
+                    (await incrementUsage(user, 'session_standard').then(() => ({ success: true })));
 
                     const supabase = createClient(
                         process.env.NEXT_PUBLIC_SUPABASE_URL!,

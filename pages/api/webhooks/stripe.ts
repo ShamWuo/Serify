@@ -168,8 +168,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 function getPlanFromPriceId(priceId: string) {
-    if (priceId === process.env.STRIPE_PRICE_ID_PRO_MONTHLY || priceId === process.env.STRIPE_PRICE_ID_PRO_YEARLY) return 'pro';
-    if (priceId === process.env.STRIPE_PRICE_ID_PROPLUS_MONTHLY || priceId === process.env.STRIPE_PRICE_ID_PROPLUS_YEARLY) return 'proplus';
+    if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY || priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY) return 'pro';
+    if (priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_SCHOLAR_MONTHLY || priceId === process.env.NEXT_PUBLIC_STRIPE_PRICE_SCHOLAR_YEARLY) return 'proplus';
     return 'free';
 }
 

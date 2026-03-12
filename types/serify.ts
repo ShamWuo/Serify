@@ -56,12 +56,12 @@ export interface ReflectionSession {
     status: 'input' | 'processing' | 'assessment' | 'feedback';
 }
 
-export type MasteryState = 'solid' | 'developing' | 'shaky' | 'revisit';
+export type MasteryState = 'mastered' | 'solid' | 'developing' | 'shaky' | 'revisit';
 
 export interface MasteryHistoryEntry {
     date: Date | string;
     state: MasteryState;
-    sourceType: 'session' | 'flashcards' | 'quiz' | 'feynman' | 'tutor' | 'explain' | 'deepdive';
+    sourceType: 'session' | 'flashcards' | 'quiz' | 'feynman' | 'tutor' | 'explain' | 'deepdive' | 'practice_exam' | 'practice_scenario' | 'practice_review';
     sourceId: string;
 }
 
@@ -292,3 +292,65 @@ export interface CurriculumFlowContext {
     };
     learnerProfile: SessionLearnerProfile;
 }
+
+export interface PracticeSession {
+    id: string;
+    user_id: string;
+    type: 'exam' | 'scenario' | 'review' | 'print';
+    concept_ids: string[] | null;
+    category_id: string | null;
+    source_session_id: string | null;
+    format: 'standard' | 'problem_set' | 'essay' | 'case_study' | 'technical' | null;
+    time_limit_minutes: number | null;
+    question_count: number | null;
+    status: 'in_progress' | 'completed' | 'timed_out' | 'abandoned';
+    overall_performance: 'strong' | 'developing' | 'shaky' | null;
+    performance_report: any | null;
+    started_at: string;
+    completed_at: string | null;
+    time_spent_seconds: number | null;
+}
+
+export interface PracticeResponse {
+    id: string;
+    practice_session_id: string;
+    user_id: string;
+    concept_id: string | null;
+    question_text: string;
+    question_type: 'explain' | 'apply' | 'synthesize' | 'edge_case' | 'scenario' | null;
+    difficulty_level: number | null;
+    user_response: string | null;
+    response_quality: 'strong' | 'developing' | 'weak' | 'blank' | null;
+    ai_feedback: string | null;
+    time_spent_seconds: number | null;
+    question_number: number | null;
+    created_at: string;
+}
+
+export interface ReviewSchedule {
+    id: string;
+    user_id: string;
+    concept_id: string;
+    next_review_date: string;
+    review_interval_days: number;
+    consecutive_successful_reviews: number;
+    total_reviews: number;
+    last_reviewed_at: string | null;
+    last_response_quality: 'strong' | 'developing' | 'weak' | 'blank' | null;
+    mastered_at: string | null;
+    is_mastered: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface VaultRegression {
+    id: string;
+    user_id: string;
+    concept_id: string;
+    practice_session_id: string;
+    previous_state: MasteryState | null;
+    new_state: MasteryState | null;
+    regression_note: string | null;
+    detected_at: string;
+}
+

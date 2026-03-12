@@ -16,6 +16,8 @@ import SEO from '@/components/Layout/SEO';
 import { formatDistanceToNow } from 'date-fns';
 import { useUsage } from '@/hooks/useUsage';
 import { UsageGate } from '@/components/billing/UsageEnforcement';
+import { UsageCheckResult } from '@/lib/usage';
+import { trackEvent } from '@/lib/analytics';
 import {
     Zap,
     History,
@@ -36,6 +38,7 @@ import {
     Plus,
     AlertTriangle,
     Network,
+    Activity,
 } from 'lucide-react';
 import { storage, SessionSummary } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
@@ -43,6 +46,7 @@ import { KnowledgeNode } from '@/types/serify';
 import LandingPage from '@/components/LandingPage';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useChat } from '@ai-sdk/react';
+import StudyLab from '@/components/dashboard/StudyLab';
 
 type DetectedType = 'youtube' | 'article' | 'text' | 'pdf' | null;
 
@@ -109,7 +113,7 @@ export default function Home() {
     const router = useRouter();
     const { demo } = router.query;
     const isDemo = demo === 'true';
-    const { usage, refresh: refreshUsage } = useUsage('ai_messages');
+    const { usage, refresh: refreshUsage } = useUsage('ai_message_tier1');
 
     const [latestSessions, setLatestSessions] = useState<SessionSummary[]>([]);
     const [activeCurriculum, setActiveCurriculum] = useState<{
@@ -142,7 +146,7 @@ export default function Home() {
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false })
                         .limit(8),
-                    supabase.from('flow_sessions')
+                    supabase.from('flow_mode_session')
                         .select('id, created_at, status, last_activity_at')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false })
@@ -216,7 +220,7 @@ export default function Home() {
             .eq('user_id', user.id)
             .then(({ count }) => setVaultCount(count));
 
-        supabase.from('curricula')
+        supabase.from('learn_mode_curriculum')
             .select('id, title, status, last_activity_at')
             .eq('user_id', user.id)
             .eq('status', 'active')
@@ -256,7 +260,7 @@ export default function Home() {
                     const d = new Date(today);
                     d.setDate(today.getDate() - (6 - i));
                     const dateStr = d.toISOString().slice(0, 10);
-                    return (data || []).some((s: any) => s.created_at?.slice(0, 10) === dateStr);
+                    return (data || []).some((s: { created_at: string }) => s.created_at?.slice(0, 10) === dateStr);
                 });
                 setActivityDays(dots);
             });
@@ -290,7 +294,7 @@ export default function Home() {
                 }
                 const { sessionId } = await res.json();
                 router.push(`/session/${sessionId}`);
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('Action processing failed:', err);
                 setIsNavigating(false);
             }
@@ -304,7 +308,19 @@ export default function Home() {
         }
     }, [isNavigating, router, token]);
 
-    if (loading) return null;
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Brain className="animate-pulse text-[var(--accent)]" size={48} />
+                    <div className="flex flex-col items-center gap-1">
+                        <p className="text-sm font-bold tracking-widest text-[var(--muted)] uppercase text-center">Serify</p>
+                        <p className="text-xs text-[var(--muted)]/60">Loading your knowledge map...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
     if (!user && !isDemo) return <LandingPage />;
 
     const getGreeting = () => {
@@ -318,9 +334,8 @@ export default function Home() {
 
     return (
         <DashboardLayout>
-            <SEO 
-                title="Dashboard" 
-                description="Your personal learning dashboard. Track your progress, review past sessions, and start new learning paths." 
+            <SEO title="Dashboard"
+                description="Your personal learning dashboard. Track your progress, review past sessions, and start new learning paths."
             />
             <div className="w-full h-[calc(100dvh-64px)] md:h-screen md:max-h-screen page-transition flex flex-col overflow-hidden">
 
@@ -330,6 +345,7 @@ export default function Home() {
                         <DashboardChat
                             token={token}
                             isDemo={isDemo}
+                            usage={usage}
                             refreshUsage={refreshUsage}
                             handleAction={handleAction}
                             isNavigating={isNavigating}
@@ -344,25 +360,19 @@ export default function Home() {
                                     </div>
 
                                     <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto no-scrollbar bg-[var(--bg)] border border-[var(--border)] p-2 rounded-2xl shadow-sm max-w-full">
-                                        <Link href="/settings/billing" className="flex items-center gap-3 px-3 py-1.5 hover:bg-[var(--surface)] rounded-xl transition-all group shrink-0 relative overflow-hidden">
-                                            <div className="flex flex-col">
-                                                <span className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors leading-none mb-1">AI Usage</span>
-                                                <span className="text-[11px] font-black text-[var(--text)] whitespace-nowrap leading-none flex items-center gap-1.5">
-                                                    {usage?.used ?? 0} <span className="text-[var(--muted)] font-bold">/ {usage?.limit ?? '∞'}</span>
-                                                    {usage?.limit && (
-                                                        <div className="w-8 h-1 bg-[var(--border)] rounded-full overflow-hidden hidden xs:block">
-                                                            <div
-                                                                className="h-full bg-[var(--accent)] transition-all duration-1000"
-                                                                style={{ width: `${Math.min((usage.used / usage.limit) * 100, 100)}%` }}
-                                                            />
-                                                        </div>
-                                                    )}
-                                                </span>
-                                            </div>
-                                            <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)]/30 transition-all">
-                                                <Zap size={14} className={usage?.limit && (usage.used / usage.limit) > 0.8 ? 'text-orange-500 animate-pulse' : ''} />
-                                            </div>
-                                        </Link>
+                                        {user && user.percentUsed >= 70 && (
+                                            <Link href="/settings/billing" className={`flex items-center gap-3 px-3 py-1.5 hover:bg-[var(--surface)] rounded-xl transition-all group shrink-0 relative overflow-hidden ${user.percentUsed >= 90 ? 'bg-rose-500/5' : 'bg-[var(--surface)]/50'}`}>
+                                                <div className="flex flex-col">
+                                                    <span className={`text-[9px] font-bold uppercase tracking-wider transition-colors leading-none mb-1 ${user.percentUsed >= 90 ? 'text-rose-600' : 'text-[var(--muted)] group-hover:text-[var(--accent)]'}`}>Usage {Math.round(user.percentUsed)}%</span>
+                                                    <span className="text-[11px] font-black text-[var(--text)] whitespace-nowrap leading-none flex items-center gap-1.5">
+                                                        {user.tokensUsed} <span className="text-[var(--muted)] font-bold">/ {user.monthlyLimit ?? '∞'}</span>
+                                                    </span>
+                                                </div>
+                                                <div className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${user.percentUsed >= 90 ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 animate-pulse' : 'bg-[var(--surface)] border-[var(--border)] text-[var(--muted)] group-hover:text-[var(--accent)] group-hover:border-[var(--accent)]/30'}`}>
+                                                    <Zap size={14} />
+                                                </div>
+                                            </Link>
+                                        )}
 
                                         <div className="w-px h-4 bg-[var(--border)] mx-1" />
 
@@ -448,7 +458,7 @@ export default function Home() {
                             <div className="flex flex-col border-b border-[var(--border)] bg-[var(--surface)]">
                                 <div className="flex items-center justify-between p-4 px-5 border-b border-[var(--border)]/40 bg-[var(--bg)]/30">
                                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Recent Sessions</h3>
-                                    <Link href="/sessions" className="text-[9px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-colors flex items-center">
+                                    <Link href="/session_standard" className="text-[9px] font-bold uppercase tracking-widest text-[var(--muted)] hover:text-[var(--accent)] transition-colors flex items-center">
                                         View all <ChevronRight size={11} />
                                     </Link>
                                 </div>
@@ -567,7 +577,7 @@ export default function Home() {
 
             {isGateOpen && (
                 <UsageGate
-                    feature="ai_messages"
+                    feature="ai_message_tier1"
                     onClose={() => setIsGateOpen(false)}
                 />
             )}
@@ -575,11 +585,10 @@ export default function Home() {
     );
 }
 
-import { Activity } from 'lucide-react';
-
 interface DashboardChatProps {
     token: string | null;
     isDemo: boolean;
+    usage?: UsageCheckResult | null;
     refreshUsage: () => void;
     handleAction: (action: ParsedAction) => void;
     isNavigating: boolean;
@@ -587,12 +596,85 @@ interface DashboardChatProps {
     headerContent?: React.ReactNode;
 }
 
-function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating, displayName, headerContent }: DashboardChatProps) {
+function DashboardChat({ token, isDemo, usage, refreshUsage, handleAction, isNavigating, displayName, headerContent }: DashboardChatProps) {
     const router = useRouter();
     const [input, setInput] = useState('');
+
+    const handleToolSelect = (toolId: string) => {
+        let text = '';
+        switch (toolId) {
+            case 'flashcard_generation':
+                text = "I want to generate flashcards for: ";
+                break;
+            case 'practice-test':
+                text = "I want to take a practice test on: ";
+                break;
+            case 'concept-map':
+                text = "Help me build a learning roadmap for: ";
+                break;
+            case 'explain':
+                text = "Can you walk me through and explain: ";
+                break;
+        }
+        setInput(text);
+        inputRef.current?.focus();
+        // Smooth scroll to input if needed
+        inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
     const [isInternalGateOpen, setIsInternalGateOpen] = useState(false);
+
+    // Auto-grow textarea
+    useEffect(() => {
+        const textarea = inputRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto';
+            const newHeight = Math.min(textarea.scrollHeight, 200);
+            textarea.style.height = `${newHeight}px`;
+        }
+    }, [input]);
+    const [classificationTier, setClassificationTier] = useState<'tier1' | 'tier2' | 'tier3' | null>(null);
+    const [isClassifying, setIsClassifying] = useState(false);
     const chatScrollRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+
+    // Debounce typing for classification
+    useEffect(() => {
+        if (!input.trim() || input.length < 50) {
+            setClassificationTier(null);
+            return;
+        }
+
+        const triggerWords = ['explain', 'teach', 'why', 'how does', 'walk me through', 'what is', 'break down'];
+        const hasTrigger = triggerWords.some(w => input.toLowerCase().includes(w));
+
+        if (input.length > 200 || hasTrigger) {
+            const timeout = setTimeout(async () => {
+                setIsClassifying(true);
+                try {
+                    const res = await fetch('/api/classify-message', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({ message: input, isFollowUpInTier3: false })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        setClassificationTier(data.tier);
+                    }
+                } catch (e) {
+                    console.error('Failed to classify message', e);
+                } finally {
+                    setIsClassifying(false);
+                }
+            }, 500);
+
+            return () => clearTimeout(timeout);
+        } else {
+            setClassificationTier(null);
+        }
+    }, [input, token]);
 
     const transport = useMemo(() => new DefaultChatTransport({
         api: '/api/home-chat',
@@ -606,6 +688,7 @@ function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating
         transport,
         onError: (err: any) => {
             if (err.message?.includes('limit_reached') || err.message?.includes('403')) {
+                trackEvent('assistant_limit_reached');
                 setIsInternalGateOpen(true);
             }
         },
@@ -637,8 +720,10 @@ function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating
         if (!token && !isDemo) return;
         if (!input.trim()) return;
 
+        trackEvent('assistant_message_sent');
         sendMessage({ text: input });
         setInput('');
+        setClassificationTier(null);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -660,104 +745,114 @@ function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating
                         {headerContent}
                     </div>
                 )}
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 scroll-smooth">
+                <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-3.5 scroll-smooth">
                     {!hasMessages && (
-                        <div className="flex flex-col items-center justify-center h-full text-center py-6">
-                            <div className="w-14 h-14 rounded-2xl bg-[var(--accent)] text-white flex items-center justify-center mb-4 shadow-xl shadow-[var(--accent)]/20">
-                                <Brain size={34} strokeWidth={1.5} />
-                            </div>
-                            <h3 className="font-display text-lg text-[var(--text)] mb-1.5">Ask me anything</h3>
-                            <p className="text-sm text-[var(--muted)] max-w-xs leading-relaxed mb-6">
-                                Tell me what you want to learn, or paste something you&apos;ve been studying. I&apos;ll guide you from there.
-                            </p>
+                        <div className="flex flex-col h-full">
+                            <StudyLab onToolSelect={handleToolSelect} />
 
-                            <div className="grid grid-cols-2 gap-3 w-full max-w-lg px-2">
-                                {STARTER_PROMPTS.map((sp, i) => (
-                                    <button
-                                        key={i}
-                                        onClick={() => {
-                                            if (sp.label.toLowerCase().includes('analyze')) {
-                                                router.push('/analyze');
-                                            } else {
-                                                router.push(`/learn?q=${encodeURIComponent(sp.prompt)}`);
-                                            }
-                                        }}
-                                        className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden shadow-sm"
-                                    >
-                                        <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/0 to-[var(--accent)]/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all shadow-sm">
-                                            <sp.icon size={16} strokeWidth={1.5} className="text-[var(--muted)] group-hover:text-white transition-colors" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
-                                            <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug font-medium">{sp.description}</p>
-                                        </div>
-                                    </button>
-                                ))}
+                            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[var(--surface)]">
+                                <div className="p-4 rounded-3xl bg-[var(--bg)] border border-[var(--border)] shadow-inner mb-6 max-w-lg w-full">
+                                    <h3 className="font-display text-lg text-[var(--text)] mb-2 flex items-center justify-center gap-2">
+                                        Or Paste a Link <CornerDownRight size={18} className="text-[var(--accent)]" />
+                                    </h3>
+                                    <p className="text-sm text-[var(--muted)] leading-relaxed">
+                                        Paste a YouTube video, article, or your own notes below.
+                                        I&apos;ll analyze it and prepare your focus concepts.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 w-full max-w-lg px-2">
+                                    {STARTER_PROMPTS.map((sp, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => {
+                                                if (sp.label.toLowerCase().includes('analyze')) {
+                                                    router.push('/analyze');
+                                                } else {
+                                                    router.push(`/learn?q=${encodeURIComponent(sp.prompt)}`);
+                                                }
+                                            }}
+                                            className="group flex flex-col gap-2 p-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface)] hover:border-[var(--accent)]/30 hover:shadow-xl hover:shadow-[var(--accent)]/5 hover:scale-[1.02] active:scale-[0.98] transition-all text-left relative overflow-hidden shadow-sm"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/0 to-[var(--accent)]/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <div className="w-9 h-9 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 group-hover:bg-[var(--accent)] group-hover:border-[var(--accent)] transition-all shadow-sm">
+                                                <sp.icon size={16} strokeWidth={1.5} className="text-[var(--muted)] group-hover:text-white transition-colors" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]/80 group-hover:text-[var(--accent)] transition-colors">{sp.label}</p>
+                                                <p className="text-[11px] text-[var(--muted)]/60 mt-1 leading-snug font-medium">{sp.description}</p>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {(messages as any).map((msg: any, idx: number) => {
-                        const isUser = msg.role === 'user';
-                        const textContent = msg.content || (msg.parts ?? [])
-                            .filter((p: any) => p.type === 'text')
-                            .map((p: any) => p.text)
-                            .join('');
-                        const displayText = isUser ? textContent : stripActionBlocks(textContent);
-                        const actions = isUser ? [] : parseActionBlocks(textContent);
+                    {hasMessages && (
+                        <div className="px-4 py-6 space-y-4">
+                            {(messages as any).map((msg: any, idx: number) => {
+                                const isUser = msg.role === 'user';
+                                const textContent = msg.content || (msg.parts ?? [])
+                                    .filter((p: any) => p.type === 'text')
+                                    .map((p: any) => p.text)
+                                    .join('');
+                                const displayText = isUser ? textContent : stripActionBlocks(textContent);
+                                const actions = isUser ? [] : parseActionBlocks(textContent);
 
-                        return (
-                            <div
-                                key={msg.id ?? idx}
-                                className={`flex gap-2.5 chat-bubble-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-                            >
-                                {!isUser && (
-                                    <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-[var(--accent)]/20">
-                                        <Brain size={14} />
-                                    </div>
-                                )}
+                                return (
+                                    <div
+                                        key={msg.id ?? idx}
+                                        className={`flex gap-2.5 chat-bubble-in ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+                                    >
+                                        {!isUser && (
+                                            <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shrink-0 mt-0.5 shadow-md shadow-[var(--accent)]/20">
+                                                <Brain size={14} />
+                                            </div>
+                                        )}
 
-                                <div className={`flex flex-col gap-2 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
-                                    {displayText && (
-                                        <div
-                                            className={`px-4 py-3 rounded-2xl text-[13px] sm:text-sm leading-relaxed break-words ${isUser
-                                                ? 'bg-[var(--accent)] text-white rounded-br-sm shadow-md shadow-[var(--accent)]/20 whitespace-pre-wrap'
-                                                : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm'
-                                                }`}
-                                        >
-                                            {isUser ? (
-                                                displayText
-                                            ) : (
-                                                <MarkdownRenderer>{displayText}</MarkdownRenderer>
+                                        <div className={`flex flex-col gap-2 max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+                                            {displayText && (
+                                                <div
+                                                    className={`px-4 py-3 rounded-2xl text-[13px] sm:text-sm leading-relaxed break-words ${isUser
+                                                        ? 'bg-[var(--accent)] text-white rounded-br-sm shadow-md shadow-[var(--accent)]/20 whitespace-pre-wrap'
+                                                        : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text)] rounded-bl-sm'
+                                                        }`}
+                                                >
+                                                    {isUser ? (
+                                                        displayText
+                                                    ) : (
+                                                        <MarkdownRenderer>{displayText}</MarkdownRenderer>
+                                                    )}
+                                                </div>
                                             )}
+
+                                            {actions.map((action, ai) => (
+                                                <button
+                                                    key={ai}
+                                                    onClick={() => handleAction(action)}
+                                                    disabled={isNavigating}
+                                                    className="group flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[var(--accent)] text-white text-xs font-bold shadow-lg shadow-[var(--accent)]/25 hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[var(--accent)]/30 active:translate-y-0 transition-all disabled:opacity-60"
+                                                >
+                                                    <CornerDownRight size={14} />
+                                                    {action.type === 'START_ANALYZE'
+                                                        ? `Analyze: "${(action.payload.content || '').slice(0, 36)}${(action.payload.content || '').length > 36 ? '…' : ''}"`
+                                                        : `▶ Start Learning: ${action.payload.q || 'this topic'}`
+                                                    }
+                                                </button>
+                                            ))}
                                         </div>
-                                    )}
 
-                                    {actions.map((action, ai) => (
-                                        <button
-                                            key={ai}
-                                            onClick={() => handleAction(action)}
-                                            disabled={isNavigating}
-                                            className="group flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[var(--accent)] text-white text-xs font-bold shadow-lg shadow-[var(--accent)]/25 hover:bg-[var(--accent)]/90 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[var(--accent)]/30 active:translate-y-0 transition-all disabled:opacity-60"
-                                        >
-                                            <CornerDownRight size={14} />
-                                            {action.type === 'START_ANALYZE'
-                                                ? `Analyze: "${(action.payload.content || '').slice(0, 36)}${(action.payload.content || '').length > 36 ? '…' : ''}"`
-                                                : `▶ Start Learning: ${action.payload.q || 'this topic'}`
-                                            }
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {isUser && (
-                                    <div className="w-8 h-8 rounded-xl bg-[var(--border)] flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-[var(--muted)]">
-                                        {displayName.charAt(0) || 'U'}
+                                        {isUser && (
+                                            <div className="w-8 h-8 rounded-xl bg-[var(--border)] flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-[var(--muted)]">
+                                                {displayName.charAt(0) || 'U'}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                );
+                            })}
+                        </div>
+                    )}
 
                     {isLoading && (
                         <div className="flex gap-3 chat-bubble-in">
@@ -791,42 +886,101 @@ function DashboardChat({ token, isDemo, refreshUsage, handleAction, isNavigating
                 </div>
 
                 <div className="px-3 pb-3 pt-2 border-t border-[var(--border)]/30 shrink-0 bg-[var(--surface)]">
-                    <div className="relative flex items-end gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
-                        <textarea
-                            ref={inputRef}
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="What would you like to learn?"
-                            rows={1}
-                            className="flex-1 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed"
-                            style={{ minHeight: '24px' }}
-                            disabled={isLoading}
-                        />
-                        <div className="flex items-center gap-2 shrink-0">
-                            <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--muted)] font-bold bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
-                                <Sparkles size={11} className="text-[var(--accent)]" />
-                                AI Tutor
+                    {usage && usage.monthlyLimit !== null && usage.tokensUsed >= usage.monthlyLimit ? (
+                        <div className="flex flex-col items-center text-center p-6 border border-[var(--border)] rounded-2xl bg-[var(--bg)]/50">
+                            <p className="text-sm font-bold text-[var(--text)] mb-1">You&apos;ve used all your AI messages this month.</p>
+                            <p className="text-xs text-[var(--muted)] mb-4">Pro includes 300 messages/month. Pro+ is unlimited.</p>
+                            <div className="flex gap-3 mb-4">
+                                <Link
+                                    href="/pricing"
+                                    className="px-4 py-2 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:opacity-90 transition-all shadow-sm"
+                                    onClick={() => trackEvent('assistant_upgrade_clicked', { plan: 'pro' })}
+                                >
+                                    Upgrade to Pro →
+                                </Link>
+                                <Link
+                                    href="/pricing"
+                                    className="px-4 py-2 bg-[var(--text)] text-[var(--surface)] text-xs font-bold rounded-xl hover:opacity-90 transition-all shadow-sm"
+                                    onClick={() => trackEvent('assistant_upgrade_clicked', { plan: 'pro+' })}
+                                >
+                                    Upgrade to Pro+ →
+                                </Link>
                             </div>
-                            <button
-                                onClick={(e) => onSubmit(e as any)}
-                                disabled={!input?.trim() || isLoading}
-                                className="w-8 h-8 rounded-xl bg-[var(--text)] text-[var(--surface)] disabled:opacity-30 flex items-center justify-center hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/10"
-                            >
-                                <ArrowUp size={16} />
-                            </button>
+                            <p className="text-[10px] text-[var(--muted)] uppercase tracking-widest font-bold">Resets next billing period</p>
                         </div>
-                    </div>
-                    <p className="text-[10px] text-[var(--muted)]/50 text-center mt-2 font-medium">
-                        Ask anything, paste a link, or upload notes ·{' '}
-                        <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send
-                    </p>
+                    ) : (
+                        <>
+                            <div className="relative flex items-end gap-2 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_1px_var(--accent)] focus-within:ring-4 focus-within:ring-[var(--accent)]/5 transition-all">
+                                {classificationTier === 'tier3' && usage && usage.monthlyLimit !== null && (usage.tokensUsed / usage.monthlyLimit >= 0.5) && (
+                                    <div
+                                        className="absolute -top-7 left-4 text-[12px] text-[var(--muted)] font-medium bg-[var(--surface)] px-2 py-0.5 rounded-t-lg border border-[var(--border)] border-b-0 animate-fade-in"
+                                        ref={(el) => {
+                                            if (el && !el.dataset.tracked) {
+                                                trackEvent('assistant_tier3_warning_shown');
+                                                el.dataset.tracked = 'true';
+                                            }
+                                        }}
+                                    >
+                                        This response uses 3 messages · {Math.max(0, usage.monthlyLimit - usage.tokensUsed)} remaining
+                                    </div>
+                                )}
+                                <textarea
+                                    ref={inputRef}
+                                    value={input}
+                                    onChange={(e) => setInput(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Ask Serify"
+                                    rows={1}
+                                    className="flex-1 bg-transparent outline-none resize-none text-[var(--text)] placeholder-[var(--muted)] text-sm leading-relaxed"
+                                    style={{ minHeight: '24px' }}
+                                    disabled={isLoading}
+                                />
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-[var(--muted)] font-bold bg-[var(--surface)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
+                                        <Sparkles size={11} className="text-[var(--accent)]" />
+                                        AI Tutor
+                                    </div>
+                                    <button
+                                        onClick={(e) => onSubmit(e as any)}
+                                        disabled={!input?.trim() || isLoading}
+                                        className="w-8 h-8 rounded-xl bg-[var(--text)] text-[var(--surface)] disabled:opacity-30 flex items-center justify-center hover:bg-black transition-all active:scale-95 shadow-lg shadow-black/10"
+                                    >
+                                        <ArrowUp size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-center mt-2.5">
+                                <p className="text-[10px] text-[var(--muted)]/50 text-center font-medium mb-1">
+                                    Ask anything, paste a link, or upload notes ·{' '}
+                                    <kbd className="px-1 py-0.5 bg-[var(--border)] rounded text-[9px] font-bold">Enter</kbd> to send
+                                </p>
+                                {usage && usage.monthlyLimit !== null && (usage.tokensUsed / usage.monthlyLimit >= 0.7) && (usage.tokensUsed / usage.monthlyLimit < 1) && (
+                                    <p
+                                        className="text-[12px] font-medium"
+                                        style={{ color: usage.tokensUsed / usage.monthlyLimit >= 0.9 ? '#D97706' : '#B8860B' }}
+                                        ref={(el) => {
+                                            if (el && !el.dataset.tracked) {
+                                                const percentage = usage.tokensUsed / usage.monthlyLimit!;
+                                                trackEvent(percentage >= 0.9 ? 'assistant_usage_critical_shown' : 'assistant_usage_warning_shown');
+                                                el.dataset.tracked = 'true';
+                                            }
+                                        }}
+                                    >
+                                        {Math.round((usage.tokensUsed / usage.monthlyLimit) * 100)}% of AI messages used this month
+                                        {usage.tokensUsed / usage.monthlyLimit >= 0.9 && (
+                                            <span> · <Link href="/pricing" className="underline hover:text-orange-700" onClick={() => trackEvent('assistant_upgrade_clicked')}>Upgrade for more →</Link></span>
+                                        )}
+                                    </p>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </section>
 
             {isInternalGateOpen && (
                 <UsageGate
-                    feature="ai_messages"
+                    feature="ai_message_tier1"
                     onClose={() => setIsInternalGateOpen(false)}
                 />
             )}

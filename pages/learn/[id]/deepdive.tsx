@@ -14,7 +14,7 @@ export default function DeepDiveMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user } = useAuth();
-    const { isAllowed, increment, refresh } = useUsage('deep_dives');
+    const { isAllowed, increment, refresh } = useUsage('deep_dive');
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -221,7 +221,7 @@ export default function DeepDiveMode() {
                 </p>
 
                 <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-                    <UsageGate feature="deep_dives">
+                    <UsageGate feature='deep_dive'>
                         <button
                             onClick={() => {
                                 setHasStarted(true);
@@ -234,7 +234,7 @@ export default function DeepDiveMode() {
                         </button>
                     </UsageGate>
 
-                    <UsageWarning feature="deep_dives" />
+                    <UsageWarning feature='deep_dive' />
                 </div>
             </div>
         );

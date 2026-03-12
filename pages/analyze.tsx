@@ -59,7 +59,7 @@ export default function Analyze() {
     const [isGateOpen, setIsGateOpen] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-    const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('sessions');
+    const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('session_standard');
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -441,7 +441,7 @@ export default function Analyze() {
 
                                     {usage && (
                                         <div className="mb-2">
-                                            <UsageWarning feature="sessions" usage={usage} />
+                                            <UsageWarning feature="session_standard" usage={usage} />
                                         </div>
                                     )}
 
@@ -474,7 +474,7 @@ export default function Analyze() {
                                 {usage && !usage.allowed && (
                                     <div className="mt-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm animate-fade-in text-left">
                                         <p className="font-bold mb-1">Monthly Limit Reached</p>
-                                        <p className="opacity-80">You&apos;ve used all {usage.limit} diagnostic sessions for this month. Upgrade to Pro for 15 sessions or Pro+ for unlimited.</p>
+                                        <p className="opacity-80">You&apos;ve used all {usage.monthlyLimit} learning tokens for this month. Upgrade to Pro or Pro+ for higher limits and unlimited access.</p>
                                         <Link href="/pricing" className="inline-block mt-3 font-bold text-amber-800 underline">View Plans &rarr;</Link>
                                     </div>
                                 )}
@@ -484,7 +484,7 @@ export default function Analyze() {
                 </div>
             </div>
 
-            {isGateOpen && <UsageGate feature="sessions" onClose={() => setIsGateOpen(false)} />}
+            {isGateOpen && <UsageGate feature="session_standard" onClose={() => setIsGateOpen(false)} />}
         </DashboardLayout>
     );
 }

@@ -150,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('user_id', user.id)
             .single();
 
-        const hasUsage = (await checkUsage(user.id, 'sessions')).allowed;
+        const hasUsage = (await checkUsage(user.id, 'session_standard')).allowed;
         if (!hasUsage) {
             return res
                 .status(403)
@@ -160,7 +160,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
         }
 
-        const deduction = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(user.id, 'session_standard').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

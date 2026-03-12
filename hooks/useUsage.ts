@@ -9,11 +9,18 @@ export function useUsage(feature?: FeatureName) {
     const [allUsage, setAllUsage] = useState<any>(null);
 
     const fetchUsage = useCallback(async () => {
-        if (!token || !user) return;
+        if (!user) return;
+        const isDemo = typeof window !== 'undefined' && window.location.search.includes('demo=true');
+        if (!token && !isDemo) return;
+        
         setLoading(true);
         try {
+            const headers: Record<string, string> = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            if (isDemo) headers['x-serify-demo'] = 'true';
+
             const res = await fetch(`/api/usage${feature ? `?feature=${feature}` : ''}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers
             });
             if (res.ok) {
                 const data = await res.json();

@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json(existing);
     }
 
-    const hasUsage = (await checkUsage(userId, 'deep_dives')).allowed;
+    const hasUsage = (await checkUsage(userId, 'deep_dive')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -84,7 +84,7 @@ Student's struggle/misconception: ${concept.feedbackNote || 'No specific feedbac
 Generate the deep dive JSON.
 `;
 
-        const deduction = (await incrementUsage(userId, 'deep_dives').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'deep_dive').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

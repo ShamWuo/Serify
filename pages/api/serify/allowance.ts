@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        const allowance = await checkUsage(user.id, 'sessions');
+        const allowance = await checkUsage(user.id, 'session_standard');
         return res.status(200).json(allowance);
     } catch (err: any) {
         console.error('Allowance error:', err);

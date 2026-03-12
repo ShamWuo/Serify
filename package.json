@@ -30,6 +30,7 @@
         "postcss": "^8.4.31",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
+        "react-hot-toast": "^2.6.0",
         "react-markdown": "^10.1.0",
         "rehype-katex": "^7.0.1",
         "rehype-raw": "^7.0.0",

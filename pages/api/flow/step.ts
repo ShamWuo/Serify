@@ -24,7 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const { data: sessionData, error: sessionError } = await supabaseAdmin
-            .from('flow_sessions')
+            .from('flow_mode_session')
             .select('*')
             .eq('id', sessionId)
             .single();
@@ -250,7 +250,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const curriculumId = sessionData.source_session_id;
 
                 const { data: curr } = await supabaseAdmin
-                    .from('curricula')
+                    .from('learn_mode_curriculum')
                     .select('*')
                     .eq('id', curriculumId)
                     .single();
@@ -260,7 +260,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         completed.push(conceptId);
 
                         await supabaseAdmin
-                            .from('curricula')
+                            .from('learn_mode_curriculum')
                             .update({
                                 completed_concept_ids: completed,
                                 current_concept_index: completed.length,

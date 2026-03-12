@@ -109,7 +109,7 @@ export default function PricingPage() {
                 'Concept Vault up to 200',
             ],
             buttonText: 'Start Pro',
-            priceId: isAnnual ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_YEARLY : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PRO_MONTHLY,
+            priceId: isAnnual ? process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_YEARLY : process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY,
             popular: true,
             tagline: 'Recommended'
         },
@@ -131,7 +131,7 @@ export default function PricingPage() {
                 'Priority support',
             ],
             buttonText: 'Get Pro+',
-            priceId: isAnnual ? process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PROPLUS_YEARLY : process.env.NEXT_PUBLIC_STRIPE_PRICE_ID_PROPLUS_MONTHLY,
+            priceId: isAnnual ? process.env.NEXT_PUBLIC_STRIPE_PRICE_SCHOLAR_YEARLY : process.env.NEXT_PUBLIC_STRIPE_PRICE_SCHOLAR_MONTHLY,
             popular: false
         }
     ];

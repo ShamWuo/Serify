@@ -38,7 +38,7 @@ export default function FeedbackReport() {
     const [concepts, setConcepts] = useState<any[]>([]);
     const [assessments, setAssessments] = useState<any[]>([]);
     const { user, token } = useAuth();
-    const { usage, loading: usageLoading } = useUsage('ai_messages');
+    const { usage, loading: usageLoading } = useUsage('ai_message_tier1');
     const { materials, refetch } = useSessionMaterials(id as string);
 
     const feedbackSchema = z.object({
@@ -85,7 +85,7 @@ export default function FeedbackReport() {
         name: string;
     } | null>(null);
     const [isUsageGateOpen, setIsUsageGateOpen] = useState(false);
-    const [usageFeature, setUsageFeature] = useState<any>('ai_messages');
+    const [usageFeature, setUsageFeature] = useState<any>('ai_message_tier1');
 
     // Share state
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -162,7 +162,7 @@ export default function FeedbackReport() {
         // Check usage allowed
         if (usage?.allowed === false) {
             setIsRegenerateModalOpen(false);
-            setUsageFeature('ai_messages');
+            setUsageFeature('ai_message_tier1');
             setIsUsageGateOpen(true);
             return;
         }
@@ -177,7 +177,7 @@ export default function FeedbackReport() {
         if (usage?.allowed === false) {
             e.preventDefault();
             e.stopPropagation();
-            setUsageFeature('ai_messages');
+            setUsageFeature('ai_message_tier1');
             setIsUsageGateOpen(true);
         }
     };
@@ -776,7 +776,7 @@ export default function FeedbackReport() {
                                             onClick={(e) =>
                                                 openRegenerateModal(
                                                     e,
-                                                    'flashcards',
+                                                    'flashcard_generation',
                                                     1,
                                                     'Flashcards'
                                                 )

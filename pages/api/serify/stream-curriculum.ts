@@ -72,7 +72,7 @@ export default async function handler(req: Request) {
 
         if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
-        const hasUsage = (await checkUsage(user, 'curricula')).allowed;
+        const hasUsage = (await checkUsage(user, 'learn_mode_curriculum')).allowed;
         if (!hasUsage) {
             return new Response(
                 JSON.stringify({

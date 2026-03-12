@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+    const hasUsage = (await checkUsage(userId, 'flow_mode_session')).allowed;
     if (!hasUsage)
         return res
             .status(403)
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const { data: sessionData, error: sessionError } = await supabaseAdmin
-            .from('flow_sessions')
+            .from('flow_mode_session')
             .select('*')
             .eq('id', sessionId)
             .single();
@@ -161,7 +161,7 @@ What this learner understands well (use as bridges): ${strongConcepts.join(', ')
 Reinforcements required so far this session: ${learnerProfile.reinforcementsRequired || 0}
 `;
 
-        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
+        (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
 
         const result = await model.generateContent(promptText);
         const text = result.response.text();

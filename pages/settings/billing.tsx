@@ -5,43 +5,29 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { format, parseISO } from 'date-fns';
-import { CheckCircle2, Zap, ArrowRight, ExternalLink, MessageSquare, BookOpen, Layers, Brain, Sparkles } from 'lucide-react';
+import { CheckCircle2, Zap, ArrowRight, ExternalLink, MessageSquare, BookOpen, Layers, Brain, Sparkles, Info } from 'lucide-react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import { useUsage } from '@/hooks/useUsage';
 
 export default function BillingSettings() {
     const router = useRouter();
     const { user } = useAuth();
+    const { allUsage, loading: usageLoading } = useUsage();
     const [loading, setLoading] = useState(true);
     const [plan, setPlan] = useState('free');
     const [subscription, setSubscription] = useState<any>(null);
-    const [usage, setUsage] = useState<any>(null);
-    const [limits, setLimits] = useState<any>(null);
     const [portalLoading, setPortalLoading] = useState(false);
 
     useEffect(() => {
         if (!user) return;
 
         async function fetchData() {
+            setLoading(true);
             try {
-                const { data: usageData } = await supabase
-                    .from('usage_tracking')
-                    .select('*')
-                    .eq('user_id', user!.id)
-                    .single();
+                // We use useUsage hook for tokens/limits, but still need subscription details if not free
+                setPlan(user?.plan || 'free');
 
-                if (usageData) {
-                    setUsage(usageData);
-                    setPlan(usageData.plan || 'free');
-
-                    const { data: limitData } = await supabase
-                        .from('plan_limits')
-                        .select('*')
-                        .eq('plan', usageData.plan || 'free')
-                        .single();
-                    setLimits(limitData);
-                }
-
-                if (usageData?.plan !== 'free') {
+                if (user?.plan !== 'free' && user?.id !== 'demo-user') {
                     const { data: subData } = await supabase
                         .from('subscriptions')
                         .select('*')
@@ -92,15 +78,6 @@ export default function BillingSettings() {
             </DashboardLayout>
         );
     }
-
-    const usageItems = [
-        { label: 'Sessions', used: usage?.sessions_used || 0, limit: limits?.sessions_limit, icon: <BookOpen className="w-4 h-4" /> },
-        { label: 'AI Messages', used: usage?.ai_messages_used || 0, limit: limits?.ai_messages_limit, icon: <MessageSquare className="w-4 h-4" /> },
-        { label: 'Quizzes', used: usage?.quizzes_used || 0, limit: limits?.quizzes_limit, icon: <Layers className="w-4 h-4" /> },
-        { label: 'Flashcards', used: usage?.flashcards_used || 0, limit: limits?.flashcards_limit, icon: <Brain className="w-4 h-4" /> },
-        { label: 'Flow Mode', used: usage?.flow_sessions_used || 0, limit: limits?.flow_sessions_limit, icon: <Zap className="w-4 h-4" /> },
-        { label: 'Deep Dives', used: usage?.deep_dives_used || 0, limit: limits?.deep_dives_limit, icon: <Sparkles className="w-4 h-4" /> },
-    ];
 
     return (
         <DashboardLayout>
@@ -158,32 +135,67 @@ export default function BillingSettings() {
                             )}
                         </div>
 
-                        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
-                            <h2 className="mb-4 text-lg font-semibold text-text">Feature Usage</h2>
-                            <div className="flex flex-col gap-5">
-                                {usageItems.map((item) => (
-                                    <div key={item.label}>
-                                        <div className="mb-1.5 flex justify-between text-xs font-medium">
-                                            <div className="flex items-center gap-2 text-text/80">
-                                                {item.icon}
-                                                {item.label}
-                                            </div>
-                                            <span className="text-text/60">
-                                                {item.limit === null ? `${item.used} used` : `${item.used} / ${item.limit}`}
-                                            </span>
-                                        </div>
-                                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
-                                            <div
-                                                className={`h-full rounded-full transition-all ${item.limit !== null && item.used >= item.limit ? 'bg-red-500' : 'bg-accent'}`}
-                                                style={{ 
-                                                    width: item.limit === null ? '100%' : `${Math.min(100, (item.used / item.limit) * 100)}%`,
-                                                    opacity: item.limit === null ? 0.3 : 1
-                                                }}                                            />
-                                        </div>
-                                    </div>
-                                ))}
+                        <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm overflow-hidden relative">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-semibold text-text">Unified Usage</h2>
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-[10px] font-bold uppercase tracking-wider">
+                                    <Sparkles size={12} />
+                                    Dynamic System
+                                </div>
                             </div>
-                            <p className="mt-4 text-[10px] text-text/40">
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="flex items-end justify-between mb-2 text-sm">
+                                        <div>
+                                            <span className="text-3xl font-bold text-text">{allUsage?.tokensUsed ?? 0}</span>
+                                            <span className="text-text/40 font-medium ml-1">/ {allUsage?.monthlyLimit ?? 0} tokens used</span>
+                                        </div>
+                                        <span className={`font-bold ${(allUsage?.percentUsed >= 90) ? 'text-orange-500' : 'text-accent'}`}>
+                                            {Math.round(allUsage?.percentUsed || 0)}%
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="h-3 w-full overflow-hidden rounded-full bg-border shadow-inner relative">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-1000 ${(allUsage?.percentUsed >= 90) ? 'bg-orange-500' : 'bg-accent'}`}
+                                            style={{ width: `${Math.min(100, allUsage?.percentUsed || 0)}%` }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Detailed Breakdown */}
+                                <div className="pt-4 border-t border-border/50">
+                                    <h3 className="text-xs font-bold text-text/40 uppercase tracking-widest mb-4">Detailed Breakdown</h3>
+                                    <div className="grid gap-3">
+                                        {[
+                                            { label: 'Sessions', key: 'sessions', icon: Brain },
+                                            { label: 'AI Messages', key: 'aiMessages', icon: MessageSquare },
+                                            { label: 'Practice', key: 'practice', icon: Layers },
+                                            { label: 'Flow Mode', key: 'flowMode', icon: Zap },
+                                            { label: 'Deep Dives', key: 'deepDives', icon: Sparkles }
+                                        ].map((item) => (
+                                            <div key={item.key} className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2 text-text/70">
+                                                    <item.icon size={12} className="text-accent/60" />
+                                                    <span>{item.label}</span>
+                                                </div>
+                                                <span className="font-bold text-text/90">{allUsage?.breakdown?.[item.key] ?? 0} <span className="text-text/30 font-normal">pts</span></span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-surface/50 border border-border/50 text-xs text-text/60 leading-relaxed shadow-sm">
+                                    <p className="font-semibold text-text/80 mb-2 flex items-center gap-2">
+                                        <Info className="w-3.5 h-3.5 text-accent" />
+                                        How tokens work
+                                    </p>
+                                    Serify uses a unified token system. Instead of fixed limits per feature, different actions weigh differently based on AI compute. This gives you more flexibility in how you use your plan.
+                                </div>
+                            </div>
+                            
+                            <p className="mt-6 text-[10px] text-text/40 italic">
                                 Usage resets monthly on your billing anniversary.
                             </p>
                         </div>
@@ -192,37 +204,36 @@ export default function BillingSettings() {
                     <div className="flex flex-col gap-6">
                         <div className="rounded-2xl border border-border bg-surface p-6 shadow-sm">
                             <h2 className="mb-4 text-lg font-semibold text-text">Plan Benefits</h2>
-                            <ul className="flex flex-col gap-3 text-sm text-text/80">
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-4 h-4 text-accent" />
-                                    <span>
-                                        {plan === 'proplus' ? 'Unlimited Sessions' : plan === 'pro' ? '20 Sessions per month' : '3 Sessions per month'}
-                                    </span>
+                            <ul className="flex flex-col gap-4 text-sm text-text/80">
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-0.5 w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-text">
+                                            {plan === 'proplus' ? 'Unlimited Compute' : plan === 'pro' ? '500 Tokens Monthly' : '15 Tokens Monthly'}
+                                        </p>
+                                        <p className="text-xs text-text/60">{plan === 'proplus' ? 'Power user limits for maximum output' : 'Shared across all AI features'}</p>
+                                    </div>
                                 </li>
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-4 h-4 text-accent" />
-                                    <span>
-                                        {plan === 'proplus' ? 'Unlimited AI Messages' : plan === 'pro' ? '150 AI Messages per month' : '10 AI Messages per month'}
-                                    </span>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-0.5 w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-text">Priority AI Access</p>
+                                        <p className="text-xs text-text/60">{plan === 'proplus' ? 'Gemini 2.5 Pro & Experimental Models' : plan === 'pro' ? 'Gemini 2.5 Flash High Speed' : 'Gemini 2.5 Flash Standard'}</p>
+                                    </div>
                                 </li>
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-4 h-4 text-accent" />
-                                    <span>
-                                        {plan === 'proplus' ? 'Unlimited Flow Mode Sessions' : plan === 'pro' ? '10 Flow Mode sessions' : '1 Flow Mode session'}
-                                    </span>
+                                <li className="flex items-start gap-3">
+                                    <div className="mt-0.5 w-5 h-5 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-text">Advanced Analytics</p>
+                                        <p className="text-xs text-text/60">{plan === 'proplus' ? 'Full Cognitive Mapping & Predictions' : 'Concept Mastery & Strength Maps'}</p>
+                                    </div>
                                 </li>
-                                <li className="flex items-center gap-3">
-                                    <CheckCircle2 className="w-4 h-4 text-accent" />
-                                    <span>
-                                        {plan === 'proplus' ? 'Unlimited Deep Dives' : plan === 'pro' ? '20 Deep Dives' : '2 Deep Dives'}
-                                    </span>
-                                </li>
-                                {plan === 'proplus' && (
-                                    <li className="flex items-center gap-3">
-                                        <CheckCircle2 className="w-4 h-4 text-accent" />
-                                        <span>Best available AI models (Gemini 2.5 Pro)</span>
-                                    </li>
-                                )}
                             </ul>
                         </div>
                     </div>

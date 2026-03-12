@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         sendUpdate({ status: 'Initializing...', progress: 5 });
 
-        const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+        const hasUsage = (await checkUsage(userId, 'flow_mode_session')).allowed;
         if (!hasUsage) {
             sendUpdate({ error: 'limit_reached', message: 'You have reached your feature limit.' });
             return res.end();
@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sendUpdate({ status: 'Connecting to Serify Engine...', progress: 15 });
 
         const { data: sessionData, error: sessionError } = await supabaseAdmin
-            .from('flow_sessions')
+            .from('flow_mode_session')
             .select('*')
             .eq('id', sessionId)
             .single();
@@ -231,7 +231,7 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
 
         sendUpdate({ status: `Generating custom curriculum for ${conceptName}...`, progress: 60 });
 
-        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
+        (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000);

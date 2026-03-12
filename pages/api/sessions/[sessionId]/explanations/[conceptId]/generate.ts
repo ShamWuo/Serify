@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json(data);
     }
 
-    const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+    const hasUsage = (await checkUsage(userId, 'ai_message_tier1')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -89,7 +89,7 @@ Write a clear, thorough explanation of this concept. Structure it as:
 5. The most common misconception about it and why it's wrong
 `;
 
-        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'ai_message_tier1').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

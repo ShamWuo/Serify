@@ -77,9 +77,10 @@ Your task is to extract 3 to 5 broad "Mastery Pillars" (Broad Categories) that r
 For each pillar, identify 2 to 4 specific sub-categories (sub-concepts) that fall under it.
 
 Refinement Rules:
-- A Mastery Pillar must be a broad, high-level theme (e.g., "Calculus Fundamentals", "Derivatives", "Quantum Mechanics").
-- Sub-concepts must be specific, actionable components of that pillar (e.g., "Related Rates", "Implicit Differentiation", "Wave-Particle Duality").
-- If the content is very narrow, you might only extract 1-2 pillars, but ensure they are correctly categorized.
+- A Mastery Pillar must be a broad, high-level theme (e.g., "DNS", "Derivatives", "Quantum Mechanics").
+- Sub-concepts must be specific, actionable components of that pillar (e.g., "DNS Resolution", "Implicit Differentiation", "Wave-Particle Duality").
+- CRITICAL NAMING RULE: Concept names MUST be concise nouns or short technical terms. 
+- DO NOT use full sentences or questions (e.g., use "DNS" instead of "The problem DNS solves").
 - REUSE existing Pillar names from the provided context whenever possible.
 
 Return a JSON array of Mastery Pillars.
@@ -135,6 +136,62 @@ export async function generateSessionTitle(content: string, type: string): Promi
   const parsed = parseJSON<{ title: string }>(result.response.text());
   return parsed.title.trim().replace(/^"|"$/g, '');
 }
+
+export type MessageTier = 'tier1' | 'tier2' | 'tier3';
+
+export const classifyMessage = async (message: string, isFollowUpInTier3: boolean = false): Promise<MessageTier> => {
+  // Edge cases
+  // Message contains pasted content (over 200 characters) -> Tier 3
+  if (message.length > 200) {
+    return 'tier3';
+  }
+
+  const prompt = `You are classifying a user message sent to an AI learning assistant.
+Classify into exactly one tier:
+
+tier1 — Simple navigation, UI help, or clarification question.
+  No personal data lookup needed. No real AI generation needed.
+  Examples: "what does X mean", "how do I do Y", "where is Z"
+
+tier2 — Standard question requiring personal context.
+  Needs Vault lookup, session history, or short contextual response.
+  Examples: "what should I study", "summarize my session", "show my gaps"
+
+tier3 — Deep explanation, concept teaching, or content generation.
+  Requires substantial AI generation. User wants to learn something or
+  have something explained in depth. Usually contains "explain", "teach",
+  "walk me through", "why does", "how does", or pasted content.
+
+User message: "${message}"
+
+Return only valid JSON: { "tier": "tier1" | "tier2" | "tier3" }
+No preamble. No explanation.`;
+
+  const model = getGeminiModel('free');
+  try {
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 20 }
+    });
+    const parsed = parseJSON<{ tier: MessageTier }>(result.response.text());
+    
+    // Fallback classification logic
+    let tier = parsed.tier;
+    if (!['tier1', 'tier2', 'tier3'].includes(tier)) {
+      tier = 'tier2'; // Default to tier2 on ambiguity
+    }
+
+    // Message is a follow-up in an existing Tier 3 conversation -> Tier 2
+    if (tier === 'tier3' && isFollowUpInTier3) {
+      return 'tier2';
+    }
+
+    return tier;
+  } catch (error) {
+    console.error('Failed to classify message tier:', error);
+    return 'tier2'; // Default to error
+  }
+};
 
 export async function generateAssessment(
   concepts: Concept[],
@@ -308,6 +365,8 @@ JSON Format:
 
 RULES:
 - "id": Use short semantic strings (e.g. "unit1-concept1", "foundations").
+- CRITICAL NAMING RULE: Concept "name" MUST be a concise noun or short technical term (e.g., "Domains", "DNS", "Derivatives"). 
+- NEVER use questions or descriptive sentences like "How DNS works" or "What is a domain name?".
 - Order concepts foundational to advanced.
 - Max 20 concepts total across all units.
 - estimatedMinutes: simple (5-8), moderate (8-15), complex (12-20).
@@ -354,4 +413,207 @@ RULES:
     completed_concept_ids: [],
     skipped_concept_ids: []
   };
+}
+
+// ----------------------------------------------------------------------------
+// Practice Mode Integrations
+// ----------------------------------------------------------------------------
+
+export interface ExamQuestionConfig {
+  format: 'standard' | 'problem_set' | 'essay' | 'case_study' | 'technical';
+  questionCount: number;
+}
+
+export async function generateExamQuestions(
+  concepts: { id: string; name: string; description: string; mastery: string }[],
+  config: ExamQuestionConfig,
+  plan: string = 'free',
+  topic?: string
+): Promise<{ text: string; type: string; conceptId: string; expectedLength: string; difficulty: number }[]> {
+  const conceptList = concepts.length > 0 
+    ? concepts.map(c => `- ${c.name} (ID: ${c.id}) [Mastery: ${c.mastery}]\n  Desc: ${c.description}`).join('\n')
+    : `AD-HOC TOPIC: ${topic || 'General knowledge'}`;
+  
+  const scopeType = concepts.length > 0 ? "specific Vault concepts" : "this broad topic";
+  
+  const formatInstructions = {
+    standard: `Mixed questions ranging from explanations to short scenarios to compare/contrast.`,
+    problem_set: `Stepped difficulty "problems" or technical questions that require showing working. The final problem MUST synthesize multiple concepts.`,
+    essay: `1 to 3 long-form essay prompts. E.g. "Argue for or against..." or "Explain to a CEO..."`,
+    case_study: `Multiple sub-questions revolving around one large cohesive real-world setting. Must test application over recitation.`,
+    technical: `Problem-solving focusing on algorithms, mechanisms, pseudo-code, or debugging intentionally flawed architectures.`
+  };
+
+  const prompt = `You are designing a high-pressure, closed-book exam to test genuine mastery and expose the "illusion of competence". 
+Generate exactly ${config.questionCount} questions covering ${scopeType}:
+${conceptList}
+${!concepts.length ? '\nNote: Since this is a topic-based exam without specific nodes, generate questions that cover the most critical technical foundations and common misconceptions of this subject.' : ''}
+
+EXAM FORMAT: ${config.format}
+FORMAT RULES: ${formatInstructions[config.format]}
+
+DIFFICULTY RULES:
+- Revisit/Shaky concepts -> Level 1 (Foundation - "what is X")
+- Developing -> Level 2 (Mechanism - "how does X work")
+- Solid -> Level 3 (Application to scenario) or 4 (Synthesis with other concepts)
+- Mastered -> Level 4 (Synthesis) or 5 (Edge Cases / limitations)
+
+JSON Format:
+[
+  {
+    "text": "The phrasing of the exam question",
+    "type": "explain" | "apply" | "synthesize" | "edge_case" | "scenario",
+    "conceptId": "ID of the PRIMARY concept (or 'topic' if ad-hoc)",
+    "expectedLength": "short" | "medium" | "long",
+    "difficulty": number (1-5)
+  }
+]
+`;
+
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 2500 }
+  });
+  
+  return parseJSON<any[]>(result.response.text());
+}
+
+export async function evaluateExam(
+  questions: { questionText: string; answer: string; conceptId: string; conceptName: string; difficulty: number }[],
+  plan: string = 'free'
+): Promise<{ 
+  overallPerformance: 'strong' | 'developing' | 'shaky';
+  conceptPerformances: Record<string, 'strong' | 'developing' | 'shaky'>; 
+  questionFeedback: { score: 'strong' | 'developing' | 'shaky' | 'blank'; feedback: string }[] 
+}> {
+  const qnaText = questions.map((q, i) => 
+    `Q${i+1} [Testing: ${q.conceptName}, Diff: ${q.difficulty}]: ${q.questionText}\nUser Answer: ${q.answer || '(blank)'}`
+  ).join('\n\n');
+
+  const prompt = `You are grading a high-pressure written exam to evaluate true mastery.
+Here are the user's answers:
+${qnaText}
+
+Evaluate each question strictly based on mechanism accuracy, correct application, and presence of misconceptions.
+If an answer is mostly correct but misses a key nuance for its difficulty level, it's 'developing'. Blank is 'blank'.
+
+JSON Format required:
+{
+  "overallPerformance": "strong" | "developing" | "shaky",
+  "conceptPerformances": {
+    "conceptId_here": "strong" | "developing" | "shaky"
+  },
+  "questionFeedback": [
+    {
+      "score": "strong" | "developing" | "shaky" | "blank",
+      "feedback": "2-3 concise sentences justifying the score and pointing out exact gaps or strengths."
+    }
+  ]
+}
+`;
+
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 2500 }
+  });
+  return parseJSON<any>(result.response.text());
+}
+
+export async function generateScenario(
+  concepts: { id: string; name: string; description: string }[],
+  plan: string = 'free',
+  topic?: string
+): Promise<{ scenarioText: string; questionText: string }> {
+  // Scenario focus
+  const conceptNames = concepts.length > 0 
+    ? concepts.slice(0, 2).map(c => c.name).join(' and ')
+    : topic || 'this subject';
+
+  const prompt = `Write a realistic, real-world scenario designed to test the application of: ${conceptNames}.
+${!concepts.length ? `TOPIC CONTEXT: ${topic}` : ''}
+Do not ask for a definition. Present a situation where these concepts matter, and ask the user to solve, diagnose, or strategize.
+
+Return JSON:
+{
+  "scenarioText": "The background context of the situation (3-5 sentences).",
+  "questionText": "The call to action ('Using your knowledge of X, what is the best way to handle this...?')"
+}
+`;
+
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 1000 }
+  });
+  return parseJSON<any>(result.response.text());
+}
+
+export async function evaluateScenario(
+  scenarioText: string,
+  questionText: string,
+  targetConcepts: { name: string; description: string }[],
+  userAnswer: string,
+  plan: string = 'free'
+): Promise<{ 
+  score: 'strong' | 'developing' | 'weak';
+  feedback: string;
+}> {
+  const prompt = `Evaluate the user's attempt to apply practical knowledge to a scenario.
+SCENARIO: ${scenarioText}
+TASK: ${questionText}
+TARGET CONCEPTS EXPECTED: ${targetConcepts.map(c => c.name).join(', ')}
+
+USER'S RESPONSE: ${userAnswer}
+
+Dimensions to evaluate:
+1. Concept identification: Did they use the right concept?
+2. Mechanism accuracy: Did they explain it correctly?
+3. Application quality: Was it applied properly to exactly this scenario?
+4. Solution viability: Is the answer workable?
+
+Return JSON:
+{
+  "score": "strong" | "developing" | "weak",
+  "feedback": "Write a 3-4 sentence paragraph. Start with evaluating the Strengths, then note the Developing aspects, then explicitly note Missed things if any. Tone is authoritative but helpful."
+}
+`;
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 800 }
+  });
+  return parseJSON<any>(result.response.text());
+}
+
+export async function evaluateReview(
+  conceptName: string,
+  conceptDesc: string,
+  promptUsed: string,
+  userAnswer: string,
+  plan: string = 'free'
+): Promise<{ 
+  score: 'strong' | 'developing' | 'weak';
+  feedback: string;
+}> {
+  const prompt = `You are evaluating a Spaced Repetition explanation from a user.
+CONCEPT: ${conceptName} (Definition reference: ${conceptDesc})
+THE PROMPT THEY WERE GIVEN: "${promptUsed}"
+USER'S EXPLANATION: "${userAnswer}"
+
+Grade them harshly to prevent false confidence. If they just give a surface response without addressing the prompt angle, it's 'weak'. If they get the core idea but miss nuance, 'developing'. If they nail the mechanism, 'strong'.
+
+Return JSON:
+{
+  "score": "strong" | "developing" | "weak",
+  "feedback": "2-3 sentences max. If strong, congratulate implicitly and perhaps note a minor nuance. If weak, explain exactly what core component was missing from their explanation."
+}
+`;
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 600 }
+  });
+  return parseJSON<any>(result.response.text());
 }

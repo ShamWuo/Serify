@@ -97,123 +97,247 @@ export default function LandingPage() {
                     <div className="landing-blob landing-blob-3" />
                 </div>
 
-                <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+                <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
                     <div className="scroll-reveal">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--accent-light)] text-[var(--accent)] text-xs font-bold uppercase tracking-wider mb-8">
                             <Sparkles size={14} />
-                            AI-Powered Active Recall
+                            Master Your Understanding
                         </div>
                     </div>
 
-                    <h1 className="scroll-reveal text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display leading-[0.95] tracking-tight mb-6">
-                        Master Your{' '}
-                        <span className="relative inline-block">
-                            Understanding
+                    <h1 className="scroll-reveal text-5xl sm:text-7xl md:text-8xl lg:text-[110px] font-display leading-[0.9] tracking-tight mb-8">
+                        Expose the{' '}
+                        <span className="relative inline-block text-gradient">
+                            Illusion
                             <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M2 8C50 3 100 2 150 5C200 8 250 4 298 6" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
                             </svg>
-                        </span>
+                        </span>{' '}
+                        of Competence.
                     </h1>
 
-                    <p className="scroll-reveal text-lg md:text-xl text-[var(--muted)] max-w-2xl mx-auto mb-10 leading-relaxed">
-                        Serify uses context-aware AI to analyze what you&apos;re learning, expose hidden gaps in your understanding, and build a personalized map of your knowledge.
+                    <p className="scroll-reveal text-lg md:text-xl text-[var(--muted)] max-w-2xl mx-auto mb-12 leading-relaxed text-balance">
+                        You think you learned it. Serify finds out if you actually did. 
+                        A diagnostic learning engine that maps your conceptual gaps using context-aware AI.
                     </p>
 
-                    <div className="scroll-reveal flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <div className="scroll-reveal flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
                         <Link
                             href="/signup"
-                            className="group flex items-center gap-2 px-7 py-3.5 bg-[var(--accent)] text-white rounded-xl font-semibold text-base hover:bg-[var(--accent)]/90 transition-all shadow-lg shadow-[var(--accent)]/20 hover:shadow-xl hover:shadow-[var(--accent)]/30"
+                            className="group relative flex items-center gap-2 px-8 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold text-lg hover:bg-[var(--accent)]/90 transition-all shadow-xl shadow-[var(--accent)]/20 hover:shadow-2xl hover:shadow-[var(--accent)]/30 hover:-translate-y-0.5 overflow-hidden"
                         >
-                            Start Reflecting Free
-                            <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                            <span className="relative z-10 flex items-center gap-2">
+                                Start Free Session
+                                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                            </span>
+                            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                         </Link>
                         <Link
                             href="/?demo=true"
-                            className="flex items-center gap-2 px-7 py-3.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl font-semibold text-base text-[var(--text)] hover:border-[var(--accent)]/40 hover:shadow-sm transition-all"
+                            className="flex items-center gap-2 px-8 py-4 bg-[var(--surface)] border border-[var(--border)] rounded-2xl font-bold text-lg text-[var(--text)] hover:border-[var(--accent)]/40 hover:shadow-md transition-all hover:-translate-y-0.5"
                         >
-                            Try the Demo
+                            Try Interactive Demo
                         </Link>
                     </div>
 
                     {/* Hero visual — animated concept nodes */}
-                    <div className="scroll-reveal mt-16 md:mt-20 relative mx-auto max-w-3xl">
-                        <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl shadow-black/5 p-6 md:p-8 overflow-hidden glass">
-                            {/* Fake app screenshot representation */}
-                            <div className="flex items-center gap-2 mb-5">
-                                <div className="w-3 h-3 rounded-full bg-red-400/70" />
-                                <div className="w-3 h-3 rounded-full bg-amber-400/70" />
-                                <div className="w-3 h-3 rounded-full bg-emerald-400/70" />
-                                <span className="ml-3 text-xs text-[var(--muted)] font-medium">Serify — Session Analysis</span>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-3 md:gap-4">
-                                {/* Concept cards */}
-                                {[
-                                    { name: 'Neural Networks', mastery: 'solid', color: 'bg-emerald-500', pct: 92 },
-                                    { name: 'Gradient Descent', mastery: 'developing', color: 'bg-blue-400', pct: 68 },
-                                    { name: 'Backpropagation', mastery: 'shaky', color: 'bg-amber-400', pct: 41 },
-                                ].map((c, i) => (
-                                    <div
-                                        key={i}
-                                        className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-3 md:p-4 hover:border-[var(--accent)]/40 transition-colors"
-                                        style={{ animationDelay: `${i * 150}ms` }}
-                                    >
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className={`w-2 h-2 rounded-full ${c.color}`} />
-                                            <span className="text-xs font-bold text-[var(--text)] truncate">{c.name}</span>
+                    <div className="scroll-reveal relative mx-auto max-w-4xl">
+                        <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-2xl shadow-black/10 p-2 md:p-3 overflow-hidden glass-premium group">
+                            <div className="bg-[var(--bg)] border border-[var(--border)]/50 rounded-2xl p-6 md:p-8 overflow-hidden">
+                                {/* Fake app header */}
+                                <div className="flex items-center justify-between mb-8 pb-4 border-b border-[var(--border)]/50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-[var(--accent)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/20">
+                                            <Brain size={22} className="text-white" />
                                         </div>
-                                        <div className="h-1.5 bg-[var(--border)] rounded-full overflow-hidden mb-1.5">
-                                            <div className={`h-full ${c.color} rounded-full`} style={{ width: `${c.pct}%` }} />
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-[10px] text-[var(--muted)] capitalize">{c.mastery}</span>
-                                            <span className="text-[10px] font-bold text-[var(--text)]">{c.pct}%</span>
+                                        <div className="text-left">
+                                            <div className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest">Active Session</div>
+                                            <div className="text-sm font-bold text-[var(--text)]">Transformer Architectures</div>
                                         </div>
                                     </div>
-                                ))}
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent-light)] text-[var(--accent)] text-[10px] font-bold uppercase tracking-widest">
+                                        <Activity size={12} /> Live Analysis
+                                    </div>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-10">
+                                    {/* Left: Questions */}
+                                    <div className="space-y-6">
+                                        <div className="text-left">
+                                            <div className="inline-block px-2 py-0.5 rounded bg-purple-50 text-purple-600 text-[10px] font-bold uppercase tracking-wider mb-3">
+                                                Misconception Probe
+                                            </div>
+                                            <h3 className="text-xl font-display leading-snug text-[var(--text)] mb-4">
+                                                &ldquo;If transformers process all words simultaneously, how do they preserve word order?&rdquo;
+                                            </h3>
+                                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 text-sm text-[var(--muted)] text-left italic">
+                                                The user answered: &ldquo;They use positional encoding, which I think just adds a number to the word...&rdquo;
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-4 p-4 rounded-xl bg-amber-50 border border-amber-100 animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+                                            <Shield size={20} className="text-amber-600 shrink-0" />
+                                            <p className="text-xs text-amber-900 text-left leading-relaxed">
+                                                <strong>Gap Detected:</strong> User understands the name but misses the sinusoidal relationship that preserves relative distance.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Knowledge Map */}
+                                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest">Strength Map</span>
+                                            <TrendingUp size={16} className="text-[var(--accent)]" />
+                                        </div>
+                                        
+                                        <div className="space-y-5">
+                                            {[
+                                                { name: 'Self-Attention', mastery: 'solid', color: 'bg-emerald-500', pct: 88, status: 'Retrieved' },
+                                                { name: 'Positional Encoding', mastery: 'shaky', color: 'bg-amber-500', pct: 34, status: 'Misconception' },
+                                                { name: 'Multi-head Attention', mastery: 'developing', color: 'bg-blue-400', pct: 62, status: 'Applied' },
+                                                { name: 'Feed Forward Nets', mastery: 'solid', color: 'bg-emerald-500', pct: 91, status: 'Retrieved' },
+                                            ].map((c, i) => (
+                                                <div key={i} className="space-y-2 group/node">
+                                                    <div className="flex justify-between items-end">
+                                                        <span className="text-xs font-bold text-[var(--text)]">{c.name}</span>
+                                                        <span className={`text-[10px] font-bold ${c.mastery === 'shaky' ? 'text-amber-600' : 'text-[var(--muted)]'}`}>{c.status}</span>
+                                                    </div>
+                                                    <div className="h-2 bg-[var(--bg)] border border-[var(--border)] rounded-full overflow-hidden">
+                                                        <div className={`h-full ${c.color} rounded-full transition-all duration-1000 ease-out group-hover/node:brightness-110`} style={{ width: `${c.pct}%`, transitionDelay: `${i * 100 + 1000}ms` }} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Fake chat message */}
-                            <div className="mt-4 flex items-start gap-3">
-                                <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center shrink-0">
-                                    <Brain size={14} className="text-white" />
-                                </div>
-                                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl rounded-tl-md px-4 py-2.5 text-sm text-[var(--text)]">
-                                    <span className="text-[var(--muted)]">Your understanding of</span>{' '}
-                                    <strong>Backpropagation</strong>{' '}
-                                    <span className="text-[var(--muted)]">seems surface-level. Let&apos;s probe deeper with a scenario question…</span>
-                                </div>
-                            </div>
+                            {/* Decorative interactive elements */}
+                            <div className="absolute -top-12 -right-12 w-32 h-32 bg-[var(--accent)]/10 rounded-full blur-3xl" />
+                            <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
                         </div>
 
                         {/* Floating decorative badges */}
-                        <div className="absolute -top-4 -right-4 md:-right-8 bg-white border border-[var(--border)] rounded-xl px-3 py-2 shadow-lg animate-fade-in-up text-xs font-bold flex items-center gap-1.5" style={{ animationDelay: '300ms' }}>
-                            <Activity size={12} className="text-[var(--accent)]" /> Pro Tier
+                        <div className="absolute -top-4 -right-4 md:-right-8 bg-white border border-[var(--border)] rounded-2xl px-4 py-2.5 shadow-xl animate-fade-in-up text-xs font-bold flex items-center gap-2 group hover:border-[var(--accent)]/50 transition-colors" style={{ animationDelay: '1200ms' }}>
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 group-hover:animate-pulse" />
+                            Metacognitive Analysis Active
                         </div>
-                        <div className="absolute -bottom-3 -left-4 md:-left-8 bg-white border border-[var(--border)] rounded-xl px-3 py-2 shadow-lg animate-fade-in-up text-xs font-bold flex items-center gap-1.5" style={{ animationDelay: '500ms' }}>
-                            <Target size={12} className="text-[var(--accent)]" /> 3 Gaps Found
+                        <div className="absolute -bottom-6 left-10 md:-left-4 bg-white border border-[var(--border)] rounded-2xl px-4 py-2.5 shadow-xl animate-fade-in-up text-xs font-bold flex items-center gap-2 group hover:border-[var(--accent)]/50 transition-colors" style={{ animationDelay: '1500ms' }}>
+                            <Sparkles size={14} className="text-amber-500" />
+                            Deep Dive Available
                         </div>
                     </div>
                 </div>
             </section>
 
             {/* ─── TRUST BAR ─── */}
-            <section className="py-10 border-y border-[var(--border)]/50 bg-[var(--surface)]/50">
-                <div className="max-w-5xl mx-auto px-6 text-center">
-                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-5">Works with any content you&apos;re studying</p>
-                    <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-                        {[
-                            { icon: Youtube, label: 'YouTube', color: 'text-red-500' },
-                            { icon: FileText, label: 'Articles', color: 'text-blue-500' },
-                            { icon: BookOpen, label: 'Textbooks', color: 'text-emerald-600' },
-                            { icon: Layers, label: 'PDFs', color: 'text-purple-500' },
-                            { icon: MessageSquare, label: 'Notes', color: 'text-amber-600' },
-                        ].map((item, i) => (
-                            <div key={i} className="flex items-center gap-2 text-[var(--muted)]">
-                                <item.icon size={18} className={item.color} />
-                                <span className="text-sm font-medium">{item.label}</span>
+            <section className="py-12 border-y border-[var(--border)]/50 bg-[var(--surface)]/50 relative">
+                <div className="max-w-5xl mx-auto px-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-10">
+                        <div className="text-left max-w-[240px]">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] mb-2">Content Agnostic</p>
+                            <h2 className="text-xl font-display text-[var(--text)] leading-tight">Learn from any source material.</h2>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+                            {[
+                                { icon: Youtube, label: 'YouTube', color: 'text-red-500' },
+                                { icon: FileText, label: 'Articles', color: 'text-blue-500' },
+                                { icon: BookOpen, label: 'Textbooks', color: 'text-emerald-600' },
+                                { icon: Layers, label: 'PDFs', color: 'text-purple-500' },
+                                { icon: MessageSquare, label: 'Raw Notes', color: 'text-amber-600' },
+                            ].map((item, i) => (
+                                <div key={i} className="flex flex-col items-center gap-2 group cursor-default">
+                                    <item.icon size={24} className={`transition-transform group-hover:-translate-y-1 ${item.color}`} />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{item.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── METCOGNITION SECTION ─── */}
+            <section className="py-24 md:py-32 overflow-hidden">
+                <div className="max-w-6xl mx-auto px-6">
+                    <div className="grid lg:grid-cols-2 gap-16 items-center">
+                        <div className="scroll-reveal order-2 lg:order-1">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 text-[10px] font-bold uppercase tracking-wider mb-6">
+                                <BrainCircuit size={14} /> The Science of Learning
                             </div>
-                        ))}
+                            <h2 className="text-4xl md:text-5xl font-display leading-[1.1] text-[var(--text)] mb-8">
+                                Why standard testing fails you.
+                            </h2>
+                            <div className="space-y-8">
+                                {[
+                                    {
+                                        title: 'Passive Recall vs. Active Synthesis',
+                                        desc: 'Standard quizzes check if you recognize terms. Serify forces you to synthesize concepts in new scenarios, ensuring the knowledge is truly yours.',
+                                        icon: Sparkles
+                                    },
+                                    {
+                                        title: 'Identifying False Confidence',
+                                        desc: 'Ever felt like you understood a lecture only to freeze during the exam? That\'s the illusion of competence. We target it with misconception probes.',
+                                        icon: Shield
+                                    },
+                                    {
+                                        title: 'Personalized Knowledge Mapping',
+                                        desc: 'Instead of a "score", you get a living Strength Map. See exactly where your conceptual foundation is shaky and where it is solid.',
+                                        icon: TrendingUp
+                                    }
+                                ].map((item, i) => (
+                                    <div key={i} className="flex gap-5 group">
+                                        <div className="w-12 h-12 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center shrink-0 shadow-sm group-hover:border-[var(--accent)]/30 transition-colors">
+                                            <item.icon size={22} className="text-[var(--accent)]" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold mb-2">{item.title}</h3>
+                                            <p className="text-[var(--muted)] text-sm leading-relaxed">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="scroll-reveal order-1 lg:order-2 relative">
+                            <div className="relative z-10 bg-[var(--surface)] border border-[var(--border)] rounded-[32px] p-8 shadow-2xl overflow-hidden glass">
+                                <div className="flex items-center gap-2 mb-8">
+                                    <div className="w-3 h-3 rounded-full bg-red-400" />
+                                    <div className="w-3 h-3 rounded-full bg-amber-400" />
+                                    <div className="w-3 h-3 rounded-full bg-emerald-400" />
+                                </div>
+                                
+                                <div className="space-y-6">
+                                    <div className="p-5 rounded-2xl bg-[var(--bg)] border border-[var(--border)] border-l-4 border-l-purple-500">
+                                        <div className="text-[10px] font-bold text-purple-600 uppercase tracking-widest mb-2">Misconception Report</div>
+                                        <p className="text-sm font-bold text-[var(--text)] mb-1">Concept: "Sinusoidal Encoding"</p>
+                                        <p className="text-xs text-[var(--muted)] italic">"You are treating positional encodings as simple indices. In reality, they are frequency patterns that allow the model to scale to any sequence length..."</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="p-4 rounded-2xl bg-[var(--accent-soft)] border border-[var(--accent-light)]">
+                                            <div className="text-2xl font-display text-[var(--accent)]">84%</div>
+                                            <div className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">Retrieval Depth</div>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                                            <div className="text-2xl font-display text-amber-600">32%</div>
+                                            <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Application Score</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm">
+                                        <div className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest mb-3">Suggested Focus</div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-[var(--accent-light)] flex items-center justify-center">
+                                                <Zap size={16} className="text-[var(--accent)]" />
+                                            </div>
+                                            <span className="text-xs font-bold text-[var(--text)]">Scenario: "Explain periodicity to a 5-year old"</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Decorative background circle */}
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-[var(--accent)]/5 to-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
+                        </div>
                     </div>
                 </div>
             </section>
@@ -483,6 +607,47 @@ export default function LandingPage() {
                             See full pricing details <ChevronRight size={14} />
                         </Link>
                     </p>
+                </div>
+            </section>
+
+            {/* ─── FAQ SECTION ─── */}
+            <section className="py-24 md:py-32">
+                <div className="max-w-4xl mx-auto px-6">
+                    <div className="text-center mb-16 scroll-reveal">
+                        <h2 className="text-3xl md:text-4xl font-display mb-4">Frequently Asked Questions</h2>
+                        <p className="text-[var(--muted)]">Everything you need to know about the Serify method.</p>
+                    </div>
+
+                    <div className="grid gap-4 scroll-reveal">
+                        {[
+                            {
+                                q: "Is this just another flashcard app?",
+                                a: "No. While we have flashcards, our core engine is diagnostic. We use scenario-based questions to find where your mental model of a concept is broken, something simple flashcards can't do."
+                            },
+                            {
+                                q: "What content can I use with Serify?",
+                                a: "Almost anything. You can paste a YouTube URL (we use the transcript), an article link, upload a PDF, or just paste your raw study notes. Serify's AI will extract the core concepts and build a session around them."
+                            },
+                            {
+                                q: "What is 'The Illusion of Competence'?",
+                                a: "It's a cognitive bias where you feel like you understand something because you've read it multiple times, but you can't actually apply it. Serify is specifically designed to break this illusion by forcing active synthesis."
+                            },
+                            {
+                                q: "How does the Strength Map work?",
+                                a: "It tracks your performance across Retrieval, Application, and Misconception Probe questions. As you answer correctly over multiple sessions, your mastery level evolves from 'Shaky' to 'Solid' using spaced repetition logic."
+                            }
+                        ].map((faq, i) => (
+                            <details key={i} className="group bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 [&_summary::-webkit-details-marker]:hidden cursor-pointer hover:border-[var(--accent)]/30 transition-colors">
+                                <summary className="flex items-center justify-between font-bold text-[var(--text)]">
+                                    {faq.q}
+                                    <ChevronRight size={18} className="text-[var(--muted)] group-open:rotate-90 transition-transform" />
+                                </summary>
+                                <p className="mt-4 text-sm text-[var(--muted)] leading-relaxed animate-fade-in">
+                                    {faq.a}
+                                </p>
+                            </details>
+                        ))}
+                    </div>
                 </div>
             </section>
 

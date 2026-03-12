@@ -119,7 +119,7 @@ export default function FlashcardsMode() {
                 },
                 body: JSON.stringify({
                     conceptId: currentCard.conceptId,
-                    mode: 'flashcards',
+                    mode: 'flashcard_generation',
                     outcome: 'developing',
                     sessionId: sessionData.sessionId
                 })
@@ -142,7 +142,7 @@ export default function FlashcardsMode() {
                 },
                 body: JSON.stringify({
                     conceptId: currentCard.conceptId,
-                    mode: 'flashcards',
+                    mode: 'flashcard_generation',
                     outcome: 'shaky',
                     sessionId: sessionData.sessionId
                 })

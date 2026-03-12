@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { generateCurriculum } from '@/lib/serify-ai';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -33,13 +33,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('user_id', user.id)
         .single();
 
-    const hasUsage = (await checkUsage(user.id, 'curricula')).allowed;
-    if (!hasUsage)
+    const usageResult = await consumeTokens(user.id, 'learn_mode_curriculum');
+    if (!usageResult.allowed)
         return res
             .status(403)
             .json({
                 error: 'limit_reached',
-                message: 'You have reached your feature limit.'
+                message: 'You have reached your feature limit.',
+                tokensUsed: usageResult.tokensUsed,
+                monthlyLimit: usageResult.monthlyLimit,
+                percentUsed: usageResult.percentUsed
             });
 
     const { userInput, inputType } = req.body;
@@ -116,8 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         curriculumData.original_units = JSON.parse(JSON.stringify(curriculumData.units));
 
         // Record usage
-        const deduction = (await incrementUsage(user.id, 'curricula').then(() => ({ success: true })));
-        if (!deduction.success) return res.status(403).json({ error: 'limit_reached' });
+        // Token deduction handled at start
 
         return res.status(200).json({ curriculum: curriculumData });
     } catch (err: any) {

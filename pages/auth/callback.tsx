@@ -9,6 +9,13 @@ export default function AuthCallback() {
     const [error, setError] = useState<string | null>(null);
 
     const { user, loading } = useAuth();
+    const { error: queryError, error_description } = router.query;
+
+    useEffect(() => {
+        if (queryError) {
+            setError(error_description?.toString() || queryError.toString() || 'Authentication failed');
+        }
+    }, [queryError, error_description]);
 
     useEffect(() => {
         const timeout = setTimeout(() => {

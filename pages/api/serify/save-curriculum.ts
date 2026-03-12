@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
         const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-        (await incrementUsage(user, 'curricula').then(() => ({ success: true })));
+        (await incrementUsage(user, 'learn_mode_curriculum').then(() => ({ success: true })));
 
         const userInput =
             curriculumData.user_input ?? curriculumData.title ?? '';
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
 
         const { data: savedCurriculum, error: saveError } = await supabase
-            .from('curricula')
+            .from('learn_mode_curriculum')
             .insert({
                 user_id: user,
                 user_input: userInput,

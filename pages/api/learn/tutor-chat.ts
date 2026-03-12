@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, processAssistantMessage } from '@/lib/usage';
 import { parseJSON, getGeminiModel } from '@/lib/serify-ai';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -72,18 +72,11 @@ Only include concepts that were actually discussed and demonstrated by the user 
             }
         }
 
-        const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
-        if (!hasUsage) {
-            return res
-                .status(403)
-                .json({
-                    error: 'limit_reached',
-                    message: 'You have reached your feature limit.'
-                });
-        }
-
-        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
-        if (!deduction.success) {
+        const lastUserMessage = messages[messages.length - 1]?.content || '';
+        const isFollowUp = messages.length > 2;
+        
+        const usageCheck = await processAssistantMessage(userId, lastUserMessage, isFollowUp);
+        if (!usageCheck.allowed) {
             return res
                 .status(403)
                 .json({

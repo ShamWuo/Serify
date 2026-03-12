@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasUsage = (await checkUsage(userId, 'quizzes')).allowed;
+    const hasUsage = (await checkUsage(userId, 'practice_quiz')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -61,7 +61,7 @@ Generate MCQs for the following concepts. For each question, you MUST return the
 ${concepts.map((c: any) => `- Concept: ${c.name} (ID: ${c.id})\n  Mastery State: ${c.masteryState}\n  Feedback: ${c.feedbackNote || 'None'}`).join('\n\n')}
 `;
 
-        const deduction = (await incrementUsage(userId, 'quizzes').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'practice_quiz').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

@@ -217,7 +217,7 @@ export default function ActiveSession() {
                 } else {
                     setLoading(false);
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('Failed to load session from DB', err);
                 setError('Could not load this session. It may have expired or was deleted.');
                 setLoading(false);
@@ -795,7 +795,7 @@ export default function ActiveSession() {
             )}
 
             <UsageGate
-                feature="ai_messages"
+                feature='ai_message_tier1'
                 forceShow={isUsageLimitModalOpen}
                 onClose={() => setIsUsageLimitModalOpen(false)}
             />

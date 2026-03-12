@@ -26,7 +26,7 @@ export default async function handler(req: Request) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+        const hasUsage = (await checkUsage(user, 'session_standard')).allowed;
         if (!hasUsage) {
             return new Response(
                 JSON.stringify({
@@ -76,7 +76,7 @@ export default async function handler(req: Request) {
             });
 
             if (object) {
-                (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
+                (await incrementUsage(user, 'session_standard').then(() => ({ success: true })));
             }
 
             return new Response(JSON.stringify(object), {
@@ -91,7 +91,7 @@ export default async function handler(req: Request) {
             schema,
             onFinish: async ({ object }) => {
                 if (object) {
-                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
+                    (await incrementUsage(user, 'session_standard').then(() => ({ success: true })));
                 }
             }
         });

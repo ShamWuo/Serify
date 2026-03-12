@@ -14,7 +14,7 @@ export default function PracticeMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user, token } = useAuth();
-    const { isAllowed, increment, refresh } = useUsage('quizzes');
+    const { isAllowed, increment, refresh } = useUsage('practice_quiz');
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -185,7 +185,7 @@ export default function PracticeMode() {
         return (
             <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
                 <div className="max-w-md w-full">
-                    <UsageGate feature="quizzes" />
+                    <UsageGate feature='practice_quiz' />
                 </div>
             </div>
         );
@@ -278,7 +278,7 @@ export default function PracticeMode() {
                     </div>
 
                     <div className="px-3 mt-4">
-                        <UsageWarning feature="quizzes" />
+                        <UsageWarning feature='practice_quiz' />
                     </div>
                 </div>
             }

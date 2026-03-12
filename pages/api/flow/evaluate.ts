@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const conceptId = step.concept_id;
 
         const { data: sessionData } = await supabaseAdmin
-            .from('flow_sessions')
+            .from('flow_mode_session')
             .select('learner_profile, initial_plan')
             .eq('id', sessionId)
             .single();
@@ -102,9 +102,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`
             );
 
-        const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
+        const hasUsage = (await checkUsage(userId, 'flow_mode_session')).allowed;
         if (!hasUsage) return res.status(403).json({ error: 'limit_reached' });
-        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
+        (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
 
         const evaluatorModel = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
@@ -185,10 +185,10 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
         let nextReinforceContent: string | null = null;
 
         if (evaluation.path === 'B' || evaluation.path === 'C') {
-            const hasUsageForReinforce = (await checkUsage(userId, 'flow_sessions')).allowed;
+            const hasUsageForReinforce = (await checkUsage(userId, 'flow_mode_session')).allowed;
 
             if (hasUsageForReinforce) {
-                (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
+                (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
 
                 const reinforceModel = genAI.getGenerativeModel({
                     model: 'gemini-2.5-flash',
@@ -275,7 +275,7 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
         }
 
         await supabaseAdmin
-            .from('flow_sessions')
+            .from('flow_mode_session')
             .update({
                 learner_profile: learnerProfile
             })

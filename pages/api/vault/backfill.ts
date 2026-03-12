@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // 2. Fetch Flow Sessions concepts
         const { data: flowSessions, error: flowErr } = await supabaseAdmin
-            .from('flow_sessions')
+            .from('flow_mode_session')
             .select('id, initial_plan, concepts_completed')
             .eq('user_id', userId);
 
