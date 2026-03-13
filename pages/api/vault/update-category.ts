@@ -1,16 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '@/lib/supabase';
+import { authenticateApiRequest } from '@/lib/usage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.method !== 'POST') return res.status(455).json({ error: 'Method not allowed' });
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
-
-    const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
+    const userId = await authenticateApiRequest(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { id, updates } = req.body;
 
@@ -20,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('vault_categories')
         .update(updates)
         .eq('id', id)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .select()
         .single();
 

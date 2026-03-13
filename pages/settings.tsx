@@ -14,11 +14,12 @@ import {
     Zap,
     Mail,
     Layout,
-    Bot
+    Bot,
+    LogOut
 } from 'lucide-react';
 
 export default function Settings() {
-    const { user, loading } = useAuth();
+    const { user, loading, logout } = useAuth();
     const [notificationsActive, setNotificationsActive] = useState(true);
     const [aiTutorEnabled, setAiTutorEnabled] = useState(false);
 
@@ -228,6 +229,26 @@ export default function Settings() {
                             </div>
                             <span className="text-xs font-bold text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">Permanently remove all data</span>
                         </div>
+                    </div>
+                </section>
+
+                <section className="space-y-3">
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] flex items-center gap-2">
+                        <LogOut size={12} className="opacity-60" /> Session Management
+                    </h2>
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
+                        <button
+                            onClick={async () => {
+                                await logout();
+                                window.location.href = '/';
+                            }}
+                            className="w-full p-4 hover:bg-red-500/5 cursor-pointer flex items-center justify-between transition-all group"
+                        >
+                            <div className="flex items-center gap-3 font-medium text-red-500">
+                                <LogOut size={18} /> Sign Out of Serify
+                            </div>
+                            <span className="text-xs font-bold text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">End your current session</span>
+                        </button>
                     </div>
                 </section>
             </div >

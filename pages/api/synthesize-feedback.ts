@@ -24,12 +24,12 @@ export default async function handler(req: Request) {
             );
         }
 
-        const user = await authenticateApiRequest(req);
-        if (!user) {
+        const userId = await authenticateApiRequest(req);
+        if (!userId) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        const hasUsage = (await checkUsage(user, 'session_standard')).allowed;
+        const hasUsage = (await checkUsage(userId, 'session_standard')).allowed;
         if (!hasUsage) {
             return new Response(
                 JSON.stringify({
@@ -104,7 +104,7 @@ export default async function handler(req: Request) {
             }),
             onFinish: async ({ object }) => {
                 if (object) {
-                    (await incrementUsage(user, 'session_standard').then(() => ({ success: true })));
+                    (await incrementUsage(userId, 'session_standard').then(() => ({ success: true })));
 
                     const sessionId = sessionData?.sessionId || sessionData?.id;
                     const conceptsToWrite: { name: string; description: string }[] = (
@@ -129,7 +129,7 @@ export default async function handler(req: Request) {
                             conceptsToWrite.map((c) =>
                                 findOrCreateConceptNode(
                                     supabaseAdmin,
-                                    user,
+                                    userId,
                                     c.name,
                                     sessionId,
                                     c.description
@@ -139,7 +139,7 @@ export default async function handler(req: Request) {
                             .then((results) => {
                                 const newNodeCount = results.filter(Boolean).length;
                                 if (newNodeCount >= 5) {
-                                    updateVaultHierarchy(supabaseAdmin, user).catch(console.error);
+                                    updateVaultHierarchy(supabaseAdmin, userId).catch(console.error);
                                 }
                             })
                             .catch(console.error);

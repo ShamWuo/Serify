@@ -55,6 +55,13 @@ const fetchWithTimeout = async (url: string | URL | Request, options?: RequestIn
 
 // Singleton pattern to prevent multiple instances during Fast Refresh
 const createSupabaseClient = () => {
+    if (typeof window === 'undefined') {
+        console.log('[Supabase] Initializing server-side client:', {
+            url: supabaseUrl ? `${supabaseUrl.substring(0, 15)}...` : 'MISSING',
+            hasAnonKey: !!supabaseAnonKey,
+            isEdge: typeof EdgeRuntime !== 'undefined'
+        });
+    }
     return createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
             detectSessionInUrl: true,

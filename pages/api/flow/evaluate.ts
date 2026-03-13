@@ -102,9 +102,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`
             );
 
-        const hasUsage = (await checkUsage(userId, 'flow_mode_session')).allowed;
+        const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
         if (!hasUsage) return res.status(403).json({ error: 'limit_reached' });
-        (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
+        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
         const evaluatorModel = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
@@ -185,10 +185,10 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
         let nextReinforceContent: string | null = null;
 
         if (evaluation.path === 'B' || evaluation.path === 'C') {
-            const hasUsageForReinforce = (await checkUsage(userId, 'flow_mode_session')).allowed;
+            const hasUsageForReinforce = (await checkUsage(userId, 'flow_sessions')).allowed;
 
             if (hasUsageForReinforce) {
-                (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
+                (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
                 const reinforceModel = genAI.getGenerativeModel({
                     model: 'gemini-2.5-flash',

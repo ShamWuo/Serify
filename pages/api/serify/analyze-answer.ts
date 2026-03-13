@@ -42,12 +42,12 @@ export default async function handler(req: Request) {
             );
         }
 
-        const user = await authenticateApiRequest(req);
-        if (!user) {
+        const userId = await authenticateApiRequest(req);
+        if (!userId) {
             return createErrorResponse('Unauthorized', 401, 'Unauthorized');
         }
 
-        const hasUsage = (await checkUsage(user, 'session_standard')).allowed;
+        const hasUsage = (await checkUsage(userId, 'session_standard')).allowed;
         if (!hasUsage) {
             return createErrorResponse('You have reached your limit for analyzing answers.', 403, 'limit_reached');
         }
@@ -92,7 +92,7 @@ export default async function handler(req: Request) {
             }),
             onFinish: async ({ object }) => {
                 if (object?.assessment) {
-                    (await incrementUsage(user, 'session_standard').then(() => ({ success: true })));
+                    (await incrementUsage(userId, 'session_standard').then(() => ({ success: true })));
 
                     const supabase = createClient(
                         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -109,8 +109,8 @@ export default async function handler(req: Request) {
 
                         const parentName = concept.related_concept_names[0];
                         const parentNode = await findOrCreateConceptNode(
-                            supabase,
-                            user,
+                            supabase as any,
+                            userId,
                             parentName,
                             question.session_id,
                             `Mastery Pillar for ${parentName}.`
@@ -121,8 +121,8 @@ export default async function handler(req: Request) {
                     }
 
                     const node = await findOrCreateConceptNode(
-                        supabase,
-                        user,
+                        supabase as any,
+                        userId,
                         concept.name,
                         question.session_id,
                         concept.definition || '',
@@ -135,8 +135,8 @@ export default async function handler(req: Request) {
                         if (object.assessment.misconception) finalState = 'revisit';
 
                         await updateConceptMastery(
-                            supabase,
-                            user,
+                            supabase as any,
+                            userId,
                             node.id,
                             finalState,
                             'session',

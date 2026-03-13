@@ -1,24 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabaseAdmin } from '@/lib/supabase';
+import { authenticateApiRequest } from '@/lib/usage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const {
-        data: { user },
-        error: authError
-    } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
+    const userId = await authenticateApiRequest(req);
+    if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -29,19 +15,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Verify session belongs to the user
-    const { data: session, error: sessionError } = await supabaseAdmin
+    const { data: session, error: sessionError } = await (supabaseAdmin as any)
         .from('reflection_sessions')
         .select('id, title, user_id, is_public, depth_score')
         .eq('id', sessionId)
         .single();
 
-    if (sessionError || !session || session.user_id !== user.id) {
+    if (sessionError || !session || session.user_id !== userId) {
         return res.status(403).json({ error: 'Forbidden' });
     }
 
     const isPublic = action === 'share';
 
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await (supabaseAdmin as any)
         .from('reflection_sessions')
         .update({ is_public: isPublic })
         .eq('id', sessionId);

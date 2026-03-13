@@ -29,8 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(' ').pop();
 
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,

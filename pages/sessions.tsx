@@ -171,11 +171,13 @@ function SessionRow({
     let statusLabel =
         session.type === 'flow'
             ? `${session.completedCount ?? 0}/${session.totalCount ?? 0} concepts`
-            : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed'
-                ? 'Completed'
-                : session.status.toLowerCase() === 'practicing'
-                    ? 'Practicing'
-                    : 'Analyzing';
+            : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed' || session.status.toLowerCase() === 'feedback'
+                ? 'Ready'
+                : session.status.toLowerCase() === 'assessment'
+                    ? 'Ready'
+                    : session.status.toLowerCase() === 'practicing'
+                        ? 'Practicing'
+                        : 'Analyzing';
 
     if (isStale) statusLabel = 'Incomplete';
 
@@ -184,11 +186,13 @@ function SessionRow({
             ? 'bg-red-50 text-red-600 border-red-200'
             : session.type === 'flow'
                 ? 'bg-purple-50 text-purple-600 border-purple-200'
-                : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed'
+                : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed' || session.status.toLowerCase() === 'feedback'
                     ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                    : session.status.toLowerCase() === 'practicing'
-                        ? 'bg-blue-50 text-blue-600 border-blue-200'
-                        : 'bg-amber-50 text-amber-600 border-amber-200';
+                    : session.status.toLowerCase() === 'assessment'
+                        ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                        : session.status.toLowerCase() === 'practicing'
+                            ? 'bg-blue-50 text-blue-600 border-blue-200'
+                            : 'bg-amber-50 text-amber-600 border-amber-200';
 
     return (
         <tr

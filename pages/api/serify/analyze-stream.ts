@@ -52,8 +52,7 @@ export default async function handler(req: Request) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    const token = req.headers.get('authorization')?.split(' ').pop();
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         global: {

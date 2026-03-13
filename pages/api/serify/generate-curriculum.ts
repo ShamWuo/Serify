@@ -12,28 +12,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!process.env.GEMINI_API_KEY)
         return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader)
-        return res.status(401).json({ error: 'Unauthorized: No authorization header' });
-    const token = authHeader.replace('Bearer ', '');
+    const userId = await authenticateApiRequest(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const token = req.headers.authorization?.split(' ').pop();
 
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: `Bearer ${token}` } }
     });
 
-    const {
-        data: { user },
-        error: authError
-    } = await supabaseWithAuth.auth.getUser(token);
-    if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
-
     const { data: tracking } = await supabaseWithAuth
         .from('usage_tracking')
         .select('plan')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
-    const usageResult = await consumeTokens(user.id, 'learn_mode_curriculum');
+    const usageResult = await consumeTokens(userId, 'curricula');
     if (!usageResult.allowed)
         return res
             .status(403)
@@ -54,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: knowledgeNodes } = await supabaseWithAuth
             .from('knowledge_nodes')
             .select('canonical_name, current_mastery')
-            .eq('user_id', user.id);
+            .eq('user_id', userId);
 
         const vaultContext = {
             strongConcepts: [] as { name: string }[],
@@ -78,12 +72,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: profile } = await supabaseWithAuth
             .from('profiles')
             .select('preferences')
-            .eq('id', user.id)
+            .eq('id', userId)
             .single();
 
         const userProfile = {
-            userType: profile?.preferences?.userType,
-            learningContext: profile?.preferences?.learningContext
+            userType: (profile?.preferences as any)?.userType,
+            learningContext: (profile?.preferences as any)?.learningContext
         };
 
         // Generate curriculum

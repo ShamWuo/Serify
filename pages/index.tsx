@@ -146,7 +146,7 @@ export default function Home() {
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false })
                         .limit(8),
-                    supabase.from('flow_mode_session')
+                    supabase.from('flow_sessions')
                         .select('id, created_at, status, last_activity_at')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false })
@@ -220,7 +220,7 @@ export default function Home() {
             .eq('user_id', user.id)
             .then(({ count }) => setVaultCount(count));
 
-        supabase.from('learn_mode_curriculum')
+        supabase.from('curricula')
             .select('id, title, status, last_activity_at')
             .eq('user_id', user.id)
             .eq('status', 'active')

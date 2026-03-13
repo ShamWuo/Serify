@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const hasUsage = (await checkUsage(userId, 'flow_mode_session')).allowed;
+    const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
     if (!hasUsage) {
         return res.status(403).json({
             error: 'limit_reached',
@@ -42,8 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Get uncompleted concepts
-        const allConcepts = curriculum.units.flatMap((u: any) => u.concepts);
-        const completedIds = curriculum.completed_concept_ids || [];
+        const allConcepts = (curriculum.units as any[]).flatMap((u: any) => u.concepts);
+        const completedIds = (curriculum.completed_concept_ids as string[]) || [];
         const pendingConcepts = allConcepts.filter((c: any) => !completedIds.includes(c.id));
 
         if (pendingConcepts.length === 0) {
@@ -55,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // STRATEGY: Try to find any EXISTING active flow session for this curriculum 
         // that the user might have started previously.
         const { data: existingSession } = await supabaseAdmin
-            .from('flow_mode_session')
+            .from('flow_sessions')
             .select('id')
             .eq('user_id', userId)
             .eq('source_type', 'curriculum')
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             const sessionId = uuidv4();
             const { data: flowSession, error: fsErr } = await supabaseAdmin
-                .from('flow_mode_session')
+                .from('flow_sessions')
                 .insert({
                     id: sessionId,
                     user_id: userId,
@@ -114,7 +114,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             flowSessionId = flowSession.id;
 
             // Deduct usage once per new session start
-            (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
+            (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
             // Link this session to the current concept progress
             // (Wait, we should ideally link it to ALL concepts in this flow if we wanted total persistence, 

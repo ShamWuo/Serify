@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { generateAssessment } from '@/lib/serify-ai';
 import { Concept } from '@/types/serify';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -13,15 +13,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    console.log('Assess API called');
-
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        console.log('Assess API: No authorization header');
+    const userId = await authenticateApiRequest(req);
+    if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(' ').pop();
 
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
@@ -31,22 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     });
 
-    const {
-        data: { user },
-        error: authError
-    } = await supabaseWithAuth.auth.getUser(token);
-
-    if (authError) {
-        console.error('Assess API: Auth error:', authError);
-        return res.status(401).json({ error: `Unauthorized: ${authError.message}` });
-    }
-
-    if (!user) {
-        console.log('Assess API: No user found');
-        return res.status(401).json({ error: 'Unauthorized: No user found' });
-    }
-
-    console.log('Assess API: User authenticated:', user.id);
+    console.log('Assess API: User authenticated:', userId);
 
     const { sessionId } = req.query;
     if (!sessionId || typeof sessionId !== 'string') {
@@ -61,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('reflection_sessions')
             .select('*')
             .eq('id', sessionId)
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .single();
 
         if (sessionError) {
@@ -77,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 'Assess API: Session not found for sessionId:',
                 sessionId,
                 'userId:',
-                user.id
+                userId
             );
             return res.status(404).json({ error: 'Session not found' });
         }
@@ -127,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: profile, error: profileError } = await supabaseWithAuth
             .from('profiles')
             .select('preferences')
-            .eq('id', user.id)
+            .eq('id', userId)
             .single();
 
         if (profileError) {
@@ -147,10 +129,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: tracking } = await supabaseWithAuth
             .from('usage_tracking')
             .select('plan')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .single();
 
-        const hasUsage = (await checkUsage(user.id, 'session_standard')).allowed;
+        const hasUsage = (await checkUsage(userId, 'session_standard')).allowed;
         if (!hasUsage) {
             return res
                 .status(403)
@@ -160,7 +142,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
         }
 
-        const deduction = (await incrementUsage(user.id, 'session_standard').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'session_standard').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

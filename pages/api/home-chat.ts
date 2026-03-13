@@ -29,14 +29,14 @@ export default async function handler(req: Request) {
 
         const authHeader = req.headers.get('authorization');
 
-        const user = await authenticateApiRequest(req);
-        if (!user) {
+        const userId = await authenticateApiRequest(req);
+        if (!userId) {
             console.error('[home-chat] Authentication failed. No user identified.');
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
         
         const lastUserMessage = messages.filter((m: { role: string; content: string }) => m.role === 'user').pop()?.content || '';
-        const usageCheck = await processAssistantMessage(user, lastUserMessage);
+        const usageCheck = await processAssistantMessage(userId, lastUserMessage);
         
         if (!usageCheck.allowed) {
             return new Response(

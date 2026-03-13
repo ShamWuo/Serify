@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .eq('user_id', userId)
                     .order('created_at', { ascending: false }),
                 supabaseUser
-                    .from('flow_mode_session')
+                    .from('flow_sessions')
                     .select(
                         'id, status, initial_plan, started_at, completed_at, created_at, concepts_completed, source_type, source_session_id'
                     )
@@ -102,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
             if (sessionType === 'flow') {
                 const { data: session } = await supabaseAdmin
-                    .from('flow_mode_session')
+                    .from('flow_sessions')
                     .select('id, user_id')
                     .eq('id', sessionId)
                     .single();
@@ -112,7 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
 
                 const { error } = await supabaseAdmin
-                    .from('flow_mode_session')
+                    .from('flow_sessions')
                     .delete()
                     .eq('id', sessionId);
 
@@ -129,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
 
                 await supabaseAdmin
-                    .from('flow_mode_session')
+                    .from('flow_sessions')
                     .update({ source_session_id: null })
                     .eq('source_session_id', sessionId)
                     .eq('user_id', userId);

@@ -23,8 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         }
 
-        const authHeader = req.headers.authorization;
-        const token = authHeader?.replace('Bearer ', '');
+        const token = req.headers.authorization?.split(' ').pop();
         
         if (!token) {
              return res.status(401).json({ error: 'Missing token' });

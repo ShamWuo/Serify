@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         sendUpdate({ status: 'Initializing...', progress: 5 });
 
-        const hasUsage = (await checkUsage(userId, 'flow_mode_session')).allowed;
+        const hasUsage = (await checkUsage(userId, 'flow_sessions')).allowed;
         if (!hasUsage) {
             sendUpdate({ error: 'limit_reached', message: 'You have reached your feature limit.' });
             return res.end();
@@ -231,7 +231,7 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
 
         sendUpdate({ status: `Generating custom curriculum for ${conceptName}...`, progress: 60 });
 
-        (await incrementUsage(userId, 'flow_mode_session').then(() => ({ success: true })));
+        (await incrementUsage(userId, 'flow_sessions').then(() => ({ success: true })));
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 45000);

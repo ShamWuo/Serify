@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { analyzeAnswers } from '@/lib/serify-ai';
 import { ReflectionSession, MasteryState } from '@/types/serify';
-import { canAccess } from '@/lib/gates';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
 import { findOrCreateConceptNode, updateConceptMastery, updateVaultHierarchy } from '@/lib/vault';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -15,15 +14,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    console.log('Analyze API called');
-
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        console.log('Analyze API: No authorization header');
+    const userId = await authenticateApiRequest(req);
+    if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(' ').pop();
 
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
@@ -33,22 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     });
 
-    const {
-        data: { user },
-        error: authError
-    } = await supabaseWithAuth.auth.getUser(token);
-
-    if (authError) {
-        console.error('Analyze API: Auth error:', authError);
-        return res.status(401).json({ error: `Unauthorized: ${authError.message}` });
-    }
-
-    if (!user) {
-        console.log('Analyze API: No user found');
-        return res.status(401).json({ error: 'Unauthorized: No user found' });
-    }
-
-    console.log('Analyze API: User authenticated:', user.id);
+    console.log('Analyze API: User authenticated:', userId);
 
     const { sessionId, answers, isBasicMode } = req.body;
 
@@ -59,10 +40,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: tracking } = await supabaseWithAuth
         .from('usage_tracking')
         .select('plan')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
-    const hasUsage = (await checkUsage(user.id, 'session_standard')).allowed;
+    const hasUsage = (await checkUsage(userId, 'session_standard')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -72,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
     }
 
-    const usageIncrement = (await incrementUsage(user.id, 'session_standard').then(() => ({ success: true })));
+    const usageIncrement = (await incrementUsage(userId, 'session_standard').then(() => ({ success: true })));
     if (!usageIncrement.success) {
         return res
             .status(403)
@@ -89,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('reflection_sessions')
             .select('*')
             .eq('id', sessionId)
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .single();
 
         if (sessionError) {
@@ -153,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const reflectionSession: ReflectionSession = {
             id: sessionId,
-            userId: user.id,
+            userId: userId,
             date: new Date(session.created_at),
             contentSource: {
                 id: sessionId,
@@ -242,10 +223,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const mastery = analysis.strengthMap.strong?.includes(pillar.name) ? 'solid' :
                     analysis.strengthMap.weak?.includes(pillar.name) ? 'shaky' : 'revisit';
 
-                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, pillar.name, sessionId, pillar.description || '');
+                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, pillar.name, sessionId, pillar.description || '');
                 if (node) {
                     nodeMap.set(pillar.name, node);
-                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, mastery, 'session', sessionId);
+                    await updateConceptMastery(supabaseWithAuth, userId, node.id, mastery, 'session', sessionId);
                 }
             }
 
@@ -259,7 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const mastery = analysis.strengthMap.strong?.includes(sub.name) ? 'solid' :
                     analysis.strengthMap.weak?.includes(sub.name) ? 'shaky' : 'revisit';
 
-                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, sub.name, sessionId, sub.description || '');
+                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, sub.name, sessionId, sub.description || '');
                 if (node) {
                     const parentName = (sub.relationships as any)?.parentName;
                     const parentNode = nodeMap.get(parentName);
@@ -275,7 +256,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             .eq('id', node.id);
                     }
 
-                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, mastery, 'session', sessionId);
+                    await updateConceptMastery(supabaseWithAuth, userId, node.id, mastery, 'session', sessionId);
                 }
             }
 
@@ -287,14 +268,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const mastery = analysis.strengthMap.strong?.includes(conceptName) ? 'solid' :
                     analysis.strengthMap.weak?.includes(conceptName) ? 'shaky' : 'revisit';
                 const def = conceptRows.find(c => c.name === conceptName)?.description || '';
-                const node = await findOrCreateConceptNode(supabaseWithAuth, user.id, conceptName, sessionId, def);
+                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, conceptName, sessionId, def);
                 if (node) {
-                    await updateConceptMastery(supabaseWithAuth, user.id, node.id, mastery, 'session', sessionId);
+                    await updateConceptMastery(supabaseWithAuth, userId, node.id, mastery, 'session', sessionId);
                 }
             }
 
             // Update clusters
-            await updateVaultHierarchy(supabaseWithAuth, user.id);
+            await updateVaultHierarchy(supabaseWithAuth, userId);
         } catch (vaultErr) {
             console.error('Analyze API: Failed to update Vault:', vaultErr);
         }
@@ -307,3 +288,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'Failed to analyze answers' });
     }
 }
+

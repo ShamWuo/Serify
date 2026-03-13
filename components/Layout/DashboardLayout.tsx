@@ -99,8 +99,12 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
     const handleLogout = async () => {
         setIsProfileOpen(false);
-        await logout();
-        router.push('/');
+        try {
+            await logout();
+        } catch (err) {
+            console.error('Logout error:', err);
+        }
+        window.location.href = '/';
     };
 
     const navItems = [

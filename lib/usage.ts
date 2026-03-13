@@ -4,9 +4,13 @@ import { classifyMessage, MessageTier } from './serify-ai';
 
 export async function authenticateApiRequest(req: NextApiRequest | Request): Promise<string | null> {
     // Handle demo mode
-    const demoHeader = (req instanceof Request)
-        ? req.headers.get('x-serify-demo')
-        : (req as NextApiRequest).headers['x-serify-demo'];
+    let demoHeader: string | null = null;
+    if (req instanceof Request) {
+        demoHeader = req.headers.get('x-serify-demo');
+    } else {
+        const headers = (req as NextApiRequest).headers;
+        demoHeader = (headers['x-serify-demo'] as string) || (headers['X-Serify-Demo'] as string) || null;
+    }
 
     if (demoHeader === 'true') {
         return 'demo-user';
@@ -19,11 +23,38 @@ export async function authenticateApiRequest(req: NextApiRequest | Request): Pro
         authHeader = (req as NextApiRequest).headers.authorization || null;
     }
 
-    if (!authHeader) return null;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
-    return user.id;
+    if (!authHeader) {
+        console.warn('[Auth] No authorization header found');
+        return null;
+    }
+
+    const token = authHeader.split(' ').pop();
+    if (!token || token === 'undefined' || token === 'null') {
+        console.warn('[Auth] Malformed or missing token in header');
+        return null;
+    }
+
+    try {
+        // Use admin client if available for more reliable token verification on server-side
+        const client = supabaseAdmin || supabase;
+        const { data: { user }, error } = await client.auth.getUser(token);
+        
+        if (error || !user) {
+            console.error('[Auth] getUser error:', error?.message || 'No user returned');
+            
+            // Fallback to non-admin client if admin failed for some reason
+            if (client === supabaseAdmin) {
+                const { data: { user: fallbackUser }, error: fallbackError } = await supabase.auth.getUser(token);
+                if (!fallbackError && fallbackUser) return fallbackUser.id;
+            }
+            
+            return null;
+        }
+        return user.id;
+    } catch (err: any) {
+        console.error('[Auth] Unexpected error during authentication:', err.message);
+        return null;
+    }
 }
 
 export type TokenAction = 
@@ -32,9 +63,9 @@ export type TokenAction =
     | 'ai_message_tier1'
     | 'ai_message_tier2'
     | 'ai_message_tier3'
-    | 'flow_mode_session'
+    | 'flow_sessions'
     | 'flow_mode_step'
-    | 'learn_mode_curriculum'
+    | 'curricula'
     | 'flashcard_generation'
     | 'practice_exam'
     | 'practice_scenario'
@@ -122,9 +153,9 @@ export async function consumeTokens(
         'session_pdf': 'sessions',
         'ai_message_tier2': 'ai_messages',
         'ai_message_tier3': 'ai_messages',
-        'flow_mode_session': 'flow_mode',
+        'flow_sessions': 'flow_mode',
         'flow_mode_step': 'flow_mode',
-        'learn_mode_curriculum': 'learn_mode',
+        'curricula': 'learn_mode',
         'flashcard_generation': 'flashcards',
         'practice_exam': 'practice',
         'practice_scenario': 'practice',

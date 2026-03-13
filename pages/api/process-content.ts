@@ -31,13 +31,13 @@ export default async function handler(req: Request) {
             });
         }
 
-        const user = await authenticateApiRequest(req);
-        if (!user) {
+        const userId = await authenticateApiRequest(req);
+        if (!userId) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
         const action = contentType === 'pdf' ? 'session_pdf' : 'session_standard';
-        const usageResult = await consumeTokens(user, action);
+        const usageResult = await consumeTokens(userId, action);
         if (!usageResult.allowed) {
             return new Response(
                 JSON.stringify({
