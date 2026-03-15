@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing questionId or answerText' });
     }
 
-    const hasUsage = (await checkUsage(userId, 'quizzes')).allowed;
+    const hasUsage = (await checkUsage(userId, 'practice_quiz')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -84,7 +84,7 @@ Explanation: ${question.explanation || 'None'}
 Student's Answer: ${answerText}
 `;
 
-        const deduction = (await incrementUsage(userId, 'quizzes').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'practice_quiz').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

@@ -9,12 +9,13 @@ import { CheckCircle2, ChevronLeft, ChevronRight, AlertTriangle, Target, ArrowRi
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useUsage } from '@/hooks/useUsage';
 import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
+import GeneratingAnimation from '@/components/GeneratingAnimation';
 
 export default function PracticeMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user, token } = useAuth();
-    const { isAllowed, increment, refresh } = useUsage('quizzes');
+    const { isAllowed, increment, refresh } = useUsage('practice_quiz');
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -175,8 +176,11 @@ export default function PracticeMode() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen bg-[var(--background)]">
-                <div className="w-8 h-8 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
+            <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] px-6">
+                <div className="w-full max-w-lg">
+                    <p className="text-center text-xl font-display text-[var(--text)] mb-8">Generating practice questions...</p>
+                    <GeneratingAnimation type="cards" />
+                </div>
             </div>
         );
     }
@@ -185,7 +189,7 @@ export default function PracticeMode() {
         return (
             <div className="min-h-screen bg-[var(--background)] flex items-center justify-center p-6">
                 <div className="max-w-md w-full">
-                    <UsageGate feature="quizzes" />
+                    <UsageGate feature='practice_quiz' />
                 </div>
             </div>
         );
@@ -278,7 +282,7 @@ export default function PracticeMode() {
                     </div>
 
                     <div className="px-3 mt-4">
-                        <UsageWarning feature="quizzes" />
+                        <UsageWarning feature='practice_quiz' />
                     </div>
                 </div>
             }

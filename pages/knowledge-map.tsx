@@ -9,6 +9,7 @@ import { ChevronLeft, Maximize2, ZoomIn, ZoomOut, Zap, Network, PlayCircle, Brai
 import { KnowledgeNode, VaultCategory, MasteryState } from '@/types/serify';
 
 const MASTERY_COLORS: Record<MasteryState, string> = {
+    mastered: '#1A4A38',   // Deep green
     solid: '#2A5C45',      // Accent
     developing: '#4A90A4', // Blue/Teal
     shaky: '#B8860B',      // Shallow

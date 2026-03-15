@@ -13,16 +13,15 @@ import {
     ChevronRight,
     CheckCircle2,
     Sparkles,
-    ChevronUp,
     Search,
     Menu,
     X,
-    Info,
-    ArrowUpRight,
+    Brain,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import CommandPalette from '@/components/Layout/CommandPalette';
-import { useUsage } from '@/hooks/useUsage';
+import { UsageIndicator } from '@/components/usage/UsageIndicator';
+import FeedbackWidget from '@/components/dashboard/FeedbackWidget';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -39,8 +38,8 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
     const [vaultNeedsWork, setVaultNeedsWork] = useState(0);
     const [logoError, setLogoError] = useState(false);
-    const [isUsageExpanded, setIsUsageExpanded] = useState(false);
-    const { usage: sessionsUsage, allUsage, loading: usageLoading } = useUsage('sessions');
+    const profileRef = useRef<HTMLDivElement>(null);
+    const mobileProfileRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,6 +57,21 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
         setIsMobileMenuOpen(false);
         setIsCommandPaletteOpen(false);
     }, [router.asPath]);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+                setIsProfileOpen(false);
+            }
+            if (mobileProfileRef.current && !mobileProfileRef.current.contains(event.target as Node)) {
+                // We only want to close it if it's the specific header dropdown
+                // but usually both share the same state so it's fine
+                setIsProfileOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     useEffect(() => {
         if (!user || !token) {
@@ -83,9 +97,14 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             .catch(() => { });
     }, [user, token, authLoading, router]);
 
-    const handleLogout = () => {
-        logout();
-        router.push('/');
+    const handleLogout = async () => {
+        setIsProfileOpen(false);
+        try {
+            await logout();
+        } catch (err) {
+            console.error('Logout error:', err);
+        }
+        window.location.href = '/';
     };
 
     const navItems = [
@@ -96,6 +115,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             label: 'Learn',
             icon: <LibraryBig size={20} className="text-[var(--accent)]" />
         },
+        { href: '/practice', label: 'Practice', icon: <Brain size={20} /> },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
         {
             href: '/vault',
@@ -210,128 +230,28 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                         })
                     )}
                 </nav>
+                {/* Sidebar Usage Card removed in favor of integrated profile bar */}
 
-                {/* Usage Indicator Card */}
-                {user && !usageLoading && sessionsUsage && (
-                    <div className="px-3 mb-6">
-                        <div
-                            className={`relative overflow-hidden p-4 rounded-2xl border transition-all duration-300 ${isUsageExpanded ? 'bg-[var(--surface)] shadow-lg' : 'bg-gradient-to-br from-[var(--surface)]/60 to-[var(--bg)]/40 hover:border-[var(--accent)]/50'
-                                } border-[var(--border)] backdrop-blur-xl group/card`}
-                        >
-                            {/* Pro+ Unlimited State */}
-                            {user.subscriptionTier === 'proplus' ? (
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)]">
-                                                <Sparkles size={14} />
-                                            </div>
-                                            <span className="text-[11px] font-bold text-[var(--text)] uppercase tracking-wider">Serify Pro+</span>
-                                        </div>
-                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20">Active</span>
-                                    </div>
-                                    <div className="py-1">
-                                        <div className="text-sm font-sans bg-gradient-to-r from-[var(--accent)] to-[#a855f7] bg-clip-text text-transparent font-bold">
-                                            Unlimited Access
-                                        </div>
-                                        <p className="text-[10px] text-[var(--muted)] mt-0.5">Priority AI & Best Models</p>
-                                    </div>
-                                    <Link
-                                        href="/settings/billing"
-                                        className="flex items-center justify-between group/link text-[10px] font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors mt-2"
-                                    >
-                                        Manage Plan <ArrowUpRight size={12} className="group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
-                                    </Link>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover/card:text-[var(--accent)] transition-colors">
-                                                <History size={14} />
-                                            </div>
-                                            <span className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-wider italic">Sessions</span>
-                                        </div>
-                                        <button
-                                            onClick={() => setIsUsageExpanded(!isUsageExpanded)}
-                                            className="p-1 hover:bg-[var(--bg)] rounded-md transition-colors text-[var(--muted)] hover:text-[var(--text)]"
-                                        >
-                                            <Info size={14} />
-                                        </button>
-                                    </div>
 
-                                    <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[10px] font-medium text-[var(--muted)]">Plan Usage</span>
-                                            <span className="text-[10px] font-bold text-[var(--text)]">
-                                                {sessionsUsage.used} <span className="text-[var(--muted)]">/ {sessionsUsage.limit}</span>
-                                            </span>
-                                        </div>
-                                        <div className="h-2 bg-[var(--border)] rounded-full overflow-hidden shadow-inner relative">
-                                            <div
-                                                className={`h-full transition-all duration-700 rounded-full relative z-10 ${(sessionsUsage.percentUsed || 0) > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'
-                                                    }`}
-                                                style={{ width: `${Math.min(sessionsUsage.percentUsed || 0, 100)}%` }}
-                                            />
-                                            {/* Glow effect */}
-                                            <div
-                                                className={`absolute inset-0 z-0 blur-sm opacity-30 ${(sessionsUsage.percentUsed || 0) > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'
-                                                    }`}
-                                                style={{ width: `${Math.min(sessionsUsage.percentUsed || 0, 100)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {isUsageExpanded && allUsage?.tracking && (
-                                        <div className="pt-3 border-t border-[var(--border)] space-y-2 animate-fade-in">
-                                            <div className="flex justify-between text-[10px]">
-                                                <span className="text-[var(--muted)]">Flashcards</span>
-                                                <span className="text-[var(--text)]">{allUsage.tracking.flashcards_used || 0}</span>
-                                            </div>
-                                            <div className="flex justify-between text-[10px]">
-                                                <span className="text-[var(--muted)]">AI Messages</span>
-                                                <span className="text-[var(--text)]">{allUsage.tracking.ai_messages_used || 0}</span>
-                                            </div>
-                                            <div className="flex justify-between text-[10px]">
-                                                <span className="text-[var(--muted)]">Deep Dives</span>
-                                                <span className="text-[var(--text)]">{allUsage.tracking.deep_dives_used || 0}</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <Link
-                                        href="/settings/billing"
-                                        className={`flex items-center justify-center py-1.5 rounded-lg border transition-all text-[10px] font-bold ${(sessionsUsage.percentUsed || 0) >= 100
-                                            ? 'bg-orange-500/10 border-orange-500/30 text-orange-500 hover:bg-orange-500/20'
-                                            : 'border-[var(--border)] bg-[var(--bg)]/50 text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)]/50'
-                                            }`}
-                                    >
-                                        {(sessionsUsage.percentUsed || 0) >= 100 ? 'Limit Reached' : 'View All Limits'}
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                <div className="p-3 relative border-t border-[var(--border)]">
+                <div className="p-3 relative border-t border-[var(--border)]" ref={profileRef}>
                     {isProfileOpen && (
-                        <div className="absolute bottom-full mb-2 left-3 right-3 glass border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-modal-in z-50">
+                        <div className="absolute bottom-full mb-2 left-3 right-3 glass border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden animate-modal-in z-50">
                             <Link
-                                href={router.query.demo === 'true' ? '/settings?demo=true' : '/settings'}
+                                href="/settings"
                                 onClick={() => setIsProfileOpen(false)}
-                                className="flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm"
+                                className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--accent)]/5 transition-colors text-xs font-semibold"
                             >
-                                <Settings size={16} className="text-[var(--muted)]" /> Settings
+                                <Settings size={14} className="text-[var(--muted)]" /> Settings
                             </Link>
                             <button
                                 onClick={handleLogout}
-                                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm text-left border-t border-[var(--border)]"
+                                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-500/5 transition-colors text-xs font-semibold text-left border-t border-[var(--border)] text-red-500"
                             >
-                                <LogOut size={16} className="text-[var(--muted)]" /> Sign Out
+                                <LogOut size={14} /> Sign Out
                             </button>
                         </div>
                     )}
+
                     {authLoading || !user ? (
                         <div className="w-full flex items-center gap-2 p-2 rounded-xl animate-pulse">
                             <div className="w-8 h-8 rounded-full bg-[var(--border)]" />
@@ -343,25 +263,35 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     ) : (
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-[var(--accent)]/5 transition-all text-left group"
+                            className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-[var(--accent)]/5 transition-all text-left group overflow-hidden"
                         >
-                            <div className="flex items-center gap-2 overflow-hidden">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-[var(--accent)]/20 group-hover:scale-105 transition-transform">
-                                    {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-[var(--text)] truncate">
-                                        {user?.displayName || 'User'}
-                                    </p>
-                                    <p className="text-[10px] text-[var(--muted)] truncate capitalize font-medium tracking-wide">
-                                        {user?.subscriptionTier === 'free' ? 'Free Plan' : `✦ ${user?.subscriptionTier} Plan`}
-                                    </p>
-                                </div>
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-[var(--accent)]/20 group-hover:scale-105 transition-transform">
+                                {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                             </div>
-                            <ChevronUp
-                                size={16}
-                                className={`text-[var(--muted)] transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`}
-                            />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-[var(--text)] truncate">
+                                    {user?.displayName || 'User'}
+                                </p>
+                                <div className="flex items-center justify-between gap-2 mt-0.5">
+                                    <p className="text-[9px] text-[var(--muted)] truncate uppercase font-bold tracking-wider">
+                                        {user?.subscriptionTier === 'free' ? 'Free' : user?.subscriptionTier}
+                                    </p>
+                                    {user.plan !== 'proplus' && (
+                                        <span className="text-[9px] font-bold text-[var(--muted)]">
+                                            {user.tokensUsed} / {user.monthlyLimit}
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                {user.plan !== 'proplus' && (
+                                    <div className="h-1 w-full bg-[var(--border)] rounded-full mt-1 overflow-hidden">
+                                        <div 
+                                            className={`h-full transition-all duration-700 ${user.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'}`}
+                                            style={{ width: `${Math.min(user.percentUsed, 100)}%` }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         </button>
                     )}
                 </div>
@@ -382,17 +312,38 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     <span className="text-2xl font-display text-[var(--text)]">Serify</span>
                 </Link>
                 <div className="flex items-center gap-3">
+                    <UsageIndicator />
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                         className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--text)]"
                     >
                         {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
-                    <div
-                        onClick={() => setIsProfileOpen(!isProfileOpen)}
-                        className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold cursor-pointer shadow-md"
-                    >
-                        {user?.displayName?.charAt(0) || 'U'}
+                    <div className="relative" ref={mobileProfileRef}>
+                        <button
+                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                            className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold cursor-pointer shadow-md overflow-hidden hover:scale-105 transition-transform"
+                        >
+                            {user?.displayName?.charAt(0) || 'U'}
+                        </button>
+
+                        {isProfileOpen && (
+                            <div className="absolute top-full mt-2 right-0 w-48 glass border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden animate-modal-in z-50">
+                                <Link
+                                    href="/settings"
+                                    onClick={() => setIsProfileOpen(false)}
+                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--accent)]/5 transition-colors text-sm font-semibold"
+                                >
+                                    <Settings size={16} className="text-[var(--muted)]" /> Settings
+                                </Link>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/5 transition-colors text-sm font-semibold text-left border-t border-[var(--border)] text-red-500"
+                                >
+                                    <LogOut size={16} /> Sign Out
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -446,10 +397,10 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                             </div>
                         )}
 
-                        {user && !usageLoading && sessionsUsage && (
+                        {user && (
                             <div className="pt-6 border-t border-[var(--border)]">
-                                <div className={`p-5 rounded-2xl border ${user.subscriptionTier === 'proplus' ? 'bg-[var(--accent)]/5 border-[var(--accent)]/20' : 'bg-[var(--surface)] border-[var(--border)]'} shadow-sm`}>
-                                    {user.subscriptionTier === 'proplus' ? (
+                                <div className={`p-5 rounded-2xl border ${user.plan === 'proplus' ? 'bg-[var(--accent)]/5 border-[var(--accent)]/20' : 'bg-[var(--surface)] border-[var(--border)]'} shadow-sm`}>
+                                    {user.plan === 'proplus' ? (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <Sparkles size={16} className="text-[var(--accent)]" />
@@ -465,45 +416,36 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                                     ) : (
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider italic">Session Usage</span>
-                                                <span className="text-sm font-bold text-[var(--text)]">{sessionsUsage.used} / {sessionsUsage.limit}</span>
+                                                <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider italic">Usage</span>
+                                                <span className="text-sm font-bold text-[var(--text)]">{user.tokensUsed} / {user.monthlyLimit}</span>
                                             </div>
                                             <div className="h-2.5 bg-[var(--border)] rounded-full overflow-hidden shadow-inner relative">
                                                 <div
-                                                    className={`h-full transition-all duration-700 rounded-full ${(sessionsUsage.percentUsed || 0) > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'
+                                                    className={`h-full transition-all duration-700 rounded-full ${user.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'
                                                         }`}
-                                                    style={{ width: `${Math.min(sessionsUsage.percentUsed || 0, 100)}%` }}
+                                                    style={{ width: `${Math.min(user.percentUsed, 100)}%` }}
                                                 />
                                             </div>
-                                            <Link href="/settings/billing" className={`block text-center py-2 rounded-xl border font-bold text-xs transition-all ${(sessionsUsage.percentUsed || 0) >= 100 ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--accent)]'}`}>
-                                                {(sessionsUsage.percentUsed || 0) >= 100 ? 'Limit reached - Upgrade' : 'Manage Subscription →'}
+                                            <Link href="/settings/billing" className={`block text-center py-2 rounded-xl border font-bold text-xs transition-all ${user.percentUsed >= 100 ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--accent)]'}`}>
+                                                {user.percentUsed >= 100 ? 'Limit reached - Upgrade' : 'Manage Subscription →'}
                                             </Link>
                                         </div>
                                     )}
                                 </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-red-500 hover:bg-red-500/5 transition-all mt-4 font-bold border border-red-500/10"
+                                >
+                                    <LogOut size={20} />
+                                    <span className="text-lg">Sign Out</span>
+                                </button>
                             </div>
                         )}
                     </div>
                 </div>
             )}
 
-            {isProfileOpen && (
-                <div className="md:hidden fixed top-14 right-4 bg-[var(--surface)] border border-[var(--border)] rounded-lg shadow-lg overflow-hidden animate-fade-in z-50 w-48">
-                    <Link
-                        href="/settings"
-                        onClick={() => setIsProfileOpen(false)}
-                        className="flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm border-b border-[var(--border)]"
-                    >
-                        <Settings size={16} className="text-[var(--muted)]" /> Settings
-                    </Link>
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-2 px-4 py-3 hover:bg-black/5 transition-colors text-sm text-left"
-                    >
-                        <LogOut size={16} className="text-[var(--muted)]" /> Sign Out
-                    </button>
-                </div>
-            )}
+            {/* Mobile Profile Dropdown removed in favor of direct settings link and menu logout */}
 
             <main className="flex-1 w-full flex flex-col min-h-[calc(100vh-64px)] md:min-h-screen pb-20 md:pb-0">
                 {router.query.demo === 'true' && (
@@ -547,6 +489,8 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 isOpen={isCommandPaletteOpen}
                 onClose={() => setIsCommandPaletteOpen(false)}
             />
+
+            <FeedbackWidget />
         </div>
     );
 }

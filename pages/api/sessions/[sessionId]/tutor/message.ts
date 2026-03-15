@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing messages or session context' });
     }
 
-    const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+    const hasUsage = (await checkUsage(userId, 'ai_message_tier1')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -85,7 +85,7 @@ Your role:
 Tone: direct, warm, intellectually engaged.`
         );
 
-        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'ai_message_tier1').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

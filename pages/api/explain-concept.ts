@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasUsage = (await checkUsage(user, 'ai_messages')).allowed;
+    const hasUsage = (await checkUsage(user, 'ai_message_tier1')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -56,7 +56,7 @@ Return plain text only. No markdown, no bullet points.
         const result = await model.generateContent(prompt);
         const explanation = result.response.text().trim();
 
-        (await incrementUsage(user, 'ai_messages').then(() => ({ success: true })));
+        (await incrementUsage(user, 'ai_message_tier1').then(() => ({ success: true })));
 
         res.status(200).json({ explanation });
     } catch (error) {

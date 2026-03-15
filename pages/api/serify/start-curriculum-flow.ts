@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         // Fetch curriculum
         const { data: curriculum, error: currErr } = await supabaseAdmin
-            .from('curricula')
+            .from('learn_mode_curriculum')
             .select('*')
             .eq('id', curriculumId)
             .eq('user_id', userId)
@@ -42,8 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Get uncompleted concepts
-        const allConcepts = curriculum.units.flatMap((u: any) => u.concepts);
-        const completedIds = curriculum.completed_concept_ids || [];
+        const allConcepts = (curriculum.units as any[]).flatMap((u: any) => u.concepts);
+        const completedIds = (curriculum.completed_concept_ids as string[]) || [];
         const pendingConcepts = allConcepts.filter((c: any) => !completedIds.includes(c.id));
 
         if (pendingConcepts.length === 0) {

@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasUsage = (await checkUsage(userId, 'flashcards')).allowed;
+    const hasUsage = (await checkUsage(userId, 'flashcard_generation')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -52,7 +52,7 @@ The student showed the following understanding of each concept. For each one, ge
 ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} — ${c.feedbackNote || ''}`).join('\n')}
     `;
 
-        const deduction = (await incrementUsage(userId, 'flashcards').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'flashcard_generation').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

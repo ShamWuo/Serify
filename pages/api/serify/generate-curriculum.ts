@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { generateCurriculum } from '@/lib/serify-ai';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -12,34 +12,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!process.env.GEMINI_API_KEY)
         return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader)
-        return res.status(401).json({ error: 'Unauthorized: No authorization header' });
-    const token = authHeader.replace('Bearer ', '');
+    const userId = await authenticateApiRequest(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const token = req.headers.authorization?.split(' ').pop();
 
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: `Bearer ${token}` } }
     });
 
-    const {
-        data: { user },
-        error: authError
-    } = await supabaseWithAuth.auth.getUser(token);
-    if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
-
     const { data: tracking } = await supabaseWithAuth
         .from('usage_tracking')
         .select('plan')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
-    const hasUsage = (await checkUsage(user.id, 'curricula')).allowed;
-    if (!hasUsage)
+    const usageResult = await consumeTokens(userId, 'curricula');
+    if (!usageResult.allowed)
         return res
             .status(403)
             .json({
                 error: 'limit_reached',
-                message: 'You have reached your feature limit.'
+                message: 'You have reached your feature limit.',
+                tokensUsed: usageResult.tokensUsed,
+                monthlyLimit: usageResult.monthlyLimit,
+                percentUsed: usageResult.percentUsed
             });
 
     const { userInput, inputType } = req.body;
@@ -51,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: knowledgeNodes } = await supabaseWithAuth
             .from('knowledge_nodes')
             .select('canonical_name, current_mastery')
-            .eq('user_id', user.id);
+            .eq('user_id', userId);
 
         const vaultContext = {
             strongConcepts: [] as { name: string }[],
@@ -75,12 +72,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: profile } = await supabaseWithAuth
             .from('profiles')
             .select('preferences')
-            .eq('id', user.id)
+            .eq('id', userId)
             .single();
 
         const userProfile = {
-            userType: profile?.preferences?.userType,
-            learningContext: profile?.preferences?.learningContext
+            userType: (profile?.preferences as any)?.userType,
+            learningContext: (profile?.preferences as any)?.learningContext
         };
 
         // Generate curriculum
@@ -116,8 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         curriculumData.original_units = JSON.parse(JSON.stringify(curriculumData.units));
 
         // Record usage
-        const deduction = (await incrementUsage(user.id, 'curricula').then(() => ({ success: true })));
-        if (!deduction.success) return res.status(403).json({ error: 'limit_reached' });
+        // Token deduction handled at start
 
         return res.status(200).json({ curriculum: curriculumData });
     } catch (err: any) {

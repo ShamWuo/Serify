@@ -1,8 +1,11 @@
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { checkUsage, incrementUsage, authenticateApiRequest } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const config = { runtime: 'edge' };
 
@@ -49,30 +52,12 @@ export default async function handler(req: Request) {
             return new Response(JSON.stringify({ message: 'Missing inputs' }), { status: 400 });
         }
 
-        const authHeader = req.headers.get('authorization');
-        const isDemoHeader = req.headers.get('x-serify-demo') === 'true';
-        let user: string | null = null;
+        const userId = await authenticateApiRequest(req);
+        if (!userId) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
 
-        if (!authHeader) {
-            user = isDemoHeader ? 'd3300000-0000-0000-0000-000000000000' : null;
-        } else {
-            const token = authHeader.replace('Bearer ', '');
-            if (token === 'demo-token' || isDemoHeader) {
-                user = 'd3300000-0000-0000-0000-000000000000';
-            } else {
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-                const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-                const authClient = createClient(supabaseUrl, supabaseAnonKey, {
-                    global: { headers: { Authorization: `Bearer ${token}` } }
-                });
-                const { data: { user: supabaseUser } } = await authClient.auth.getUser();
-                user = supabaseUser?.id || null;
-            }
-        }
+        const token = req.headers.get('authorization')?.split(' ').pop();
 
-        if (!user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
-
-        const hasUsage = (await checkUsage(user, 'curricula')).allowed;
+        const hasUsage = (await checkUsage(userId, 'curricula')).allowed;
         if (!hasUsage) {
             return new Response(
                 JSON.stringify({
@@ -83,10 +68,6 @@ export default async function handler(req: Request) {
             );
         }
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-        const token = req.headers.get('authorization')?.replace('Bearer ', '');
-
         const supabase = createClient(supabaseUrl, supabaseAnonKey, {
             global: { headers: { Authorization: `Bearer ${token}` } }
         });
@@ -94,7 +75,7 @@ export default async function handler(req: Request) {
         const { data: knowledgeNodes } = await supabase
             .from('knowledge_nodes')
             .select('canonical_name, current_mastery')
-            .eq('user_id', user);
+            .eq('user_id', userId);
 
         const vaultContext = {
             strongConcepts: [] as { name: string }[],
@@ -118,11 +99,11 @@ export default async function handler(req: Request) {
         const { data: profile } = await supabase
             .from('profiles')
             .select('preferences')
-            .eq('id', user)
+            .eq('id', userId)
             .single();
 
-        const userType = profile?.preferences?.userType || 'not specified';
-        const learningContext = profile?.preferences?.learningContext || 'not specified';
+        const userType = (profile?.preferences as any)?.userType || 'not specified';
+        const learningContext = (profile?.preferences as any)?.learningContext || 'not specified';
 
         const priorKnowledgeBlock = priorKnowledge
             ? `\nUSER SELF-REPORTED PRIOR KNOWLEDGE: "${priorKnowledge}"\n- Do NOT include concepts the user says they already know well, unless they are direct prerequisites for what comes next.\n- Start from where the user is, not from the very beginning.`

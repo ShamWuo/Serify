@@ -49,7 +49,7 @@ export function UsageGate({ feature, children, forceShow, onClose }: UsageGatePr
                     </h2>
 
                     <p className="text-[var(--muted)] mb-8 text-sm leading-relaxed">
-                        You&apos;ve reached your monthly limit for <span className="font-semibold text-[var(--text)] capitalize">{feature.replace('_', ' ')}</span> on your current plan. Upgrade to continue learning without interruption.
+                        You&apos;ve reached your monthly limit for <span className="font-semibold text-[var(--text)] capitalize">{(usage?.featureName || feature || '').replace(/_/g, ' ')}</span> on your current plan. Upgrade to continue learning without interruption.
                     </p>
 
                     <div className="w-full space-y-3">
@@ -80,18 +80,19 @@ export function UsageWarning({ feature, usage: providedUsage }: UsageWarningProp
     const { usage: fetchedUsage } = useUsage(feature);
     const usage = providedUsage || fetchedUsage;
 
-    if (!usage || usage.limit === null) return null;
+    if (!usage || usage.monthlyLimit === null) return null;
 
-    const percentage = usage.percentUsed || (usage.used / usage.limit) * 100;
-    if (percentage < 80) return null;
+    const percentage = usage.percentUsed ?? (usage.tokensUsed / usage.monthlyLimit) * 100;
+    if (percentage < 70) return null;
 
-    const remaining = usage.remaining ?? (usage.limit - usage.used);
+    const remaining = usage.monthlyLimit - usage.tokensUsed;
+    const featName = (usage.featureName || feature || '').replace(/_/g, ' ');
 
     return (
         <div className="flex items-center justify-between p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700">
             <div className="flex items-center gap-2 text-xs font-bold">
                 <AlertTriangle size={14} />
-                <span>{remaining} {usage.featureName.replace('_', ' ')} left this period</span>
+                <span>{remaining < 0 ? 0 : remaining} tokens left this period</span>
             </div>
             <Link href="/pricing" className="text-[10px] underline font-bold hover:text-amber-600 transition-colors">
                 Upgrade

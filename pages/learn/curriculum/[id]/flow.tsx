@@ -460,7 +460,7 @@ export default function CurriculumFlowSessionPage() {
     useEffect(() => {
         if (!flowSessionId) return;
         (async () => {
-            const { data, error: dbErr } = await supabase.from('flow_sessions').select('*').eq('id', flowSessionId).single();
+            const { data, error: dbErr } = await supabase.from('flow_mode_session').select('*').eq('id', flowSessionId).single();
             if (dbErr || !data) { setError('Flow Engine connection lost.'); setLoading(false); return; }
             setFlowSession(data as FlowSession);
 
@@ -576,15 +576,15 @@ export default function CurriculumFlowSessionPage() {
                 const updatedCompleted = [...new Set([...(flowSession.concepts_completed || []), currentConcept.conceptId])];
 
                 if (updatedCompleted.length > (flowSession.concepts_completed?.length || 0)) {
-                    await supabase.from('flow_sessions').update({
+                    await supabase.from('flow_mode_session').update({
                         concepts_completed: updatedCompleted,
                         last_activity_at: new Date().toISOString()
                     }).eq('id', flowSession.id);
 
-                    const { data: curriculum } = await supabase.from('curricula').select('completed_concept_ids, concept_count').eq('id', flowSession.source_session_id).single();
+                    const { data: curriculum } = await supabase.from('learn_mode_curriculum').select('completed_concept_ids, concept_count').eq('id', flowSession.source_session_id).single();
                     const currCompleted = [...new Set([...(curriculum?.completed_concept_ids || []), currentConcept.conceptId])];
 
-                    await supabase.from('curricula').update({
+                    await supabase.from('learn_mode_curriculum').update({
                         completed_concept_ids: currCompleted,
                         current_concept_index: currCompleted.length,
                         status: (curriculum?.concept_count && currCompleted.length >= curriculum.concept_count) ? 'completed' : 'active',
@@ -779,7 +779,7 @@ export default function CurriculumFlowSessionPage() {
         return (
             <DashboardLayout>
                 <div className="flex items-center justify-center min-h-[70vh] p-6">
-                    <UsageGate feature="flow_sessions" />
+                    <UsageGate feature='flow_sessions' />
                 </div>
             </DashboardLayout>
         );

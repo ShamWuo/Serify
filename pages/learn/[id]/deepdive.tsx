@@ -9,12 +9,13 @@ import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { CheckCircle2, AlertTriangle, ArrowRight, Brain, Check } from 'lucide-react';
 import { useUsage } from '@/hooks/useUsage';
 import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
+import GeneratingAnimation from '@/components/GeneratingAnimation';
 
 export default function DeepDiveMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user } = useAuth();
-    const { isAllowed, increment, refresh } = useUsage('deep_dives');
+    const { isAllowed, increment, refresh } = useUsage('deep_dive');
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -194,15 +195,16 @@ export default function DeepDiveMode() {
 
     if (loading || generating) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)]">
-                <div className="w-12 h-12 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin mb-6"></div>
-                <h3 className="text-xl font-display text-[var(--text)]">
-                    Synthesizing Deep Dive...
-                </h3>
-                <p className="text-[var(--muted)] mt-2 text-sm text-center max-w-sm px-6">
-                    Cross-referencing your specific gaps to build a customized guide for <br />
-                    <strong>{targetConcept?.name}</strong>.
-                </p>
+            <div className="flex flex-col justify-center min-h-screen bg-[var(--background)] px-6 py-16">
+                <div className="w-full max-w-2xl mx-auto">
+                    <h3 className="text-2xl font-display text-[var(--text)] mb-2">
+                        Synthesizing Deep Dive
+                    </h3>
+                    <p className="text-[var(--muted)] text-sm mb-8">
+                        Building a customized guide for <strong>{targetConcept?.name}</strong>...
+                    </p>
+                    <GeneratingAnimation type="text" />
+                </div>
             </div>
         );
     }
@@ -221,7 +223,7 @@ export default function DeepDiveMode() {
                 </p>
 
                 <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-                    <UsageGate feature="deep_dives">
+                    <UsageGate feature='deep_dive'>
                         <button
                             onClick={() => {
                                 setHasStarted(true);
@@ -234,7 +236,7 @@ export default function DeepDiveMode() {
                         </button>
                     </UsageGate>
 
-                    <UsageWarning feature="deep_dives" />
+                    <UsageWarning feature='deep_dive' />
                 </div>
             </div>
         );

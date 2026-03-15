@@ -48,8 +48,9 @@ export default function Signup() {
         try {
             await register(email, password, fullName);
             // The useEffect will handle the redirect once user state updates to '/onboarding'
-        } catch (err: any) {
-            const msg = err.message || '';
+        } catch (err: unknown) {
+            const error = err as Error;
+            const msg = error.message || '';
             if (msg.includes('already registered') || msg.includes('already exists')) {
                 setError('An account with this email already exists. Log in instead →');
             } else {
@@ -64,9 +65,10 @@ export default function Signup() {
         setError(null);
         try {
             await loginWithGoogle();
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const error = err as Error;
             setError(
-                err.message || 'Something went wrong with Google sign in. Try again or use email.'
+                error.message || 'Something went wrong with Google sign in. Try again or use email.'
             );
             setIsLoading(false);
         }

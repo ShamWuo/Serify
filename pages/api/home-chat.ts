@@ -8,7 +8,7 @@
 
 import { streamText, convertToModelMessages } from 'ai';
 import { google } from '@ai-sdk/google';
-import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, processAssistantMessage } from '@/lib/usage';
 
 export const config = {
     runtime: 'edge',
@@ -29,17 +29,22 @@ export default async function handler(req: Request) {
 
         const authHeader = req.headers.get('authorization');
 
-        const user = await authenticateApiRequest(req);
-        if (!user) {
+        const userId = await authenticateApiRequest(req);
+        if (!userId) {
             console.error('[home-chat] Authentication failed. No user identified.');
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
-        const hasUsage = (await checkUsage(user, 'ai_messages')).allowed;
-        if (!hasUsage) {
+        
+        const lastUserMessage = messages.filter((m: { role: string; content: string }) => m.role === 'user').pop()?.content || '';
+        const usageCheck = await processAssistantMessage(userId, lastUserMessage);
+        
+        if (!usageCheck.allowed) {
             return new Response(
                 JSON.stringify({
                     error: 'limit_reached',
-                    message: 'You have reached your usage limit.'
+                    message: 'You have reached your unified token limit. Upgrade to Pro+ for unlimited AI.',
+                    tier: usageCheck.tier,
+                    remaining: usageCheck.remaining
                 }),
                 { status: 403 }
             );
@@ -50,35 +55,33 @@ export default async function handler(req: Request) {
             system: `You are Serify's intelligent intake assistant. Your goal is to figure out exactly what the user wants to learn or analyze, and then trigger the right action.
 
 Serify has two main features:
-1. LEARN MODE: For generating a custom curriculum spanning multiple concepts. Used when a user wants to learn "calculus", "how neural networks work", "related rates", etc.
-2. ANALYZE MODE: For breaking down and analyzing a specific piece of content (like a YouTube URL, article URL, or pasted notes/text). 
+1. LEARN MODE: For generating a custom curriculum spanning multiple concepts. Used when a user wants to learn a general topic ("calculus", "neural networks"), build a "roadmap", or prepare for a "practice exam" on a subject.
+2. ANALYZE MODE: For breaking down and analyzing a specific piece of content (YouTube URL, article URL, or pasted notes/text). Used when a user wants to "generate flashcards", "summarize", or "test themselves" on a specific file or link.
 
-If the user gives you a link or chunk of text and says "analyze this", "summarize", "help me study this":
-- Briefly confirm you can do that.
-- NEVER write out the analysis yourself.
-- Instead, output a block formatted EXACTLY like this at the end of your message:
-[ACTION:START_ANALYZE]{ "content": "user's url or text here" }[/ACTION]
+INTENT CLASSIFICATION:
+- If the user provides a LINK or PASTE-CONTENT: Trigger [ACTION:START_ANALYZE]. 
+- If the user provides a TOPIC but NO content: Trigger [ACTION:START_LEARN].
 
-If the user wants to LEARN a topic (e.g., "help me learn related rates"):
-- ASK them for 3 pieces of context unless they already provided them:
-  1. What do they already know about this topic or underlying foundations?
-  2. Is there anything specific they want to skip?
-  3. What is their specific goal?
-- You can ask these naturally over 1-2 turns.
-- Once you have a good sense of their context (or they seem eager to just start), output a block formatted EXACTLY like this at the end of your message:
-[ACTION:START_LEARN]{ "q": "the topic to learn", "priorKnowledge": "what they know", "focusGoal": "their goal", "skipTopics": "what to skip" }[/ACTION]
-- Do NOT output the action block until you've tried to get the context. But don't interrogate them if they don't want to provide it.
+FLASHCARDS & EXAMS:
+- If a user wants to generate flashcards or practice tests from a SPECIFIC LINK/TEXT, prioritize START_ANALYZE.
+- If a user wants to learn a TOPIC and then get tested, prioritize START_LEARN.
+
+ACTION BLOCK FORMATS:
+1. START_ANALYZE: [ACTION:START_ANALYZE]{ "content": "user's url or text here" }[/ACTION]
+2. START_LEARN: [ACTION:START_LEARN]{ "q": "the topic to learn", "priorKnowledge": "what they know", "focusGoal": "their goal", "skipTopics": "what to skip" }[/ACTION]
+
+GUIDELINES:
+- Briefly confirm their request.
+- NEVER write out the analysis or study material yourself.
+- For START_LEARN, you can ask 1-2 clarifying questions about their background/goal if they haven't provided it, but don't be pushy.
 - Never output markdown code blocks (like \`\`\`json) around the ACTION blocks. Just raw text.
 
 Tone: Friendly, helpful, concise, probing. Do not be overly chatty.`,
             messages: await convertToModelMessages(messages),
-            onFinish: async () => {
-                (await incrementUsage(user, 'ai_messages').then(() => ({ success: true })));
-            }
         });
 
         return result.toUIMessageStreamResponse();
-    } catch (error: any) {
-        return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), { status: 500 });
+    } catch (error: unknown) {
+        return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Internal server error' }), { status: 500 });
     }
 }

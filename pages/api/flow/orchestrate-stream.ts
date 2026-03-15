@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sendUpdate({ status: 'Connecting to Serify Engine...', progress: 15 });
 
         const { data: sessionData, error: sessionError } = await supabaseAdmin
-            .from('flow_sessions')
+            .from('flow_mode_session')
             .select('*')
             .eq('id', sessionId)
             .single();

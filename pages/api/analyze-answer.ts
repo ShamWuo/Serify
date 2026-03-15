@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasUsage = (await checkUsage(user, 'sessions')).allowed;
+    const hasUsage = (await checkUsage(user, 'session_standard')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -85,7 +85,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             overconfident: boolean;
         }>(responseText);
 
-        (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
+        (await incrementUsage(user, 'session_standard').then(() => ({ success: true })));
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,

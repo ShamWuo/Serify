@@ -1,7 +1,7 @@
 import { streamObject, generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { authenticateApiRequest, checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 export const config = {
@@ -31,17 +31,21 @@ export default async function handler(req: Request) {
             });
         }
 
-        const user = await authenticateApiRequest(req);
-        if (!user) {
+        const userId = await authenticateApiRequest(req);
+        if (!userId) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
         }
 
-        const isAllowed = (await checkUsage(user, 'sessions')).allowed;
-        if (!isAllowed) {
+        const action = contentType === 'pdf' ? 'session_pdf' : 'session_standard';
+        const usageResult = await consumeTokens(userId, action);
+        if (!usageResult.allowed) {
             return new Response(
                 JSON.stringify({
                     error: 'limit_reached',
-                    message: 'You have reached your feature limit.'
+                    message: 'You have reached your unified token limit. Please upgrade to Pro for more analysis.',
+                    tokensUsed: usageResult.tokensUsed,
+                    monthlyLimit: usageResult.monthlyLimit,
+                    percentUsed: usageResult.percentUsed
                 }),
                 { status: 403 }
             );
@@ -94,9 +98,7 @@ export default async function handler(req: Request) {
                 schema
             });
 
-            if (object) {
-                (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
-            }
+            // Usage already deducted via consumeTokens at the start to ensure atomic gating
 
             return new Response(JSON.stringify(object), {
                 headers: { 'Content-Type': 'application/json' }
@@ -110,9 +112,7 @@ export default async function handler(req: Request) {
             prompt,
             schema,
             onFinish: async ({ object }) => {
-                if (object) {
-                    (await incrementUsage(user, 'sessions').then(() => ({ success: true })));
-                }
+                // Usage already deducted at the start
             }
         });
 

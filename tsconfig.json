@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
-    "test-extraction.ts"
+    "test-extraction.ts",
+    "scripts"
   ]
 }

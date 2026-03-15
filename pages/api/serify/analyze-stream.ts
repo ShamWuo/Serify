@@ -52,8 +52,7 @@ export default async function handler(req: Request) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    const token = req.headers.get('authorization')?.split(' ').pop();
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
@@ -80,7 +79,7 @@ export default async function handler(req: Request) {
                 }
 
                 // Check usage
-                const hasUsage = (await checkUsage(userId, 'sessions')).allowed;
+                const hasUsage = (await checkUsage(userId, 'session_standard')).allowed;
                 if (!hasUsage) {
                     send({ error: 'limit_reached', message: 'You have reached your feature limit.' });
                     controller.close();
@@ -159,7 +158,7 @@ export default async function handler(req: Request) {
                 send({ progress: 90, status: 'saving', message: 'Finalizing session...' });
 
                 // Deduct usage first
-                (await incrementUsage(userId, 'sessions').then(() => ({ success: true })));
+                (await incrementUsage(userId, 'session_standard').then(() => ({ success: true })));
 
                 // 1. Create the session
                 const { data: session, error: sessionError } = await supabase

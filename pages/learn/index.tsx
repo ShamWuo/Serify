@@ -230,7 +230,7 @@ export default function LearnIndex() {
     const fetchCurricula = async () => {
         setLoadingCurricula(true);
         const { data, error } = await supabase
-            .from('curricula')
+            .from('learn_mode_curriculum')
             .select('*')
             .order('last_activity_at', { ascending: false });
         if (!error && data) {
@@ -262,7 +262,7 @@ export default function LearnIndex() {
         if (!curriculumToDelete) return;
         setIsDeleting(true);
         try {
-            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
+            await supabase.from('learn_mode_curriculum').delete().eq('id', curriculumToDelete.id);
             setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
             setDeleteModalOpen(false);
             setCurriculumToDelete(null);
@@ -535,7 +535,7 @@ export default function LearnIndex() {
 
                             {usage && (
                                 <div className="mt-6">
-                                    <UsageWarning feature="curricula" usage={usage} />
+                                    <UsageWarning feature='curricula' usage={usage} />
                                 </div>
                             )}
 
@@ -568,7 +568,7 @@ export default function LearnIndex() {
                             {usage && !usage.allowed && (
                                 <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 text-sm animate-fade-in">
                                     <p className="font-bold mb-1">Monthly Limit Reached</p>
-                                    <p className="opacity-80">You&apos;ve generated all {usage.limit} curricula for this month. Upgrade to Pro for 5 or Pro+ for unlimited.</p>
+                                    <p className="opacity-80">You&apos;ve generated all {usage.monthlyLimit} curricula for this month. Upgrade to Pro for 5 or Pro+ for unlimited.</p>
                                     <Link href="/pricing" className="inline-block mt-3 font-bold text-amber-800 underline">View Plans &rarr;</Link>
                                 </div>
                             )}
@@ -675,7 +675,7 @@ export default function LearnIndex() {
                 </div>
             </div>
 
-            {isGateOpen && <UsageGate feature="curricula" onClose={() => setIsGateOpen(false)} />}
+            {isGateOpen && <UsageGate feature='curricula' onClose={() => setIsGateOpen(false)} />}
         </DashboardLayout>
     );
 }

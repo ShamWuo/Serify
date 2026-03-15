@@ -7,8 +7,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
     try {
-        const user = await authenticateApiRequest(req);
-        if (!user) return res.status(401).json({ error: 'Unauthorized' });
+        const userId = await authenticateApiRequest(req);
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
         const curriculumData = req.body;
 
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
         const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-        (await incrementUsage(user, 'curricula').then(() => ({ success: true })));
+        (await incrementUsage(userId, 'curricula').then(() => ({ success: true })));
 
         const userInput =
             curriculumData.user_input ?? curriculumData.title ?? '';
@@ -59,9 +59,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
 
         const { data: savedCurriculum, error: saveError } = await supabase
-            .from('curricula')
+            .from('learn_mode_curriculum')
             .insert({
-                user_id: user,
+                user_id: userId,
                 user_input: userInput,
                 title: curriculumData.title,
                 target_description: curriculumData.target_description,
@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 progressRows.push({
                     id: uuidv4(),
                     curriculum_id: savedCurriculum.id,
-                    user_id: user,
+                    user_id: userId,
                     concept_id: concept.id,
                     concept_name: concept.name,
                     status: 'not_started'
@@ -112,8 +112,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             for (const unit of units) {
                 for (const concept of (unit.concepts || [])) {
                     await findOrCreateConceptNode(
-                        supabase, 
-                        user, 
+                        supabase as any, 
+                        userId, 
                         concept.name, 
                         savedCurriculum.id, 
                         concept.definition || ''

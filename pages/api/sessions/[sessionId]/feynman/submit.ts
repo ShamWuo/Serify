@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const hasUsage = (await checkUsage(userId, 'ai_messages')).allowed;
+    const hasUsage = (await checkUsage(userId, 'ai_message_tier1')).allowed;
     if (!hasUsage) {
         return res
             .status(403)
@@ -79,7 +79,7 @@ Student's Feynman explanation:
 "${userExplanation}"
 `;
 
-        const deduction = (await incrementUsage(userId, 'ai_messages').then(() => ({ success: true })));
+        const deduction = (await incrementUsage(userId, 'ai_message_tier1').then(() => ({ success: true })));
         if (!deduction.success) {
             return res
                 .status(403)

@@ -34,14 +34,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         let source:
             | 'session'
-            | 'flashcards'
+            | 'flashcard_generation'
             | 'quiz'
             | 'feynman'
             | 'tutor'
             | 'explain'
-            | 'deepdive' = 'flashcards';
+            | 'deepdive' = 'flashcard_generation';
         if (
-            ['session', 'flashcards', 'quiz', 'feynman', 'tutor', 'explain', 'deepdive'].includes(
+            ['session', 'flashcard_generation', 'quiz', 'feynman', 'tutor', 'explain', 'deepdive'].includes(
                 mode
             )
         ) {
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             authenticatedUserId,
             conceptId,
             outcome as MasteryState,
-            source,
+            source as any,
             sessionId
         );
 

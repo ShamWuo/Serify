@@ -662,6 +662,51 @@ export type Database = {
                     }
                 ];
             };
+            practice_exports: {
+                Row: {
+                    answer_space: string | null;
+                    created_at: string | null;
+                    export_type: string | null;
+                    file_url: string | null;
+                    id: string;
+                    practice_session_id: string | null;
+                    user_id: string;
+                };
+                Insert: {
+                    answer_space?: string | null;
+                    created_at?: string | null;
+                    export_type?: string | null;
+                    file_url?: string | null;
+                    id?: string;
+                    practice_session_id?: string | null;
+                    user_id: string;
+                };
+                Update: {
+                    answer_space?: string | null;
+                    created_at?: string | null;
+                    export_type?: string | null;
+                    file_url?: string | null;
+                    id?: string;
+                    practice_session_id?: string | null;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'practice_exports_practice_session_id_fkey';
+                        columns: ['practice_session_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'practice_sessions';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'practice_exports_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
             practice_quizzes: {
                 Row: {
                     attempts: Json;
@@ -706,6 +751,145 @@ export type Database = {
                     },
                     {
                         foreignKeyName: 'practice_quizzes_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
+            practice_responses: {
+                Row: {
+                    ai_feedback: string | null;
+                    concept_id: string | null;
+                    created_at: string | null;
+                    difficulty_level: number | null;
+                    id: string;
+                    practice_session_id: string | null;
+                    question_number: number | null;
+                    question_text: string;
+                    question_type: string | null;
+                    response_quality: string | null;
+                    time_spent_seconds: number | null;
+                    user_id: string;
+                    user_response: string | null;
+                };
+                Insert: {
+                    ai_feedback?: string | null;
+                    concept_id?: string | null;
+                    created_at?: string | null;
+                    difficulty_level?: number | null;
+                    id?: string;
+                    practice_session_id?: string | null;
+                    question_number?: number | null;
+                    question_text: string;
+                    question_type?: string | null;
+                    response_quality?: string | null;
+                    time_spent_seconds?: number | null;
+                    user_id: string;
+                    user_response?: string | null;
+                };
+                Update: {
+                    ai_feedback?: string | null;
+                    concept_id?: string | null;
+                    created_at?: string | null;
+                    difficulty_level?: number | null;
+                    id?: string;
+                    practice_session_id?: string | null;
+                    question_number?: number | null;
+                    question_text?: string;
+                    question_type?: string | null;
+                    response_quality?: string | null;
+                    time_spent_seconds?: number | null;
+                    user_id?: string;
+                    user_response?: string | null;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'practice_responses_concept_id_fkey';
+                        columns: ['concept_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'knowledge_nodes';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'practice_responses_practice_session_id_fkey';
+                        columns: ['practice_session_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'practice_sessions';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'practice_responses_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
+            practice_sessions: {
+                Row: {
+                    category_id: string | null;
+                    completed_at: string | null;
+                    concept_ids: string[] | null;
+                    format: string | null;
+                    id: string;
+                    overall_performance: string | null;
+                    performance_report: Json | null;
+                    question_count: number | null;
+                    source_session_id: string | null;
+                    started_at: string | null;
+                    status: string | null;
+                    time_limit_minutes: number | null;
+                    time_spent_seconds: number | null;
+                    type: string;
+                    user_id: string;
+                };
+                Insert: {
+                    category_id?: string | null;
+                    completed_at?: string | null;
+                    concept_ids?: string[] | null;
+                    format?: string | null;
+                    id?: string;
+                    overall_performance?: string | null;
+                    performance_report?: Json | null;
+                    question_count?: number | null;
+                    source_session_id?: string | null;
+                    started_at?: string | null;
+                    status?: string | null;
+                    time_limit_minutes?: number | null;
+                    time_spent_seconds?: number | null;
+                    type: string;
+                    user_id: string;
+                };
+                Update: {
+                    category_id?: string | null;
+                    completed_at?: string | null;
+                    concept_ids?: string[] | null;
+                    format?: string | null;
+                    id?: string;
+                    overall_performance?: string | null;
+                    performance_report?: Json | null;
+                    question_count?: number | null;
+                    source_session_id?: string | null;
+                    started_at?: string | null;
+                    status?: string | null;
+                    time_limit_minutes?: number | null;
+                    time_spent_seconds?: number | null;
+                    type?: string;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'practice_sessions_source_session_id_fkey';
+                        columns: ['source_session_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'reflection_sessions';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'practice_sessions_user_id_fkey';
                         columns: ['user_id'];
                         isOneToOne: false;
                         referencedRelation: 'profiles';
@@ -810,6 +994,69 @@ export type Database = {
                 Relationships: [
                     {
                         foreignKeyName: 'reflection_sessions_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
+            review_schedule: {
+                Row: {
+                    concept_id: string;
+                    consecutive_successful_reviews: number | null;
+                    created_at: string | null;
+                    id: string;
+                    is_mastered: boolean | null;
+                    last_response_quality: string | null;
+                    last_reviewed_at: string | null;
+                    mastered_at: string | null;
+                    next_review_date: string;
+                    review_interval_days: number;
+                    total_reviews: number | null;
+                    updated_at: string | null;
+                    user_id: string;
+                };
+                Insert: {
+                    concept_id: string;
+                    consecutive_successful_reviews?: number | null;
+                    created_at?: string | null;
+                    id?: string;
+                    is_mastered?: boolean | null;
+                    last_response_quality?: string | null;
+                    last_reviewed_at?: string | null;
+                    mastered_at?: string | null;
+                    next_review_date: string;
+                    review_interval_days: number;
+                    total_reviews?: number | null;
+                    updated_at?: string | null;
+                    user_id: string;
+                };
+                Update: {
+                    concept_id?: string;
+                    consecutive_successful_reviews?: number | null;
+                    created_at?: string | null;
+                    id?: string;
+                    is_mastered?: boolean | null;
+                    last_response_quality?: string | null;
+                    last_reviewed_at?: string | null;
+                    mastered_at?: string | null;
+                    next_review_date?: string;
+                    review_interval_days?: number;
+                    total_reviews?: number | null;
+                    updated_at?: string | null;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'review_schedule_concept_id_fkey';
+                        columns: ['concept_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'knowledge_nodes';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'review_schedule_user_id_fkey';
                         columns: ['user_id'];
                         isOneToOne: false;
                         referencedRelation: 'profiles';
@@ -988,6 +1235,61 @@ export type Database = {
                 Relationships: [
                     {
                         foreignKeyName: 'study_sets_user_id_fkey';
+                        columns: ['user_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    }
+                ];
+            };
+            vault_regressions: {
+                Row: {
+                    concept_id: string;
+                    detected_at: string | null;
+                    id: string;
+                    new_state: string | null;
+                    practice_session_id: string | null;
+                    previous_state: string | null;
+                    regression_note: string | null;
+                    user_id: string;
+                };
+                Insert: {
+                    concept_id: string;
+                    detected_at?: string | null;
+                    id?: string;
+                    new_state?: string | null;
+                    practice_session_id?: string | null;
+                    previous_state?: string | null;
+                    regression_note?: string | null;
+                    user_id: string;
+                };
+                Update: {
+                    concept_id?: string;
+                    detected_at?: string | null;
+                    id?: string;
+                    new_state?: string | null;
+                    practice_session_id?: string | null;
+                    previous_state?: string | null;
+                    regression_note?: string | null;
+                    user_id?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'vault_regressions_concept_id_fkey';
+                        columns: ['concept_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'knowledge_nodes';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'vault_regressions_practice_session_id_fkey';
+                        columns: ['practice_session_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'practice_sessions';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'vault_regressions_user_id_fkey';
                         columns: ['user_id'];
                         isOneToOne: false;
                         referencedRelation: 'profiles';

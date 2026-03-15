@@ -14,7 +14,7 @@ export default function TutorMode() {
     const router = useRouter();
     const { id } = router.query;
     const { user } = useAuth();
-    const { isAllowed, increment, refresh } = useUsage('ai_messages');
+    const { isAllowed, increment, refresh } = useUsage('ai_message_tier1');
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -285,7 +285,7 @@ export default function TutorMode() {
                     </div>
 
                     <div className="px-3 mt-auto pt-4">
-                        <UsageWarning feature="ai_messages" />
+                        <UsageWarning feature='ai_message_tier1' />
                     </div>
                 </div>
             }
@@ -348,7 +348,7 @@ export default function TutorMode() {
 
                 <footer className="p-4 md:p-6 bg-white border-t border-[var(--border)] shrink-0">
                     <div className="max-w-[800px] mx-auto relative flex flex-col gap-2">
-                        <UsageGate feature="ai_messages">
+                        <UsageGate feature='ai_message_tier1'>
                             <div className="relative flex items-end gap-2">
                                 <textarea
                                     value={inputStr}

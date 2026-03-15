@@ -11,8 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!nodeId || typeof nodeId !== 'string')
         return res.status(400).json({ error: 'Missing nodeId' });
 
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(' ').pop();
 
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,

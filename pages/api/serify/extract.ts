@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { extractConcepts, generateSessionTitle } from '@/lib/serify-ai';
 import { ContentSource } from '@/types/serify';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 import { YoutubeTranscript } from 'youtube-transcript';
 import { sendError } from '@/lib/api-utils';
 import { z } from 'zod';
@@ -49,12 +49,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
     }
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
+    const userId = await authenticateApiRequest(req);
+    if (!userId) {
         return sendError(res, 'Unauthorized', 401, 'Unauthorized');
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const token = req.headers.authorization?.split(' ').pop();
 
     const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
         global: {
@@ -64,25 +64,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
     });
 
-    const {
-        data: { user },
-        error: authError
-    } = await supabaseWithAuth.auth.getUser(token);
-
-    if (authError || !user) {
-        return sendError(res, 'Unauthorized', 401, 'Unauthorized');
-    }
-
-    const hasUsage = (await checkUsage(user.id, 'sessions')).allowed;
-    if (!hasUsage) {
-        return sendError(res, 'You have reached your feature limit.', 403, 'limit_reached');
-    }
-
-    if (!checkRateLimit(user.id)) {
-        return sendError(res, 'Too many requests. Try again in a minute.', 429, 'Rate Limit Exceeded');
-    }
-
     let { contentType, content, url, title, difficulty } = validatedBody.data;
+
+    // Unified usage check (Gated by consumeTokens)
+    const action = contentType === 'pdf' ? 'session_pdf' : 'session_standard';
+    const usageResult = await consumeTokens(userId, action);
     console.log('Request body:', {
         contentType,
         hasContent: !!content,
@@ -148,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: existingSession, error: checkErr } = await supabaseWithAuth
             .from('reflection_sessions')
             .select('id, status')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .eq('content', targetContent)
             .order('created_at', { ascending: false })
             .limit(1)
@@ -186,7 +172,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: session, error: sessionError } = await supabaseWithAuth
             .from('reflection_sessions')
             .insert({
-                user_id: user.id,
+                user_id: userId,
                 title,
                 content_type: contentType,
                 content: content ?? url,
@@ -211,15 +197,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Session created:', session.id);
 
-        const deduction = (await incrementUsage(user.id, 'sessions').then(() => ({ success: true })));
-        if (!deduction.success) {
-            return res
-                .status(403)
-                .json({
-                    error: 'limit_reached',
-                    message: 'You have reached your feature limit.'
-                });
-        }
+        // Token deduction handled at start
 
         // 2. Fetch Vault Context for better hierarchical sorting
         let vaultContextString = '';
@@ -227,14 +205,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const { data: categories } = await supabaseWithAuth
                 .from('vault_categories')
                 .select('id, name')
-                .eq('user_id', user.id);
+                .eq('user_id', userId);
             
             if (categories && categories.length > 0) {
                 const categoryIds = categories.map(c => c.id);
                 const { data: nodes } = await supabaseWithAuth
                     .from('knowledge_nodes')
                     .select('display_name, category_id')
-                    .eq('user_id', user.id)
+                    .eq('user_id', userId)
                     .in('category_id', categoryIds)
                     .is('is_archived', false);
                 
@@ -251,7 +229,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: tracking } = await supabaseWithAuth
             .from('usage_tracking')
             .select('plan')
-            .eq('user_id', user.id)
+            .eq('user_id', userId)
             .single();
 
         // 3. Either clone cached concepts or call Gemini

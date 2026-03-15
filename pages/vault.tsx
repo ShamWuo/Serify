@@ -36,6 +36,7 @@ import { KnowledgeNode, VaultCategory, StudySet, MasteryState } from '@/types/se
 // --- Constants & Config ---
 
 const MASTERY_CONFIG: Record<MasteryState, { label: string; color: string; bg: string; dot: string; weight: number }> = {
+    mastered: { label: 'Mastered', color: 'text-[#1A4A38]', bg: 'bg-[#1A4A38]/10', dot: 'bg-[#1A4A38]', weight: 4 },
     solid: { label: 'Solid', color: 'text-[#1B4332]', bg: 'bg-[#1B4332]/10', dot: 'bg-[#1B4332]', weight: 3 }, // Darker emerald for contrast
     developing: { label: 'Developing', color: 'text-[#0E4F64]', bg: 'bg-[#0E4F64]/10', dot: 'bg-[#0E4F64]', weight: 2 }, // Darker cyan
     shaky: { label: 'Shaky', color: 'text-[#856404]', bg: 'bg-[#FFF3CD]', dot: 'bg-[#856404]', weight: 1 }, // High contrast gold
@@ -638,6 +639,13 @@ export default function VaultPage() {
                                         <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
                                     </button>
                                     <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
+                                    <button onClick={() => { setActiveMenuId(null); router.push(`/practice/exam?concepts=${parent.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                        <Brain size={14} className="text-[var(--accent)]" /> Simulate Exam
+                                    </button>
+                                    <button onClick={() => { setActiveMenuId(null); router.push(`/practice/scenario?concepts=${parent.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                        <Zap size={14} className="text-yellow-500" /> Apply Concept
+                                    </button>
+                                    <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
                                     <button onClick={() => handleUpdateNode(parent.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
                                         <Archive size={14} /> Archive
                                     </button>
@@ -671,6 +679,24 @@ export default function VaultPage() {
                                 </div>
                                 <MasteryDot state={sub.current_mastery} size={8} className="mr-2.5" />
                                 <span className="text-sm text-[var(--text)] truncate flex-1">{sub.display_name}</span>
+                                <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === sub.id ? null : sub.id); }}
+                                        className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6 rounded-md hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-all text-[var(--muted)] hover:text-[var(--text)]"
+                                    >
+                                        <MoreHorizontal size={14} />
+                                    </button>
+                                    {activeMenuId === sub.id && (
+                                        <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
+                                            <button onClick={() => { setActiveMenuId(null); router.push(`/practice/exam?concepts=${sub.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                                <Brain size={14} className="text-[var(--accent)]" /> Simulate Exam
+                                            </button>
+                                            <button onClick={() => { setActiveMenuId(null); router.push(`/practice/scenario?concepts=${sub.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                                <Zap size={14} className="text-yellow-500" /> Apply Concept
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -850,7 +876,7 @@ export default function VaultPage() {
                                         <div>
                                             <h4 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-2">Source</h4>
                                             <div className="space-y-1">
-                                                {['session', 'flashcards', 'quiz', 'feynman', 'tutor'].map(s => (
+                                                {['session', 'flashcard_generation', 'quiz', 'feynman', 'tutor'].map(s => (
                                                     <label key={s} className="flex items-center gap-2 text-sm text-[var(--text)] cursor-pointer hover:bg-[var(--bg)] p-1.5 rounded">
                                                         <input type="checkbox" checked={selectedSources.includes(s)} onChange={() => toggleSourceFilter(s)} className="accent-[var(--accent)] rounded" />
                                                         <span className="capitalize">{s}</span>

@@ -1,41 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
-import { checkUsage } from '@/lib/usage';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { authenticateApiRequest, checkUsage } from '@/lib/usage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-        return res.status(401).json({ error: 'Unauthorized: No authorization header' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        }
-    });
-
-    const {
-        data: { user },
-        error: authError
-    } = await supabaseWithAuth.auth.getUser(token);
-
-    if (authError || !user) {
-        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    const userId = await authenticateApiRequest(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
     try {
-        const allowance = await checkUsage(user.id, 'sessions');
+        const allowance = await checkUsage(userId, 'session_standard');
         return res.status(200).json(allowance);
     } catch (err: any) {
         console.error('Allowance error:', err);
