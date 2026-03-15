@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { Activity, Sparkles } from 'lucide-react';
+import { Layers, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import GeneratingAnimation from '@/components/GeneratingAnimation';
 
-export default function ScenarioGenerator() {
+export default function FlashcardsGenerator() {
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
 
@@ -14,7 +14,7 @@ export default function ScenarioGenerator() {
 
         const { topic, concepts } = router.query;
 
-        const generateScenario = async () => {
+        const generateFlashcards = async () => {
              try {
                  const payload: any = {};
                  if (topic) {
@@ -27,7 +27,7 @@ export default function ScenarioGenerator() {
                  }
 
                  const { data: { session } } = await supabase.auth.getSession();
-                 const res = await fetch('/api/practice/scenario/generate', {
+                 const res = await fetch('/api/practice/flashcards/generate', {
                      method: 'POST',
                      headers: { 
                          'Content-Type': 'application/json',
@@ -39,18 +39,18 @@ export default function ScenarioGenerator() {
                  const data = await res.json();
 
                  if (!res.ok) {
-                     throw new Error(data.error || 'Failed to generate scenario');
+                     throw new Error(data.error || 'Failed to generate flashcards');
                  }
 
                  // Redirect to the active session
-                 router.replace(`/practice/scenario/${data.sessionId}`);
+                 router.replace(`/practice/flashcards/${data.sessionId}`);
 
              } catch (err: any) {
                  setError(err.message);
              }
         };
 
-        generateScenario();
+        generateFlashcards();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [router.isReady]);
 
@@ -74,28 +74,28 @@ export default function ScenarioGenerator() {
     return (
         <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6 relative overflow-hidden">
             <Head>
-                <title>Building Scenario | Serify</title>
+                <title>Generating Flashcards | Serify</title>
             </Head>
 
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-purple-500/5 rounded-full blur-[100px] -z-10" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-teal-500/5 rounded-full blur-[100px] -z-10" />
 
             <div className="text-center space-y-8 animate-fade-in-up">
-                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-purple-50 border border-purple-100 shadow-sm">
-                    <Activity size={40} className="text-purple-600 relative z-10" />
-                    <Sparkles size={20} className="text-purple-400 absolute -top-2 -right-2 animate-pulse" />
+                <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-teal-50 border border-teal-100 shadow-sm">
+                    <Layers size={40} className="text-teal-600 relative z-10" />
+                    <Sparkles size={20} className="text-teal-400 absolute -top-2 -right-2 animate-pulse" />
                 </div>
 
                 <div className="space-y-3">
                     <h1 className="text-3xl font-display text-[var(--text)] tracking-tight">
-                        Crafting a Real-World Scenario...
+                        Creating flashcards...
                     </h1>
                     <p className="text-[var(--muted)] text-lg">
-                        Finding the perfect messy problem for you to solve.
+                        Distilling knowledge into bite-sized cards.
                     </p>
                 </div>
 
                 <div className="pt-4 w-full max-w-sm">
-                    <GeneratingAnimation type="text" />
+                    <GeneratingAnimation type="cards" />
                 </div>
             </div>
         </div>

@@ -1,369 +1,477 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import { Database } from '@/types/db_types_new';
-import { PracticeSession, ReviewSchedule } from '@/types/serify';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import SEO from '@/components/Layout/SEO';
 import { 
     Activity, 
-    Beaker, 
+    BookOpen, 
     Brain, 
     CheckCircle, 
+    Clock, 
     FileText, 
+    Layers, 
     Printer, 
-    Play, 
+    Sparkles, 
     Target, 
     Zap, 
     ChevronRight,
-    Sparkles,
-    GraduationCap,
-    Clock,
+    X,
     History
 } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
-export default function PracticeDashboard() {
-  const { user } = useAuth();
-  const router = useRouter();
+type ToolId = 'test' | 'quiz' | 'exam' | 'scenario' | 'flashcards' | 'review';
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [dueReviews, setDueReviews] = useState<any[]>([]);
-  const [recentSessions, setRecentSessions] = useState<PracticeSession[]>([]);
-  const [sessionCount, setSessionCount] = useState(0);
+interface ToolDef {
+    id: ToolId;
+    title: string;
+    description: string;
+    icon: React.FC<any>;
+    color: string;
+    bgColor: string;
+    cost: number;
+    hasDifficulty: boolean;
+}
 
-  useEffect(() => {
-    if (!user) {
-        setIsLoading(false);
-        return;
+const TOOLS: ToolDef[] = [
+    {
+        id: 'test',
+        title: 'Practice Test',
+        description: '6-8 comprehensive questions to test your depth of understanding.',
+        icon: Target,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50',
+        cost: 8,
+        hasDifficulty: true
+    },
+    {
+        id: 'quiz',
+        title: 'Quick Quiz',
+        description: '5 rapid-fire questions for a quick knowledge check.',
+        icon: Zap,
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-50',
+        cost: 3,
+        hasDifficulty: true
+    },
+    {
+        id: 'exam',
+        title: 'Timed Exam',
+        description: 'Full simulation under pressure. Exposes hidden misconceptions.',
+        icon: Clock,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50',
+        cost: 10,
+        hasDifficulty: true
+    },
+    {
+        id: 'scenario',
+        title: 'Real Scenario',
+        description: 'Apply your knowledge to solve a realistic, domain-specific problem.',
+        icon: Activity,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-50',
+        cost: 5,
+        hasDifficulty: false
+    },
+    {
+        id: 'flashcards',
+        title: 'Flashcards',
+        description: 'Build familiarity with key terms, mechanisms, and distinctions.',
+        icon: Layers,
+        color: 'text-teal-600',
+        bgColor: 'bg-teal-50',
+        cost: 2,
+        hasDifficulty: false
+    },
+    {
+        id: 'review',
+        title: 'Spaced Review',
+        description: 'Optimize long-term retention. Only reviews what\'s due today.',
+        icon: Brain,
+        color: 'text-slate-700',
+        bgColor: 'bg-slate-100',
+        cost: 0,
+        hasDifficulty: false
     }
+];
 
-    const fetchDashboardData = async () => {
-        setIsLoading(true);
-        try {
-            // Fetch Due Reviews via API
-            const { data: { session } } = await supabase.auth.getSession();
-            const reviewRes = await fetch('/api/practice/review/due', {
-                headers: {
-                    'Authorization': `Bearer ${session?.access_token}`
-                }
-            });
-            if (reviewRes.ok) {
-                const reviewData = await reviewRes.json();
-                setDueReviews(reviewData.dueReviews || []);
-            }
+export default function PracticeDashboard() {
+    const { user } = useAuth();
+    const router = useRouter();
 
-            // Fetch Recent Sessions
-            const { data: sessions, count, error } = await supabase
-                .from('practice_sessions')
-                .select('*', { count: 'exact' })
-                .eq('user_id', user.id)
-                .order('started_at', { ascending: false })
-                .limit(4);
+    const [isLoading, setIsLoading] = useState(true);
+    const [dueReviews, setDueReviews] = useState<any[]>([]);
+    const [recentSessions, setRecentSessions] = useState<any[]>([]);
+    const [vaultConcepts, setVaultConcepts] = useState<any[]>([]);
+    
+    const [selectedTool, setSelectedTool] = useState<ToolDef | null>(null);
+    const [topicInput, setTopicInput] = useState('');
+    const [selectedConcepts, setSelectedConcepts] = useState<string[]>([]);
+    const [difficulty, setDifficulty] = useState<'auto' | 'easy' | 'medium' | 'hard'>('auto');
+    const [isGenerating, setIsGenerating] = useState(false);
 
-            if (!error && sessions) {
-                setRecentSessions(sessions as any as PracticeSession[]);
-                setSessionCount(count || 0);
-            }
-        } catch (error) {
-            console.error("Error fetching practice data:", error);
-            toast.error("Failed to load dashboard data");
-        } finally {
+    const inputPanelRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!user) {
             setIsLoading(false);
+            return;
         }
+
+        const fetchDashboardData = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch Due Reviews
+                const { data: reviews } = await supabase
+                    .from('review_schedule')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .lte('next_review_date', new Date().toISOString().split('T')[0])
+                    .eq('is_mastered', false);
+                setDueReviews(reviews || []);
+
+                // Fetch Recent Sessions
+                const { data: sessions } = await supabase
+                    .from('practice_sessions')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('started_at', { ascending: false })
+                    .limit(3);
+                setRecentSessions(sessions || []);
+
+                // Fetch Vault Concepts
+                const { data: concepts } = await supabase
+                    .from('knowledge_nodes')
+                    .select('id, display_name, current_mastery')
+                    .eq('user_id', user.id)
+                    .eq('is_archived', false)
+                    .order('last_seen_at', { ascending: false })
+                    .limit(20);
+                setVaultConcepts(concepts || []);
+
+            } catch (error) {
+                console.error("Error fetching practice data:", error);
+                toast.error("Failed to load dashboard data");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, [user]);
+
+    const handleToolClick = (tool: ToolDef) => {
+        if (tool.id === 'review') {
+            // Spaced Review has no input, just go
+            if (dueReviews.length === 0) {
+                toast("You have no concepts due for review right now.", { icon: '🙌' });
+                return;
+            }
+            router.push('/practice/review');
+            return;
+        }
+        
+        setSelectedTool(tool);
+        setTimeout(() => {
+            inputPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
     };
 
-    fetchDashboardData();
-  }, [user]);
+    const toggleConcept = (id: string) => {
+        setSelectedConcepts(prev => 
+            prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+        );
+    };
 
-  if (!user && !isLoading) {
-    return (
-        <div className="flex h-screen items-center justify-center p-4 text-center bg-[var(--bg)]">
-            <p className="text-[var(--muted)]">Please sign in to access Practice Mode.</p>
-        </div>
-    );
-  }
+    const handleGenerate = async () => {
+        if (!selectedTool) return;
+        if (!topicInput.trim() && selectedConcepts.length === 0) {
+            toast.error("Please enter a topic or select a concept to practice.");
+            return;
+        }
 
-  return (
-    <DashboardLayout>
-      <SEO 
-        title="Practice Lab | Serify" 
-        description="Master your knowledge through active recall, scenario simulations, and spaced repetition."
-      />
+        setIsGenerating(true);
+        // We will pass data via URL or a temporary storage/API
+        // For now, redirect to the tool page with query params.
+        // The actual generation logic will live on the target tool page, OR we do it here. 
+        // According to the spec: "Clicking a tool card opens the input panel... Token cost shows correctly on Generate button"
+        // Let's redirect to the tool page which will handle the generation loading state.
+        
+        const params = new URLSearchParams();
+        if (topicInput.trim()) params.append('topic', topicInput.trim());
+        if (selectedConcepts.length > 0) params.append('concepts', selectedConcepts.join(','));
+        if (selectedTool.hasDifficulty) params.append('diff', difficulty);
+        
+        router.push(`/practice/${selectedTool.id}?${params.toString()}`);
+    };
 
-      <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-8 relative z-10">
-        <div className="max-w-6xl mx-auto space-y-12">
-            
-            {/* Header Section */}
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 animate-fade-in-up">
-                <div className="space-y-4 max-w-2xl">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full text-xs font-bold uppercase tracking-wider">
-                        <Target size={14} /> Cognitive Practice Lab
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-display text-[var(--text)] tracking-tight">
-                        Perfect Your <span className="text-[var(--accent)]">Execution</span>
-                    </h1>
-                    <p className="text-lg text-[var(--muted)] leading-relaxed">
-                        The lab is where knowledge transforms into intuition. Start from your Vault or practice something entirely new.
-                    </p>
-                </div>
-            </header>
-
-            {/* Frictionless Ad-hoc Entry */}
-            <div className="animate-fade-in-up" style={{ animationDelay: '50ms' }}>
-                <div className="premium-card p-6 md:p-8 rounded-3xl bg-white border-[var(--border)] shadow-xl shadow-[var(--accent)]/5 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 blur-3xl rounded-full -mr-16 -mt-16" />
-                    
-                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-                        <div className="flex-1 space-y-4">
-                            <h2 className="text-2xl font-display text-[var(--text)]">Practice Something New</h2>
-                            <p className="text-sm text-[var(--muted)]">Type a topic, a concept, or paste an article URL to generate instant practice materials. No Vault required.</p>
-                            
-                            <form 
-                                className="relative group"
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                    const topic = (e.currentTarget.elements.namedItem('topic') as HTMLInputElement).value;
-                                    if (topic) router.push(`/practice/exam?topic=${encodeURIComponent(topic)}`);
-                                }}
-                            >
-                                <input 
-                                    name="topic"
-                                    type="text" 
-                                    placeholder="e.g. How TCP/IP works, The French Revolution, or paste a URL..."
-                                    className="w-full pl-6 pr-32 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-sm focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent transition-all outline-none"
-                                />
-                                <button 
-                                    type="submit"
-                                    className="absolute right-2 top-2 bottom-2 px-6 bg-[var(--accent)] text-white text-xs font-bold rounded-xl hover:shadow-lg transition-all flex items-center gap-2"
-                                >
-                                    Start <ChevronRight size={14} />
-                                </button>
-                            </form>
-                        </div>
-                        
-                        <div className="hidden md:flex items-center gap-4 text-[var(--muted)] px-8 border-l border-[var(--border)]">
-                            <div className="text-center space-y-1">
-                                <p className="text-2xl font-display text-[var(--text)]">Day 1</p>
-                                <p className="text-[10px] font-bold uppercase tracking-widest">Ready</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    if (!user && !isLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center p-4 text-center bg-[var(--bg)]">
+                <p className="text-[var(--muted)]">Please sign in to access Practice Mode.</p>
             </div>
+        );
+    }
 
-            {/* Main Action Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                
-                {/* Primary Actions (Left/Center) */}
-                <div className="lg:col-span-8 space-y-8 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+    return (
+        <DashboardLayout>
+            <SEO title="Practice | Serify" description="Unified tools for knowledge application and testing." />
+
+            <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-8 relative z-10 pb-32">
+                <div className="max-w-5xl mx-auto space-y-10">
                     
-                    {/* Spaced Repetition Hero Card */}
-                    <div className="relative overflow-hidden premium-card rounded-3xl group">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)] blur-[100px] opacity-[0.05] -mr-32 -mt-32 transition-opacity group-hover:opacity-[0.08]" />
-                        
-                        <div className="p-8 md:p-10 flex flex-col md:flex-row gap-8 items-center relative z-10">
-                            <div className="w-full md:w-auto flex-shrink-0">
-                                <div className={`w-24 h-24 md:w-32 md:h-32 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all ${
-                                    dueReviews.length > 0 
-                                    ? 'bg-[var(--accent)] shadow-[var(--accent)]/20 animate-pulse-glow' 
-                                    : 'bg-[var(--muted)]/20 shadow-none'
-                                }`}>
-                                    <Brain size={48} className="md:w-16 md:h-16" />
+                    {/* Header */}
+                    <header className="space-y-4 animate-fade-in-up">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--accent)]/10 text-[var(--accent)] rounded-full text-xs font-bold uppercase tracking-wider">
+                            <Sparkles size={14} /> Knowledge Application
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-display text-[var(--text)] tracking-tight">
+                            Practice & <span className="text-[var(--accent)]">Verify</span>
+                        </h1>
+                        <p className="text-lg text-[var(--muted)] max-w-2xl leading-relaxed">
+                            Select a tool to test your understanding, find your blind spots, and embed knowledge into long-term memory.
+                        </p>
+                    </header>
+
+                    {/* Due Review Banner */}
+                    {dueReviews.length > 0 && (
+                        <div className="animate-fade-in-up bg-orange-50 border border-orange-200 rounded-2xl p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl rounded-full -mr-16 -mt-16" />
+                            <div className="relative z-10 flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 flex-shrink-0">
+                                    <Brain size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-orange-900">Spaced Review Due</h3>
+                                    <p className="text-sm text-orange-700">You have {dueReviews.length} concept{dueReviews.length !== 1 ? 's' : ''} ready for optimal review.</p>
                                 </div>
                             </div>
-                            
-                            <div className="flex-1 space-y-6 text-center md:text-left">
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-center md:justify-start gap-4">
-                                        <h2 className="text-3xl font-display text-[var(--text)]">Spaced Repetition</h2>
-                                        {dueReviews.length > 0 ? (
-                                            <span className="bg-orange-500/10 text-orange-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-orange-500/20">Action Required</span>
-                                        ) : (
-                                            <span className="bg-[var(--border)] text-[var(--muted)] text-[10px] font-bold px-2 py-0.5 rounded-full border border-[var(--border)]">Vault Logic</span>
-                                        )}
+                            <button 
+                                onClick={() => handleToolClick(TOOLS.find(t => t.id === 'review')!)}
+                                className="relative z-10 w-full md:w-auto px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl transition-all shadow-sm hover:shadow-md flex items-center justify-center gap-2"
+                            >
+                                Start Review <ChevronRight size={18} />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Tool Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+                        {TOOLS.map((tool) => (
+                            <button
+                                key={tool.id}
+                                onClick={() => handleToolClick(tool)}
+                                className={`text-left p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${
+                                    selectedTool?.id === tool.id 
+                                    ? 'bg-white border-[var(--accent)] shadow-md ring-1 ring-[var(--accent)]' 
+                                    : 'bg-white border-[var(--border)] shadow-sm hover:shadow-md hover:border-slate-300'
+                                }`}
+                            >
+                                <div className="space-y-4 relative z-10">
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${tool.bgColor} ${tool.color} transition-transform group-hover:scale-110`}>
+                                        <tool.icon size={24} />
                                     </div>
-                                    <p className="text-[var(--muted)] md:max-w-lg">
-                                        {dueReviews.length > 0 
-                                            ? "Our algorithm identifies the exact moment before you forget a concept. Complete your due reviews to graduate nodes."
-                                            : "This mode requires active nodes in your Vault to identify review cycles. Start a session or use Flow Mode to build your schedule."
-                                        }
-                                    </p>
+                                    <div className="space-y-1.5">
+                                        <h3 className="font-display text-xl text-[var(--text)]">{tool.title}</h3>
+                                        <p className="text-sm text-[var(--muted)] leading-relaxed h-[60px]">{tool.description}</p>
+                                    </div>
+                                    <div className="pt-2 flex items-center gap-2">
+                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full border ${
+                                            tool.cost > 0 
+                                            ? 'bg-blue-50 text-blue-700 border-blue-100' 
+                                            : 'bg-green-50 text-green-700 border-green-100'
+                                        }`}>
+                                            {tool.cost > 0 ? `${tool.cost} TOKENS` : 'FREE'}
+                                        </span>
+                                    </div>
                                 </div>
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Universal Input Panel */}
+                    {selectedTool && selectedTool.id !== 'review' && (
+                        <div ref={inputPanelRef} className="animate-fade-in-up premium-card border-[1.5px] border-[var(--accent)] shadow-xl shadow-[var(--accent)]/10 rounded-3xl overflow-hidden mt-8 relative bg-white">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--accent)] to-blue-400" />
+                            <div className="p-6 md:p-8 space-y-8">
                                 
-                                <div className="flex flex-col sm:flex-row items-center gap-6">
-                                    <div className="flex items-baseline gap-2">
-                                        <span className={`text-4xl font-display ${dueReviews.length > 0 ? 'text-[var(--accent)]' : 'text-[var(--muted)]'}`}>{dueReviews.length}</span>
-                                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">Nodes due for review</span>
-                                    </div>
-                                    
-                                    <Link 
-                                        href="/practice/review" 
-                                        className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
-                                            dueReviews.length > 0 
-                                            ? 'bg-[var(--accent)] text-white hover:shadow-md hover:-translate-y-0.5' 
-                                            : 'bg-[var(--border)] text-[var(--muted)]'
-                                        }`}
-                                    >
-                                        {dueReviews.length > 0 ? 'Start Review Session' : 'View Schedule'} <ChevronRight size={18} />
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Secondary Mode Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Exam Sim */}
-                        <div className="premium-card p-6 rounded-2xl space-y-4 hover:border-orange-200 group transition-all">
-                            <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100 group-hover:bg-orange-600 group-hover:text-white transition-all duration-300">
-                                <FileText size={24} />
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-xl font-display text-[var(--text)]">Exam Simulation</h3>
-                                <p className="text-sm text-[var(--muted)] leading-relaxed">
-                                    Standardized testing to expose misconceptions. Works with Vault concepts or any topic.
-                                </p>
-                            </div>
-                            <div className="pt-2 flex items-center justify-between">
-                                <div className="flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100">
-                                    <Zap size={10} /> 1 AI SESSION
-                                </div>
-                                <Link 
-                                    href="/practice/exam" 
-                                    className="text-sm font-bold text-[var(--accent)] hover:translate-x-1 transition-transform inline-flex items-center gap-1"
-                                >
-                                    Start Sim <ChevronRight size={16} />
-                                </Link>
-                            </div>
-                        </div>
-
-                        {/* Scenario Practice */}
-                        <div className="premium-card p-6 rounded-2xl space-y-4 hover:border-[#7c3d9e]/30 group transition-all">
-                            <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-[#7c3d9e] border border-purple-100 group-hover:bg-[#7c3d9e] group-hover:text-white transition-all duration-300">
-                                <Activity size={24} />
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-xl font-display text-[var(--text)]">Scenario Practice</h3>
-                                <p className="text-sm text-[var(--muted)] leading-relaxed">
-                                    Real-world problem solving. Perfect for ad-hoc case studies or applying Vault knowledge.
-                                </p>
-                            </div>
-                            <div className="pt-2 flex items-center justify-between">
-                                <div className="flex items-center gap-1 text-[10px] font-bold text-[#7c3d9e] bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
-                                    <Zap size={10} /> 0.5 AI SESSION
-                                </div>
-                                <Link 
-                                    href="/practice/scenario" 
-                                    className="text-sm font-bold text-[var(--accent)] hover:translate-x-1 transition-transform inline-flex items-center gap-1"
-                                >
-                                    Apply Concepts <ChevronRight size={16} />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Sidebar Stats & History (Right) */}
-                <div className="lg:col-span-4 space-y-8 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                    
-                    {/* Historical Feed */}
-                    <div className="premium-card rounded-2xl overflow-hidden flex flex-col min-h-[400px]">
-                        <div className="p-5 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface)]/50">
-                            <div className="flex items-center gap-2">
-                                <History size={18} className="text-[var(--muted)]" />
-                                <h3 className="font-bold text-sm uppercase tracking-wider">Practice Record</h3>
-                            </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 bg-[var(--bg)] border border-[var(--border)] rounded-full text-[var(--muted)]">
-                                {sessionCount} Total
-                            </span>
-                        </div>
-                        
-                        <div className="flex-grow p-5">
-                            {isLoading ? (
-                                <div className="h-full flex flex-col items-center justify-center space-y-3 opacity-50">
-                                    <div className="w-8 h-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
-                                    <span className="text-xs font-medium">Analyzing history...</span>
-                                </div>
-                            ) : recentSessions.length > 0 ? (
-                                <div className="space-y-6">
-                                    {recentSessions.map((session, idx) => (
-                                        <div key={session.id} className="relative pl-6 group/item">
-                                            {idx !== recentSessions.length - 1 && (
-                                                <div className="absolute left-1 top-4 bottom-[-24px] w-px bg-[var(--border)]" />
-                                            )}
-                                            <div className={`absolute left-0 top-1 w-2 h-2 rounded-full border-2 bg-white transition-all ${
-                                                session.type === 'exam' ? 'border-orange-500' :
-                                                session.type === 'scenario' ? 'border-[#7c3d9e]' :
-                                                'border-[var(--accent)]'
-                                            }`} />
-                                            
-                                            <div className="space-y-1">
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-sm font-bold text-[var(--text)] capitalize">
-                                                        {session.type} Practice
-                                                    </p>
-                                                    <span className="text-[9px] font-bold text-[var(--muted)]">
-                                                        {new Date(session.started_at).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[11px] text-[var(--muted)] leading-relaxed">
-                                                    {session.status === 'completed' 
-                                                        ? `Performance rated as ${session.overall_performance || 'Standard'}`
-                                                        : 'Session interrupted'}
-                                                </p>
-                                            </div>
+                                <div className="flex items-center justify-between border-b pb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedTool.bgColor} ${selectedTool.color}`}>
+                                            <selectedTool.icon size={20} />
                                         </div>
-                                    ))}
-                                    <button className="w-full py-2 bg-[var(--bg)] hover:bg-[var(--surface)] border border-[var(--border)] rounded-xl text-xs font-bold text-[var(--text)] transition-all mt-4">
-                                        View Full History
+                                        <div>
+                                            <h2 className="text-xl font-display text-[var(--text)]">{selectedTool.title} Setup</h2>
+                                            <p className="text-xs text-[var(--muted)]">{selectedTool.id === 'exam' ? 'Configure your simulation' : 'Choose what to practice'}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setSelectedTool(null)} className="p-2 text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] rounded-full transition-colors">
+                                        <X size={20} />
                                     </button>
                                 </div>
-                            ) : (
-                                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-10 opacity-60">
-                                    <div className="w-16 h-16 rounded-3xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
-                                        <Beaker size={24} />
+
+                                <div className="space-y-6">
+                                    {/* Topic Input */}
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-[var(--text)]">What do you want to practice?</label>
+                                        <input 
+                                            type="text"
+                                            value={topicInput}
+                                            onChange={(e) => setTopicInput(e.target.value)}
+                                            placeholder="e.g. Mitochondria, React Hooks, or The French Revolution..."
+                                            className="w-full px-4 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl focus:ring-2 focus:ring-[var(--accent)] focus:outline-none transition-shadow"
+                                        />
                                     </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-bold">Lab is empty</p>
-                                        <p className="text-[11px]">Start your first practice session to see the laboratory logs.</p>
-                                    </div>
+
+                                    {/* Vault Concepts */}
+                                    {vaultConcepts.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm font-bold text-[var(--text)]">Or select from your Vault</label>
+                                                <span className="text-xs text-[var(--muted)]">{selectedConcepts.length} selected</span>
+                                            </div>
+                                            <div className="flex gap-2 flex-wrap max-h-40 overflow-y-auto p-2 -mx-2">
+                                                {vaultConcepts.map(c => (
+                                                    <button
+                                                        key={c.id}
+                                                        onClick={() => toggleConcept(c.id)}
+                                                        className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${
+                                                            selectedConcepts.includes(c.id)
+                                                            ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-md scale-105'
+                                                            : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:border-slate-300'
+                                                        }`}
+                                                    >
+                                                        {c.display_name}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Difficulty */}
+                                    {selectedTool.hasDifficulty && (
+                                        <div className="space-y-2 pt-2 border-t border-[var(--border)]/50">
+                                            <label className="text-sm font-bold text-[var(--text)]">Starting Difficulty</label>
+                                            <div className="flex bg-[var(--surface)] rounded-xl p-1 border border-[var(--border)] w-fit">
+                                                {['auto', 'easy', 'medium', 'hard'].map(level => (
+                                                    <button
+                                                        key={level}
+                                                        onClick={() => setDifficulty(level as any)}
+                                                        className={`px-4 py-1.5 text-xs font-bold rounded-lg capitalize transition-all ${
+                                                            difficulty === level 
+                                                            ? 'bg-white text-[var(--accent)] shadow-sm' 
+                                                            : 'text-[var(--muted)] hover:text-[var(--text)]'
+                                                        }`}
+                                                    >
+                                                        {level}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-[10px] text-[var(--muted)] mt-1 ml-1">
+                                                {difficulty === 'auto' ? 'Adapts based on your Vault mastery.' : 'Overrides adaptive starting level.'}
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* Generate Button */}
+                                <div className="pt-6 border-t flex items-center justify-between">
+                                    <div className="text-xs text-[var(--muted)]">
+                                        Generates instantly. Requires <span className="font-bold text-[var(--text)]">{selectedTool.cost} Tokens</span>.
+                                    </div>
+                                    <button 
+                                        onClick={handleGenerate}
+                                        disabled={isGenerating || (!topicInput && selectedConcepts.length === 0)}
+                                        className="px-8 py-3 bg-[var(--accent)] text-white font-bold rounded-xl shadow-lg shadow-[var(--accent)]/20 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center gap-2"
+                                    >
+                                        {isGenerating ? 'Prepping...' : `Start ${selectedTool.title}`} 
+                                        {!isGenerating && <ChevronRight size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Recent Practice */}
+                    <div className="mt-16 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-display flex items-center gap-2">
+                                <History size={20} className="text-[var(--muted)]" /> Recent Practice
+                            </h2>
+                            {recentSessions.length > 0 && (
+                                <Link href="/practice/results" className="text-sm text-[var(--accent)] font-medium hover:underline">
+                                    View All
+                                </Link>
                             )}
                         </div>
+                        
+                        {isLoading ? (
+                            <div className="h-32 flex items-center justify-center">
+                                <span className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></span>
+                            </div>
+                        ) : recentSessions.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {recentSessions.map(session => {
+                                    const toolDef = TOOLS.find(t => t.id === session.tool) || TOOLS[0];
+                                    return (
+                                        <Link 
+                                            key={session.id} 
+                                            href={`/practice/results/${session.id}`}
+                                            className="p-5 rounded-2xl bg-white border border-[var(--border)] hover:border-[var(--accent)]/30 hover:shadow-md transition-all group flex flex-col justify-between h-[140px]"
+                                        >
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)] uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors">
+                                                    <toolDef.icon size={14} />
+                                                    {toolDef.title}
+                                                </div>
+                                                <h3 className="font-medium text-[var(--text)] line-clamp-2 leading-snug">
+                                                    {session.topic || 'Vault Review'}
+                                                </h3>
+                                            </div>
+                                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--border)]/50">
+                                                <span className="text-xs text-[var(--muted)]">
+                                                    {new Date(session.started_at).toLocaleDateString()}
+                                                </span>
+                                                {session.status === 'completed' ? (
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                        session.overall_performance === 'strong' ? 'bg-green-100 text-green-700' :
+                                                        session.overall_performance === 'weak' ? 'bg-red-100 text-red-700' :
+                                                        'bg-yellow-100 text-yellow-700'
+                                                    }`}>
+                                                        {session.overall_performance?.toUpperCase() || 'COMPLETED'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase">
+                                                        {session.status}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 bg-white border border-[var(--border)] border-dashed rounded-3xl">
+                                <p className="text-[var(--muted)]">No recent practice sessions found.</p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Print Utility Card */}
-                    <div className="premium-card p-6 rounded-2xl bg-gradient-to-br from-[#f0f7f4] to-[#ffffff] border-[#e8f2ee] shadow-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:scale-110 transition-transform">
-                            <Printer size={80} />
-                        </div>
-                        <div className="relative z-10 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[var(--accent)] shadow-sm">
-                                    <Printer size={16} />
-                                </div>
-                                <h3 className="font-bold text-sm uppercase tracking-wider text-[var(--accent)]">Analog Mode</h3>
-                            </div>
-                            <p className="text-xs text-[#2a5c45] font-medium leading-relaxed">
-                                Need to study away from a screen? Generate customized printable practice worksheets for any exam configuration.
-                            </p>
-                            <Link 
-                                href="/practice/exam?print=true" 
-                                className="inline-flex items-center gap-2 text-xs font-black text-[var(--accent)] group-hover:translate-x-1 transition-transform"
-                            >
-                                Generate PDF <ChevronRight size={14} />
-                            </Link>
-                        </div>
+                    {/* Printable Target */}
+                    <div className="text-center pt-8 pb-12 animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+                        <button className="text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)] transition-colors inline-flex items-center gap-1.5 group">
+                            <Printer size={16} className="group-hover:scale-110 transition-transform" /> 
+                            Just want a printable test? Generate one without completing it in Serify &rarr;
+                        </button>
                     </div>
 
                 </div>
             </div>
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+        </DashboardLayout>
+    );
 }

@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { CheckCircle2 } from 'lucide-react';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
+import GeneratingAnimation from '@/components/GeneratingAnimation';
 
 export default function FlashcardsMode() {
     const router = useRouter();
@@ -170,9 +171,11 @@ export default function FlashcardsMode() {
 
     if (loading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)]">
-                <div className="w-8 h-8 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin mb-4"></div>
-                <p className="text-[var(--muted)] animate-pulse">Preparing your deck...</p>
+            <div className="flex flex-col items-center justify-center min-h-screen bg-[var(--background)] px-6">
+                <div className="w-full max-w-lg">
+                    <p className="text-center text-xl font-display text-[var(--text)] mb-8">Building your flashcard deck...</p>
+                    <GeneratingAnimation type="cards" />
+                </div>
             </div>
         );
     }

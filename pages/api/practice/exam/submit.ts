@@ -60,16 +60,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Merge provided answers with questions
     const questionsForEval = practiceResponses.map(pr => {
-        // Find answer by conceptId or question indexing. Assuming answers match order for now or pass exact id.
-        // Let's assume `answers` array objects have { questionId: string, answer: string }
         const providedAnswer = answers.find(a => a.questionId === pr.id)?.answer || '';
+        const diffMatrix: Record<string, number> = { 'auto': 3, 'easy': 1, 'medium': 3, 'hard': 5 };
         return {
             id: pr.id,
             questionText: pr.question_text,
             answer: providedAnswer,
             conceptId: pr.concept_id!,
             conceptName: (pr.knowledge_nodes as any)?.display_name || 'Unknown',
-            difficulty: pr.difficulty_level || 1
+            difficulty: diffMatrix[practiceSession.difficulty_level || 'auto'] || 3
         };
     });
 
@@ -78,21 +77,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 4. Update Practice Responses with feedback
     // Perform sequentially or batch update
+    const scoreMatrix: Record<string, number> = { 'strong': 100, 'developing': 60, 'shaky': 30, 'blank': 0 };
+    let totalScore = 0;
+
     for (let i = 0; i < questionsForEval.length; i++) {
         const q = questionsForEval[i];
         // Ensure feedback array matches length or map safely
         const feedbackObj = evaluation.questionFeedback[i] || { score: 'blank', feedback: 'No feedback generated.' };
-        
+        const points = scoreMatrix[feedbackObj.score] || 0;
+        totalScore += points;
+
         await supabase
             .from('practice_responses')
             .update({
                 user_response: q.answer,
                 response_quality: feedbackObj.score,
                 ai_feedback: feedbackObj.feedback,
-                time_spent_seconds: timeSpentSeconds ? Math.floor(timeSpentSeconds / questionsForEval.length) : null // Rough estimate if not provided per question
+                time_spent_seconds: timeSpentSeconds ? Math.floor(timeSpentSeconds / questionsForEval.length) : null
             })
             .eq('id', q.id);
     }
+
+    const finalScore = Math.round(totalScore / questionsForEval.length);
 
     // 5. Update Practice Session status
     await supabase
@@ -101,8 +107,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             status: 'completed',
             completed_at: new Date().toISOString(),
             time_spent_seconds: timeSpentSeconds,
-            overall_performance: evaluation.overallPerformance,
-            performance_report: evaluation as any
+            overall_performance: String(finalScore),
+            results: {
+                overallPerformance: evaluation.overallPerformance,
+                conceptPerformances: evaluation.conceptPerformances
+            }
         })
         .eq('id', sessionId);
 

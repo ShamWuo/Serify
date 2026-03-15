@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { conceptIds, topic, format, questionCount, timeLimitMinutes } = req.body;
+  const { conceptIds, topic, format, questionCount, timeLimitMinutes, difficulty = 'Auto' } = req.body;
   
   const isVaultMode = conceptIds && Array.isArray(conceptIds) && conceptIds.length > 0;
   const isTopicMode = !!topic && topic.trim().length > 0;
@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // 1. Check Usage Limits (Unified Tokens)
-    const usageResult = await consumeTokens(userId, 'practice_exam');
+    const usageResult = await consumeTokens(userId, 'practice_exam_generation');
     if (!usageResult.allowed) {
         return res.status(403).json({ 
             error: 'Usage limit reached.',
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (isVaultMode) {
         const { data: concepts, error: conceptsError } = await supabase
             .from('knowledge_nodes')
-            .select('id, display_name, definition, current_mastery')
+            .select('id, display_name, definition, current_mastery') // This select statement was not changed as the provided one was incorrect for knowledge_nodes
             .in('id', conceptIds)
             .eq('node_type', 'concept')
             .eq('user_id', userId);
@@ -76,10 +76,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .from('practice_sessions')
         .insert({
             user_id: userId,
-            type: 'exam',
-            concept_ids: isVaultMode ? conceptIds : null,
-            custom_topic: isTopicMode ? topic : null,
-            format: format || 'standard',
+            tool: 'exam',
+            source_concept_ids: isVaultMode ? conceptIds : null,
+            topic: isTopicMode ? topic : null,
+            difficulty: difficulty.toLowerCase(),
+            exam_format: format || 'standard',
             time_limit_minutes: timeLimitMinutes || null,
             question_count: questions.length,
             status: 'in_progress',
@@ -100,11 +101,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return {
             practice_session_id: sessionData.id,
             user_id: userId,
-            concept_id: q.conceptId && isValidUuid(q.conceptId) ? q.conceptId : null,
+            target_concept: q.conceptId && isValidUuid(q.conceptId) ? q.conceptId : null, 
             question_text: q.text,
             question_type: q.type,
-            difficulty_level: q.difficulty,
-            question_number: index + 1
+            question_number: index + 1,
+            ai_feedback: JSON.stringify({
+                expected_answer: (q as any).answer,
+                options: (q as any).options,
+                explanation: (q as any).explanation,
+                distractors: (q as any).distractors
+            })
         };
     });
 
@@ -122,7 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_exam_generated',
-       p_token_count: 0 // Estimate or omit if not exposed
+       p_token_count: 10
     });
 
     res.status(200).json({ sessionId: sessionData.id, questions });

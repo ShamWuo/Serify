@@ -72,6 +72,11 @@ export type TokenAction =
     | 'practice_review'
     | 'practice_pdf_export'
     | 'practice_quiz'
+    | 'practice_test_generation'
+    | 'practice_quiz_generation'
+    | 'practice_exam_generation'
+    | 'practice_flashcards_generation'
+    | 'practice_scenario_generation'
     | 'deep_dive'
     | 'manual_synthesis';
 
@@ -162,6 +167,11 @@ export async function consumeTokens(
         'practice_review': 'practice',
         'practice_pdf_export': 'practice',
         'practice_quiz': 'practice',
+        'practice_test_generation': 'practice',
+        'practice_quiz_generation': 'practice',
+        'practice_exam_generation': 'practice',
+        'practice_flashcards_generation': 'practice',
+        'practice_scenario_generation': 'practice',
         'deep_dive': 'deep_dives',
         'manual_synthesis': 'other',
     };

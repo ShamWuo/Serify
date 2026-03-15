@@ -14,6 +14,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { CheckCircle2 } from 'lucide-react';
+import GeneratingAnimation from '@/components/GeneratingAnimation';
+
 
 export default function ExplainMode() {
     const router = useRouter();
@@ -241,13 +243,7 @@ export default function ExplainMode() {
                 </h1>
 
                 {generating ? (
-                    <div className="space-y-4 animate-pulse">
-                        <div className="h-4 bg-[var(--border)] rounded w-3/4"></div>
-                        <div className="h-4 bg-[var(--border)] rounded w-full"></div>
-                        <div className="h-4 bg-[var(--border)] rounded w-5/6"></div>
-                        <div className="h-4 bg-[var(--border)] rounded w-full"></div>
-                        <div className="h-4 bg-[var(--border)] rounded w-2/3"></div>
-                    </div>
+                    <GeneratingAnimation type="text" label="AI is building your explanation..." />
                 ) : (
                     <div className="prose prose-lg text-[var(--text)] prose-p:leading-relaxed prose-headings:font-display prose-a:text-[var(--accent)] max-w-none">
                         <MarkdownRenderer>{currentExplanation || ''}</MarkdownRenderer>

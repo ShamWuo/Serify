@@ -77,6 +77,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     // 3. Update Practice Response with feedback
+    const scoreMatrix: Record<string, number> = { 'strong': 100, 'developing': 60, 'weak': 30 };
+    const points = scoreMatrix[evaluation.score] || 0;
+
     await supabase
         .from('practice_responses')
         .update({
@@ -95,8 +98,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             status: 'completed',
             completed_at: new Date().toISOString(),
             time_spent_seconds: timeSpentSeconds,
-            overall_performance: evaluation.score,
-            performance_report: { 
+            overall_performance: String(points),
+            results: { 
                 scenarioText,
                 questionText,
                 evaluation

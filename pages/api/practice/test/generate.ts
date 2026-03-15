@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
-import { generateScenario } from '@/lib/serify-ai';
+import { generatePracticeTest } from '@/lib/serify-ai';
 import { Database } from '@/types/db_types_new';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -17,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  
   const { conceptIds, topic, difficulty = 'Auto' } = req.body;
 
   const isVaultMode = conceptIds && Array.isArray(conceptIds) && conceptIds.length > 0;
@@ -27,8 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 1. Check Usage Limits (Unified Tokens)
-    const usageResult = await consumeTokens(userId, 'practice_scenario_generation');
+    // Practice Test costs 8 tokens (cost handled in DB)
+    const usageResult = await consumeTokens(userId, 'practice_test_generation');
     if (!usageResult.allowed) {
         return res.status(403).json({ 
             error: 'Usage limit reached.',
@@ -40,7 +41,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { plan: subscription_plan } = usageResult;
 
-    // 2. Resolve scope
     let formattedConcepts: { id: string; name: string; description: string }[] = [];
     if (isVaultMode) {
         const { data: qNodes, error: qNodesError } = await supabase
@@ -60,15 +60,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
     }
 
-    // 3. Generate Scenario
-    const scenario = await generateScenario(formattedConcepts, subscription_plan || 'free', topic);
+    const questions = await generatePracticeTest(formattedConcepts, subscription_plan || 'free', topic, difficulty);
 
-    // 4. Create Practice Session record
+    // Create session
     const { data: sessionData, error: sessionError } = await supabase
         .from('practice_sessions')
         .insert({
             user_id: userId,
-            tool: 'scenario',
+            tool: 'test',
             source_concept_ids: isVaultMode ? conceptIds : null,
             topic: isTopicMode ? topic : null,
             difficulty: difficulty.toLowerCase(),
@@ -82,41 +81,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create practice session: ' + (sessionError?.message || 'Unknown error'));
     }
 
-    const isValidUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[0-89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-    const { data: responseData, error: responsesError } = await supabase
-        .from('practice_responses')
-        .insert({
-            practice_session_id: sessionData.id,
-            user_id: userId,
-            concept_id: isVaultMode && isValidUuid(conceptIds[0]) ? conceptIds[0] : null, 
-            question_text: `[SCENARIO] ${scenario.scenarioText}\n\n[TASK] ${scenario.questionText}`,
-            question_type: 'scenario',
-            question_number: 1
-        })
-        .select()
-        .single();
+    // Insert questions
+    const inserts = questions.map((q, index) => ({
+      practice_session_id: sessionData.id,
+      user_id: userId,
+      target_concept: q.conceptId || (isVaultMode ? conceptIds[0] : null), 
+      question_text: q.text,
+      question_type: q.type, // 'retrieval' | 'application' | 'misconception'
+      question_number: index + 1,
+      // Store everything needed to display/grade
+      ai_feedback: JSON.stringify({
+          expected_answer: q.answer,
+          options: q.options,
+          explanation: q.explanation,
+          distractors: q.distractors
+      })
+    }));
 
-    if (responsesError || !responseData) {
-        throw new Error('Failed to create scenario question placeholder');
+    const { data: insertedQuestions, error: qError } = await supabase
+      .from('practice_responses')
+      .insert(inserts)
+      .select('id, question_text, question_type, question_number, target_concept')
+      .order('question_number', { ascending: true });
+
+    if (qError || !insertedQuestions) {
+        throw new Error('Failed to insert test questions');
     }
-
-    // Usage already deducted via consumeTokens at the start to ensure atomic gating
 
     // Track Analytics
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
-       p_message_type: 'practice_scenario_generated',
-       p_token_count: 5
+       p_message_type: 'practice_test_generated',
+       p_token_count: 8
     });
 
     res.status(200).json({ 
-        sessionId: sessionData.id, 
-        responseId: responseData.id,
-        scenarioText: scenario.scenarioText,
-        questionText: scenario.questionText
+        sessionId: sessionData.id,
+        questions: insertedQuestions
     });
   } catch (error: any) {
-    console.error('API Error /api/practice/scenario/generate:', error);
+    console.error('API Error /api/practice/test/generate:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }

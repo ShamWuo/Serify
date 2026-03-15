@@ -1,8 +1,11 @@
 import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
-import { checkUsage, incrementUsage } from '@/lib/usage';
+import { checkUsage, incrementUsage, authenticateApiRequest } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const config = { runtime: 'edge' };
 

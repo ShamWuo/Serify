@@ -8,7 +8,15 @@ import {
   ReflectionSession
 } from '../types/serify';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+let genAI: GoogleGenerativeAI | null = null;
+
+function getGenAI() {
+  if (!genAI) {
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    genAI = new GoogleGenerativeAI(apiKey);
+  }
+  return genAI;
+}
 
 export function getGeminiModel(plan: string = 'free', systemInstruction?: string) {
   let modelName = 'gemini-2.5-flash';
@@ -19,7 +27,7 @@ export function getGeminiModel(plan: string = 'free', systemInstruction?: string
     modelName = 'gemini-2.5-pro'; // Or gemini-1.5-pro-latest if preferred for Pro+
   }
 
-  return genAI.getGenerativeModel({
+  return getGenAI().getGenerativeModel({
     model: modelName,
     systemInstruction,
     generationConfig: {
@@ -29,23 +37,50 @@ export function getGeminiModel(plan: string = 'free', systemInstruction?: string
   });
 }
 
-const defaultModel = getGeminiModel('free');
+function getDefaultModel() {
+  return getGeminiModel('free');
+}
 
 export function parseJSON<T>(text: string): T {
-  // Try to extract JSON between markdown code blocks if they exist
-  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  const toParse = jsonMatch ? jsonMatch[1] : text;
+  // Try to match standard markdown JSON fences
+  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*(?:```|$)/);
+  let toParse = jsonMatch ? jsonMatch[1] : text;
 
-  const cleaned = toParse.replace(/^\s+/, '').replace(/\s+$/, '').trim();
+  // Clean up any remaining leading formatting just in case
+  let cleaned = toParse.replace(/^\s+/, '').replace(/\s+$/, '').trim();
+  if (cleaned.startsWith('```json')) cleaned = cleaned.replace(/^```json/, '').trim();
+  if (cleaned.startsWith('```')) cleaned = cleaned.replace(/^```/, '').trim();
+  if (cleaned.endsWith('```')) cleaned = cleaned.replace(/```$/, '').trim();
 
   try {
     return JSON.parse(cleaned);
   } catch (err) {
-    console.error('Failed to parse JSON from AI response:', text);
-    // If it's a common "AI added a comment" error, try one last aggressive strip
+    console.error('Failed to parse JSON cleanly, attempting aggressive subset extraction...');
+    // If it's still failing (e.g. truncated JSON), aggressively find the bounds
     try {
-      const aggressive = cleaned.substring(cleaned.indexOf('{'), cleaned.lastIndexOf('}') + 1);
-      return JSON.parse(aggressive);
+      const firstBrace = cleaned.indexOf('{');
+      const lastBrace = cleaned.lastIndexOf('}');
+      const firstBracket = cleaned.indexOf('[');
+      const lastBracket = cleaned.lastIndexOf(']');
+      
+      let first = -1;
+      if (firstBrace !== -1 && firstBracket !== -1) first = Math.min(firstBrace, firstBracket);
+      else if (firstBrace !== -1) first = firstBrace;
+      else first = firstBracket;
+      
+      const last = Math.max(lastBrace, lastBracket);
+      
+      if (first !== -1 && last !== -1 && (last > first)) {
+          const aggressive = cleaned.substring(first, last + 1);
+          try {
+            return JSON.parse(aggressive);
+          } catch (aggressiveErr) {
+            console.error('Aggressive JSON parse failed. Raw string:', aggressive);
+            throw aggressiveErr;
+          }
+      }
+      console.error('Could not find JSON bounds. Cleaned string:', cleaned);
+      throw err;
     } catch (innerErr) {
       throw err;
     }
@@ -110,9 +145,9 @@ Rules:
 - "relatedConcepts": valid IDs of other extracted pillars that this one builds upon or connects to.
 - Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
 
-  const result = await defaultModel.generateContent({
+  const result = await getDefaultModel().generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 2000 }
+    generationConfig: { maxOutputTokens: 4000 }
   });
   const text = result.response.text();
 
@@ -237,7 +272,7 @@ Rules:
   const model = getGeminiModel(plan);
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1500 }
+    generationConfig: { maxOutputTokens: 3000 }
   });
   const text = result.response.text();
 
@@ -282,7 +317,7 @@ Rules:
   const model = getGeminiModel(plan);
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1500 }
+    generationConfig: { maxOutputTokens: 3000 }
   });
   const text = result.response.text();
 
@@ -420,6 +455,192 @@ RULES:
 // Practice Mode Integrations
 // ----------------------------------------------------------------------------
 
+export async function generatePracticeTest(
+  concepts: { id: string; name: string; description: string }[],
+  plan: string = 'free',
+  topic?: string,
+  difficulty: 'Auto' | 'Easy' | 'Medium' | 'Hard' = 'Auto'
+): Promise<{ 
+  id: string; 
+  type: 'retrieval' | 'application' | 'misconception'; 
+  text: string; 
+  conceptId: string | null; 
+  answer?: string; 
+  options?: string[]; 
+  explanation?: string; 
+  distractors?: string[]; 
+}[]> {
+  const conceptList = concepts.length > 0 
+    ? concepts.map(c => `- ${c.name} (ID: ${c.id}): ${c.description}`).join('\n')
+    : `AD-HOC TOPIC: ${topic || 'General knowledge'}`;
+  
+  const scopeType = concepts.length > 0 ? "specific Vault concepts" : "this broad topic";
+
+  const difficultyInstruction = difficulty === 'Easy' ? 'Keep it simple and foundational.' 
+    : difficulty === 'Hard' ? 'Make it challenging, highly analytical, and nuanced.' 
+    : 'Adapt the difficulty starting with foundational and moving to application.';
+
+  const prompt = `You are a learning coach. Generate exactly 6 open-ended diagnostic questions for ${scopeType}:
+${conceptList}
+
+Difficulty focus: ${difficultyInstruction}
+
+JSON Format:
+[
+  {
+    "id": "q-1",
+    "type": "retrieval" | "application" | "misconception",
+    "text": "Question text",
+    "conceptId": "ID of the primary concept, or null if ad-hoc topic"
+  }
+]
+
+Rules:
+- Retrieval: recall/explain. Application: scenario. Misconception: fix wrong framing.
+- Mix all three question types.
+- Ensure the questions map exactly to the provided concepts (use their IDs).
+- Only output valid JSON array.`;
+
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 3000 }
+  });
+  
+  return parseJSON<any[]>(result.response.text());
+}
+
+export async function evaluatePracticeTest(
+  questions: { questionText: string; answer: string; conceptId: string | null; type: string }[],
+  plan: string = 'free'
+): Promise<{
+  overallPerformance: 'strong' | 'developing' | 'shaky';
+  questionFeedback: { score: 'strong' | 'developing' | 'shaky' | 'blank'; feedback: string }[];
+  focusSuggestions: string[];
+}> {
+  const qnaText = questions.map((q, i) => 
+    `Q${i+1} (${q.type}): ${q.questionText}\nUser Answer: ${q.answer || '(blank)'}`
+  ).join('\n\n');
+
+  const prompt = `Grade this Practice Test.
+Answers:
+${qnaText}
+
+Evaluate mechanism accuracy and misconceptions.
+If an answer is mostly correct but misses a nuance, it's 'developing'. Blank is 'blank'.
+
+JSON Format required:
+{
+  "overallPerformance": "strong" | "developing" | "shaky",
+  "questionFeedback": [
+    {
+      "score": "strong" | "developing" | "shaky" | "blank",
+      "feedback": "2-3 concise sentences justifying the score."
+    }
+  ],
+  "focusSuggestions": ["actionable advice 1", "actionable advice 2"]
+}
+`;
+
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 4000 }
+  });
+  const responseText = result.response.text();
+  try {
+    return parseJSON<any>(responseText);
+  } catch (err) {
+    console.error('Failed to parse evaluation response:', responseText);
+    throw err;
+  }
+}
+
+export async function generateQuickQuiz(
+  concepts: { id: string; name: string; description: string }[],
+  plan: string = 'free',
+  topic?: string,
+  difficulty: 'Auto' | 'Easy' | 'Medium' | 'Hard' = 'Auto'
+): Promise<{ text: string; options: string[]; answer: string; explanation: string; conceptId: string | null }[]> {
+  const conceptList = concepts.length > 0 
+    ? concepts.map(c => `- ${c.name} (ID: ${c.id})`).join('\n')
+    : `AD-HOC TOPIC: ${topic || 'General knowledge'}`;
+  
+  const scopeType = concepts.length > 0 ? "specific Vault concepts" : "this broad topic";
+
+  const prompt = `Generate a 5-question multiple choice Quick Quiz for ${scopeType}:
+${conceptList}
+
+Difficulty: ${difficulty}. 
+Make sure the distractors are plausible misconceptions, not obviously wrong filler.
+
+JSON Format required:
+[
+  {
+    "text": "The question string",
+    "options": ["A", "B", "C", "D"],
+    "answer": "The exact string from the options array that is correct",
+    "explanation": "1-2 sentences explaining why the answer is correct.",
+    "conceptId": "ID of the specific concept tested, or null if ad-hoc topic"
+  }
+]
+`;
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 3000 }
+  });
+  return parseJSON<any[]>(result.response.text());
+}
+
+export async function generateFlashcards(
+  concepts: { id: string; name: string; description: string }[],
+  plan: string = 'free',
+  topic?: string
+): Promise<{ front: string; back: string; conceptId: string | null }[]> {
+  const conceptList = concepts.length > 0 
+    ? concepts.map(c => `- ${c.name} (ID: ${c.id}): ${c.description}`).join('\n')
+    : `AD-HOC TOPIC: ${topic || 'General knowledge'}`;
+    
+  let prompt = '';
+  if (concepts.length > 0) {
+    prompt = `Generate exactly 10 high-yield flashcards covering these concepts:
+${conceptList}
+Use a mix of standard "Definition" cards, and "Fill in the blank" cards. Make them atomic (one idea per card).
+
+JSON Format:
+[
+  {
+    "front": "Front of card text",
+    "back": "Back of card text",
+    "conceptId": "ID of the concept"
+  }
+]`;
+  } else {
+    prompt = `The user wants to study this topic: "${topic}".
+Generate exactly 10 high-yield, foundational flashcards covering the most important facts, principles, or formulas of this topic.
+Make them atomic (one idea per card).
+
+JSON Format:
+[
+  {
+    "front": "Front of card text",
+    "back": "Back of card text",
+    "conceptId": null
+  }
+]`;
+  }
+
+  const model = getGeminiModel(plan);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 3000 }
+  });
+  return parseJSON<any[]>(result.response.text());
+}
+
+// ----------------------------------------------------------------------------
+
 export interface ExamQuestionConfig {
   format: 'standard' | 'problem_set' | 'essay' | 'case_study' | 'technical';
   questionCount: number;
@@ -474,7 +695,7 @@ JSON Format:
   const model = getGeminiModel(plan);
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 2500 }
+    generationConfig: { maxOutputTokens: 4000 }
   });
   
   return parseJSON<any[]>(result.response.text());

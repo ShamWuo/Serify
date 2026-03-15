@@ -83,7 +83,7 @@ export default function LearnIndex() {
     const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent');
     const [isGateOpen, setIsGateOpen] = useState(false);
 
-    const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('learn_mode_curriculum');
+    const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('curricula');
 
     const curriculumInitialValue = {
         title: '', target_description: '', outcomes: [] as string[],
@@ -535,7 +535,7 @@ export default function LearnIndex() {
 
                             {usage && (
                                 <div className="mt-6">
-                                    <UsageWarning feature='learn_mode_curriculum' usage={usage} />
+                                    <UsageWarning feature='curricula' usage={usage} />
                                 </div>
                             )}
 
@@ -675,7 +675,7 @@ export default function LearnIndex() {
                 </div>
             </div>
 
-            {isGateOpen && <UsageGate feature='learn_mode_curriculum' onClose={() => setIsGateOpen(false)} />}
+            {isGateOpen && <UsageGate feature='curricula' onClose={() => setIsGateOpen(false)} />}
         </DashboardLayout>
     );
 }

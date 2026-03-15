@@ -1,8 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
-import { generateScenario } from '@/lib/serify-ai';
-import { Database } from '@/types/db_types_new';
+import { generateFlashcards } from '@/lib/serify-ai';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -17,7 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  const { conceptIds, topic, difficulty = 'Auto' } = req.body;
+  
+  const { conceptIds, topic } = req.body;
 
   const isVaultMode = conceptIds && Array.isArray(conceptIds) && conceptIds.length > 0;
   const isTopicMode = !!topic && topic.trim().length > 0;
@@ -27,8 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 1. Check Usage Limits (Unified Tokens)
-    const usageResult = await consumeTokens(userId, 'practice_scenario_generation');
+    // Flashcards cost 2 tokens (cost handled in DB)
+    const usageResult = await consumeTokens(userId, 'practice_flashcards_generation');
     if (!usageResult.allowed) {
         return res.status(403).json({ 
             error: 'Usage limit reached.',
@@ -40,7 +40,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { plan: subscription_plan } = usageResult;
 
-    // 2. Resolve scope
     let formattedConcepts: { id: string; name: string; description: string }[] = [];
     if (isVaultMode) {
         const { data: qNodes, error: qNodesError } = await supabase
@@ -60,18 +59,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
     }
 
-    // 3. Generate Scenario
-    const scenario = await generateScenario(formattedConcepts, subscription_plan || 'free', topic);
+    const cards = await generateFlashcards(formattedConcepts, subscription_plan || 'free', topic);
 
-    // 4. Create Practice Session record
+    // Create session (Flashcards use flashcard_sessions table in the new schema)
+    // Actually, wait, the schema we applied has a practice_sessions type='flashcards' 
+    // AND a separate flashcard_sessions table. The spec said: "flashcard_sessions (tracks specific standard back/front cards)".
+    
+    // Let's create the master practice_session first for universal recent history tracking
     const { data: sessionData, error: sessionError } = await supabase
         .from('practice_sessions')
         .insert({
             user_id: userId,
-            tool: 'scenario',
+            tool: 'flashcards',
             source_concept_ids: isVaultMode ? conceptIds : null,
             topic: isTopicMode ? topic : null,
-            difficulty: difficulty.toLowerCase(),
             status: 'in_progress',
             started_at: new Date().toISOString()
         })
@@ -82,41 +83,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create practice session: ' + (sessionError?.message || 'Unknown error'));
     }
 
-    const isValidUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[0-89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-    const { data: responseData, error: responsesError } = await supabase
-        .from('practice_responses')
-        .insert({
-            practice_session_id: sessionData.id,
-            user_id: userId,
-            concept_id: isVaultMode && isValidUuid(conceptIds[0]) ? conceptIds[0] : null, 
-            question_text: `[SCENARIO] ${scenario.scenarioText}\n\n[TASK] ${scenario.questionText}`,
-            question_type: 'scenario',
-            question_number: 1
-        })
-        .select()
-        .single();
+    // Insert cards into flashcard_sessions
+    const inserts = cards.map((c) => ({
+      practice_session_id: sessionData.id,
+      user_id: userId,
+      concept_id: c.conceptId || (isVaultMode ? conceptIds[0] : null), 
+      front_text: c.front,
+      back_text: c.back,
+      is_mastered: false
+    }));
 
-    if (responsesError || !responseData) {
-        throw new Error('Failed to create scenario question placeholder');
+    const { data: insertedCards, error: qError } = await supabase
+      .from('flashcard_sessions')
+      .insert(inserts)
+      .select('*');
+
+    if (qError || !insertedCards) {
+        throw new Error('Failed to insert flashcards');
     }
-
-    // Usage already deducted via consumeTokens at the start to ensure atomic gating
 
     // Track Analytics
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
-       p_message_type: 'practice_scenario_generated',
-       p_token_count: 5
+       p_message_type: 'practice_flashcards_generated',
+       p_token_count: 2
     });
 
     res.status(200).json({ 
-        sessionId: sessionData.id, 
-        responseId: responseData.id,
-        scenarioText: scenario.scenarioText,
-        questionText: scenario.questionText
+        sessionId: sessionData.id,
+        cards: insertedCards
     });
   } catch (error: any) {
-    console.error('API Error /api/practice/scenario/generate:', error);
+    console.error('API Error /api/practice/flashcards/generate:', error);
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }

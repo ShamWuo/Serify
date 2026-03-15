@@ -777,6 +777,92 @@ body {
 }
 
 /* =====================
+   AI Generating Animation — Sequential Skeleton Draw
+   Each .skel-line starts at width 0 and expands to its natural/given
+   width. Combined with staggered animationDelay on each element,
+   this creates the illusion of content being written out by the AI.
+   ===================== */
+@keyframes skelDraw {
+    0% {
+        width: 0;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+    }
+
+    60% {
+        opacity: 1;
+    }
+
+    100% {
+        width: var(--skel-w, 100%);
+        opacity: 0.55;
+    }
+}
+
+/* The looping version — runs forward then reverse for a breathing effect */
+@keyframes skelDrawLoop {
+    0% {
+        opacity: 0.1;
+        transform: scaleX(0.2);
+        transform-origin: left;
+    }
+
+    25% {
+        opacity: 0.6;
+        transform: scaleX(1);
+        transform-origin: left;
+    }
+
+    75% {
+        opacity: 0.6;
+        transform: scaleX(1);
+        transform-origin: left;
+    }
+
+    100% {
+        opacity: 0.1;
+        transform: scaleX(0.2);
+        transform-origin: left;
+    }
+}
+
+.skel-line {
+    /* Start invisible with zero width, animate to full and back in a loop */
+    animation: skelDrawLoop 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite both;
+    transform-origin: left;
+    will-change: transform, opacity;
+}
+
+/* Shimmer sweep that rides on top of each skeleton line */
+.skel-line::after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.45) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s linear infinite;
+    border-radius: inherit;
+}
+
+/* Make skel-line containers relative so ::after shimmer works */
+.generating-animation-root .skel-line {
+    position: relative;
+    overflow: hidden;
+}
+
+/* =====================
    Print Styles
    ===================== */
 @media print {

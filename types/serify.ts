@@ -296,34 +296,54 @@ export interface CurriculumFlowContext {
 export interface PracticeSession {
     id: string;
     user_id: string;
-    type: 'exam' | 'scenario' | 'review' | 'print';
-    concept_ids: string[] | null;
-    category_id: string | null;
+    tool: 'test' | 'quiz' | 'exam' | 'scenario' | 'flashcards' | 'review';
+    topic: string | null;
+    topic_normalized: string | null;
+    source: 'free_text' | 'vault' | 'session';
+    source_concept_ids: string[] | null;
     source_session_id: string | null;
-    format: 'standard' | 'problem_set' | 'essay' | 'case_study' | 'technical' | null;
+    difficulty: 'auto' | 'easy' | 'medium' | 'hard';
+    exam_format: string | null;
     time_limit_minutes: number | null;
     question_count: number | null;
+    generated_content: any | null;
     status: 'in_progress' | 'completed' | 'timed_out' | 'abandoned';
-    overall_performance: 'strong' | 'developing' | 'shaky' | null;
-    performance_report: any | null;
+    overall_performance: 'strong' | 'mixed' | 'developing' | 'weak' | null;
+    results: any | null;
+    tokens_consumed: number;
     started_at: string;
     completed_at: string | null;
     time_spent_seconds: number | null;
+    concept_ids_updated: string[] | null;
 }
 
 export interface PracticeResponse {
     id: string;
     practice_session_id: string;
     user_id: string;
-    concept_id: string | null;
-    question_text: string;
-    question_type: 'explain' | 'apply' | 'synthesize' | 'edge_case' | 'scenario' | null;
+    question_id: string | null;
+    question_text: string | null;
+    target_concept: string | null;
+    question_type: string | null;
     difficulty_level: number | null;
     user_response: string | null;
     response_quality: 'strong' | 'developing' | 'weak' | 'blank' | null;
     ai_feedback: string | null;
-    time_spent_seconds: number | null;
+    evaluation_dimensions: any | null;
     question_number: number | null;
+    time_spent_seconds: number | null;
+    created_at: string;
+}
+
+export interface FlashcardSession {
+    id: string;
+    practice_session_id: string;
+    user_id: string;
+    cards: any;
+    total_cards: number | null;
+    cards_correct: number;
+    cards_needs_review: number;
+    completed_at: string | null;
     created_at: string;
 }
 
@@ -336,21 +356,19 @@ export interface ReviewSchedule {
     consecutive_successful_reviews: number;
     total_reviews: number;
     last_reviewed_at: string | null;
-    last_response_quality: 'strong' | 'developing' | 'weak' | 'blank' | null;
-    mastered_at: string | null;
+    last_response_quality: string | null;
     is_mastered: boolean;
+    mastered_at: string | null;
     created_at: string;
     updated_at: string;
 }
 
-export interface VaultRegression {
+export interface PracticeExport {
     id: string;
     user_id: string;
-    concept_id: string;
     practice_session_id: string;
-    previous_state: MasteryState | null;
-    new_state: MasteryState | null;
-    regression_note: string | null;
-    detected_at: string;
+    export_type: string | null;
+    file_url: string | null;
+    created_at: string;
 }
 

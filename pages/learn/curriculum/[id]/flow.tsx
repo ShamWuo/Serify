@@ -779,7 +779,7 @@ export default function CurriculumFlowSessionPage() {
         return (
             <DashboardLayout>
                 <div className="flex items-center justify-center min-h-[70vh] p-6">
-                    <UsageGate feature='flow_mode_session' />
+                    <UsageGate feature='flow_sessions' />
                 </div>
             </DashboardLayout>
         );

@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let htmlContent = `
         <div style="font-family: sans-serif; max-width: 800px; margin: 0 auto; color: #333;">
             <div style="text-align: center; margin-bottom: 40px;">
-                <h1 style="margin-bottom: 8px;">Serify Practice: ${session.type.toUpperCase()}</h1>
+                <h1 style="margin-bottom: 8px;">Serify Practice: ${session.tool.toUpperCase()}</h1>
                 <p style="color: #666;">Generated on ${new Date().toLocaleDateString()}</p>
                 ${session.time_limit_minutes ? `<p><strong>Time Limit:</strong> ${session.time_limit_minutes} minutes</p>` : ''}
             </div>
