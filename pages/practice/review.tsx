@@ -118,7 +118,7 @@ export default function SpacedReview() {
             {/* Top Navigation */}
             <header className="absolute top-0 inset-x-0 h-16 border-b border-[var(--border)] z-20 flex items-center justify-between px-6 bg-[var(--surface)]">
                 <div className="flex items-center gap-2">
-                    <button onClick={() => router.push('/practice')} className="p-2 -ml-2 hover:bg-slate-100 rounded-lg transition mr-2">
+                    <button onClick={() => router.push('/practice')} className="p-2 -ml-2 hover:bg-[var(--bg)] rounded-lg transition mr-2">
                         <ArrowLeft size={18} className="text-[var(--text)]" />
                     </button>
                     <RefreshCcw size={18} className="text-emerald-600" />
@@ -138,7 +138,7 @@ export default function SpacedReview() {
 
                 <div className="w-full max-w-2xl mx-auto">
                     {dueItems.length === 0 ? (
-                        <div className="text-center space-y-6 animate-fade-in-up bg-white p-12 rounded-3xl border border-[var(--border)] shadow-sm">
+                        <div className="text-center space-y-6 animate-fade-in-up bg-[var(--surface)] p-12 rounded-3xl border border-[var(--border)] shadow-sm">
                             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full mx-auto flex items-center justify-center border-4 border-emerald-100">
                                 <CheckCircle size={36} />
                             </div>
@@ -156,7 +156,7 @@ export default function SpacedReview() {
                             </div>
                         </div>
                     ) : isCompleted ? (
-                        <div className="text-center space-y-6 animate-fade-in-up bg-white p-12 rounded-3xl border border-[var(--border)] shadow-sm">
+                        <div className="text-center space-y-6 animate-fade-in-up bg-[var(--surface)] p-12 rounded-3xl border border-[var(--border)] shadow-sm">
                             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full mx-auto flex items-center justify-center border-4 border-emerald-100">
                                 <Target size={36} />
                             </div>
@@ -167,7 +167,7 @@ export default function SpacedReview() {
                             <div className="pt-4">
                                 <button 
                                     onClick={() => router.push('/practice')}
-                                    className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition shadow-lg hover:-translate-y-0.5"
+                                    className="px-8 py-3 bg-[var(--text)] text-[var(--bg)] rounded-xl font-bold hover:opacity-90 transition shadow-lg hover:-translate-y-0.5"
                                 >
                                     Finish Session
                                 </button>
@@ -192,8 +192,8 @@ export default function SpacedReview() {
                                 <div className={`relative w-full h-full duration-500 preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
                                     
                                     {/* Front */}
-                                    <div className="absolute inset-0 backface-hidden bg-white border border-[var(--border)] rounded-3xl shadow-sm p-8 flex flex-col items-center justify-center text-center hover:border-emerald-300 transition-colors">
-                                        <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-6 border-2 border-slate-100">
+                                <div className="absolute inset-0 backface-hidden bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-sm p-8 flex flex-col items-center justify-center text-center hover:border-emerald-300 transition-colors">
+                                        <div className="w-16 h-16 bg-[var(--bg)] text-[var(--muted)] rounded-full flex items-center justify-center mb-6 border-2 border-[var(--border)]">
                                             <BrainCircuit size={28} />
                                         </div>
                                         <h3 className="text-2xl font-serif text-[var(--text)] leading-snug">
@@ -205,7 +205,7 @@ export default function SpacedReview() {
                                     </div>
 
                                     {/* Back */}
-                                    <div className="absolute inset-0 backface-hidden rotate-y-180 bg-white border-2 border-emerald-500 rounded-3xl shadow-xl shadow-emerald-500/10 p-8 md:p-10 flex flex-col overflow-y-auto">
+                                    <div className="absolute inset-0 backface-hidden rotate-y-180 bg-[var(--surface)] border-2 border-emerald-500 rounded-3xl shadow-xl shadow-emerald-500/10 p-8 md:p-10 flex flex-col overflow-y-auto">
                                         <h4 className="font-bold text-emerald-700 uppercase tracking-widest text-xs mb-4">Official Definition</h4>
                                         <div className="prose prose-slate prose-p:leading-relaxed text-[var(--text)] font-serif md:text-lg">
                                             {(dueItems[currentIndex].knowledge_nodes as any).definition}
@@ -217,7 +217,7 @@ export default function SpacedReview() {
 
                             {/* Ratings Bar */}
                             <div className={`transition-all duration-500 transform ${isFlipped ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'}`}>
-                                <div className="bg-white border text-[var(--text)] border-[var(--border)] shadow-sm rounded-2xl p-4 flex gap-2">
+                                <div className="bg-[var(--surface)] border text-[var(--text)] border-[var(--border)] shadow-sm rounded-2xl p-4 flex gap-2">
                                     <button 
                                         disabled={isEvaluating}
                                         onClick={() => handleRating(1)}

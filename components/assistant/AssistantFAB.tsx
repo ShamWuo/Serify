@@ -11,7 +11,7 @@ const AssistantFAB: React.FC = () => {
                 onClick={() => setIsOpen(!isOpen)}
                 className={`group relative w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 active:scale-90 ${
                     isOpen 
-                        ? 'bg-white text-[var(--accent)] border border-[var(--border)]' 
+                        ? 'bg-[var(--surface)] text-[var(--accent)] border border-[var(--border)]' 
                         : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 hover:scale-105'
                 }`}
             >
@@ -27,9 +27,9 @@ const AssistantFAB: React.FC = () => {
                     <>
                         <span className="absolute -top-1 -right-1 flex h-4 w-4">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-4 w-4 bg-orange-500 border-2 border-white"></span>
+                            <span className="relative inline-flex rounded-full h-4 w-4 bg-orange-500 border-2 border-[var(--bg)]"></span>
                         </span>
-                        <div className="absolute -left-20 top-1/2 -translate-y-1/2 bg-white px-3 py-1.5 rounded-lg shadow-xl border border-[var(--border)] flex items-center gap-2 animate-bounce-horizontal whitespace-nowrap">
+                        <div className="absolute -left-20 top-1/2 -translate-y-1/2 bg-[var(--surface)] px-3 py-1.5 rounded-lg shadow-xl border border-[var(--border)] flex items-center gap-2 animate-bounce-horizontal whitespace-nowrap">
                             <Sparkles size={12} className="text-orange-500" />
                             <span className="text-[10px] font-black text-[var(--text)] uppercase tracking-widest">New tip</span>
                         </div>

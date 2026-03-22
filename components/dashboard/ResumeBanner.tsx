@@ -24,7 +24,7 @@ const ResumeBanner: React.FC<ResumeBannerProps> = ({
     return (
         <div className="bg-[var(--accent-light)] border-l-4 border-[var(--accent)] rounded-r-xl p-5 flex items-center justify-between gap-6 shadow-sm animate-fade-in group">
             <div className="flex items-start gap-4 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm text-[var(--accent)]">
+                <div className="w-10 h-10 rounded-xl bg-[var(--surface)] flex items-center justify-center shrink-0 shadow-sm text-[var(--accent)]">
                     <Icon size={20} />
                 </div>
                 <div className="min-w-0">
