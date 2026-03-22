@@ -1,4 +1,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { google } from '@ai-sdk/google';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 import {
   AssessmentQuestion,
   CognitiveAnalysis,
@@ -7,10 +10,10 @@ import {
   Curriculum,
   ReflectionSession
 } from '../types/serify';
+
 // Models
 export const MODEL_PRO = 'gemini-2.5-flash';
 export const MODEL_FLASH = 'gemini-2.5-flash';
-// User said "use 2.5 flash that one is good and availible +cheap"
 
 export function getGeminiModel(plan: string = 'free', systemInstruction?: string) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -27,6 +30,14 @@ export function getGeminiModel(plan: string = 'free', systemInstruction?: string
       responseMimeType: 'application/json'
     }
   });
+}
+
+/**
+ * Returns an AI SDK model instance
+ */
+function getAISDKModel(plan: string = 'free') {
+  const modelName = plan === 'proplus' || plan === 'pro' ? MODEL_PRO : MODEL_FLASH;
+  return google(modelName);
 }
 
 function getDefaultModel() {
@@ -111,58 +122,43 @@ Refinement Rules:
 - DO NOT use full sentences or questions (e.g., use "DNS" instead of "The problem DNS solves").
 - REUSE existing Pillar names from the provided context whenever possible.
 
-Return a JSON array of Mastery Pillars.
+Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
 
-Format:
-[
-  {
-    "id": "pillar-1", 
-    "name": "Pillar Name",
-    "description": "A broad, comprehensive definition of this knowledge pillar (1-2 sentences).",
-    "importance": "high" | "medium" | "low",
-    "relatedConcepts": ["pillar-2"],
-    "subConcepts": [
-      {
-        "name": "Sub-concept name",
-        "description": "A concise explanation of how this fits into the pillar."
-      }
-    ]
-  }
-]
-
-Rules:
-- "id": Use short semantic strings like "pillar-1", "pillar-2".
-- "description": Provide a high-quality definition.
-- "importance": "high" for the most central pillars.
-- "relatedConcepts": valid IDs of other extracted pillars that this one builds upon or connects to.
-- Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
-
-  const result = await getDefaultModel().generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 4000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.array(z.object({
+      id: z.string().describe('Short semantic string like "pillar-1"'),
+      name: z.string().describe('Concise noun or technical term'),
+      description: z.string().describe('Broad, comprehensive definition (1-2 sentences)'),
+      importance: z.enum(['high', 'medium', 'low']),
+      relatedConcepts: z.array(z.string()).describe('IDs of other extracted pillars this one builds upon'),
+      subConcepts: z.array(z.object({
+        name: z.string().describe('Concise sub-concept name'),
+        description: z.string().describe('Concise explanation of how this fits into the pillar')
+      }))
+    })),
+    prompt,
+    temperature: plan === 'free' ? 0.1 : 0.3,
   });
-  const text = result.response.text();
 
-  const concepts = parseJSON<Concept[]>(text);
-  return concepts;
+  return object as Concept[];
 }
 
 export async function generateSessionTitle(content: string, type: string): Promise<string> {
   const prompt = `Given the following ${type} content, generate a concise, professional title (3-5 words) that captures the core subject. 
   
   CONTENT:
-  ${content.substring(0, 2000)}
-  
-  Return ONLY the title string as a JSON object: {"title": "The Title Here"}`;
+  ${content.substring(0, 2000)}`;
 
-  const model = getGeminiModel('free');
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 100 }
+  const { object } = await generateObject({
+    model: getAISDKModel('free'),
+    schema: z.object({
+      title: z.string().describe('A 3-5 word concise title')
+    }),
+    prompt,
   });
 
-  const parsed = parseJSON<{ title: string }>(result.response.text());
-  return parsed.title.trim().replace(/^"|"$/g, '');
+  return object.title.trim().replace(/^"|"$/g, '');
 }
 
 export type MessageTier = 'tier1' | 'tier2' | 'tier3';
@@ -190,24 +186,18 @@ tier3 — Deep explanation, concept teaching, or content generation.
   have something explained in depth. Usually contains "explain", "teach",
   "walk me through", "why does", "how does", or pasted content.
 
-User message: "${message}"
+User message: "${message}"`;
 
-Return only valid JSON: { "tier": "tier1" | "tier2" | "tier3" }
-No preamble. No explanation.`;
-
-  const model = getGeminiModel('free');
   try {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens: 20 }
+    const { object } = await generateObject({
+      model: getAISDKModel('free'),
+      schema: z.object({
+        tier: z.enum(['tier1', 'tier2', 'tier3'])
+      }),
+      prompt,
     });
-    const parsed = parseJSON<{ tier: MessageTier }>(result.response.text());
     
-    // Fallback classification logic
-    let tier = parsed.tier;
-    if (!['tier1', 'tier2', 'tier3'].includes(tier)) {
-      tier = 'tier2'; // Default to tier2 on ambiguity
-    }
+    let tier = object.tier;
 
     // Message is a follow-up in an existing Tier 3 conversation -> Tier 2
     if (tier === 'tier3' && isFollowUpInTier3) {
@@ -245,38 +235,29 @@ ${conceptList}
 
 Tone: ${toneInstruction}
 
-JSON Format:
-[
-  {
-    "id": "q-1",
-    "type": "retrieval" | "application" | "misconception",
-    "text": "Question text",
-    "relatedConcepts": ["pillar-1"]
-  }
-]
-
 Rules:
-- "id": Use short semantic strings like "q-1", "q-2".
 - Retrieval: recall/explain. Application: scenario. Misconception: fix wrong framing.
 - One clear sentence per question.
 - Answers should require a few sentences.`;
 
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 3000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.array(z.object({
+      id: z.string().describe('Short semantic string like "q-1"'),
+      type: z.enum(['retrieval', 'application', 'misconception']),
+      text: z.string(),
+      relatedConcepts: z.array(z.string())
+    })),
+    prompt,
   });
-  const text = result.response.text();
 
-  const questions = parseJSON<AssessmentQuestion[]>(text);
-  return questions;
+  return object as AssessmentQuestion[];
 }
 
 export async function analyzeAnswers(
   session: ReflectionSession,
   plan: string = 'free'
 ): Promise<{ analysis: CognitiveAnalysis; depthScore: number }> {
-  const conceptMap = Object.fromEntries(session.extractedConcepts.map((c) => [c.id, c.name]));
   const qAndA = session.assessmentQuestions
     .map((q) => {
       const answer =
@@ -293,28 +274,31 @@ ${session.extractedConcepts.map((c) => `- ${c.id} = ${c.name}: ${c.description}`
 Answers:
 ${qAndA}
 
-Return JSON:
-{
-  "depthScore": number,
-  "strengthMap": { "strong": string[], "weak": string[], "missing": string[] },
-  "insights": [{ "type": "strength" | "weakness" | "misconception" | "gap", "message": "string", "relatedConcepts": string[] }],
-  "focusSuggestions": ["action string"]
-}
-
 Rules:
 - Score: 85+ (excellent), 70-84 (good), 50-69 (surface), <50 (gaps).
 - 3-5 insights, 2-4 focusSuggestions (start with verb).
 - Constructive tone.`;
 
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 3000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      depthScore: z.number().describe('0-100 score'),
+      strengthMap: z.object({
+        strong: z.array(z.string()),
+        weak: z.array(z.string()),
+        missing: z.array(z.string())
+      }),
+      insights: z.array(z.object({
+        type: z.enum(['strength', 'weakness', 'misconception', 'gap']),
+        message: z.string(),
+        relatedConcepts: z.array(z.string())
+      })),
+      focusSuggestions: z.array(z.string())
+    }),
+    prompt,
   });
-  const text = result.response.text();
 
-  const parsed = parseJSON<{ depthScore: number } & CognitiveAnalysis>(text);
-  const { depthScore, ...analysis } = parsed;
+  const { depthScore, ...analysis } = object;
 
   return { analysis, depthScore };
 }
@@ -359,38 +343,6 @@ Revisit: ${revisitConcepts.map((c) => c.name).join(', ') || 'none'}
 User type: ${userType || 'not specified'}
 Learning context: ${learningContext || 'not specified'}
 
-JSON Format:
-{
-  "title": string,
-  "target_description": string,
-  "outcomes": string[],
-  "units": [
-    {
-      "unitNumber": number,
-      "unitTitle": string,
-      "unitSummary": string,
-      "concepts": [
-        {
-          "id": "intro",
-          "name": string,
-          "definition": string,
-          "difficulty": "simple" | "moderate" | "complex",
-          "estimatedMinutes": number,
-          "isPrerequisite": boolean,
-          "prerequisiteFor": ["advanced-concept"],
-          "alreadyInVault": boolean,
-          "vaultMasteryState": string | null,
-          "whyIncluded": string,
-          "misconceptionRisk": "low" | "medium" | "high",
-          "orderIndex": number
-        }
-      ]
-    }
-  ],
-  "recommended_start_index": number,
-  "scope_note": string | null
-}
-
 RULES:
 - "id": Use short semantic strings (e.g. "unit1-concept1", "foundations").
 - CRITICAL NAMING RULE: Concept "name" MUST be a concise noun or short technical term (e.g., "Domains", "DNS", "Derivatives"). 
@@ -400,14 +352,36 @@ RULES:
 - estimatedMinutes: simple (5-8), moderate (8-15), complex (12-20).
 `;
 
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 8000 }
+  const { object: curriculumData } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      title: z.string(),
+      target_description: z.string(),
+      outcomes: z.array(z.string()),
+      units: z.array(z.object({
+        unitNumber: z.number(),
+        unitTitle: z.string(),
+        unitSummary: z.string(),
+        concepts: z.array(z.object({
+          id: z.string(),
+          name: z.string(),
+          definition: z.string(),
+          difficulty: z.enum(['simple', 'moderate', 'complex']),
+          estimatedMinutes: z.number(),
+          isPrerequisite: z.boolean(),
+          prerequisiteFor: z.array(z.string()),
+          alreadyInVault: z.boolean(),
+          vaultMasteryState: z.string().nullable(),
+          whyIncluded: z.string(),
+          misconceptionRisk: z.enum(['low', 'medium', 'high']),
+          orderIndex: z.number()
+        }))
+      })),
+      recommended_start_index: z.number(),
+      scope_note: z.string().nullable()
+    }),
+    prompt,
   });
-
-  const text = result.response.text();
-  const curriculumData = parseJSON<any>(text);
 
   // Calculate conceptual metrics
   let totalConcepts = 0;
@@ -477,29 +451,23 @@ ${conceptList}
 
 Difficulty focus: ${difficultyInstruction}
 
-JSON Format:
-[
-  {
-    "id": "q-1",
-    "type": "retrieval" | "application" | "misconception",
-    "text": "Question text",
-    "conceptId": "ID of the primary concept, or null if ad-hoc topic"
-  }
-]
-
 Rules:
 - Retrieval: recall/explain. Application: scenario. Misconception: fix wrong framing.
 - Mix all three question types.
-- Ensure the questions map exactly to the provided concepts (use their IDs).
-- Only output valid JSON array.`;
+- Ensure the questions map exactly to the provided concepts (use their IDs).`;
 
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 3000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.array(z.object({
+      id: z.string().describe('Short semantic string like "q-1"'),
+      type: z.enum(['retrieval', 'application', 'misconception']),
+      text: z.string(),
+      conceptId: z.string().nullable().describe('ID of the primary concept, or null if ad-hoc topic')
+    })),
+    prompt,
   });
   
-  return parseJSON<any[]>(result.response.text());
+  return object as any[];
 }
 
 export async function evaluatePracticeTest(
@@ -519,33 +487,22 @@ Answers:
 ${qnaText}
 
 Evaluate mechanism accuracy and misconceptions.
-If an answer is mostly correct but misses a nuance, it's 'developing'. Blank is 'blank'.
+If an answer is mostly correct but misses a nuance, it's 'developing'. Blank is 'blank'.`;
 
-JSON Format required:
-{
-  "overallPerformance": "strong" | "developing" | "shaky",
-  "questionFeedback": [
-    {
-      "score": "strong" | "developing" | "shaky" | "blank",
-      "feedback": "2-3 concise sentences justifying the score."
-    }
-  ],
-  "focusSuggestions": ["actionable advice 1", "actionable advice 2"]
-}
-`;
-
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 4000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      overallPerformance: z.enum(['strong', 'developing', 'shaky']),
+      questionFeedback: z.array(z.object({
+        score: z.enum(['strong', 'developing', 'shaky', 'blank']),
+        feedback: z.string().describe('2-3 concise sentences justifying the score.')
+      })),
+      focusSuggestions: z.array(z.string()).describe('Actionable advice')
+    }),
+    prompt,
   });
-  const responseText = result.response.text();
-  try {
-    return parseJSON<any>(responseText);
-  } catch (err) {
-    console.error('Failed to parse evaluation response:', responseText);
-    throw err;
-  }
+
+  return object;
 }
 
 export async function generateQuickQuiz(
@@ -564,25 +521,20 @@ export async function generateQuickQuiz(
 ${conceptList}
 
 Difficulty: ${difficulty}. 
-Make sure the distractors are plausible misconceptions, not obviously wrong filler.
+Make sure the distractors are plausible misconceptions, not obviously wrong filler.`;
 
-JSON Format required:
-[
-  {
-    "text": "The question string",
-    "options": ["A", "B", "C", "D"],
-    "answer": "The exact string from the options array that is correct",
-    "explanation": "1-2 sentences explaining why the answer is correct.",
-    "conceptId": "ID of the specific concept tested, or null if ad-hoc topic"
-  }
-]
-`;
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 3000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.array(z.object({
+      text: z.string().describe('The question string'),
+      options: z.array(z.string()),
+      answer: z.string().describe('The exact string from the options array that is correct'),
+      explanation: z.string().describe('1-2 sentences explaining why the answer is correct.'),
+      conceptId: z.string().nullable().describe('ID of the specific concept tested, or null if ad-hoc topic')
+    })),
+    prompt,
   });
-  return parseJSON<any[]>(result.response.text());
+  return object;
 }
 
 export async function generateFlashcards(
@@ -598,37 +550,23 @@ export async function generateFlashcards(
   if (concepts.length > 0) {
     prompt = `Generate exactly 10 high-yield flashcards covering these concepts:
 ${conceptList}
-Use a mix of standard "Definition" cards, and "Fill in the blank" cards. Make them atomic (one idea per card).
-
-JSON Format:
-[
-  {
-    "front": "Front of card text",
-    "back": "Back of card text",
-    "conceptId": "ID of the concept"
-  }
-]`;
+Use a mix of standard "Definition" cards, and "Fill in the blank" cards. Make them atomic (one idea per card).`;
   } else {
     prompt = `The user wants to study this topic: "${topic}".
 Generate exactly 10 high-yield, foundational flashcards covering the most important facts, principles, or formulas of this topic.
-Make them atomic (one idea per card).
-
-JSON Format:
-[
-  {
-    "front": "Front of card text",
-    "back": "Back of card text",
-    "conceptId": null
-  }
-]`;
+Make them atomic (one idea per card).`;
   }
 
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 3000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.array(z.object({
+      front: z.string().describe('Front of card text'),
+      back: z.string().describe('Back of card text'),
+      conceptId: z.string().nullable()
+    })),
+    prompt,
   });
-  return parseJSON<any[]>(result.response.text());
+  return object;
 }
 
 // ----------------------------------------------------------------------------
@@ -671,26 +609,21 @@ DIFFICULTY RULES:
 - Developing -> Level 2 (Mechanism - "how does X work")
 - Solid -> Level 3 (Application to scenario) or 4 (Synthesis with other concepts)
 - Mastered -> Level 4 (Synthesis) or 5 (Edge Cases / limitations)
-
-JSON Format:
-[
-  {
-    "text": "The phrasing of the exam question",
-    "type": "explain" | "apply" | "synthesize" | "edge_case" | "scenario",
-    "conceptId": "ID of the PRIMARY concept (or 'topic' if ad-hoc)",
-    "expectedLength": "short" | "medium" | "long",
-    "difficulty": number (1-5)
-  }
-]
 `;
 
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 4000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.array(z.object({
+      text: z.string().describe('The phrasing of the exam question'),
+      type: z.enum(['explain', 'apply', 'synthesize', 'edge_case', 'scenario']),
+      conceptId: z.string().describe('ID of the PRIMARY concept (or "topic" if ad-hoc)'),
+      expectedLength: z.enum(['short', 'medium', 'long']),
+      difficulty: z.number().min(1).max(5)
+    })),
+    prompt,
   });
   
-  return parseJSON<any[]>(result.response.text());
+  return object;
 }
 
 export async function evaluateExam(
@@ -710,29 +643,21 @@ Here are the user's answers:
 ${qnaText}
 
 Evaluate each question strictly based on mechanism accuracy, correct application, and presence of misconceptions.
-If an answer is mostly correct but misses a key nuance for its difficulty level, it's 'developing'. Blank is 'blank'.
+If an answer is mostly correct but misses a key nuance for its difficulty level, it's 'developing'. Blank is 'blank'.`;
 
-JSON Format required:
-{
-  "overallPerformance": "strong" | "developing" | "shaky",
-  "conceptPerformances": {
-    "conceptId_here": "strong" | "developing" | "shaky"
-  },
-  "questionFeedback": [
-    {
-      "score": "strong" | "developing" | "shaky" | "blank",
-      "feedback": "2-3 concise sentences justifying the score and pointing out exact gaps or strengths."
-    }
-  ]
-}
-`;
-
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 2500 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      overallPerformance: z.enum(['strong', 'developing', 'shaky']),
+      conceptPerformances: z.record(z.enum(['strong', 'developing', 'shaky'])),
+      questionFeedback: z.array(z.object({
+        score: z.enum(['strong', 'developing', 'shaky', 'blank']),
+        feedback: z.string().describe('2-3 concise sentences justifying the score and pointing out exact gaps or strengths.')
+      }))
+    }),
+    prompt,
   });
-  return parseJSON<any>(result.response.text());
+  return object;
 }
 
 export async function generateScenario(
@@ -747,21 +672,17 @@ export async function generateScenario(
 
   const prompt = `Write a realistic, real-world scenario designed to test the application of: ${conceptNames}.
 ${!concepts.length ? `TOPIC CONTEXT: ${topic}` : ''}
-Do not ask for a definition. Present a situation where these concepts matter, and ask the user to solve, diagnose, or strategize.
+Do not ask for a definition. Present a situation where these concepts matter, and ask the user to solve, diagnose, or strategize.`;
 
-Return JSON:
-{
-  "scenarioText": "The background context of the situation (3-5 sentences).",
-  "questionText": "The call to action ('Using your knowledge of X, what is the best way to handle this...?')"
-}
-`;
-
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 1000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      scenarioText: z.string().describe('The background context of the situation (3-5 sentences).'),
+      questionText: z.string().describe('The call to action')
+    }),
+    prompt,
   });
-  return parseJSON<any>(result.response.text());
+  return object;
 }
 
 export async function evaluateScenario(
@@ -785,20 +706,17 @@ Dimensions to evaluate:
 1. Concept identification: Did they use the right concept?
 2. Mechanism accuracy: Did they explain it correctly?
 3. Application quality: Was it applied properly to exactly this scenario?
-4. Solution viability: Is the answer workable?
+4. Solution viability: Is the answer workable?`;
 
-Return JSON:
-{
-  "score": "strong" | "developing" | "weak",
-  "feedback": "Write a 3-4 sentence paragraph. Start with evaluating the Strengths, then note the Developing aspects, then explicitly note Missed things if any. Tone is authoritative but helpful."
-}
-`;
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 800 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      score: z.enum(['strong', 'developing', 'weak']),
+      feedback: z.string().describe('Write a 3-4 sentence paragraph. Authoritative but helpful.')
+    }),
+    prompt,
   });
-  return parseJSON<any>(result.response.text());
+  return object;
 }
 
 export async function evaluateReview(
@@ -816,20 +734,17 @@ CONCEPT: ${conceptName} (Definition reference: ${conceptDesc})
 THE PROMPT THEY WERE GIVEN: "${promptUsed}"
 USER'S EXPLANATION: "${userAnswer}"
 
-Grade them harshly to prevent false confidence. If they just give a surface response without addressing the prompt angle, it's 'weak'. If they get the core idea but miss nuance, 'developing'. If they nail the mechanism, 'strong'.
+Grade them harshly to prevent false confidence. If they just give a surface response without addressing the prompt angle, it's 'weak'. If they get the core idea but miss nuance, 'developing'. If they nail the mechanism, 'strong'.`;
 
-Return JSON:
-{
-  "score": "strong" | "developing" | "weak",
-  "feedback": "2-3 sentences max. If strong, congratulate implicitly and perhaps note a minor nuance. If weak, explain exactly what core component was missing from their explanation."
-}
-`;
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 600 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      score: z.enum(['strong', 'developing', 'weak']),
+      feedback: z.string().describe('2-3 sentences max.')
+    }),
+    prompt,
   });
-  return parseJSON<any>(result.response.text());
+  return object;
 }
 
 // ----------------------------------------------------------------------------
@@ -860,41 +775,33 @@ Difficulty: ${difficulty}.
 The test must contain EXACTLY:
 1. Three (3) Multiple Choice Questions (MCQs) - Plausible distractors.
 2. Two (2) Short Answer Questions (SAQs) - One retrieval, one application.
-3. One (1) Real-world Scenario - A complex problem-solving task.
+3. One (1) Real-world Scenario - A complex problem-solving task.`;
 
-JSON Format required:
-{
-  "mcqs": [
-    {
-      "text": "Question string",
-      "options": ["A", "B", "C", "D"],
-      "answer": "Exact string from options",
-      "explanation": "Why it's correct",
-      "conceptId": "Concept ID or null"
-    }
-  ],
-  "saqs": [
-    {
-      "text": "Question string",
-      "type": "retrieval" | "application",
-      "conceptId": "Concept ID or null"
-    }
-  ],
-  "scenario": {
-    "scenarioText": "Background contextual story",
-    "questionText": "The specific task to solve",
-    "conceptId": "Primary Concept ID or null"
-  }
-}
-`;
-
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 4000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      mcqs: z.array(z.object({
+        text: z.string(),
+        options: z.array(z.string()),
+        answer: z.string(),
+        explanation: z.string(),
+        conceptId: z.string().nullable()
+      })),
+      saqs: z.array(z.object({
+        text: z.string(),
+        type: z.enum(['retrieval', 'application']),
+        conceptId: z.string().nullable()
+      })),
+      scenario: z.object({
+        scenarioText: z.string(),
+        questionText: z.string(),
+        conceptId: z.string().nullable()
+      })
+    }),
+    prompt,
   });
   
-  return parseJSON<any>(result.response.text());
+  return object;
 }
 
 export async function evaluateComprehensiveTest(
@@ -917,26 +824,20 @@ Answers:
 ${qnaText}
 
 Evaluate strictly based on mechanism accuracy and application quality.
-For MCQs, simple acknowledge the result. For SAQs and Scenarios, provide deep diagnostic feedback.
+For MCQs, simple acknowledge the result. For SAQs and Scenarios, provide deep diagnostic feedback.`;
 
-JSON Format required:
-{
-  "overallPerformance": "strong" | "developing" | "shaky",
-  "questionFeedback": [
-    {
-      "score": "strong" | "developing" | "shaky" | "blank",
-      "feedback": "Concise feedback sentence(s)."
-    }
-  ],
-  "focusSuggestions": ["actionable advice 1", "actionable advice 2"]
-}
-`;
-
-  const model = getGeminiModel(plan);
-  const result = await model.generateContent({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: 4000 }
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      overallPerformance: z.enum(['strong', 'developing', 'shaky']),
+      questionFeedback: z.array(z.object({
+        score: z.enum(['strong', 'developing', 'shaky', 'blank']),
+        feedback: z.string().describe('Concise feedback sentence(s).')
+      })),
+      focusSuggestions: z.array(z.string()).describe('Actionable advice')
+    }),
+    prompt,
   });
-  
-  return parseJSON<any>(result.response.text());
+
+  return object;
 }
