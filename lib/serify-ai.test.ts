@@ -1,24 +1,85 @@
-import { describe, it, expect } from 'vitest';
-import { parseJSON } from './serify-ai';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { extractConcepts, generateSessionTitle, classifyMessage } from './serify-ai';
+import { generateObject } from 'ai';
 
-describe('AI Parser (lib/serify-ai.ts)', () => {
-    it('should parse clean JSON correctly', () => {
-        const input = '{"key": "value"}';
-        expect(parseJSON(input)).toEqual({ key: 'value' });
+// Mock AI SDK
+vi.mock('ai', () => ({
+  generateObject: vi.fn(),
+}));
+
+vi.mock('@ai-sdk/google', () => ({
+  google: vi.fn().mockReturnValue({}),
+}));
+
+describe('Serify AI Logic', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('extractConcepts', () => {
+    it('should extract concepts using generateObject', async () => {
+      const mockConcepts = [
+        {
+          id: 'pillar-1',
+          name: 'DNS',
+          description: 'Domain Name System',
+          importance: 'high',
+          relatedConcepts: [],
+          subConcepts: [{ name: 'Resolution', description: 'Process of resolving names' }]
+        }
+      ];
+
+      (generateObject as any).mockResolvedValue({ object: mockConcepts });
+
+      const result = await extractConcepts({ type: 'text', content: 'DNS is...', title: 'DNS' });
+
+      expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({
+        model: expect.anything(),
+        schema: expect.anything(),
+        prompt: expect.stringContaining('DNS is...'),
+      }));
+      expect(result).toEqual(mockConcepts);
+    });
+  });
+
+  describe('generateSessionTitle', () => {
+    it('should generate a title', async () => {
+      (generateObject as any).mockResolvedValue({ object: { title: 'Understanding DNS' } });
+
+      const result = await generateSessionTitle('DNS is a system...', 'text');
+
+      expect(result).toBe('Understanding DNS');
+      expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({
+        schema: expect.anything(),
+        prompt: expect.stringContaining('DNS is a system...'),
+      }));
+    });
+  });
+
+  describe('classifyMessage', () => {
+    it('should classify short messages', async () => {
+      (generateObject as any).mockResolvedValue({ object: { tier: 'tier1' } });
+
+      const result = await classifyMessage('How do I use this?');
+
+      expect(result).toBe('tier1');
+      expect(generateObject).toHaveBeenCalled();
     });
 
-    it('should extract and parse JSON from markdown code blocks', () => {
-        const input = 'Here is the response: ```json\n{"key": "value"}\n```';
-        expect(parseJSON(input)).toEqual({ key: 'value' });
+    it('should return tier3 for long messages without calling AI', async () => {
+      const longMessage = 'a'.repeat(201);
+      const result = await classifyMessage(longMessage);
+
+      expect(result).toBe('tier3');
+      expect(generateObject).not.toHaveBeenCalled();
     });
 
-    it('should handle code blocks without the json tag', () => {
-        const input = '```\n{"key": "value"}\n```';
-        expect(parseJSON(input)).toEqual({ key: 'value' });
-    });
-
-    it('should throw an error on invalid JSON', () => {
-        const input = 'Not JSON';
-        expect(() => parseJSON(input)).toThrow();
-    });
+    it('should handle follow-ups correctly', async () => {
+        (generateObject as any).mockResolvedValue({ object: { tier: 'tier3' } });
+  
+        const result = await classifyMessage('Explain more', true);
+  
+        expect(result).toBe('tier2'); // Should be downgraded because it's a follow-up to tier3
+      });
+  });
 });
