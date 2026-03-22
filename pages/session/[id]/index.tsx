@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Pause, X, CheckCircle2, Circle, Zap, ChevronLeft } from 'lucide-react';
 import { UsageGate } from '@/components/billing/UsageEnforcement';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
+import VoiceSynthesis from '@/components/shared/VoiceSynthesis';
 import { storage } from '@/lib/storage';
 import { supabase } from '@/lib/supabase';
 
@@ -670,28 +671,34 @@ export default function ActiveSession() {
                             {currentQuestion.type}
                         </div>
 
-                        <h1 className="text-3xl md:text-4xl font-display leading-[1.3] text-[var(--text)] mb-8">
-                            {currentQuestion.text}
-                        </h1>
+                        <div className="flex flex-col gap-6 mb-8">
+                            <h1 className="text-3xl md:text-4xl font-display leading-[1.3] text-[var(--text)]">
+                                {currentQuestion.text}
+                            </h1>
+                            <VoiceSynthesis text={currentQuestion.text} />
+                        </div>
 
                         {explanations[currentQuestion.id]?.text ? (
                             <div className="mb-8 p-5 rounded-2xl bg-[var(--accent-light)] border border-[var(--accent)]/20 animate-fade-in relative">
                                 <span className="absolute -top-3 left-6 px-3 py-0.5 bg-[var(--bg)] border border-[var(--accent)]/20 text-[11px] font-bold tracking-wider uppercase text-[var(--accent)] rounded-full">
                                     Concept Hint
                                 </span>
-                                <div className="text-[var(--text)] leading-relaxed text-[15px]">
-                                    {explanations[currentQuestion.id]
-                                        .text!.split('\n')
-                                        .map((line, i) => (
-                                            <span key={i}>
-                                                {line}
-                                                {i <
-                                                    explanations[currentQuestion.id].text!.split(
-                                                        '\n'
-                                                    ).length -
-                                                    1 && <br />}
-                                            </span>
-                                        ))}
+                                <div className="space-y-4">
+                                    <div className="text-[var(--text)] leading-relaxed text-[15px]">
+                                        {explanations[currentQuestion.id]
+                                            .text!.split('\n')
+                                            .map((line, i) => (
+                                                <span key={i}>
+                                                    {line}
+                                                    {i <
+                                                        explanations[currentQuestion.id].text!.split(
+                                                            '\n'
+                                                        ).length -
+                                                        1 && <br />}
+                                                </span>
+                                            ))}
+                                    </div>
+                                    <VoiceSynthesis text={explanations[currentQuestion.id].text!} />
                                 </div>
                             </div>
                         ) : (

@@ -72,5 +72,4 @@ ehthumbs.db
 
 # prisma (if ever added)
 prisma/.env
-*.md
 .devswarm-temp/
