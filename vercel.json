@@ -1,0 +1,16 @@
+{
+    "crons": [
+        {
+            "path": "/api/cron/expire-trial",
+            "schedule": "1 0 * * *"
+        },
+        {
+            "path": "/api/cron/expire-topup",
+            "schedule": "1 0 * * *"
+        },
+        {
+            "path": "/api/cron/refresh-subscription",
+            "schedule": "1 0 1 * *"
+        }
+    ]
+}

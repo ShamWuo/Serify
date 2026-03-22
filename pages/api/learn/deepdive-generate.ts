@@ -1,0 +1,83 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import { authenticateApiRequest, incrementUsage } from '@/lib/usage';
+import { getGeminiModel } from '@/lib/serify-ai';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const userId = await authenticateApiRequest(req);
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { concept, deepDiveText, proMode } = req.body;
+
+    if (!concept) {
+        return res.status(400).json({ error: 'Missing concept' });
+    }
+
+    const usage = await incrementUsage(userId, 'deep_dive');
+    if (!usage.allowed) {
+        return res
+            .status(403)
+            .json({
+                error: 'limit_reached',
+                message: 'You have reached your feature limit.'
+            });
+    }
+
+    try {
+        const model = getGeminiModel(
+            proMode,
+            `You are a master teacher generating a comprehensive 'Deep Dive' guide for a single concept a student is struggling to grasp.
+
+Structure the response as a JSON object:
+{
+  "title": "A catchy title for the concept",
+  "sections": [
+    {
+      "heading": "string",
+      "content": "markdown string (use bolding, bullet points, but keep it readable)"
+    }
+  ],
+  "confirmatoryQuestion": "A single, highly specific short-answer question at the very end to check if they actually read and understood the guide."
+}
+
+Rules for Sections:
+1. "The Core Idea" - A 2-sentence stripped-down definition.
+2. "Why it Matters" - The real-world or theoretical payoff of knowing this.
+3. "The Mental Model" - A strong analogy or visualization.
+4. "Where You Got Stuck" - explicitly address their misconception (provided in prompt).
+5. "Step-by-Step" or "Component Breakdown" - Deconstruct it.
+
+Keep the tone expert, engaging, and highly structured.`
+        );
+
+        const promptText = `
+Concept: ${concept.name}
+Student's struggle/misconception: ${concept.feedbackNote || 'No specific feedback recorded. Treat as a missing concept.'}
+
+Generate the deep dive JSON.
+`;
+
+        const result = await model.generateContent(promptText);
+        const text = result.response.text();
+
+        try {
+            const cleanedText = text
+                .replace(/```json/g, '')
+                .replace(/```/g, '')
+                .trim();
+            const deepDive = JSON.parse(cleanedText);
+            return res.status(200).json({ deepDive });
+        } catch (parseError) {
+            console.error('Failed to parse Gemini Deep Dive output:', text);
+            return res.status(500).json({ error: 'Failed to parse AI response' });
+        }
+    } catch (error: any) {
+        console.error('Error generating deep dive:', error);
+        return res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+}

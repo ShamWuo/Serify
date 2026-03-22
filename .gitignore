@@ -1,0 +1,75 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+/tests/
+__tests__/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+Thumbs.db
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+*.txt
+build_output.txt
+models_list.json
+
+# local env files — NEVER commit secrets
+.env
+.env.*
+.env*.local
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# supabase local dev
+supabase/.branches
+supabase/.temp
+
+# editor / IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.project
+.classpath
+
+# OS
+.DS_Store
+desktop.ini
+ehthumbs.db
+
+# turbopack / bundler caches
+.turbo/
+.cache/
+
+# playwright / e2e test artifacts
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# prisma (if ever added)
+prisma/.env
+*.md
