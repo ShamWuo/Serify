@@ -64,12 +64,11 @@ export default function CurriculumSidebar({
                             disabled={!isClickable && !isCurrent}
                             onClick={() => isClickable && onConceptClick(i)}
                             className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl transition-all duration-200 group relative text-left ${isCurrent
-                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
+                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'       
                                 : isCompleted
-                                    ? 'text-emerald-600 hover:bg-emerald-50'
+                                    ? 'text-emerald-600 hover:bg-[var(--accent-soft)]'
                                     : 'text-[var(--muted)] opacity-60'
-                                } ${isClickable || isCurrent ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-                        >
+                                } ${isClickable || isCurrent ? 'cursor-pointer' : 'cursor-not-allowed'}`}                        >
                             <div className="flex items-center gap-3 min-w-0">
                                 <div className="shrink-0">
                                     {isCompleted ? (

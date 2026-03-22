@@ -103,8 +103,8 @@ const TOOLS: ToolDef[] = [
         title: 'Spaced Review',
         description: 'Optimize long-term retention. Only reviews what\'s due today.',
         icon: Brain,
-        color: 'text-slate-700',
-        bgColor: 'bg-slate-100',
+        color: 'text-[var(--text)]',
+        bgColor: 'bg-[var(--bg)]',
         cost: 0,
         hasDifficulty: false
     }
@@ -229,7 +229,7 @@ export default function PracticeDashboard() {
                     <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-blue-500/10 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
                 </div>
 
-                <div className="max-w-md w-full bg-white/70 backdrop-blur-xl border border-white/50 rounded-[40px] p-10 md:p-12 shadow-2xl shadow-teal-500/5 text-center space-y-8 animate-fade-in-up relative z-10">
+                <div className="max-w-md w-full bg-[var(--surface)]/70 backdrop-blur-xl border border-white/50 rounded-[40px] p-10 md:p-12 shadow-2xl shadow-teal-500/5 text-center space-y-8 animate-fade-in-up relative z-10">
                     <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-teal-600 text-white shadow-xl shadow-teal-600/20 rotate-3">
                         <Brain size={40} />
                     </div>
@@ -239,7 +239,7 @@ export default function PracticeDashboard() {
                             Master Your <span className="text-teal-600">Knowledge</span>
                         </h1>
                         <p className="text-[var(--muted)] leading-relaxed">
-                            Practice mode uses Active Recall and AI to turn what you've learned into permanent memory.
+                            Practice mode uses Active Recall and AI to turn what you&apos;ve learned into permanent memory.
                         </p>
                     </div>
 
@@ -249,7 +249,7 @@ export default function PracticeDashboard() {
                             { icon: Sparkles, text: 'AI-Generated Flashcards' },
                             { icon: Activity, text: 'Adaptive Spaced Review' }
                         ].map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/50 border border-white/80">
+                            <div key={idx} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[var(--surface)]/50 border border-white/80">
                                 <item.icon size={18} className="text-teal-600" />
                                 <span className="text-sm font-medium text-[var(--text)]">{item.text}</span>
                             </div>
@@ -331,8 +331,8 @@ export default function PracticeDashboard() {
                                 onClick={() => handleToolClick(tool)}
                                 className={`text-left p-6 rounded-3xl border transition-all duration-300 relative overflow-hidden group hover:-translate-y-1 ${
                                     selectedTool?.id === tool.id 
-                                    ? 'bg-white border-[var(--accent)] shadow-md ring-1 ring-[var(--accent)]' 
-                                    : 'bg-white border-[var(--border)] shadow-sm hover:shadow-md hover:border-slate-300'
+                                    ? 'bg-[var(--surface)] border-[var(--accent)] shadow-md ring-1 ring-[var(--accent)]' 
+                                    : 'bg-[var(--surface)] border-[var(--border)] shadow-sm hover:shadow-md hover:border-slate-300'
                                 }`}
                             >
                                 <div className="space-y-4 relative z-10">
@@ -359,7 +359,7 @@ export default function PracticeDashboard() {
 
                     {/* Universal Input Panel */}
                     {selectedTool && selectedTool.id !== 'review' && (
-                        <div ref={inputPanelRef} className="animate-fade-in-up premium-card border-[1.5px] border-[var(--accent)] shadow-xl shadow-[var(--accent)]/10 rounded-3xl overflow-hidden mt-8 relative bg-white">
+                        <div ref={inputPanelRef} className="animate-fade-in-up premium-card border-[1.5px] border-[var(--accent)] shadow-xl shadow-[var(--accent)]/10 rounded-3xl overflow-hidden mt-8 relative bg-[var(--surface)]">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[var(--accent)] to-blue-400" />
                             <div className="p-6 md:p-8 space-y-8">
                                 
@@ -427,7 +427,7 @@ export default function PracticeDashboard() {
                                                         onClick={() => setDifficulty(level as any)}
                                                         className={`px-4 py-1.5 text-xs font-bold rounded-lg capitalize transition-all ${
                                                             difficulty === level 
-                                                            ? 'bg-white text-[var(--accent)] shadow-sm' 
+                                                            ? 'bg-[var(--surface)] text-[var(--accent)] shadow-sm' 
                                                             : 'text-[var(--muted)] hover:text-[var(--text)]'
                                                         }`}
                                                     >
@@ -485,7 +485,7 @@ export default function PracticeDashboard() {
                                         <Link 
                                             key={session.id} 
                                             href={`/practice/${session.tool}/${session.id}`}
-                                            className="p-5 rounded-2xl bg-white border border-[var(--border)] hover:border-[var(--accent)]/30 hover:shadow-md transition-all group flex flex-col justify-between h-[140px]"
+                                            className="p-5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)]/30 hover:shadow-md transition-all group flex flex-col justify-between h-[140px]"
                                         >
                                             <div className="space-y-2">
                                                 <div className="flex items-center gap-2 text-xs font-bold text-[var(--muted)] uppercase tracking-wider group-hover:text-[var(--accent)] transition-colors">
@@ -509,7 +509,7 @@ export default function PracticeDashboard() {
                                                         {session.overall_performance?.toUpperCase() || 'COMPLETED'}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase">
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--bg)] text-slate-600 uppercase">
                                                         {session.status}
                                                     </span>
                                                 )}
@@ -519,7 +519,7 @@ export default function PracticeDashboard() {
                                 })}
                             </div>
                         ) : (
-                            <div className="text-center py-12 bg-white border border-[var(--border)] border-dashed rounded-3xl">
+                            <div className="text-center py-12 bg-[var(--surface)] border border-[var(--border)] border-dashed rounded-3xl">
                                 <p className="text-[var(--muted)]">No recent practice sessions found.</p>
                             </div>
                         )}

@@ -9,7 +9,7 @@ interface ModeToggleProps {
 
 const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
     return (
-        <div className="flex items-center gap-1.5 bg-gray-50/50 p-1 rounded-2xl border border-[var(--border)]">
+        <div className="flex items-center gap-1.5 bg-[var(--bg)]/50 p-1 rounded-2xl border border-[var(--border)]">
             <button
                 onClick={() => onChange('analyze')}
                 className={`px-5 py-2 rounded-xl text-[11px] font-bold transition-all uppercase tracking-wider ${

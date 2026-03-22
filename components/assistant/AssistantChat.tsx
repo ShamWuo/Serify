@@ -23,7 +23,7 @@ const AssistantChat: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white">
+        <div className="flex flex-col h-full bg-[var(--surface)]">
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
                 {proactiveSuggestion && (
                     <div className="bg-[var(--accent)] text-white p-5 rounded-3xl shadow-lg animate-slide-up relative overflow-hidden group">
@@ -48,7 +48,7 @@ const AssistantChat: React.FC = () => {
 
                 {messages.length === 0 && !proactiveSuggestion && (
                     <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-[var(--muted)] mb-4 border border-[var(--border)]">
+                        <div className="w-12 h-12 rounded-2xl bg-[var(--bg)] flex items-center justify-center text-[var(--muted)] mb-4 border border-[var(--border)]">
                             <Sparkles size={24} />
                         </div>
                         <h4 className="text-sm font-bold text-[var(--text)] mb-1">How can I help you today?</h4>
@@ -60,14 +60,14 @@ const AssistantChat: React.FC = () => {
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-chat-in`}>
                         <div className={`max-w-[85%] flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                             <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${
-                                msg.role === 'user' ? 'bg-gray-100 text-gray-600' : 'bg-[var(--accent)] text-white'
+                                msg.role === 'user' ? 'bg-[var(--bg)] text-[var(--muted)]' : 'bg-[var(--accent)] text-white'
                             }`}>
                                 {msg.role === 'user' ? <User size={14} /> : <Sparkles size={14} />}
                             </div>
                             <div className={`p-4 rounded-2xl text-[13.5px] leading-relaxed shadow-sm ${
                                 msg.role === 'user' 
-                                    ? 'bg-gray-50 text-[var(--text)] rounded-tr-none border border-gray-100' 
-                                    : 'bg-[var(--bg)] text-[var(--text)] rounded-tl-none border border-[var(--border)]'
+                                    ? 'bg-[var(--bg)] text-[var(--text)] rounded-tr-none border border-[var(--border)]' 
+                                    : 'bg-[var(--accent-soft)] text-[var(--text)] rounded-tl-none border border-[var(--border)]'
                             }`}>
                                 {msg.content}
                                 {msg.suggestions && msg.suggestions.length > 0 && (
@@ -87,21 +87,21 @@ const AssistantChat: React.FC = () => {
                 ))}
             </div>
 
-            <div className="p-4 bg-gray-50/50 border-t border-[var(--border)]">
+            <div className="p-4 bg-[var(--bg)]/50 border-t border-[var(--border)]">
                 {tierWarning && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 mb-2 bg-[#FFF9F2] border border-orange-100 rounded-lg animate-fade-in">
-                        <AlertCircle size={14} className="text-orange-500" />
-                        <span className="text-[10px] font-bold text-orange-700">This request will use {tierWarning} tokens.</span>
+                    <div className="flex items-center gap-2 px-3 py-1.5 mb-2 bg-[var(--shallow-soft)] border border-[var(--shallow)]/20 rounded-lg animate-fade-in">
+                        <AlertCircle size={14} className="text-[var(--shallow)]" />
+                        <span className="text-[10px] font-bold text-[var(--shallow)]">This request will use {tierWarning} tokens.</span>
                     </div>
                 )}
-                <div className="relative flex items-center bg-white rounded-xl border border-[var(--border)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10 transition-all p-1">
+                <div className="relative flex items-center bg-[var(--surface)] rounded-xl border border-[var(--border)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10 transition-all p-1">
                     <input 
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                         placeholder="Type a message..."
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2 px-3"
+                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2 px-3 text-[var(--text)]"
                     />
                     <button 
                         onClick={handleSend}

@@ -101,27 +101,27 @@ export default function Settings() {
                     </h2>
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
                         <div
-                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-default transition-all row-hover-accent"
+                            className="p-4 flex items-center justify-between hover:bg-[var(--bg)]/50 cursor-default transition-all row-hover-accent"
                         >
                             <div>
                                 <h3 className="font-bold flex items-center gap-3">
-                                    <Layout size={18} className="text-[var(--accent)]" /> Default
+                                    <Layout size={18} className="text-[var(--accent)]" /> Default  
                                     Learning Method
                                 </h3>
                                 <p className="text-sm text-[var(--muted)] mt-1 ml-7">
                                     Standard Mode (Default)
                                 </p>
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-black/5 px-2 py-1 rounded">Locked</span>
+                            <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-[var(--bg)]/50 px-2 py-1 rounded">Locked</span>
                         </div>
 
-                        <div className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors">
+                        <div className="p-4 flex items-center justify-between hover:bg-[var(--bg)]/50 cursor-pointer transition-colors">
                             <div>
                                 <h3 className="font-bold flex items-center gap-3 text-[var(--text)]">
-                                    <Bot size={18} className="text-[var(--accent)]" /> AI Tutor &
+                                    <Bot size={18} className="text-[var(--accent)]" /> AI Tutor &  
                                     Guidance
                                     {user?.subscriptionTier !== 'pro' && (
-                                        <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tight ml-2">
+                                        <span className="text-[10px] bg-[var(--accent-soft)] text-[var(--accent)] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tight ml-2 border border-[var(--accent)]/20">
                                             Pro
                                         </span>
                                     )}
@@ -131,8 +131,7 @@ export default function Settings() {
                                         ? 'Personalized AI coaching and active guidance enabled during sessions.'
                                         : 'Unlock personalized AI coaching and active-recall guidance with Serify Pro.'}
                                 </p>
-                            </div>
-                            <label
+                            </div>                            <label
                                 className={`relative inline-flex items-center ${user?.subscriptionTier === 'pro' ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
                             >
                                 <input
@@ -145,7 +144,7 @@ export default function Settings() {
                             </label>
                         </div>
 
-                        <div className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors row-hover-accent">
+                        <div className="p-4 flex items-center justify-between hover:bg-[var(--bg)]/50 cursor-pointer transition-colors row-hover-accent">
                             <div>
                                 <h3 className="font-bold flex items-center gap-3">
                                     <Bell size={18} className="text-[var(--shallow)]" />{' '}
@@ -196,7 +195,7 @@ export default function Settings() {
                         </div>
                         <Link
                             href="/settings/billing"
-                            className="p-4 hover:bg-black/5 cursor-pointer flex items-center justify-between transition-colors block"
+                            className="p-4 hover:bg-[var(--bg)]/50 cursor-pointer flex items-center justify-between transition-colors block"
                         >
                             <div className="flex items-center gap-3 font-medium">
                                 <CreditCard size={18} className="text-[var(--accent)]" />{' '}
@@ -217,13 +216,13 @@ export default function Settings() {
                         <Download size={12} className="opacity-60" /> Data &amp; Privacy
                     </h2>
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
-                        <div className="p-4 hover:bg-amber-50/50 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
-                            <div className="flex items-center gap-3 font-medium text-[var(--muted)] group-hover:text-amber-700">
+                        <div className="p-4 hover:bg-[var(--accent-soft)] cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
+                            <div className="flex items-center gap-3 font-medium text-[var(--muted)] group-hover:text-[var(--text)]">
                                 <Download size={18} /> Export Session Data
                             </div>
-                            <ChevronRight size={16} className="text-[var(--muted)] group-hover:text-amber-700" />
+                            <ChevronRight size={16} className="text-[var(--muted)] group-hover:text-[var(--text)]" />
                         </div>
-                        <div className="p-4 hover:bg-red-50 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
+                        <div className="p-4 hover:bg-red-500/5 cursor-pointer flex items-center justify-between transition-all group row-hover-accent">
                             <div className="flex items-center gap-3 font-medium text-red-600">
                                 <Trash2 size={18} /> Delete Account
                             </div>

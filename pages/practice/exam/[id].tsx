@@ -280,7 +280,7 @@ export default function ExamSession() {
                     {isCompleted ? (
                         <div className="space-y-10 animate-fade-in-up">
                             {currentIndex === 0 && (
-                                <div className="bg-white border text-center p-8 rounded-2xl shadow-sm border-[var(--border)] space-y-6">
+                                <div className="bg-[var(--surface)] border text-center p-8 rounded-2xl shadow-sm border-[var(--border)] space-y-6">
                                     <div className="w-20 h-20 rounded-full bg-orange-50 text-orange-600 mx-auto flex items-center justify-center border-4 border-orange-100">
                                         <Award size={36} />
                                     </div>
@@ -294,7 +294,7 @@ export default function ExamSession() {
                                     </div>
                                     
                                     {results?.ai_summary?.overallPerformance && (
-                                        <div className="text-left bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6">
+                                        <div className="text-left bg-[var(--bg)] p-6 rounded-xl border border-slate-200 mt-6">
                                             <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
                                                 <Zap size={18} className="text-orange-500" /> AI Executive Summary
                                             </h4>
@@ -330,7 +330,7 @@ export default function ExamSession() {
                                                     toast.error("Failed to generate export");
                                                 }
                                             }}
-                                            className="px-6 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition flex items-center gap-2"
+                                            className="px-6 py-2 bg-[var(--bg)] text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition flex items-center gap-2"
                                         >
                                             <FileText size={16} /> Export Report PDF
                                         </button>
@@ -351,26 +351,26 @@ export default function ExamSession() {
                                         Question Review ({currentIndex + 1}/{questions.length})
                                     </h3>
                                     <div className="flex items-center gap-2">
-                                         <button onClick={handlePrev} disabled={currentIndex === 0} className="p-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50"><ArrowLeft size={16}/></button>
-                                         <button onClick={() => setCurrentIndex(prev => Math.min(prev + 1, questions.length - 1))} disabled={currentIndex === questions.length - 1} className="p-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50"><ArrowRight size={16}/></button>
+                                         <button onClick={handlePrev} disabled={currentIndex === 0} className="p-2 border rounded-lg disabled:opacity-50 hover:bg-[var(--bg)]"><ArrowLeft size={16}/></button>
+                                         <button onClick={() => setCurrentIndex(prev => Math.min(prev + 1, questions.length - 1))} disabled={currentIndex === questions.length - 1} className="p-2 border rounded-lg disabled:opacity-50 hover:bg-[var(--bg)]"><ArrowRight size={16}/></button>
                                     </div>
                                 </div>
 
-                                <div className="p-6 bg-white border border-[var(--border)] rounded-2xl shadow-sm text-lg text-[var(--text)] leading-relaxed font-serif">
+                                <div className="p-6 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm text-lg text-[var(--text)] leading-relaxed font-serif">
                                     {currentQuestion.question_text}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-3">
                                         <h4 className="font-bold text-slate-500 uppercase tracking-widest text-xs">Your Answer</h4>
-                                        <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl text-[var(--text)] whitespace-pre-wrap text-sm leading-relaxed min-h-[120px]">
+                                        <div className="p-5 bg-[var(--bg)] border border-slate-200 rounded-xl text-[var(--text)] whitespace-pre-wrap text-sm leading-relaxed min-h-[120px]">
                                             {currentQuestion.user_response || <span className="italic text-slate-400">Blank</span>}
                                         </div>
                                     </div>
                                     <div className="space-y-3">
                                         <h4 className="font-bold text-emerald-700 uppercase tracking-widest text-xs flex justify-between items-center">
                                             <span>AI Feedback</span>
-                                            <span className="bg-white px-2 py-0.5 rounded border text-slate-600">Rating: <span className="capitalize font-bold">{currentQuestion.response_quality || 'blank'}</span></span>
+                                            <span className="bg-[var(--surface)] px-2 py-0.5 rounded border text-slate-600">Rating: <span className="capitalize font-bold">{currentQuestion.response_quality || 'blank'}</span></span>
                                         </h4>
                                         <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-900 leading-relaxed whitespace-pre-wrap text-sm min-h-[120px]">
                                             {currentQuestion.ai_feedback || "No feedback."}
@@ -383,7 +383,7 @@ export default function ExamSession() {
                     ) : (
                         <div className="space-y-8 animate-fade-in-up">
                             
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--bg)] text-slate-700 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200">
                                 Question {currentIndex + 1}
                             </div>
 
@@ -400,7 +400,7 @@ export default function ExamSession() {
                                                 <button
                                                     key={idx}
                                                     onClick={() => handleMcqSelect(option)}
-                                                    className={`w-full text-left p-5 rounded-xl border-2 transition-all ${isSelected ? 'border-orange-500 bg-orange-50' : 'border-[var(--border)] bg-gray-50/50 hover:bg-white hover:border-orange-300'}`}
+                                                    className={`w-full text-left p-5 rounded-xl border-2 transition-all ${isSelected ? 'border-orange-500 bg-orange-50' : 'border-[var(--border)] bg-gray-50/50 hover:bg-[var(--surface)] hover:border-orange-300'}`}
                                                 >
                                                     <div className="flex gap-4 items-start">
                                                         <div className={`w-5 h-5 rounded-full border flex-shrink-0 mt-0.5 ${isSelected ? 'border-orange-500 bg-orange-500 border-4' : 'border-slate-300'}`} />
@@ -417,7 +417,7 @@ export default function ExamSession() {
                                             value={answers[currentQuestion.id] || ''}
                                             onChange={handleAnswerChange}
                                             placeholder="Compose your final answer..."
-                                            className="w-full min-h-[280px] p-6 bg-white border border-[var(--border)] rounded-xl resize-none
+                                            className="w-full min-h-[280px] p-6 bg-[var(--surface)] border border-[var(--border)] rounded-xl resize-none
                                                     text-base leading-relaxed text-[var(--text)] placeholder-[var(--muted)]
                                                     focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all shadow-sm font-serif"
                                         />
@@ -432,7 +432,7 @@ export default function ExamSession() {
                                 <button
                                     onClick={handlePrev}
                                     disabled={currentIndex === 0}
-                                    className="px-5 py-3 flex flex-row-reverse items-center justify-center gap-2 rounded-xl text-[var(--text)] font-medium hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                    className="px-5 py-3 flex flex-row-reverse items-center justify-center gap-2 rounded-xl text-[var(--text)] font-medium hover:bg-[var(--bg)] disabled:opacity-50 disabled:cursor-not-allowed transition"
                                 >
                                     Prev
                                 </button>

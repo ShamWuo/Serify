@@ -131,11 +131,11 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
 
     if (isProcessing) {
         return (
-            <div className="bg-surface rounded-2xl p-7 shadow-xl border border-[var(--border)] animate-fade-in min-h-[160px] flex flex-col justify-center">
+            <div className="bg-[var(--surface)] rounded-2xl p-7 shadow-xl border border-[var(--border)] animate-fade-in min-h-[160px] flex flex-col justify-center">
                 <h3 className="font-display text-xl text-[var(--text)] mb-6">Building study session...</h3>
-                <div className="w-full bg-background h-2 rounded-full overflow-hidden mb-4">
-                    <div 
-                        className="bg-[var(--accent)] h-full transition-all duration-300 ease-out"
+                <div className="w-full bg-[var(--bg)] h-2 rounded-full overflow-hidden mb-4">       
+                    <div
+                        className="bg-[var(--accent)] h-full transition-all duration-300 ease-out" 
                         style={{ width: `${progress}%` }}
                     />
                 </div>
@@ -143,9 +143,9 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                     <p className="text-[var(--muted)] font-medium animate-pulse">
                         {stepText} <span className="ml-1 opacity-50">{progress}%</span>
                     </p>
-                    <button 
+                    <button
                         onClick={() => setIsProcessing(false)}
-                        className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] hover:text-orange-600 transition-colors"
+                        className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] hover:text-[var(--warn)] transition-colors"
                     >
                         Cancel
                     </button>
@@ -153,7 +153,6 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
             </div>
         );
     }
-
     return (
         <div 
             className={`glass rounded-[32px] p-8 transition-all duration-500 border-2 ${
@@ -195,11 +194,11 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                                 onChange={(e) => setInput(e.target.value)}
                                 onPaste={handlePaste}
                                 placeholder={mode === 'analyze' ? "Paste any content to start studying..." : "Type a goal (e.g. \"Learn Quantum Physics\") to build a roadmap..."}
-                                className="w-full min-h-[100px] bg-transparent border-none focus:ring-0 p-5 pb-12 text-[15.5px] leading-relaxed resize-none overflow-hidden placeholder:text-[var(--muted)]/50 font-medium"
+                                className="w-full min-h-[100px] bg-transparent border-none focus:ring-0 p-5 pb-12 text-[15.5px] leading-relaxed resize-none overflow-hidden placeholder:text-[var(--muted)]/50 font-medium text-[var(--text)]"
                             />
                             <button 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="absolute bottom-4 right-4 p-2.5 rounded-xl bg-surface border border-[var(--border)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/30 hover:shadow-md transition-all group"
+                                className="absolute bottom-4 right-4 p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/30 hover:shadow-md transition-all group"
                                 aria-label="Attach file"
                             >
                                 <Paperclip size={18} className="group-hover:rotate-12 transition-transform" />
@@ -216,7 +215,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                 />
 
                 {!isDragging && (
-                    <div className="mt-8 pt-8 border-t border-dashed border-gray-100/80 animate-fade-in-up">
+                    <div className="mt-8 pt-8 border-t border-dashed border-[var(--border)]/50 animate-fade-in-up">
                         <div className="flex flex-col gap-4">
                             <h4 className="text-[10px] font-black uppercase tracking-[0.1em] text-[var(--muted)] opacity-60">Or jump straight in:</h4>
                             <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2.5">
@@ -225,12 +224,10 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                                         if (input.trim()) {
                                             router.push(`/practice/flashcards?topic=${encodeURIComponent(input.trim())}`);
                                         } else {
-                                            // Maybe show a toast or just go to a default state? 
-                                            // For now, just go to the page which will show an error if no topic.
                                             router.push('/practice/flashcards');
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-[var(--surface)] hover:shadow-md transition-all group shrink-0"
                                 >
                                     <span className="text-sm">🃏</span>
                                     <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Generate Flashcards</span>
@@ -243,7 +240,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                                             router.push('/practice/test');
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-[var(--surface)] hover:shadow-md transition-all group shrink-0"
                                 >
                                     <span className="text-sm">📝</span>
                                     <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Practice Test</span>
@@ -256,14 +253,14 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                                             router.push('/practice/review');
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-[var(--surface)] hover:shadow-md transition-all group shrink-0"
                                 >
                                     <span className="text-sm">🔄</span>
                                     <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Spaced Review</span>
                                 </button>
                                 <button 
                                     onClick={() => router.push('/learn')}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-[var(--surface)] hover:shadow-md transition-all group shrink-0"
                                 >
                                     <span className="text-sm">✦</span>
                                     <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Flow Mode</span>
@@ -275,27 +272,27 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
             </div>
 
             {error && (
-                <div className="mb-6 p-5 rounded-2xl bg-warn-soft border border-warn/10 flex items-start gap-4 animate-modal-in">
-                    <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-warn shadow-sm shrink-0">
+                <div className="mb-6 p-5 rounded-2xl bg-[var(--warn-soft)] border border-[var(--warn)]/10 flex items-start gap-4 animate-modal-in">
+                    <div className="w-8 h-8 rounded-full bg-[var(--surface)] flex items-center justify-center text-[var(--warn)] shadow-sm shrink-0">
                         <AlertCircle size={18} />
                     </div>
                     <div className="flex-1">
-                        <p className="text-[13px] font-bold text-orange-900 leading-tight">{error}</p>
+                        <p className="text-[13px] font-bold text-[var(--text)] leading-tight">{error}</p>
                         {error === 'Not enough tokens' ? (
                             <button 
                                 onClick={() => router.push('/settings/billing')}
-                                className="mt-2 text-[10px] font-black uppercase tracking-wider text-orange-600 hover:text-orange-700 flex items-center gap-1 group"
+                                className="mt-2 text-[10px] font-black uppercase tracking-wider text-[var(--warn)] hover:opacity-80 flex items-center gap-1 group"
                             >
                                 Upgrade to Pro <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
                             </button>
                         ) : (
-                            <p className="mt-1 text-[11px] text-orange-700/70 leading-relaxed italic">Try pasting the raw text instead of a URL.</p>
+                            <p className="mt-1 text-[11px] text-[var(--muted)] leading-relaxed italic">Try pasting the raw text instead of a URL.</p>
                         )}
                     </div>
                 </div>
             )}
 
-            <div className="flex items-center justify-between gap-6 pt-4 border-t border-gray-100/50">
+            <div className="flex items-center justify-between gap-6 pt-4 border-t border-[var(--border)]/50">
                 <div className="flex items-center gap-6">
                     <ModeToggle mode={mode} onChange={setMode} />
                     <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg)]/50 border border-[var(--border)]">

@@ -40,33 +40,33 @@ body {
     }
 
     .dark {
-        /* Primary - Forest Dark */
-        --bg: #030f08;
-        --surface: #051c10;
-        --border: rgba(110, 255, 160, 0.1);
+        /* Primary - Forest Dark - Improved Contrast */
+        --bg: #020804;
+        --surface: #05140a;
+        --border: rgba(110, 255, 160, 0.15);
         --text: #fdfdfc;
-        --muted: #a8a29e;
-        --accent: #2A5C45;
-        --accent-rgb: 42, 92, 69;
-        --accent-soft: rgba(42, 92, 69, 0.2);
-        --accent-light: #0d2b1a;
+        --muted: #a1a1aa; /* Better contrast on dark bg */
+        --accent: #3ea06e; /* Brighter accent for dark mode visibility */
+        --accent-rgb: 62, 160, 110;
+        --accent-soft: rgba(62, 160, 110, 0.15);
+        --accent-light: #081f12;
 
         /* Secondary - Muted Purple */
-        --missing: #7c3d9e;
-        --missing-soft: rgba(124, 61, 158, 0.1);
+        --missing: #a78bfa;
+        --missing-soft: rgba(167, 139, 250, 0.1);
 
         /* Tertiary - Dark Gold */
-        --shallow: #b8860b;
-        --shallow-soft: rgba(184, 134, 11, 0.1);
+        --shallow: #fbbf24;
+        --shallow-soft: rgba(251, 191, 36, 0.1);
 
         /* Semantic */
-        --warn: #bc4a1a;
-        --warn-soft: rgba(188, 74, 26, 0.1);
+        --warn: #f87171;
+        --warn-soft: rgba(248, 113, 113, 0.1);
         --dark: #000000;
 
         /* Premium Effects */
-        --glass-bg: rgba(5, 28, 16, 0.8);
-        --glass-border: rgba(110, 255, 160, 0.1);
+        --glass-bg: rgba(5, 20, 10, 0.85);
+        --glass-border: rgba(110, 255, 160, 0.2);
     }
 }
 
@@ -100,13 +100,25 @@ body {
     background: #f7f6f2;
 }
 
+.dark ::-webkit-scrollbar-track {
+    background: #05140a;
+}
+
 ::-webkit-scrollbar-thumb {
     background: #d6d3d1;
     border-radius: 3px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+    background: #27272a;
+}
+
 ::-webkit-scrollbar-thumb:hover {
     background: #a8a29e;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
 }
 
 /* Toast animations */

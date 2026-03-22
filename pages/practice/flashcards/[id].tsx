@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -142,23 +142,7 @@ export default function FlashcardsSession() {
         }
     };
 
-    const handleNext = () => {
-        setIsFlipped(false);
-        if (currentIndex < displayCards.length - 1) {
-            setCurrentIndex(prev => prev + 1);
-        } else {
-            handleComplete();
-        }
-    };
-
-    const handlePrev = () => {
-        if (currentIndex > 0) {
-            setIsFlipped(false);
-            setCurrentIndex(prev => prev - 1);
-        }
-    };
-
-    const handleComplete = async () => {
+    const handleComplete = useCallback(async () => {
         if (isCompleted) {
              setCurrentIndex(0); // Restart review
              return;
@@ -172,7 +156,23 @@ export default function FlashcardsSession() {
         } catch (err: any) {
             toast.error('Failed to complete session');
         }
-    };
+    }, [isCompleted]);
+
+    const handlePrev = useCallback(() => {
+        if (currentIndex > 0) {
+            setIsFlipped(false);
+            setCurrentIndex(prev => prev - 1);
+        }
+    }, [currentIndex]);
+
+    const handleNext = useCallback(() => {
+        setIsFlipped(false);
+        if (currentIndex < displayCards.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        } else {
+            handleComplete();
+        }
+    }, [currentIndex, displayCards.length, handleComplete]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -199,7 +199,7 @@ export default function FlashcardsSession() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isFlipped, currentIndex, isCompleted, displayCards.length]);
+    }, [isFlipped, currentIndex, isCompleted, displayCards.length, handleNext, handlePrev]);
 
     if (isLoading) {
         return (
@@ -325,7 +325,7 @@ export default function FlashcardsSession() {
                                 >
                                     <div className={`w-full h-full transition-all duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateX(180deg)]' : ''}`}>
                                         {/* Front */}
-                                        <div className="absolute inset-0 w-full h-full bg-white border-2 border-[var(--border)] rounded-[40px] shadow-xl hover:border-teal-300 transition-all [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center">
+                                        <div className="absolute inset-0 w-full h-full bg-[var(--surface)] border-2 border-[var(--border)] rounded-[40px] shadow-xl hover:border-teal-300 transition-all [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center">
                                             <div className="absolute top-8 left-8 text-[10px] font-black uppercase tracking-[0.2em] text-teal-500/40">Front</div>
                                             <p className="text-2xl md:text-3xl font-display text-[var(--text)] leading-tight">
                                                 {getFrontText(currentCard)}
@@ -336,9 +336,9 @@ export default function FlashcardsSession() {
                                         </div>
 
                                         {/* Back */}
-                                        <div className="absolute inset-0 w-full h-full bg-slate-50 border-2 border-[var(--border)] rounded-[40px] shadow-xl [transform:rotateX(180deg)] [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center overflow-y-auto">
+                                        <div className="absolute inset-0 w-full h-full bg-[var(--bg)] border-2 border-[var(--border)] rounded-[40px] shadow-xl [transform:rotateX(180deg)] [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center overflow-y-auto">
                                             <div className="absolute top-8 left-8 text-[10px] font-black uppercase tracking-[0.2em] text-teal-600/40">Back</div>
-                                            <p className="text-xl md:text-2xl font-display text-slate-800 leading-relaxed">
+                                            <p className="text-xl md:text-2xl font-display text-[var(--text)] leading-relaxed">
                                                 {getBackText(currentCard)}
                                             </p>
                                         </div>
@@ -407,7 +407,7 @@ export default function FlashcardsSession() {
             {settingsOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div 
-                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in" 
+                        className="absolute inset-0 bg-[var(--dark)]/40 backdrop-blur-sm animate-in fade-in" 
                         onClick={() => setSettingsOpen(false)}
                     />
                     <div className="relative w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-[32px] shadow-2xl p-8 animate-in zoom-in-95 duration-200">

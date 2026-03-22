@@ -1,29 +1,29 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '@/types/db_types_new';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || 'placeholder-key';
 
 // Debug logging
 if (typeof window !== 'undefined') {
-    console.log('[Supabase Init] URL exists:', !!supabaseUrl, 'Key exists:', !!supabaseAnonKey);
+    const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const hasKey = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    console.log('[Supabase Init] URL exists:', hasUrl, 'Key exists:', hasKey);
 }
 
-if (!supabaseUrl) {
-    throw new Error(
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NODE_ENV === 'production') {
+    console.warn(
         'Missing NEXT_PUBLIC_SUPABASE_URL environment variable.\n' +
         'Please create a .env.local file in the root directory with:\n' +
-        'NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co\n' +
-        'Get your Supabase URL from: https://app.supabase.com/project/_/settings/api'
+        'NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co'
     );
 }
 
-if (!supabaseAnonKey) {
-    throw new Error(
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && process.env.NODE_ENV === 'production') {
+    console.warn(
         'Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable.\n' +
         'Please create a .env.local file in the root directory with:\n' +
-        'NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key\n' +
-        'Get your Supabase anon key from: https://app.supabase.com/project/_/settings/api'
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key'
     );
 }
 

@@ -403,7 +403,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     <div className="absolute top-4 right-4">
                         <button
                             onClick={() => setIsMobileMenuOpen(false)}
-                            className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center"
+                            className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--text)]"
                         >
                             <X size={20} />
                         </button>
@@ -499,9 +499,9 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
             <main className="flex-1 w-full flex flex-col min-h-[calc(100vh-64px)] md:min-h-screen pb-20 md:pb-0">
                 {router.query.demo === 'true' && (
-                    <div className="bg-amber-50 border-b border-amber-200 text-amber-700 px-6 py-2.5 text-sm font-medium flex items-center justify-center gap-2 shadow-sm animate-fade-in shrink-0">
+                    <div className="bg-[var(--shallow-soft)] border-b border-[var(--border)] text-[var(--shallow)] px-6 py-2.5 text-sm font-medium flex items-center justify-center gap-2 shadow-sm animate-fade-in shrink-0">
                         <Sparkles size={14} fill="currentColor" />
-                        <span>You&apos;re in demo mode — <strong>sign up</strong> to save progress and unlock full features.</span>
+                        <span>You&apos;re in demo mode — <strong className="font-bold">sign up</strong> to save progress and unlock full features.</span>
                     </div>
                 )}
                 {children}
@@ -542,10 +542,10 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
             {/* Global Widgets/Overlays */}
             {!hideWidgets && (
-                <>
+                <div className="dark:bg-black/60">
                     <AssistantFAB />
                     <AssistantPanel />
-                </>
+                </div>
             )}
         </div>
     );
