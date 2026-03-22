@@ -239,7 +239,7 @@ export default function PracticeDashboard() {
                             Master Your <span className="text-teal-600">Knowledge</span>
                         </h1>
                         <p className="text-[var(--muted)] leading-relaxed">
-                            Practice mode uses Active Recall and AI to turn what you've learned into permanent memory.
+                            Practice mode uses Active Recall and AI to turn what you&apos;ve learned into permanent memory.
                         </p>
                     </div>
 

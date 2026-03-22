@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -142,23 +142,7 @@ export default function FlashcardsSession() {
         }
     };
 
-    const handleNext = () => {
-        setIsFlipped(false);
-        if (currentIndex < displayCards.length - 1) {
-            setCurrentIndex(prev => prev + 1);
-        } else {
-            handleComplete();
-        }
-    };
-
-    const handlePrev = () => {
-        if (currentIndex > 0) {
-            setIsFlipped(false);
-            setCurrentIndex(prev => prev - 1);
-        }
-    };
-
-    const handleComplete = async () => {
+    const handleComplete = useCallback(async () => {
         if (isCompleted) {
              setCurrentIndex(0); // Restart review
              return;
@@ -172,7 +156,23 @@ export default function FlashcardsSession() {
         } catch (err: any) {
             toast.error('Failed to complete session');
         }
-    };
+    }, [isCompleted]);
+
+    const handlePrev = useCallback(() => {
+        if (currentIndex > 0) {
+            setIsFlipped(false);
+            setCurrentIndex(prev => prev - 1);
+        }
+    }, [currentIndex]);
+
+    const handleNext = useCallback(() => {
+        setIsFlipped(false);
+        if (currentIndex < displayCards.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+        } else {
+            handleComplete();
+        }
+    }, [currentIndex, displayCards.length, handleComplete]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -199,7 +199,7 @@ export default function FlashcardsSession() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isFlipped, currentIndex, isCompleted, displayCards.length]);
+    }, [isFlipped, currentIndex, isCompleted, displayCards.length, handleNext, handlePrev]);
 
     if (isLoading) {
         return (

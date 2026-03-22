@@ -261,7 +261,7 @@ export default function ComprehensiveSession() {
                             </div>
                             <div>
                                 <h2 className="text-2xl font-display text-slate-900 capitalize">{results?.overallPerformance} Performance</h2>
-                                <p className="text-slate-500 mt-2">You\'ve completed a comprehensive evaluation of your knowledge.</p>
+                                <p className="text-slate-500 mt-2">You&apos;ve completed a comprehensive evaluation of your knowledge.</p>
                             </div>
                          </div>
                     </div>

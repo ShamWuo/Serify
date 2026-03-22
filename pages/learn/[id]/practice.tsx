@@ -118,7 +118,7 @@ export default function PracticeMode() {
         if (isAllowed !== undefined) {
             initQuiz();
         }
-    }, [id, router, user, isAllowed, increment, refresh]);
+    }, [id, router, user, isAllowed, increment, refresh, token]);
 
     const handleSelectOption = (index: number) => {
         if (isAnswered) return;

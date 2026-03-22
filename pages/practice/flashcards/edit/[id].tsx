@@ -333,7 +333,7 @@ export default function EditFlashcardDeck() {
                                 </li>
                                 <li className="flex gap-2">
                                     <span className="text-teal-500 font-bold">•</span>
-                                    Use the "concept tag" (internal) to group cards.
+                                    Use the &quot;concept tag&quot; (internal) to group cards.
                                 </li>
                                 <li className="flex gap-2">
                                     <span className="text-teal-500 font-bold">•</span>

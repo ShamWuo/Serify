@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import SEO from '@/components/Layout/SEO';
@@ -93,15 +94,20 @@ export default function LandingPage() {
                 {/* Premium GIF Background Integration */}
                 <div className="absolute inset-0 z-0 select-none pointer-events-none overflow-hidden bg-[#030f08]">
                     {/* Base image with slight scale to hide edges, mixed into the dark theme */}
-                    <img
-                        src="/landingpage.gif"
-                        alt=""
-                        className="w-full h-[105vh] object-contain object-top opacity-100 mix-blend-screen"
+                    <div className="relative w-full h-[105vh] mix-blend-screen"
                         style={{ 
                             maskImage: 'radial-gradient(circle at top, black 30%, rgba(0,0,0,0.8) 60%, transparent 95%)',
                             WebkitMaskImage: 'radial-gradient(circle at top, black 30%, rgba(0,0,0,0.8) 60%, transparent 95%)'
                         }}
-                    />
+                    >
+                        <Image
+                            src="/landingpage.gif"
+                            alt="Serify Interface"
+                            fill
+                            className="object-contain object-top opacity-100"
+                            unoptimized
+                        />
+                    </div>
 
                     {/* Complex gradients for seamless blending and text legibility */}
                     {/* Top vignette for navbar */}

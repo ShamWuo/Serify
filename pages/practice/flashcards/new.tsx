@@ -300,7 +300,7 @@ export default function NewFlashcardDeck() {
                                 </li>
                                 <li className="flex gap-2">
                                     <span className="text-teal-500 font-bold">•</span>
-                                    Use "AI Generate" for complex topics to save time.
+                                    Use &quot;AI Generate&quot; for complex topics to save time.
                                 </li>
                                 <li className="flex gap-2">
                                     <span className="text-teal-500 font-bold">•</span>
