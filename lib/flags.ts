@@ -52,7 +52,9 @@ export async function isFeatureEnabled(
         return bucket < flag.rollout_percentage;
     }
 
-    return flag.is_enabled && flag.rollout_percentage === 0;
+    // Default: if no rules matched and no percentage rollout, it's disabled for this user
+    // (unless it's globally enabled with 100% rollout, handled above)
+    return false;
 }
 
 /**
