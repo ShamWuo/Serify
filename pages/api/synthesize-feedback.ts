@@ -113,13 +113,13 @@ export default async function handler(req: Request) {
                 );
 
                 try {
-                    // 1. Save to analyses table for persistence
-                    // Map the object to the analyses table schema
+                    
+                    
                     const { error: analysisError } = await supabaseAdmin
                         .from('analyses')
                         .upsert({
                             session_id: sessionId,
-                            depth_score: object.overall_counts?.solid || 0, // Using solid count as a proxy for depth if not explicitly provided
+                            depth_score: object.overall_counts?.solid || 0, 
                             strength_map: object.strength_map,
                             insights: {
                                 summary: object.summary_sentence,
@@ -132,7 +132,7 @@ export default async function handler(req: Request) {
 
                     if (analysisError) console.error('Error saving analysis:', analysisError);
 
-                    // 2. Update Vault
+                    
                     const conceptsToWrite: { name: string; description: string }[] = (
                         concepts ||
                         sessionData?.concepts ||

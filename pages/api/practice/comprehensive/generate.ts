@@ -27,9 +27,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Comprehensive Test costs 15 tokens
+    
     const usageResult = await consumeTokens(userId, 'practice_comprehensive_generation'); 
-    // Actually, let's use a specific one if available, otherwise exam simulation is the closest high-cost one.
+    
     if (!usageResult.allowed) {
         return res.status(403).json({ 
             error: 'Usage limit reached.',
@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const testData = await generateComprehensiveTest(formattedConcepts, subscription_plan || 'free', topic, difficulty as any);
 
-    // Create session
+    
     const { data: sessionData, error: sessionError } = await supabase
         .from('practice_sessions')
         .insert({
@@ -81,11 +81,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create practice session: ' + (sessionError?.message || 'Unknown error'));
     }
 
-    // Insert questions
+    
     const inserts: any[] = [];
     let qNum = 1;
 
-    // MCQs
+    
     testData.mcqs.forEach(q => {
         inserts.push({
             practice_session_id: sessionData.id,
@@ -102,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
     });
 
-    // SAQs
+    
     testData.saqs.forEach(q => {
         inserts.push({
             practice_session_id: sessionData.id,
@@ -111,11 +111,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             question_text: q.text,
             question_type: q.type === 'retrieval' ? 'recall' : 'application',
             question_number: qNum++,
-            ai_feedback: null // feedback generated later
+            ai_feedback: null 
         });
     });
 
-    // Scenario
+    
     inserts.push({
         practice_session_id: sessionData.id,
         user_id: userId,
@@ -134,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to insert practice questions: ' + qError.message);
     }
 
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_comprehensive_generated',

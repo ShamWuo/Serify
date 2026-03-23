@@ -24,7 +24,7 @@ export function UsageGate({ feature, children, forceShow, onClose }: UsageGatePr
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[var(--bg)]/80 backdrop-blur-md animate-fade-in">
             <div className="relative w-full max-w-md glass border border-[var(--border)] rounded-3xl p-8 shadow-2xl animate-modal-in overflow-hidden">
-                {/* Premium Background Decor */}
+                {}
                 <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-48 h-48 bg-[var(--accent)]/10 rounded-full blur-3xl pointer-events-none" />
 
                 {(onClose || feature) && (

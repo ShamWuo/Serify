@@ -17,7 +17,7 @@ export default function ScenarioSession() {
     const [question, setQuestion] = useState<any>(null);
     const [answer, setAnswer] = useState('');
     
-    // Evaluation state
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCompleted, setIsCompleted] = useState(false);
     const [results, setResults] = useState<any>(null);
@@ -33,7 +33,7 @@ export default function ScenarioSession() {
         const loadSession = async () => {
             setIsLoading(true);
             try {
-                // Fetch Session
+                
                 const { data: sessionData, error: sessionErr } = await supabase
                     .from('practice_sessions')
                     .select('*')
@@ -45,7 +45,7 @@ export default function ScenarioSession() {
 
                 setSession(sessionData);
 
-                // Fetch Question (Scenario is typically 1 response record)
+                
                 const { data: qData, error: qErr } = await supabase
                     .from('practice_responses')
                     .select('*')
@@ -84,7 +84,7 @@ export default function ScenarioSession() {
     }, [user, router.isReady, id]);
 
     useEffect(() => {
-        // Auto-resize text area
+        
         if (textAreaRef.current && !isCompleted) {
             textAreaRef.current.style.height = 'auto';
             textAreaRef.current.style.height = textAreaRef.current.scrollHeight + 'px';
@@ -105,10 +105,10 @@ export default function ScenarioSession() {
         const timeSpent = Math.floor((Date.now() - startTime) / 1000);
 
         try {
-            // we have the question combined dynamically, but /api/practice/scenario/evaluate
-            // requires scenarioText and questionText separately. We combined them with [SCENARIO] and [TASK] 
-            // tags in generate.ts. Let's send the full text as scenarioText and '' as questionText or vice versa.
-            // Wait, Evaluate endpoint passes them together into prompt anyway.
+            
+            
+            
+            
             const fullText = question.question_text || '';
             const scenarioPart = fullText.split('[TASK]')[0]?.replace('[SCENARIO]', '').trim() || fullText;
             const taskPart = fullText.split('[TASK]')[1]?.trim() || '';
@@ -133,7 +133,7 @@ export default function ScenarioSession() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            // Fetch the updated question to get question-level feedback
+            
             const { data: finalQ } = await supabase
                 .from('practice_responses')
                 .select('*')
@@ -142,7 +142,7 @@ export default function ScenarioSession() {
                 
             if (finalQ) setQuestion(finalQ);
 
-            // Re-fetch session to get the AI summary exactly
+            
             const { data: finalSession } = await supabase
                 .from('practice_sessions')
                 .select('*')
@@ -178,7 +178,7 @@ export default function ScenarioSession() {
 
     if (!session || !question) return null;
 
-    // Split for rendering
+    
     const fullText = question.question_text || '';
     const scenarioPart = fullText.split('[TASK]')[0]?.replace('[SCENARIO]', '').trim() || fullText;
     const taskPart = fullText.split('[TASK]')[1]?.trim() || '';
@@ -189,7 +189,7 @@ export default function ScenarioSession() {
                 <title>Real Scenario | Serify</title>
             </Head>
 
-            {/* Top Navigation */}
+            {}
             <header className="absolute top-0 inset-x-0 h-16 border-b border-[var(--border)] z-20 flex items-center justify-between px-6 bg-[var(--surface)]">
                 <div className="flex items-center gap-2">
                     <Activity size={18} className="text-purple-600" />
@@ -213,7 +213,7 @@ export default function ScenarioSession() {
             <main className="flex-1 pt-24 pb-32 overflow-y-auto px-4">
                 <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
                     
-                    {/* Scenario Column */}
+                    {}
                     <div className={`space-y-6 ${isCompleted ? 'lg:col-span-12' : 'lg:col-span-5'}`}>
                         <div className="bg-white border text-[var(--text)] p-6 md:p-8 rounded-2xl shadow-sm border-[var(--border)] space-y-6 animate-fade-in-up">
                             <h2 className="text-xl font-display tracking-tight text-purple-700 flex items-center gap-2">
@@ -236,7 +236,7 @@ export default function ScenarioSession() {
                         </div>
                     </div>
 
-                    {/* Answer / Feedback Column */}
+                    {}
                     <div className={`space-y-8 animate-fade-in-up delay-100 ${isCompleted ? 'lg:col-span-12' : 'lg:col-span-7'}`}>
                         
                         {isCompleted ? (

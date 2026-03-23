@@ -65,12 +65,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const planConcepts = sessionData.initial_plan?.concepts || [];
 
-        // Search for the concept in the plan using both the current ID (might be UUID) 
-        // and its name (if we can find it in the vault)
+        
+        
         let currentConcept = planConcepts.find((c: any) => c.conceptId === conceptId);
 
         if (!currentConcept) {
-            // If not found by ID, try to find by name from the Vault
+            
             const { data: vaultNode } = await supabaseAdmin
                 .from('knowledge_nodes')
                 .select('display_name')
@@ -153,7 +153,7 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
         const result = await evaluatorModel.generateContent(promptText);
         const evalText = result.response.text();
 
-        // ── Token / cost logging ──────────────────────────────
+        
         const evalUsage = result.response.usageMetadata;
         if (evalUsage) {
             const i = evalUsage.promptTokenCount ?? 0;
@@ -225,7 +225,7 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
                 const reinforceResult = await reinforceModel.generateContent(reinforcePromptText);
                 nextReinforceContent = reinforceResult.response.text().trim();
 
-                // ── Token / cost logging (reinforce) ─────────
+                
                 const rUsage = reinforceResult.response.usageMetadata;
                 if (rUsage) {
                     const i = rUsage.promptTokenCount ?? 0;
@@ -280,13 +280,13 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
 
         await supabaseAdmin.from('flow_steps').update({ evaluation }).eq('id', stepId);
 
-        // PROACTIVE MASTERY UPDATE:
-        // Record this mastery signal in the knowledge vault in real-time.
+        
+        
         try {
             const masteryState: MasteryState = evaluation.masterySignal || 'revisit';
             const conceptName = currentConcept?.conceptName || 'Unknown Concept';
 
-            // 1. Ensure node exists
+            
             const node = await findOrCreateConceptNode(
                 supabaseAdmin as any,
                 userId,
@@ -296,13 +296,13 @@ Available unused angles: ${anglesAvailable.filter((a: string) => !anglesUsedStr.
             );
 
             if (node) {
-                // 2. Record this specific mastery event
+                
                 await updateConceptMastery(
                     supabaseAdmin as any,
                     userId,
                     node.id,
                     masteryState,
-                    'session', // Treated as a session event for history
+                    'session', 
                     sessionId
                 );
             }

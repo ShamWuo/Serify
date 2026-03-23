@@ -86,7 +86,7 @@ export default function PracticeMode() {
                     return;
                 }
 
-                // If we need to generate, check if allowed
+                
                 if (!isAllowed) {
                     setLoading(false);
                     return;
@@ -101,7 +101,7 @@ export default function PracticeMode() {
                 if (res.ok) {
                     const data = await res.json();
                     setQuestions(data.questions || []);
-                    // Increment usage
+                    
                     increment();
                     refresh();
                 } else {
@@ -310,7 +310,6 @@ export default function PracticeMode() {
                         </div>
                     </div>
 
-
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {currentQ.options.map((opt: string, idx: number) => {
                             const isSelected = selectedOption === idx;
@@ -346,7 +345,6 @@ export default function PracticeMode() {
                         })}
                     </div>
 
-
                     {isAnswered && (
                         <div className="mt-6 pt-6 border-t border-[var(--border)] animate-in fade-in slide-in-from-bottom-2">
                             <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold mb-3 ${selectedOption === currentQ.correctIndex ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
@@ -357,7 +355,6 @@ export default function PracticeMode() {
                             </div>
                         </div>
                     )}
-
 
                     <div className="mt-8 flex items-center justify-between gap-3">
                         <button
@@ -373,7 +370,6 @@ export default function PracticeMode() {
                         >
                             <ChevronLeft size={20} />
                         </button>
-
 
                         <div className="flex gap-1.5 items-center">
                             {questions.map((_: any, i: number) => {

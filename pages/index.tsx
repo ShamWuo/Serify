@@ -5,11 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 
-// Layout & SEO
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import SEO from '@/components/Layout/SEO';
 
-// Components
 import SmartInputCard from '@/components/dashboard/SmartInputCard';
 import RecentSessions, { SessionRow } from '@/components/dashboard/RecentSessions';
 import NeedsAttention from '@/components/dashboard/NeedsAttention';
@@ -17,7 +15,6 @@ import QuickLaunch from '@/components/dashboard/QuickLaunch';
 import ActivityDots from '@/components/dashboard/ActivityDots';
 import DashboardV2 from '@/components/dashboard/DashboardV2';
 
-// Types
 import { KnowledgeNode } from '@/types/serify';
 import LandingPage from '@/components/LandingPage';
 import { Brain, Sparkles, Zap } from 'lucide-react';
@@ -43,27 +40,20 @@ export default function Home() {
     useEffect(() => {
         if (!user) return;
 
-        // 1. Fetch Latest Sessions
+        
         const fetchDashboardData = async () => {
             setDataLoading(true);
             const timer = setTimeout(() => setShowSlowLoadingNotice(true), 6000);
 
             try {
-                // Wrap Promise.all with a timeout safety net
+                
                 const dashboardPromise = Promise.all([
                     supabase.from('reflection_sessions')
                         .select('id, title, content_type, created_at, depth_score')
                         .eq('user_id', user.id)
                         .order('created_at', { ascending: false })
                         .limit(5),
-                    supabase.from('knowledge_nodes')
-                        .select('id, display_name, current_mastery, definition')
-                        .eq('user_id', user.id)
-                        .in('current_mastery', ['shaky', 'revisit'])
-                        .limit(3),
-                    supabase.from('knowledge_nodes')
-                        .select('count', { count: 'exact', head: true })
-                        .eq('user_id', user.id),
+                    
                     supabase.from('reflection_sessions')
                         .select('created_at')
                         .eq('user_id', user.id)
@@ -72,12 +62,12 @@ export default function Home() {
 
                 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Dashboard timeout')), 10000));
                 
-                const [sessionsRes, attentionRes, vaultRes, activityRes]: any = await Promise.race([
+                const [sessionsRes, activityRes]: any = await Promise.race([
                     dashboardPromise,
                     timeoutPromise
                 ]);
 
-                // Map Sessions to SessionRow
+                
                 if (sessionsRes && sessionsRes.data) {
                     const mapped: SessionRow[] = sessionsRes.data.map((s: any) => ({
                         id: s.id,
@@ -91,21 +81,15 @@ export default function Home() {
                             revisit: s.depth_score < 40 ? 10 : 5
                         },
                         gaps: s.depth_score < 70 ? 2 : 0,
-                        materials: ['flashcards', 'quiz'] // Placeholder
+                        materials: ['flashcards', 'quiz'] 
                     }));
                     setLatestSessions(mapped);
                 }
 
-
-                setFocusConcepts(((attentionRes?.data) || []).map((c: any) => ({
-                    id: c.id,
-                    name: c.display_name,
-                    status: c.current_mastery as 'shaky' | 'revisit',
-                    sessionsCount: 1 // Placeholder
-                })));
-                setVaultCount(vaultRes?.count || 0);
+                setFocusConcepts([]);
+                setVaultCount(0);
                 
-                // Map Activity
+                
                 const today = new Date();
                 const days = Array.from({ length: 7 }, (_, i) => {
                     const d = new Date(today);
@@ -116,7 +100,7 @@ export default function Home() {
                 setActivityDays(days);
             } catch (err) {
                 console.warn('Dashboard data fetch taking too long or failed:', err);
-                // We keep moving so the user isn't stuck
+                
             } finally {
                 clearTimeout(timer);
                 setDataLoading(false);
@@ -189,7 +173,6 @@ export default function Home() {
 
     if (!user && !isDemo) return <LandingPage />;
 
-
     return (
         <DashboardLayout>
             <SEO title="Dashboard" description="Your personal learning command center." />
@@ -207,9 +190,9 @@ export default function Home() {
             ) : (
                 <div className="max-w-[1240px] mx-auto px-6 pt-8 pb-12 md:pt-12 md:pb-20 relative z-10">
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 xl:gap-12">
-                        {/* Main Column */}
+                        {}
                         <div className="space-y-12">
-                            {/* Smart Input Section */}
+                            {}
                             <section className="animate-slide-up">
                                 <SmartInputCard 
                                     onAnalyze={handleAnalyze} 
@@ -222,15 +205,15 @@ export default function Home() {
                                 )}
                             </section>
 
-                            {/* Recent Activity Section */}
+                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '150ms' }}>
                                 <RecentSessions sessions={latestSessions} />
                             </section>
                         </div>
 
-                        {/* Sidebar Column */}
+                        {}
                         <div className="space-y-10">
-                            {/* Needs Attention / Onboarding Card */}
+                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '200ms' }}>
                                 {latestSessions.length === 0 ? (
                                     <div className="bg-white rounded-2xl border border-[var(--border)] p-6 shadow-sm">
@@ -250,12 +233,12 @@ export default function Home() {
                                 )}
                             </section>
 
-                            {/* Quick Launch */}
+                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '250ms' }}>
                                 <QuickLaunch />
                             </section>
 
-                            {/* Weekly Activity */}
+                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '300ms' }}>
                                 <ActivityDots 
                                     days={activityDays} 
@@ -264,7 +247,7 @@ export default function Home() {
                                 />
                             </section>
                             
-                            {/* Roadmap Promo */}
+                            {}
                             <div className="p-6 rounded-2xl bg-gradient-to-br from-[var(--bg)] to-[#f8fafc] border border-[var(--border)] shadow-sm group hover:border-[var(--accent)]/30 transition-all">
                                 <div className="w-10 h-10 rounded-xl bg-white border border-[var(--border)] flex items-center justify-center text-[var(--accent)] mb-4 shadow-sm group-hover:scale-110 transition-transform">
                                     <Sparkles size={18} />

@@ -37,14 +37,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const response = await result.response;
         const text = response.text();
 
-        // Clean up markdown code blocks if Gemini includes them
+        
         const cleanedJson = text.replace(/```json|```/g, '').trim();
         const data = JSON.parse(cleanedJson);
 
         return res.status(200).json({ intent: data.intent || 'analyze' });
     } catch (error: any) {
         console.error('Intent classification error:', error);
-        // Fallback to analyze on error
+        
         return res.status(200).json({ intent: 'analyze' });
     }
 }

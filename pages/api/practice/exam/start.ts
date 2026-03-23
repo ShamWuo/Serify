@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 1. Check Usage Limits (Unified Tokens)
+    
     const usageResult = await consumeTokens(userId, 'practice_exam_generation');
     if (!usageResult.allowed) {
         return res.status(403).json({ 
@@ -41,12 +41,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const subscription_plan = usageResult.plan;
 
-    // 2. Resolve scope
+    
     let formattedConcepts: { id: string; name: string; description: string; mastery: string }[] = [];
     if (isVaultMode) {
         const { data: concepts, error: conceptsError } = await supabase
             .from('knowledge_nodes')
-            .select('id, display_name, definition, current_mastery') // This select statement was not changed as the provided one was incorrect for knowledge_nodes
+            .select('id, display_name, definition, current_mastery') 
             .in('id', conceptIds)
             .eq('node_type', 'concept')
             .eq('user_id', userId);
@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
     }
 
-    // 3. Generate questions
+    
     const questions = await generateExamQuestions(
         formattedConcepts,
         { format: format || 'standard', questionCount: questionCount || 5 },
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         topic
     );
 
-    // 4. Create Practice Session record
+    
     const { data: sessionData, error: sessionError } = await supabase
         .from('practice_sessions')
         .insert({
@@ -93,9 +93,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create practice session');
     }
 
-    // 5. Create Practice Reponses records (placeholder answers)
+    
     const responsesToInsert = questions.map((q, index) => {
-        // Concept ID might be 'topic' or undefined in ad-hoc mode
+        
         const isValidUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-5][0-9a-f]{3}-[0-89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
         
         return {
@@ -123,9 +123,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create question placeholders');
     }
 
-    // Usage already deducted via consumeTokens at the start to ensure atomic gating
+    
 
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_exam_generated',

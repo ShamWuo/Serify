@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const isDemo = req.headers['x-serify-demo'] === 'true' || req.headers['X-Serify-Demo'] === 'true';
 
-    // Use a user-scoped client for fetching to respect RLS, but fallback to admin for demo
+    
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
     

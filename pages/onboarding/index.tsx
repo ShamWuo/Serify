@@ -50,7 +50,7 @@ export default function OnboardingPersonalization() {
 
                 if (error) {
                     console.error('Error saving personalization:', error);
-                    // Non-blocking: even if it fails, let them proceed
+                    
                 }
             }
 
@@ -74,7 +74,7 @@ export default function OnboardingPersonalization() {
             </Head>
 
             <div className="w-full max-w-[520px]">
-                {/* Progress Indicator */}
+                {}
                 <div className="flex items-center justify-center gap-2 mb-8">
                     <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />
                     <div className="w-2.5 h-2.5 rounded-full border border-[var(--border)]" />

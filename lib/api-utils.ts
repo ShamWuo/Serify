@@ -32,7 +32,6 @@ export function createSuccessResponse(data: unknown, status: number = 200) {
   });
 }
 
-// For standard Next.js API routes (not Edge)
 export function sendError(
   res: NextApiResponse,
   message: string,

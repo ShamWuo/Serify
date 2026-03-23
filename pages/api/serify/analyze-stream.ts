@@ -78,7 +78,7 @@ export default async function handler(req: Request) {
                     return;
                 }
 
-                // Check usage
+                
                 const usage = await incrementUsage(userId, 'session_standard');
                 if (!usage.allowed) {
                     send({ error: 'limit_reached', message: 'You have reached your feature limit.' });
@@ -86,7 +86,7 @@ export default async function handler(req: Request) {
                     return;
                 }
 
-                // Step 1: Content Extraction
+                
                 send({ progress: 10, status: 'extracting', message: 'Fetching content...' });
                 let processedContent = content;
                 if (contentType === 'youtube') {
@@ -101,7 +101,7 @@ export default async function handler(req: Request) {
                     }
                 }
 
-                // Step 2: Concept Mapping
+                
                 send({ progress: 25, status: 'concepts', message: 'Mapping concepts...' });
                 const conceptPrompt = `You are an expert knowledge analyst. Your goal is to extract a hierarchical concept map from the following material.
                 
@@ -132,7 +132,7 @@ export default async function handler(req: Request) {
 
                 send({ progress: 45, status: 'concepts_done', data: conceptData });
 
-                // Step 3: Question Generation
+                
                 send({ progress: 60, status: 'questions', message: 'Drafting questions...' });
                 const questionCount = isBasicMode ? 6 : 5;
                 const questionPrompt = `
@@ -154,10 +154,10 @@ export default async function handler(req: Request) {
 
                 send({ progress: 80, status: 'questions_done', data: questionData });
 
-                // Step 4: Database Save
+                
                 send({ progress: 90, status: 'saving', message: 'Finalizing session...' });
 
-                // 1. Create the session
+                
                 const { data: session, error: sessionError } = await supabase
                     .from('reflection_sessions')
                     .insert({
@@ -176,7 +176,7 @@ export default async function handler(req: Request) {
                     throw new Error(sessionError?.message || 'Failed to initialize session');
                 }
 
-                // 2. Save concepts
+                
                 const conceptsToInsert = conceptData.concepts.map((c: any) => {
                     const parent = c.parent_id ? conceptData.concepts.find(p => p.id === c.parent_id) : null;
                     return {
@@ -185,7 +185,7 @@ export default async function handler(req: Request) {
                         definition: c.definition,
                         importance: c.importance,
                         misconception_risk: !!c.misconception_risk,
-                        // We store hierarchy in related_concept_names: [ParentName, is_sub_concept_flag]
+                        
                         related_concept_names: c.is_sub_concept && parent ? [parent.name, "IS_SUB"] : []
                     };
                 });
@@ -206,7 +206,7 @@ export default async function handler(req: Request) {
                     });
                 }
 
-                // 3. Save questions
+                
                 let questionsForFrontend: { id: string, target_concept_id: string, type: string, text: string }[] = [];
                 if (questionData.questions && questionData.questions.length > 0) {
                     const questionsToInsert = questionData.questions.map((q: any) => ({
@@ -234,7 +234,7 @@ export default async function handler(req: Request) {
                 }
 
                 if (questionsForFrontend.length === 0) {
-                    // Fallback if DB insert failed but AI generated them
+                    
                     questionsForFrontend = questionData.questions.map((q: any) => ({
                         id: q.id,
                         target_concept_id: conceptIdMap[q.target_concept_id] || q.target_concept_id,
@@ -243,7 +243,7 @@ export default async function handler(req: Request) {
                     }));
                 }
 
-                // Step 5: DONE
+                
                 send({
                     progress: 100,
                     status: 'completed',

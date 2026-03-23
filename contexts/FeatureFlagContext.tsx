@@ -18,7 +18,7 @@ export const FeatureFlagProvider: React.FC<{ children: React.ReactNode }> = ({ c
     useEffect(() => {
         async function loadFlags() {
             try {
-                // If we have a user, pass metadata like tier for rule matching
+                
                 const metadata = user ? { tier: user.subscriptionTier } : undefined;
                 const enabledFlags = await getAllEnabledFlags(user?.id, metadata);
                 setFlags(enabledFlags);
@@ -49,9 +49,6 @@ export const useFeatureFlags = () => {
     return context;
 };
 
-/**
- * A helper component to wrap features with flags.
- */
 export const FeatureFlag: React.FC<{ 
     flag: string; 
     children: React.ReactNode;
@@ -59,7 +56,7 @@ export const FeatureFlag: React.FC<{
 }> = ({ flag, children, fallback = null }) => {
     const { isEnabled, isLoading } = useFeatureFlags();
 
-    if (isLoading) return null; // Or a loader if desired
+    if (isLoading) return null; 
 
     return isEnabled(flag) ? <>{children}</> : <>{fallback}</>;
 };

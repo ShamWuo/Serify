@@ -44,7 +44,7 @@ export default function VaultDrillPage() {
             });
             if (res.ok) {
                 const d = await res.json();
-                // Shuffle for variety
+                
                 const shuffled = (d.nodes || []).sort(() => Math.random() - 0.5);
                 setNodes(shuffled);
             }
@@ -185,7 +185,7 @@ export default function VaultDrillPage() {
                     onClick={handleFlip}
                 >
                     <div className={`relative w-full h-[450px] transition-transform duration-700 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
-                        {/* Front of Card */}
+                        {}
                         <div className="absolute inset-0 backface-hidden bg-[var(--surface)] border-2 border-[var(--border)] rounded-[2rem] shadow-premium flex flex-col items-center justify-center p-8 md:p-12 hover:border-[var(--accent)]/30 transition-colors cursor-pointer select-none">
                             <h2 className="text-3xl md:text-5xl font-display text-center text-[var(--text)] leading-tight">
                                 {currentNode.display_name || currentNode.canonical_name}
@@ -195,7 +195,7 @@ export default function VaultDrillPage() {
                             </p>
                         </div>
 
-                        {/* Back of Card */}
+                        {}
                         <div className="absolute inset-0 backface-hidden rotate-y-180 bg-[var(--surface)] border-2 border-[var(--accent)]/20 rounded-[2rem] shadow-premium flex flex-col items-center justify-center p-8 md:p-12 overflow-y-auto cursor-pointer select-none">
                             <div className="w-full flex-1 flex flex-col items-center justify-center text-center">
                                 <p className="text-xl md:text-2xl leading-relaxed text-[var(--text)] font-medium">

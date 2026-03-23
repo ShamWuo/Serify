@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'Valid sourceId and targetId are required' });
         }
 
-        // Fetch both nodes
+        
         const { data: nodes, error: fetchErr } = await supabase
             .from('knowledge_nodes')
             .select('*')
@@ -42,17 +42,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        // Combine history
+        
         const sourceHistory = sourceNode.mastery_history || [];
         const targetHistory = targetNode.mastery_history || [];
         const combinedHistory = [...sourceHistory, ...targetHistory].sort((a: any, b: any) => {
             return new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime();
         });
 
-        // Determine worse mastery
+        
         const worseMastery = getWorseMastery(sourceNode.current_mastery, targetNode.current_mastery);
 
-        // Update Target Node (keep this one)
+        
         const { error: updateTargetErr } = await supabase
             .from('knowledge_nodes')
             .update({
@@ -63,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (updateTargetErr) throw updateTargetErr;
 
-        // Archive Source Node (hide this one)
+        
         const { error: archiveSourceErr } = await supabase
             .from('knowledge_nodes')
             .update({

@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Bad request' });
     }
 
-    // Verify session belongs to the user
+    
     const { data: session, error: sessionError } = await (supabaseAdmin as any)
         .from('reflection_sessions')
         .select('id, title, user_id, is_public, depth_score')

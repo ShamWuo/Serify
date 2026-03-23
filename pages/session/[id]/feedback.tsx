@@ -104,7 +104,7 @@ export default function FeedbackReport() {
     const [isUsageGateOpen, setIsUsageGateOpen] = useState(false);
     const [usageFeature, setUsageFeature] = useState<any>('ai_message_tier1');
 
-    // Share state
+    
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [shareUrl, setShareUrl] = useState<string | null>(null);
     const [isSharingLoading, setIsSharingLoading] = useState(false);
@@ -115,7 +115,7 @@ export default function FeedbackReport() {
     const handleShare = async () => {
         if (!user) return;
         if (shareUrl) {
-            // Already shared, just open the modal
+            
             setIsShareModalOpen(true);
             return;
         }
@@ -171,7 +171,7 @@ export default function FeedbackReport() {
         setIsTimedOut(false);
         hasSubmittedRef.current = false;
         
-        // Re-trigger the synthesis logic
+        
         const stored = localStorage.getItem('serify_feedback_report');
         if (stored && id) {
             try {
@@ -200,7 +200,7 @@ export default function FeedbackReport() {
     const handleConfirmRegenerate = () => {
         if (!regenerateTarget) return;
 
-        // Check usage allowed
+        
         if (usage?.allowed === false) {
             setIsRegenerateModalOpen(false);
             setUsageFeature('ai_message_tier1');
@@ -213,7 +213,7 @@ export default function FeedbackReport() {
     };
 
     const handleFeatureClick = (e: React.MouseEvent, type: string, cost: number, name: string, exists: boolean) => {
-        if (exists) return; // If it exists, let the link handle it (navigation)
+        if (exists) return; 
 
         if (usage?.allowed === false) {
             e.preventDefault();
@@ -228,7 +228,7 @@ export default function FeedbackReport() {
     const [isSavingReminder, setIsSavingReminder] = useState(false);
 
     useEffect(() => {
-        // Only show if it's the very first session and reminder not already set/declined
+        
         if (storage.getHistory().length === 1 && user) {
             supabase
                 .from('profiles')
@@ -266,7 +266,7 @@ export default function FeedbackReport() {
 
         async function loadReport() {
             try {
-                // 1. Check if report is in analyses table first
+                
                 const { data: existingAnalysis } = await supabase
                     .from('analyses')
                     .select('*')
@@ -289,7 +289,7 @@ export default function FeedbackReport() {
                     return;
                 }
 
-                // 2. Fallback to localStorage (for continuity during a session if not yet saved)
+                
                 const stored = localStorage.getItem('serify_feedback_report');
                 if (stored) {
                     const parsed = JSON.parse(stored);
@@ -300,7 +300,7 @@ export default function FeedbackReport() {
                     if (parsed.report) {
                         setReport(parsed.report);
                     } else if (!hasSubmittedRef.current) {
-                        // Only ever call submit once — guard against re-renders
+                        
                         hasSubmittedRef.current = true;
                         submit({
                             sessionData: { ...parsed.sessionData, sessionId: id, title: parsed.title, isBasicMode: parsed.isBasicMode },
@@ -317,7 +317,7 @@ export default function FeedbackReport() {
 
         loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id, user]); // Intentionally omit submit/isLoading/object/report — they are unstable and would cause infinite loops
+    }, [id, user]); 
 
     useEffect(() => {
         if (object && !isLoading) {
@@ -338,7 +338,7 @@ export default function FeedbackReport() {
         if (isLoading && !displayReport) {
             timer = setTimeout(() => {
                 setIsTimedOut(true);
-            }, 30000); // 30 second hard timeout threshold
+            }, 30000); 
         }
         return () => clearTimeout(timer);
     }, [isLoading, displayReport]);
@@ -1337,7 +1337,7 @@ export default function FeedbackReport() {
                 </section>
             </div>
 
-            {/* Share Modal */}
+            {}
             {isShareModalOpen && shareUrl && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
                     <div className="bg-[var(--background)] border border-[var(--border)] rounded-2xl w-full max-w-lg p-6 shadow-xl animate-scale-in">
@@ -1353,13 +1353,13 @@ export default function FeedbackReport() {
                             </button>
                         </div>
 
-                        {/* Preview snippet */}
+                        {}
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4 mb-4 text-sm">
                             <p className="font-semibold text-[var(--text)] mb-1 truncate">{title}</p>
                             <p className="text-[var(--muted)] text-xs">Public Serify report &bull; diagnoses understanding, not just answers</p>
                         </div>
 
-                        {/* Copy link */}
+                        {}
                         <div className="flex items-center gap-2 mb-4">
                             <div className="flex-1 px-3 py-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--muted)] text-sm font-mono truncate">
                                 {shareUrl}
@@ -1376,7 +1376,7 @@ export default function FeedbackReport() {
                             </button>
                         </div>
 
-                        {/* Social share buttons */}
+                        {}
                         <div className="flex flex-wrap items-center gap-2 mb-6">
                             <a
                                 href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I just got diagnosed by Serify 🧠 — it found gaps in my understanding I didn't know I had. Check my report:`)}&url=${encodeURIComponent(shareUrl)}`}

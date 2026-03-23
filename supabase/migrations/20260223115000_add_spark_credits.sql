@@ -107,7 +107,6 @@ INSERT INTO public.spark_transactions (user_id, amount, pool, transaction_type, 
 SELECT id, 15, 'trial', 'trial_grant', 'signup_backfill', 15 FROM public.profiles
 WHERE NOT EXISTS (SELECT 1 FROM public.spark_transactions WHERE public.spark_transactions.user_id = public.profiles.id);
 
-
 -- Deduct Sparks RPC
 CREATE OR REPLACE FUNCTION deduct_sparks(
   p_user_id UUID,

@@ -42,7 +42,7 @@ export default function EditFlashcardDeck() {
         const fetchData = async () => {
             try {
                 setIsLoading(true);
-                // 1. Fetch Deck
+                
                 const { data: deck, error: deckError } = await supabase
                     .from('flashcard_decks')
                     .select('*')
@@ -55,7 +55,7 @@ export default function EditFlashcardDeck() {
                 setTitle(deck.title);
                 setDescription(deck.description || '');
 
-                // 2. Fetch Cards
+                
                 const { data: cards, error: cardsError } = await supabase
                     .from('flashcards')
                     .select('*')
@@ -116,7 +116,7 @@ export default function EditFlashcardDeck() {
 
         setIsSubmitting(true);
         try {
-            // 1. Update Deck Metadata
+            
             const { error: deckUpdateError } = await supabase
                 .from('flashcard_decks')
                 .update({
@@ -129,7 +129,7 @@ export default function EditFlashcardDeck() {
 
             if (deckUpdateError) throw deckUpdateError;
 
-            // 2. Delete Cards removed from the list
+            
             if (deletedCardIds.length > 0) {
                 const { error: deleteError } = await supabase
                     .from('flashcards')
@@ -139,7 +139,7 @@ export default function EditFlashcardDeck() {
                 if (deleteError) throw deleteError;
             }
 
-            // 3. Update existing cards
+            
             const existingCards = validCards.filter(c => c.id);
             if (existingCards.length > 0) {
                 const { error: updateError } = await supabase
@@ -157,7 +157,7 @@ export default function EditFlashcardDeck() {
                 if (updateError) throw updateError;
             }
 
-            // 4. Insert new cards
+            
             const newCards = validCards.filter(c => !c.id);
             if (newCards.length > 0) {
                 const { error: insertError } = await supabase
@@ -203,7 +203,7 @@ export default function EditFlashcardDeck() {
             </Head>
 
             <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 pb-24">
-                {/* Header */}
+                {}
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={() => router.back()}
@@ -233,7 +233,7 @@ export default function EditFlashcardDeck() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Main Settings */}
+                    {}
                     <div className="md:col-span-2 space-y-6">
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
                             <div className="space-y-4">
@@ -319,7 +319,7 @@ export default function EditFlashcardDeck() {
                         </div>
                     </div>
 
-                    {/* Sidebar Tips */}
+                    {}
                     <div className="space-y-6">
                         <div className="bg-teal-50 border border-teal-100 rounded-3xl p-6 space-y-4">
                             <div className="flex items-center gap-3 text-teal-700 font-bold">

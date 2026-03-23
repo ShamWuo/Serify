@@ -32,12 +32,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (sessionError || !sessionData)
             return res.status(404).json({ error: 'Session not found' });
 
-        // ── Look up the concept name from the plan ────────────────
+        
         const planConcepts = sessionData.initial_plan?.concepts || [];
         const currentConceptMeta = planConcepts.find((c: any) => c.conceptId === conceptId);
         const conceptName = currentConceptMeta?.conceptName || 'Unknown Concept';
 
-        // ── Ensure concept exists in vault (FK requirement) ───────
+        
         const node = await findOrCreateConceptNode(
             supabaseAdmin as any,
             userId,
@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('concept_id', vaultConceptId)
             .maybeSingle();
 
-        // FALLBACK: If not found by vault ID, try original plan conceptId
+        
         if (!progressData && vaultConceptId !== conceptId) {
             console.log(`[step] Progress not found by VaultID (${vaultConceptId}). Trying PlanID (${conceptId})`);
             const { data: fallbackData } = await supabaseAdmin
@@ -66,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             progressData = fallbackData;
         }
 
-        // FALLBACK 2: If still not found, try looking up by Name match in existing progress
+        
         if (!progressData) {
             const { data: allProgress } = await supabaseAdmin
                 .from('flow_concept_progress')
@@ -74,8 +74,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .eq('flow_session_id', sessionId);
 
             if (allProgress) {
-                // This is slow but better than a crash. Find a plan where the orchestrator_plan 
-                // matches this concept name.
+                
+                
                 const matchedProgress = allProgress.find((p: any) =>
                     p.orchestrator_plan?.teach?.text?.toLowerCase().includes(conceptName.toLowerCase().slice(0, 20))
                 );
@@ -109,8 +109,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 ? previousSteps[previousSteps.length - 1]
                 : null;
 
-        // If last step is not answered yet, or is a check/confirm step that failed to evaluate, 
-        // return it so the user can try again.
+        
+        
         const isCheckMissingEval = lastStep && (lastStep.step_type === 'check' || lastStep.step_type === 'confirm') && !lastStep.evaluation;
 
         if (lastStep && (!lastStep.user_response || isCheckMissingEval) && lastStep.step_type !== 'completed' && !forcePhase) {
@@ -140,14 +140,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 checkType: 'recall'
             };
         } else if (!lastStep) {
-            // Always start with the combined teach card
+            
             nextStepType = 'teach';
             content = {
                 text: plan.teach?.text || '',
                 quickChecks: plan.quickChecks || []
             };
         } else if (lastStep.step_type === 'teach') {
-            // After teach, go to first open-ended check
+            
             nextStepType = 'check';
             content = plan.checks?.[0] || {
                 questionText: 'How would you summarize what you just read?',
@@ -241,7 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         if (nextStepType === 'completed') {
-            // ── Look up the concept name from the plan ────────────────
+            
             const planConcepts = sessionData.initial_plan?.concepts || [];
             const currentConceptMeta = planConcepts.find((c: any) => c.conceptId === conceptId);
             const conceptName = currentConceptMeta?.conceptName || 'Unknown Concept';
@@ -282,8 +282,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             }
 
-            // ── VAULT UPDATE: runs for ALL session types ──────────────
-            // Ensure this concept exists in the vault AND gets promoted to 'solid' mastery.
+            
+            
             try {
                 const nodeResult = await findOrCreateConceptNode(
                     supabaseAdmin as any,
@@ -292,7 +292,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     sessionId,
                     `Mastered via Flow session: ${conceptName}`
                 );
-                // Promote mastery to 'solid' for completed concepts
+                
                 if (nodeResult) {
                     await supabaseAdmin
                         .from('knowledge_nodes')
@@ -319,7 +319,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 id: stepId,
                 flow_session_id: sessionId,
                 user_id: userId,
-                concept_id: vaultConceptId, // Use Vault UUID
+                concept_id: vaultConceptId, 
                 step_number: stepNumber,
                 step_type: nextStepType,
                 content: content,

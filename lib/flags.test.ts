@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { isFeatureEnabled, getAllEnabledFlags } from './flags';
 import { supabase } from './supabase';
 
-// Mock Supabase with chainable methods
 vi.mock('./supabase', () => {
     const mockSingle = vi.fn();
     const mockEq = vi.fn(() => ({ single: mockSingle }));
@@ -99,10 +98,10 @@ describe('Feature Flags Logic', () => {
 
             const res1 = await isFeatureEnabled('canary', 'user-1');
             const res2 = await isFeatureEnabled('canary', 'user-1');
-            expect(res1).toBe(res2); // Determinism check
+            expect(res1).toBe(res2); 
             
             const res3 = await isFeatureEnabled('canary', 'user-2');
-            // One of these might be true/false depending on hash, but it must be consistent
+            
             expect(typeof res1).toBe('boolean');
             expect(typeof res3).toBe('boolean');
         });

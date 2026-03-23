@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     try {
-        // 1. Fetch Reflection Sessions concepts
+        
         const { data: sessions, error: sessErr } = await supabaseAdmin
             .from('reflection_sessions')
             .select('id')
@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        // 2. Fetch Flow Sessions concepts
+        
         const { data: flowSessions, error: flowErr } = await supabaseAdmin
             .from('flow_sessions')
             .select('id, initial_plan, concepts_completed')

@@ -73,7 +73,7 @@ export default function PublicCurriculumView() {
                 <title>{curriculum.title} | Shared on Serify</title>
             </Head>
 
-            {/* TOP BAR */}
+            {}
             <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[var(--border)]">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-2 font-display text-xl font-bold tracking-tight">
@@ -89,7 +89,7 @@ export default function PublicCurriculumView() {
             </div>
 
             <main className="max-w-4xl mx-auto px-6 py-12 lg:py-20">
-                {/* HEADER */}
+                {}
                 <div className="mb-16 text-center">
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--accent)]/5 border border-[var(--accent)]/10 rounded-full text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest mb-6">
                         <Globe size={12} />
@@ -118,7 +118,7 @@ export default function PublicCurriculumView() {
                     </div>
                 </div>
 
-                {/* CALL TO ACTION */}
+                {}
                 <div className="mb-16 p-8 bg-black text-white rounded-[2.5rem] shadow-2xl overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform duration-1000">
                         <Zap size={200} fill="white" />
@@ -135,7 +135,7 @@ export default function PublicCurriculumView() {
                     </div>
                 </div>
 
-                {/* CURRICULUM MAP */}
+                {}
                 <div className="space-y-12">
                     <div className="flex items-center gap-4 mb-4">
                         <h2 className="text-2xl font-display">Learning Path</h2>
@@ -173,7 +173,7 @@ export default function PublicCurriculumView() {
                     ))}
                 </div>
 
-                {/* BOTTOM CTA */}
+                {}
                 <div className="mt-24 pt-12 border-t border-[var(--border)] text-center">
                     <p className="text-[var(--muted)] mb-8">Ready to master any topic with AI-driven active recall?</p>
                     <Link href="/signup" className="inline-flex items-center gap-2 text-2xl font-display hover:text-[var(--accent)] transition-colors">

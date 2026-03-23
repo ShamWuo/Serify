@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
-// Use service role to bypass RLS for public sharing, but ONLY return non-sensitive fields
 const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -29,8 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: 'Curriculum not found' });
         }
 
-        // Strip any user_id or private metadata if strictly necessary, 
-        // but the select already filters fields.
+        
+        
 
         return res.status(200).json({ curriculum: data });
     } catch (e) {

@@ -195,7 +195,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                                     <div className="px-3 py-2 text-[10px] uppercase tracking-wider font-bold text-[var(--muted)]">Search Results</div>
                                     {results.map((result, idx) => {
                                         const globalIdx = idx + navShortcuts.length; // This is wrong if we don't show shortcuts
-                                        // Simple mapping: if query exist, only show results
+                                        
                                         return (
                                             <div
                                                 key={result.id}

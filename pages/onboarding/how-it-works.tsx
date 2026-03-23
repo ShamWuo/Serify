@@ -40,7 +40,7 @@ export default function OnboardingHowItWorks() {
         try {
             await markOnboardingComplete();
 
-            // Artificial delay for "Magic Moment" transition
+            
             setTimeout(() => setTransitionMsg('Calibrating diagnostic engine...'), 800);
             setTimeout(() => setTransitionMsg('Preparing your learning workspace...'), 1600);
 
@@ -62,7 +62,7 @@ export default function OnboardingHowItWorks() {
             </Head>
 
             <div className="w-full max-w-[560px]">
-                {/* Progress Indicator */}
+                {}
                 <div className="flex items-center justify-center gap-2 mb-8">
                     <div className="w-2.5 h-2.5 rounded-full border border-[var(--border)]" />
                     <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)]" />

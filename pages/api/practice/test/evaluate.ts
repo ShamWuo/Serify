@@ -19,14 +19,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { sessionId, userAnswers } = req.body;
-  // userAnswers: { responseId: string, answer: string }[]
+  
 
   if (!sessionId || !userAnswers || !Array.isArray(userAnswers)) {
     return res.status(400).json({ error: 'Missing sessionId or userAnswers' });
   }
 
   try {
-    // 1. Fetch the session and its questions
+    
     const { data: session, error: sessionError } = await supabase
       .from('practice_sessions')
       .select('*')
@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to fetch questions' });
     }
 
-    // Prepare payload for AI evaluation
+    
     const aiPayload = questions.map((q) => {
       const uAnswer = userAnswers.find(ua => ua.responseId === q.id)?.answer || '';
       return {
@@ -63,22 +63,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
     });
 
-    // We don't deduct tokens for evaluation to encourage completion
-    // Just fetch plan for better model access
+    
+    
     const { data: profile } = await supabase.from('user_profiles').select('subscription_plan').eq('id', userId).single();
     const plan = profile?.subscription_plan || 'free';
 
     const evaluation = await evaluatePracticeTest(aiPayload, plan);
 
-    // Note: This logic assumes lengths match. In a production app, robust mapping is needed.
-    // Ensure we map feedback to specific question IDs.
+    
+    
     const feedbackList = evaluation.questionFeedback;
     
-    // Calculate fractional score
+    
     const scoreMap = { 'strong': 100, 'developing': 60, 'shaky': 30, 'blank': 0 };
     let totalScore = 0;
 
-    // Update DB with feedback
+    
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       const fb = feedbackList[i];
@@ -99,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const finalScore = Math.round(totalScore / questions.length);
 
-    // Update Session
+    
     await supabase
       .from('practice_sessions')
       .update({
@@ -113,7 +113,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       .eq('id', sessionId);
       
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_test_evaluated',

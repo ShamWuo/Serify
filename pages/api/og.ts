@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Returns a dynamic SVG-based OG image for a shared Serify session
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { sessionId } = req.query;
 
@@ -27,10 +26,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const title = session.title || 'A Serify Session';
   const depthScore = session.depth_score ?? null;
 
-  // Truncate title for display
+  
   const displayTitle = title.length > 48 ? title.slice(0, 45) + '...' : title;
 
-  // Color palette for the score gradient
+  
   const scoreColor =
     depthScore === null
       ? '#6b7280'

@@ -151,7 +151,7 @@ function SessionRow({
         new Date().getTime() - new Date(session.createdAt).getTime() > 60 * 60 * 1000;
 
     function handleRowClick() {
-        if (isStale) return; // Prevent clicking failed sessions unless we add a retry
+        if (isStale) return; 
 
         if (session.type === 'flow') {
             if (session.sourceType === 'curriculum' && session.sourceId) {
@@ -396,7 +396,6 @@ export default function LibraryPage() {
             matchesTab = status !== 'complete' && status !== 'completed' && status !== 'feedback';
         }
 
-
         const matchesSearch =
             !search.trim() || s.title.toLowerCase().includes(search.toLowerCase());
         return matchesTab && matchesSearch;
@@ -416,7 +415,6 @@ export default function LibraryPage() {
             return status !== 'complete' && status !== 'completed' && status !== 'feedback' && status !== 'assessment';
         }
     ).length;
-
 
     return (
         <DashboardLayout>
@@ -578,7 +576,6 @@ export default function LibraryPage() {
                                                         ? 'Ready to dive back in? Any unfinished sessions will be tracked right here.'
                                                         : 'Start your next adventure. Choose a study method to begin mapping your understanding.'}
                                     </p>
-
 
                                     {!search && (
                                         <div className="flex flex-col sm:flex-row gap-4">

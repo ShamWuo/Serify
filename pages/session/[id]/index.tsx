@@ -72,7 +72,7 @@ export default function ActiveSession() {
     useEffect(() => {
         const history = storage.getHistory();
         if (history.length <= 1) {
-            // It could be 1, or 0 if somehow not saved yet
+            
             setIsFirstSession(true);
             const dismissed = localStorage.getItem('serify_guidance_dismissed');
             if (!dismissed) {
@@ -96,7 +96,7 @@ export default function ActiveSession() {
         if (isFirstSession && currentIndex === 0 && !isAnalyzing && answer.length < 10) {
             guidanceTimerRef.current = setTimeout(() => {
                 setShowGuidance2(true);
-            }, 90000); // 90 seconds
+            }, 90000); 
         } else {
             if (guidanceTimerRef.current) clearTimeout(guidanceTimerRef.current);
             setShowGuidance2(false);
@@ -158,7 +158,7 @@ export default function ActiveSession() {
                 setError(null);
             }
 
-            // 1. Try localStorage first for immediate results
+            
             const stored = localStorage.getItem('serify_active_session');
             if (stored) {
                 try {
@@ -173,7 +173,7 @@ export default function ActiveSession() {
                             if (parsed.assessments) setAssessments(parsed.assessments);
                         }
 
-                        // If we have concepts but no questions, trigger generation
+                        
                         if (parsed.concepts?.length > 0 && (!parsed.questions || parsed.questions.length === 0)) {
                             generateMissingQuestions(id as string);
                         } else {
@@ -186,7 +186,7 @@ export default function ActiveSession() {
                 }
             }
 
-            // 2. Fallback to DB if not in localStorage or ID mismatch
+            
             try {
                 const res = await fetch(`/api/sessions/${id}`, {
                     headers: {
@@ -213,14 +213,14 @@ export default function ActiveSession() {
                     setTitle(sessionData.title);
                 }
 
-                // Cache it for next time
+                
                 localStorage.setItem('serify_active_session', JSON.stringify(sessionData));
 
-                // If no questions, but we have concepts, generate them
+                
                 if (sessionData.concepts.length > 0 && sessionData.questions.length === 0) {
                     generateMissingQuestions(id as string);
                 } else if (sessionData.concepts.length === 0 && sessionData.status === 'processing') {
-                    // Still processing extraction — poll, but only if still mounted
+                    
                     if (isMounted) {
                         setTimeout(loadSession, 3000);
                     }
@@ -251,7 +251,7 @@ export default function ActiveSession() {
                     const { questions: newQuestions } = await res.json();
                     if (newQuestions && newQuestions.length > 0 && isMounted) {
                         setQuestions(newQuestions);
-                        // Update cache
+                        
                         const stored = localStorage.getItem('serify_active_session');
                         if (stored) {
                             const parsed = JSON.parse(stored);
@@ -399,7 +399,7 @@ export default function ActiveSession() {
                     JSON.stringify({
                         title,
                         isBasicMode: sessionData?.isBasicMode,
-                        report: null, // Will be streamed on the feedback page
+                        report: null, 
                         concepts,
                         assessments: allAssessments
                     })
@@ -612,7 +612,7 @@ export default function ActiveSession() {
             </Head>
 
             <div className="flex-1 flex flex-col min-h-full relative overflow-hidden">
-                {/* Background dynamic elements */}
+                {}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--accent)]/5 rounded-full blur-[100px] -mr-64 -mt-64 pointer-events-none" />
 
                 <div className="sticky top-0 z-10 w-full flex items-center justify-between px-6 py-4 md:px-8 bg-[var(--bg)]/80 backdrop-blur-md border-b border-[var(--border)]/50">

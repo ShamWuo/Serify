@@ -24,19 +24,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-     // Fetch user plan
+     
     const { data: profile } = await supabase
         .from('profiles')
         .select('subscription_plan')
         .eq('id', userId)
         .single();
     
-    // 1. Fetch Practice Session and verify
+    
     const { data: practiceSession, error: fetchSessionError } = await supabase
         .from('practice_sessions')
         .select('*, knowledge_nodes(id, display_name, definition)')
-        // We need to fetch the concepts involved to pass to AI
-        // However, knowledge_nodes is joined differently (via array). We'll query them separately.
+        
+        
         .eq('id', sessionId)
         .eq('user_id', userId)
         .single();
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Session is not in progress' });
     }
 
-    // Default to empty array if no concepts
+    
     const conceptIds = practiceSession.concept_ids || [];
     let targetConcepts: { name: string; description: string; id: string }[] = [];
 
@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })) || [];
     }
 
-    // 2. Evaluate via AI
+    
     const evaluation = await evaluateScenario(
         scenarioText,
         questionText,
@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         profile?.subscription_plan || 'free'
     );
 
-    // 3. Update Practice Response with feedback
+    
     const scoreMatrix: Record<string, number> = { 'strong': 100, 'developing': 60, 'weak': 30 };
     const points = scoreMatrix[evaluation.score] || 0;
 
@@ -89,9 +89,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             time_spent_seconds: timeSpentSeconds
         })
         .eq('id', responseId)
-        .eq('practice_session_id', sessionId); // Extra safety
+        .eq('practice_session_id', sessionId); 
 
-    // 4. Update Practice Session status
+    
     await supabase
         .from('practice_sessions')
         .update({
@@ -107,9 +107,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })
         .eq('id', sessionId);
 
-    // 5. Handle Vault Regressions vs Progressions
-    // Scenario tests application. A 'strong' performance could upgrade 'developing' to 'solid'.
-    // A 'weak' performance might downgrade 'solid' to 'shaky'.
+    
+    
+    
     for (const concept of targetConcepts) {
         const { data: node } = await supabase
             .from('knowledge_nodes')
@@ -124,11 +124,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (evaluation.score === 'weak' && (currentState === 'solid' || currentState === 'mastered')) {
                 newStateStr = 'shaky';
             } else if (evaluation.score === 'strong' && (currentState === 'developing' || currentState === 'shaky')) {
-                newStateStr = 'solid'; // Upgrades to solid. Only Spaced Repetition upgrades to Mastered.
+                newStateStr = 'solid'; 
             }
 
             if (currentState !== newStateStr) {
-                // Log Regression / Progression
+                
                 await supabase.from('vault_regressions').insert({
                     user_id: userId,
                     concept_id: concept.id,
@@ -138,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     regression_note: `Performance changed to ${evaluation.score} during scenario practice.`
                 });
                 
-                // Update state
+                
                 await supabase
                     .from('knowledge_nodes')
                     .update({ current_mastery: newStateStr })

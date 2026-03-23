@@ -84,7 +84,7 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         suggestions: m.suggestions 
     })) as AssistantMessage[];
 
-    // Handle Pro+ Persistence
+    
     useEffect(() => {
         if (!user || user.subscriptionTier !== 'pro_plus' || messages.length === 0) return;
 
@@ -100,7 +100,7 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return () => clearTimeout(timeout);
     }, [messages, user]);
 
-    // Load Pro+ persistence
+    
     useEffect(() => {
         if (!user || user.subscriptionTier !== 'pro_plus' || messages.length > 0) return;
 
@@ -136,8 +136,8 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }, [append, chat]);
 
     const clearMessages = useCallback(() => {
-        // useChat doesn't have a direct clear, but we can potentially reset transport or state
-        // This is a bit tricky with useChat, but usually not critical for MVP
+        
+        
     }, []);
 
     const dismissSuggestion = useCallback(() => {
@@ -145,12 +145,12 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setProactiveSuggestion(null);
     }, []);
 
-    // Proactive Suggestion Logic
+    
     useEffect(() => {
         if (!user) return;
 
         const checkSuggestions = async () => {
-            // Check for due reviews
+            
             const { data: dueData } = await supabase.from('knowledge_nodes')
                 .select('id')
                 .eq('user_id', user.id)
@@ -166,7 +166,7 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 return;
             }
 
-            // Check for gap sessions > 48h
+            
             const { data: sessionData } = await supabase.from('reflection_sessions')
                 .select('id, title, created_at, depth_score')
                 .eq('user_id', user.id)
@@ -187,7 +187,7 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         checkSuggestions();
     }, [user]);
 
-    // Handle session analytics
+    
     useEffect(() => {
         if (isOpen) {
             setHasUnreadSuggestion(false);

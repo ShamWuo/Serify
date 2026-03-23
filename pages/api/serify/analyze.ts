@@ -191,17 +191,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Analyze API: Failed to update session:', updateError);
         }
 
-        // --- UPDATE CONCEPT VAULT (KNOWLEDGE NODES) ---
+        
         console.log('Analyze API: Updating Concept Vault...');
         try {
-            // Collect all concept names from analysis maps
+            
             const allConceptNames = new Set([
                 ...(analysis.strengthMap.strong || []),
                 ...(analysis.strengthMap.weak || []),
                 ...(analysis.strengthMap.missing || [])
             ]);
 
-            // 1. Process Pillars First
+            
             const pillars = conceptRows.filter(c =>
                 allConceptNames.has(c.name) &&
                 (c.relationships as any)?.isPillar
@@ -220,7 +220,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             }
 
-            // 2. Process Sub-concepts and link to parents
+            
             const subConcepts = conceptRows.filter(c =>
                 allConceptNames.has(c.name) &&
                 (c.relationships as any)?.isSub
@@ -235,7 +235,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     const parentName = (sub.relationships as any)?.parentName;
                     const parentNode = nodeMap.get(parentName);
 
-                    // Link to parent if found
+                    
                     if (parentNode && node.parent_concept_id !== parentNode.id) {
                         await supabaseWithAuth
                             .from('knowledge_nodes')
@@ -250,7 +250,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             }
 
-            // 3. Process remaining concepts (not marked as pillar or sub)
+            
             const processed = new Set([...pillars.map(p => p.name), ...subConcepts.map(s => s.name)]);
             for (const conceptName of allConceptNames) {
                 if (processed.has(conceptName)) continue;
@@ -264,7 +264,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             }
 
-            // Update clusters
+            
             await updateVaultHierarchy(supabaseWithAuth, userId);
         } catch (vaultErr) {
             console.error('Analyze API: Failed to update Vault:', vaultErr);

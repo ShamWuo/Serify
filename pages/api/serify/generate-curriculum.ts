@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Missing userInput or inputType' });
 
     try {
-        // Fetch vault context
+        
         const { data: knowledgeNodes } = await supabaseWithAuth
             .from('knowledge_nodes')
             .select('canonical_name, current_mastery')
@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             learningContext: (profile?.preferences as any)?.learningContext
         };
 
-        // Generate curriculum
+        
         const curriculumData = await generateCurriculum(
             userInput,
             inputType,
@@ -89,7 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             tracking?.plan || 'free'
         );
 
-        // Map AI-generated string IDs to valid UUIDs
+        
         const { v4: uuidv4 } = await import('uuid');
         const idMap = new Map<string, string>();
 
@@ -109,11 +109,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         });
 
-        // Update original_units to match the mapped IDs
+        
         curriculumData.original_units = JSON.parse(JSON.stringify(curriculumData.units));
 
-        // Record usage
-        // Token deduction handled at start
+        
+        
 
         return res.status(200).json({ curriculum: curriculumData });
     } catch (err: any) {

@@ -81,7 +81,7 @@ export default function DeepDiveMode() {
                 ).map((item: any) => ({
                     id: item.concept_id,
                     name: parsed.concepts?.find((c: any) => c.id === item.concept_id)?.name || 'Concept',
-                    isComplete: false // Deep dive is active
+                    isComplete: false 
                 })));
 
                 setTargetConcept(concept);
@@ -122,7 +122,7 @@ export default function DeepDiveMode() {
             if (res.ok) {
                 const data = await res.json();
                 setDeepDive(data.content);
-                // Increment usage
+                
                 increment();
                 refresh();
             } else {
@@ -311,7 +311,6 @@ export default function DeepDiveMode() {
                     </h1>
                 </div>
 
-
                 <div className="space-y-12">
                     {deepDive.sections?.map((section: any, idx: number) => (
                         <section key={idx} className="relative">
@@ -327,7 +326,6 @@ export default function DeepDiveMode() {
                         </section>
                     ))}
                 </div>
-
 
                 <div className="mt-24 pt-16 border-t border-[var(--border)]">
                     <div className="max-w-2xl mx-auto bg-white border border-[var(--border)] rounded-3xl p-8 md:p-12 shadow-xl shadow-black/5 relative overflow-hidden">

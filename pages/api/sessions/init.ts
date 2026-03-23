@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     try {
-        // 1. Create the session
+        
         const { data: session, error: sessionError } = await supabase
             .from('reflection_sessions')
             .insert({
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(500).json({ message: 'Failed to initialize session' });
         }
 
-        // 2. If we have concepts, save them
+        
         let savedConcepts = [];
         const conceptIdMap: Record<string, string> = {};
 
@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 console.error('Failed to save concepts:', conceptError);
             } else if (insertedConcepts) {
                 savedConcepts = insertedConcepts;
-                // Map original IDs (like 'c1') to new UUIDs
+                
                 concepts.forEach((c: any, index: number) => {
                     if (c.id && insertedConcepts[index]) {
                         conceptIdMap[c.id] = insertedConcepts[index].id;
@@ -100,7 +100,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        // 3. If we have questions, save them
+        
         let savedQuestions = [];
         if (questions.length > 0) {
             const questionsToInsert = questions.map((q: any) => ({

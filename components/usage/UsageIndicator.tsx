@@ -14,7 +14,7 @@ export const UsageIndicator: React.FC<UsageIndicatorProps> = ({ className, showA
 
     const { percentUsed, tokensUsed, monthlyLimit } = user;
     
-    // threshold: 70%
+    
     if (!showAlways && percentUsed < 70) return null;
 
     const isNearLimit = percentUsed >= 90;

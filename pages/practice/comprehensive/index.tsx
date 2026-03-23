@@ -46,7 +46,7 @@ export default function ComprehensiveGenerator() {
                      throw new Error(data.error || 'Failed to generate test');
                  }
 
-                 // Redirect to the active session
+                 
                  router.replace(`/practice/comprehensive/${data.sessionId}`);
 
              } catch (err: any) {
@@ -81,7 +81,7 @@ export default function ComprehensiveGenerator() {
                 <title>Generating Test | Serify</title>
             </Head>
 
-            {/* Background elements */}
+            {}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/5 rounded-full blur-[100px] -z-10" />
 
             <div className="text-center space-y-8 animate-fade-in-up">

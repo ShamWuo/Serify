@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authenticateApiRequest } from '@/lib/usage';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Need service role for force update
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // 1. Update or Insert Usage Tracking
+  
   const { data: existingUsage } = await supabase
     .from('usage_tracking')
     .select('id')
@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     usageError = error;
   }
 
-  // 2. Update or Insert Subscription
+  
   const { data: existingSub } = await supabase
     .from('subscriptions')
     .select('id')
@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: (usageError || subError)?.message });
   }
 
-  // 3. Update Profile for Auth Context
+  
   await supabase.from('profiles').update({ subscription_tier: 'proplus' }).eq('id', userId);
 
   return res.status(200).json({ success: true, message: 'Pro+ granted' });

@@ -22,7 +22,7 @@ export default function SpacedReview() {
         const loadDueItems = async () => {
             setIsLoading(true);
             try {
-                // Fetch items where next_review is less than or equal to NOW
+                
                 const { data, error } = await supabase
                     .from('review_schedule')
                     .select(`
@@ -40,7 +40,7 @@ export default function SpacedReview() {
 
                 if (error) throw error;
                 
-                // If the user specifies specific concepts via query, filter for them
+                
                 let filteredData = data || [];
                 if (router.query.concepts) {
                      const selectedIds = (router.query.concepts as string).split(',');
@@ -84,12 +84,12 @@ export default function SpacedReview() {
                 toast.success(<div className="flex items-center gap-2"><Sparkles size={16} className="text-yellow-500" /> Concept Mastered!</div>);
             }
 
-            // Move to next
+            
             setIsFlipped(false);
             if (currentIndex < dueItems.length - 1) {
                 setCurrentIndex(prev => prev + 1);
             } else {
-                setCurrentIndex(prev => prev + 1); // Goes out of bounds to trigger completion screen
+                setCurrentIndex(prev => prev + 1); 
             }
 
         } catch (err: any) {
@@ -115,7 +115,7 @@ export default function SpacedReview() {
                 <title>Spaced Review | Serify</title>
             </Head>
 
-            {/* Top Navigation */}
+            {}
             <header className="absolute top-0 inset-x-0 h-16 border-b border-[var(--border)] z-20 flex items-center justify-between px-6 bg-[var(--surface)]">
                 <div className="flex items-center gap-2">
                     <button onClick={() => router.push('/practice')} className="p-2 -ml-2 hover:bg-slate-100 rounded-lg transition mr-2">
@@ -191,7 +191,7 @@ export default function SpacedReview() {
                             >
                                 <div className={`relative w-full h-full duration-500 preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
                                     
-                                    {/* Front */}
+                                    {}
                                     <div className="absolute inset-0 backface-hidden bg-white border border-[var(--border)] rounded-3xl shadow-sm p-8 flex flex-col items-center justify-center text-center hover:border-emerald-300 transition-colors">
                                         <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-6 border-2 border-slate-100">
                                             <BrainCircuit size={28} />
@@ -204,7 +204,7 @@ export default function SpacedReview() {
                                         </p>
                                     </div>
 
-                                    {/* Back */}
+                                    {}
                                     <div className="absolute inset-0 backface-hidden rotate-y-180 bg-white border-2 border-emerald-500 rounded-3xl shadow-xl shadow-emerald-500/10 p-8 md:p-10 flex flex-col overflow-y-auto">
                                         <h4 className="font-bold text-emerald-700 uppercase tracking-widest text-xs mb-4">Official Definition</h4>
                                         <div className="prose prose-slate prose-p:leading-relaxed text-[var(--text)] font-serif md:text-lg">
@@ -215,7 +215,7 @@ export default function SpacedReview() {
                                 </div>
                             </div>
 
-                            {/* Ratings Bar */}
+                            {}
                             <div className={`transition-all duration-500 transform ${isFlipped ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'}`}>
                                 <div className="bg-white border text-[var(--text)] border-[var(--border)] shadow-sm rounded-2xl p-4 flex gap-2">
                                     <button 

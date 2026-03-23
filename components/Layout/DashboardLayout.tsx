@@ -48,19 +48,19 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
     const mobileProfileRef = useRef<HTMLDivElement>(null);
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
-    // Theme initialization and synchronization
+    
     useEffect(() => {
         const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
         if (savedTheme) {
             setTheme(savedTheme);
             document.documentElement.classList.toggle('dark', savedTheme === 'dark');
         } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            // Default to dark mode if system prefers it, or if it's the landing page intent
+            
             setTheme('dark');
             document.documentElement.classList.add('dark');
         } else {
-            // Since user wants dark mode to match landing page, maybe default to dark?
-            // Let's stick to system preference but provide a clear toggle.
+            
+            
         }
     }, []);
 
@@ -94,8 +94,8 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 setIsProfileOpen(false);
             }
             if (mobileProfileRef.current && !mobileProfileRef.current.contains(event.target as Node)) {
-                // We only want to close it if it's the specific header dropdown
-                // but usually both share the same state so it's fine
+                
+                
                 setIsProfileOpen(false);
             }
         };
@@ -105,14 +105,14 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
     useEffect(() => {
         if (!user || !token) {
-            if (router.query.demo === 'true') return; // Allowed in demo mode
+            if (router.query.demo === 'true') return; 
             if (!authLoading && !user && !router.pathname.startsWith('/auth') && router.pathname !== '/404') {
                 router.push('/');
             }
             return;
         }
 
-        // Prevent non-onboarded users from accessing dashboard pages
+        
         if (user.onboardingCompleted === false && !router.pathname.startsWith('/onboarding')) {
             router.push('/onboarding');
         }
@@ -152,12 +152,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             icon: <LibraryBig size={20} className="text-[var(--accent)]" /> 
         },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
-        {
-            href: '/vault',
-            label: 'Concept Vault',
-            icon: <Archive size={20} />,
-            badge: vaultNeedsWork > 0 ? vaultNeedsWork : undefined
-        },
+        
         { href: '/feedback', label: 'Feedback', icon: <MessageSquarePlus size={20} /> },
         { href: '/settings', label: 'Settings', icon: <Settings size={20} /> }
     ], [vaultNeedsWork]);
@@ -180,7 +175,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
     return (
         <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-sans relative">
-            {/* Dashboard Premium Aesthetic Blobs */}
+            {}
             <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-[var(--accent)] rounded-full filter blur-[80px] opacity-[0.03] pointer-events-none z-0" />
             <div className="fixed bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] bg-[#7c3d9e] rounded-full filter blur-[80px] opacity-[0.03] pointer-events-none z-0" />
 
@@ -283,8 +278,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     )}
                     {themeToggleItem}
                 </nav>
-                {/* Sidebar Usage Card removed in favor of integrated profile bar */}
-
+                {}
 
                 <div className="p-3 relative border-t border-[var(--border)]" ref={profileRef}>
                     {isProfileOpen && (
@@ -401,7 +395,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
             </div>
 
-            {/* Mobile Menu Overlay */}
+            {}
             {isMobileMenuOpen && (
                 <div className="md:hidden fixed inset-0 z-[70] bg-[var(--bg)] animate-fade-in flex flex-col pt-16">
                     <div className="absolute top-4 right-4">
@@ -499,7 +493,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
             )}
 
-            {/* Mobile Profile Dropdown removed in favor of direct settings link and menu logout */}
+            {}
 
             <main className="flex-1 w-full flex flex-col min-h-[calc(100vh-64px)] md:min-h-screen pb-20 md:pb-0">
                 {router.query.demo === 'true' && (
@@ -544,7 +538,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 onClose={() => setIsCommandPaletteOpen(false)}
             />
 
-            {/* Global Widgets/Overlays */}
+            {}
             {!hideWidgets && (
                 <>
                     <AssistantFAB />

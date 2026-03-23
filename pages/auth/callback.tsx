@@ -42,8 +42,8 @@ export default function AuthCallback() {
                 console.log('AuthCallback: User found, redirecting home');
                 router.push('/');
             } else if (!isOAuthParams) {
-                // Only redirect to login if we explicitly have no OAuth params in the URL
-                // If we DO have params, we wait for the AuthContext to catch up/timeout
+                
+                
                 console.log('AuthCallback: No user found, no OAuth params, redirecting to login');
                 router.push('/login');
             } else {

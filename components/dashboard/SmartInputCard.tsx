@@ -77,7 +77,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
 
     const handleFileSelect = (selectedFile: File) => {
         setFile(selectedFile);
-        setDetectedType('pdf'); // Or detect based on extension
+        setDetectedType('pdf'); 
         setInput(selectedFile.name);
     };
 
@@ -123,8 +123,8 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
 
         setError(null);
         setIsProcessing(true);
-        // In a real app, this would trigger the actual SSE endpoint
-        // For now, we simulate the transition
+        
+        
         setTimeout(() => {
             onAnalyze({ content: input, type: detectedType || 'text', mode });
         }, 5000);
@@ -226,8 +226,8 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                                         if (input.trim()) {
                                             router.push(`/practice/flashcards?topic=${encodeURIComponent(input.trim())}`);
                                         } else {
-                                            // Maybe show a toast or just go to a default state? 
-                                            // For now, just go to the page which will show an error if no topic.
+                                            
+                                            
                                             router.push('/practice/flashcards');
                                         }
                                     }}

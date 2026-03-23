@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Flashcards cost 2 tokens
+    
     const usageResult = await consumeTokens(userId, 'practice_flashcards_generation');
     if (!usageResult.allowed) {
         return res.status(403).json({ 
@@ -60,14 +60,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
     }
 
-    // Step 1: Generate cards via AI
+    
     const cards = await generateFlashcards(formattedConcepts, subscription_plan || 'free', topic);
 
     if (!cards || cards.length === 0) {
         throw new Error('AI failed to generate any cards for this topic.');
     }
 
-    // Step 2: Create a persistent Deck in the library
+    
     const deckTitle = title || topic || (formattedConcepts.length > 0 ? `Concepts: ${formattedConcepts[0].name}...` : 'Untitled Deck');
     const deckDescription = description || (topic ? `AI-generated cards for "${topic}"` : `AI-generated cards from your Vault.`);
 
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create deck: ' + deckError?.message);
     }
 
-    // Step 3: Insert individual cards
+    
     const cardsToInsert = cards.map(card => ({
         deck_id: deck.id,
         user_id: userId,
@@ -106,11 +106,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (cardsError) {
         console.error('Error inserting individual cards:', cardsError);
-        // We continue anyway since the deck exists, though empty cards is bad
-        // But in production we should probably rollback or retry
+        
+        
     }
 
-    // Step 4: Create a "Practice Session" for the universal history feed
+    
     const { data: practiceSession, error: practiceError } = await supabase
         .from('practice_sessions')
         .insert({
@@ -118,15 +118,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             tool: 'flashcards',
             source_concept_ids: isVaultMode ? conceptIds : null,
             topic: isTopicMode ? topic : null,
-            status: 'completed', // For history, it counts as a generation event
+            status: 'completed', 
             started_at: new Date().toISOString(),
             ended_at: new Date().toISOString()
         })
         .select()
         .single();
 
-    // Step 5: (DEPRECATED) Backward compatibility for the old [id].tsx view
-    // We'll still write to flashcard_sessions so old code doesn't break
+    
+    
     if (practiceSession) {
         await supabase
           .from('flashcard_sessions')
@@ -140,7 +140,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
     }
 
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_flashcards_generated',
@@ -148,7 +148,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     res.status(200).json({ 
-        sessionId: deck.id, // We return the DECK ID now as the sessionId
+        sessionId: deck.id, 
         deckId: deck.id,
         cards: cards
     });

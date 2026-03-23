@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let { contentType, content, url, title, difficulty } = validatedBody.data;
 
-    // Unified usage check (Gated by consumeTokens)
+    
     const action = contentType === 'pdf' ? 'session_pdf' : 'session_standard';
     const usageResult = await consumeTokens(userId, action);
     if (!usageResult.allowed) {
@@ -111,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        // Generate a better title if needed
+        
         if (!title || title === 'New Session' || title === 'pasted notes' || title.length < 5) {
             try {
                 console.log('Generating session title...');
@@ -144,11 +144,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .limit(1)
             .maybeSingle();
 
-        // 1. Check if we have a viable cache hit or an existing session to resume
+        
         if (existingSession && !checkErr) {
             console.log('Found existing session for this content:', existingSession.id);
 
-            // If it's a "live" session (not complete), just return it
+            
             if (!['feedback', 'complete'].includes(existingSession.status)) {
                 console.log('Resuming existing session:', existingSession.id);
                 return res.status(200).json({
@@ -158,7 +158,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
             }
 
-            // If it's complete, we still try to use its concepts
+            
             if (['assessment', 'feedback', 'complete'].includes(existingSession.status)) {
                 const { data: existingConcepts } = await supabaseWithAuth
                     .from('concepts')
@@ -201,9 +201,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('Session created:', session.id);
 
-        // Token deduction handled at start
+        
 
-        // 2. Fetch Vault Context for better hierarchical sorting
+        
         let vaultContextString = '';
         try {
             const { data: categories } = await supabaseWithAuth
@@ -236,20 +236,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .eq('user_id', userId)
             .single();
 
-        // 3. Either clone cached concepts or call Gemini
+        
         let finalConcepts: any[] = [];
 
         if (cachedConcepts) {
             console.log('Cloning cached concepts...');
             finalConcepts = cachedConcepts;
             const conceptsToSave = cachedConcepts.map((c: any) => ({
-                session_id: session.id, // attach to the NEW session
+                session_id: session.id, 
                 name: c.name,
                 description: c.description,
                 importance: c.importance,
-                related_concept_names: c.related_concept_names, // cloned exactly
+                related_concept_names: c.related_concept_names, 
                 misconception_risk: c.misconception_risk,
-                relationships: c.relationships // Preserve hierarchy metadata
+                relationships: c.relationships 
             }));
 
             console.log('Saving cached concepts...');
@@ -259,8 +259,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (conceptError) {
                 console.error('Cached concept save error:', conceptError);
-                // Decide how to handle this error: return 500 or just log and continue?
-                // For now, we'll log and proceed, assuming the session is still valid.
+                
+                
             }
         } else {
             console.log('Extracting concepts via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
@@ -270,7 +270,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             const flattenedConcepts: any[] = [];
             extracted.forEach((pillar: any) => {
-                // Add the pillar itself
+                
                 flattenedConcepts.push({
                     session_id: session.id,
                     name: pillar.name,
@@ -280,7 +280,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     relationships: { isPillar: true }
                 });
 
-                // Add sub-concepts if they exist
+                
                 if (pillar.subConcepts && Array.isArray(pillar.subConcepts)) {
                     pillar.subConcepts.forEach((sub: any) => {
                         flattenedConcepts.push({
@@ -325,7 +325,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error(' [EXTRACT ERROR] Final Catch Block:', err);
         const errorMessage = err.message || 'Failed to extract concepts';
         
-        // Log the stack for more context in the server terminal
+        
         if (err.stack) {
             console.error(' [EXTRACT ERROR] Stack Trace:', err.stack);
         }

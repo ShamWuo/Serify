@@ -48,7 +48,7 @@ export default function CurriculumView() {
     useEffect(() => {
         if (curriculum) {
             setEditUnits(JSON.parse(JSON.stringify(curriculum.units)));
-            // Auto-expand the unit containing the current concept
+            
             const allConceptsResolved = curriculum.units.flatMap((u: any) => u.concepts);
             const currIdx = curriculum.current_concept_index || 0;
             const currentConcept = allConceptsResolved[currIdx];
@@ -208,9 +208,9 @@ export default function CurriculumView() {
 
             <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 pb-32">
 
-                {/* ── HERO ── */}
+                {}
                 <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden mb-6 shadow-sm">
-                    {/* Progress bar stripe at top */}
+                    {}
                     <div className="h-1 bg-[var(--border)]">
                         <div
                             className="h-full bg-[var(--accent)] transition-all duration-700"
@@ -236,7 +236,7 @@ export default function CurriculumView() {
                                 </h1>
                             </div>
 
-                            {/* Mini progress ring */}
+                            {}
                             <div className="shrink-0 relative w-16 h-16">
                                 <svg viewBox="0 0 44 44" className="w-full h-full -rotate-90">
                                     <circle cx="22" cy="22" r="18" fill="none" strokeWidth="4" stroke="var(--border)" />
@@ -255,7 +255,7 @@ export default function CurriculumView() {
                             </div>
                         </div>
 
-                        {/* Stats row */}
+                        {}
                         <div className="flex flex-wrap gap-4 mb-6 text-sm text-[var(--muted)]">
                             <div className="flex items-center gap-1.5 bg-[var(--bg)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
                                 <BookOpen size={14} className="text-[var(--accent)]" />
@@ -275,7 +275,7 @@ export default function CurriculumView() {
                             </div>
                         </div>
 
-                        {/* Outcomes */}
+                        {}
                         {curriculum.outcomes?.length > 0 && (
                             <div className="bg-[var(--bg)] rounded-2xl p-4 mb-6 border border-[var(--border)]">
                                 <p className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest mb-2">You&apos;ll be able to</p>
@@ -290,7 +290,7 @@ export default function CurriculumView() {
                             </div>
                         )}
 
-                        {/* CTA row */}
+                        {}
                         <div className="flex flex-wrap gap-3 items-center">
                             <button
                                 onClick={handleStart}
@@ -319,7 +319,7 @@ export default function CurriculumView() {
                     </div>
                 </div>
 
-                {/* ── CONCEPT LIST ── */}
+                {}
                 <div className="space-y-3">
                     {curriculum.units.map((unit: any, uIdx: number) => {
                         const isExpanded = expandedUnits.has(uIdx);
@@ -332,7 +332,7 @@ export default function CurriculumView() {
 
                         return (
                             <div key={uIdx} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl relative">
-                                {/* Unit header */}
+                                {}
                                 <button
                                     onClick={() => toggleUnit(uIdx)}
                                     className={`w-full flex items-center gap-3 px-5 py-4 hover:bg-[var(--bg)] transition-colors text-left ${!isExpanded ? 'rounded-2xl' : 'rounded-t-2xl'}`}
@@ -352,7 +352,7 @@ export default function CurriculumView() {
                                     {isExpanded ? <ChevronUp size={16} className="text-[var(--muted)] shrink-0" /> : <ChevronDown size={16} className="text-[var(--muted)] shrink-0" />}
                                 </button>
 
-                                {/* Concepts */}
+                                {}
                                 {isExpanded && (
                                     <div className="border-t border-[var(--border)]">
                                         {unit.concepts.map((concept: any, cIdx: number) => {
@@ -366,7 +366,7 @@ export default function CurriculumView() {
                                                     key={concept.id || cIdx}
                                                     className={`flex items-center gap-4 px-5 py-3.5 border-b border-[var(--border)] last:border-0 last:rounded-b-2xl group transition-colors relative ${isCurrent ? 'bg-[var(--accent)]/5' : 'hover:bg-[var(--bg)]'}`}
                                                 >
-                                                    {/* Status icon */}
+                                                    {}
                                                     <div className="shrink-0">
                                                         {isCompleted ? (
                                                             <CheckCircle2 size={18} className="text-emerald-500" />
@@ -380,10 +380,10 @@ export default function CurriculumView() {
                                                         )}
                                                     </div>
 
-                                                    {/* Number */}
+                                                    {}
                                                     <span className="w-6 text-xs text-[var(--muted)] font-mono shrink-0 text-right">{globalIdx + 1}</span>
 
-                                                    {/* Name + definition tooltip */}
+                                                    {}
                                                     <div className="flex-1 min-w-0 relative">
                                                         <button
                                                             onClick={() => !isLocked && handleStart()}
@@ -408,7 +408,7 @@ export default function CurriculumView() {
                                                         )}
                                                     </div>
 
-                                                    {/* Right side badges */}
+                                                    {}
                                                     <div className="flex items-center gap-2 shrink-0">
                                                         {getMasteryBadge(concept.vaultMasteryState)}
                                                         {isCurrent && (
@@ -430,7 +430,7 @@ export default function CurriculumView() {
                 </div>
             </div>
 
-            {/* ── EDIT DRAWER ── */}
+            {}
             {isEditing && (
                 <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
                     <div className="w-full max-w-md bg-[var(--surface)] h-full border-l border-[var(--border)] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">

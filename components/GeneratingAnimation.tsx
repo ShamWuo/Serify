@@ -1,9 +1,4 @@
-/**
- * GeneratingAnimation.tsx
- * Purpose: A reusable component that simulates AI content being built out
- * progressively. Instead of a spinner, skeleton lines draw themselves out
- * one by one sequentially to create the illusion of the AI writing.
- */
+
 
 import React from 'react';
 
@@ -14,7 +9,6 @@ interface GeneratingAnimationProps {
     label?: string;
 }
 
-// Defines the skeleton shapes for each feature type.
 const textLines = [
     'w-3/4', 'w-full', 'w-5/6', 'w-full', 'w-2/3',
     'w-full', 'w-4/5', 'w-full', 'w-3/4', 'w-1/2'
@@ -37,7 +31,7 @@ export default function GeneratingAnimation({
     type = 'text',
     label,
 }: GeneratingAnimationProps) {
-    const baseDelay = 180; // ms per line
+    const baseDelay = 180; 
 
     if (type === 'cards') {
         return (
@@ -140,7 +134,7 @@ export default function GeneratingAnimation({
         );
     }
 
-    // Default: 'text' type — for explanations and long-form AI content
+    
     return (
         <div className="generating-animation-root w-full space-y-3">
             {label && (
@@ -148,7 +142,7 @@ export default function GeneratingAnimation({
                     {label}
                 </p>
             )}
-            {/* Simulate a heading first */}
+            {}
             <div
                 className="skel-line h-7 bg-[var(--border)] rounded-lg mb-6"
                 style={{
@@ -167,7 +161,7 @@ export default function GeneratingAnimation({
                     } as React.CSSProperties}
                 />
             ))}
-            {/* Simulate a second heading */}
+            {}
             <div
                 className="skel-line h-6 bg-[var(--border)] rounded-lg mt-8 mb-2"
                 style={{

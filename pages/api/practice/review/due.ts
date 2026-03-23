@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const today = new Date().toISOString();
 
-    // 1. Fetch concepts from review_schedule where next_review_date <= today
+    
     const { data: dueReviews, error: scheduleError } = await supabase
         .from('review_schedule')
         .select(`
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .eq('user_id', userId)
         .eq('is_mastered', false)
         .lte('next_review_date', today)
-        .order('next_review_date', { ascending: true }); // Most overdue first
+        .order('next_review_date', { ascending: true }); 
 
     if (scheduleError) {
         throw new Error('Failed to fetch review schedule');

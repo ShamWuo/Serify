@@ -99,7 +99,7 @@ export default function PracticeHistoryPage() {
             <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-8 relative z-10 pb-32">
                 <div className="max-w-5xl mx-auto space-y-8">
                     
-                    {/* Header */}
+                    {}
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                         <header className="space-y-2">
                             <button 
@@ -128,7 +128,7 @@ export default function PracticeHistoryPage() {
                         </div>
                     </div>
 
-                    {/* Filters */}
+                    {}
                     <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
                         {['all', 'test', 'quiz', 'exam', 'scenario', 'flashcards'].map(tool => (
                             <button
@@ -145,7 +145,7 @@ export default function PracticeHistoryPage() {
                         ))}
                     </div>
 
-                    {/* Session List */}
+                    {}
                     {isLoading ? (
                         <div className="h-64 flex flex-col items-center justify-center space-y-4">
                             <div className="w-10 h-10 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>

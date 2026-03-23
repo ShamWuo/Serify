@@ -8,7 +8,6 @@ import { supabaseAdmin } from '@/lib/supabase';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Support both GEMINI_API_KEY and GOOGLE_GENERATIVE_AI_API_KEY for backwards compatibility
 const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
 export const config = { runtime: 'edge' };
@@ -184,7 +183,7 @@ Output the JSON object now:`;
 
         let object: Curriculum;
         try {
-            // Check if API key is configured
+            
             if (!geminiApiKey) {
                 console.error('Gemini API key not configured');
                 return new Response(
@@ -196,11 +195,11 @@ Output the JSON object now:`;
                 );
             }
 
-            // Create Google provider with API key
+            
             const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
 
             let result = await generateObject({
-                model: google('gemini-1.5-flash'),
+                model: google('gemini-2.5-flash'),
                 temperature: 0,
                 maxOutputTokens: 8192,
                 prompt,
@@ -210,7 +209,7 @@ Output the JSON object now:`;
 
             if (!object.units?.length) {
                 result = await generateObject({
-                    model: google('gemini-1.5-flash'),
+                    model: google('gemini-2.5-flash'),
                     temperature: 0.3,
                     maxOutputTokens: 8192,
                     prompt:
@@ -229,7 +228,7 @@ Output the JSON object now:`;
             object = makeFallbackCurriculum();
         }
 
-        // Map all AI-generated string IDs to valid UUIDs before returning
+        
         const idMap = new Map<string, string>();
         object.units.forEach((unit: any) => {
             unit.concepts.forEach((concept: any) => {

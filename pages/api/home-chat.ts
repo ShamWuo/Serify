@@ -1,10 +1,4 @@
-/**
- * home-chat.ts
- * Purpose: Edge API route for the dashboard's AI Tutor chat interface.
- * Key Logic: Authenticates requests, verifies usage limits, and streams responses from 
- * Gemini. Uses a specialized system prompt to handle intent classification and trigger 
- * learning or analysis modes via structured action blocks.
- */
+
 
 import { streamText, convertToModelMessages } from 'ai';
 import { google } from '@ai-sdk/google';

@@ -33,22 +33,18 @@ import {
 
 import { KnowledgeNode, VaultCategory, StudySet, MasteryState } from '@/types/serify';
 
-// --- Constants & Config ---
-
 const MASTERY_CONFIG: Record<MasteryState, { label: string; color: string; bg: string; dot: string; weight: number }> = {
     mastered: { label: 'Mastered', color: 'text-[#1A4A38]', bg: 'bg-[#1A4A38]/10', dot: 'bg-[#1A4A38]', weight: 4 },
-    solid: { label: 'Solid', color: 'text-[#1B4332]', bg: 'bg-[#1B4332]/10', dot: 'bg-[#1B4332]', weight: 3 }, // Darker emerald for contrast
-    developing: { label: 'Developing', color: 'text-[#0E4F64]', bg: 'bg-[#0E4F64]/10', dot: 'bg-[#0E4F64]', weight: 2 }, // Darker cyan
-    shaky: { label: 'Shaky', color: 'text-[#856404]', bg: 'bg-[#FFF3CD]', dot: 'bg-[#856404]', weight: 1 }, // High contrast gold
-    revisit: { label: 'Revisit', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0 } // High contrast maroon/red
+    solid: { label: 'Solid', color: 'text-[#1B4332]', bg: 'bg-[#1B4332]/10', dot: 'bg-[#1B4332]', weight: 3 }, 
+    developing: { label: 'Developing', color: 'text-[#0E4F64]', bg: 'bg-[#0E4F64]/10', dot: 'bg-[#0E4F64]', weight: 2 }, 
+    shaky: { label: 'Shaky', color: 'text-[#856404]', bg: 'bg-[#FFF3CD]', dot: 'bg-[#856404]', weight: 1 }, 
+    revisit: { label: 'Revisit', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0 } 
 };
 
 const DEFAULT_MASTERY = { label: 'Not Studied', color: 'text-[var(--muted)]', bg: 'bg-[var(--border)]', dot: 'bg-[var(--border)]', weight: -1 };
 
 type Tab = 'all' | 'needs_work' | 'solid';
 type SortOption = 'last_seen' | 'alpha' | 'mastery';
-
-// --- Helper Components ---
 
 function MasteryDot({ state, size = 10, className = '' }: { state: MasteryState | string | null; size?: number, className?: string }) {
     const cfg = state ? (MASTERY_CONFIG[state as MasteryState] || MASTERY_CONFIG['developing']) : DEFAULT_MASTERY;
@@ -60,20 +56,24 @@ function MasteryDot({ state, size = 10, className = '' }: { state: MasteryState 
     );
 }
 
-// --- Main Page Component ---
-
 export default function VaultPage() {
     const { user } = useAuth();
     const router = useRouter();
 
-    // Data State
+    useEffect(() => {
+        router.replace('/');
+    }, [router]);
+
+    return null;
+
+    
     const [nodes, setNodes] = useState<KnowledgeNode[]>([]);
     const [categories, setCategories] = useState<VaultCategory[]>([]);
     const [studySets, setStudySets] = useState<StudySet[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
 
-    // Filter/Sort State
+    
     const [tab, setTab] = useState<Tab>('all');
     const [sort, setSort] = useState<SortOption>('last_seen');
     const [selectedMasteries, setSelectedMasteries] = useState<MasteryState[]>([]);
@@ -82,12 +82,12 @@ export default function VaultPage() {
     const [search, setSearch] = useState('');
     const [hierarchyMode, setHierarchyMode] = useState<'hierarchical' | 'flat'>('hierarchical');
 
-    // UI State
+    
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
     const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
     const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
 
-    // Backfill
+    
     const [backfilling, setBackfilling] = useState(false);
     const [backfillIndicators, setBackfillIndicators] = useState(0);
 
@@ -112,7 +112,7 @@ export default function VaultPage() {
                 setCategories(d.categories || []);
                 setStudySets(d.studySets || []);
 
-                // Initialize collapsed categories from DB
+                
                 if (d.categories) {
                     const collapsed = new Set<string>();
                     d.categories.forEach((c: any) => {
@@ -130,7 +130,7 @@ export default function VaultPage() {
         }
     }, [tab, sort]);
 
-    // Per-Concept Actions State
+    
     const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
     const [renamingNode, setRenamingNode] = useState<KnowledgeNode | null>(null);
     const [newName, setNewName] = useState('');
@@ -148,7 +148,7 @@ export default function VaultPage() {
         isSub: false
     });
 
-    // Drag and Drop State
+    
     const draggedNodeRef = useRef<string | null>(null);
     const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
     const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -172,14 +172,14 @@ export default function VaultPage() {
 
     const handleDragOver = (e: React.DragEvent, targetId: string) => {
         e.preventDefault();
-        // Use ref (not state) to avoid stale closure issues
+        
         if (draggedNodeRef.current === targetId) return;
         setDropTargetId(targetId);
         e.dataTransfer.dropEffect = 'move';
     };
 
     const handleDragLeave = (e: React.DragEvent) => {
-        // Only clear if we're actually leaving the drop zone (not entering a child)
+        
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
             setDropTargetId(null);
         }
@@ -190,7 +190,7 @@ export default function VaultPage() {
         setDropTargetId(null);
         const sourceId = draggedNodeRef.current || draggedNodeId || e.dataTransfer.getData('text/plain');
 
-        // Clear drag state immediately
+        
         setDraggedNodeId(null);
         draggedNodeRef.current = null;
 
@@ -217,7 +217,7 @@ export default function VaultPage() {
             if (targetNode) updates.category_id = targetNode.category_id;
         }
 
-        // Optimistic Update
+        
         setNodes(prev => prev.map(n => n.id === sourceId ? { ...n, ...updates } : n));
 
         try {
@@ -233,7 +233,7 @@ export default function VaultPage() {
                 setShowUndoToast(true);
                 setTimeout(() => setShowUndoToast(false), 6000);
             } else {
-                // Revert on error
+                
                 setNodes(prev => prev.map(n => n.id === sourceId ? { ...n, ...prevUpdates } : n));
                 const err = await res.json();
                 console.error('[vault] Update failed:', err.error);
@@ -242,7 +242,7 @@ export default function VaultPage() {
             setNodes(prev => prev.map(n => n.id === sourceId ? { ...n, ...prevUpdates } : n));
             console.error('[vault] Drop error:', e);
         }
-        // Note: drag state is already cleared above before async work
+        
     };
 
     const handleUndoMove = async () => {
@@ -343,7 +343,7 @@ export default function VaultPage() {
         }
     };
 
-    // Close menu when clicking outside
+    
     useEffect(() => {
         const handleClick = () => setActiveMenuId(null);
         document.addEventListener('click', handleClick);
@@ -354,7 +354,7 @@ export default function VaultPage() {
         if (user) fetchVaultData();
     }, [fetchVaultData, user]);
 
-    // Filter Logic
+    
     const toggleMasteryFilter = (mastery: MasteryState) => {
         setSelectedMasteries(prev =>
             prev.includes(mastery) ? prev.filter(m => m !== mastery) : [...prev, mastery]
@@ -375,11 +375,11 @@ export default function VaultPage() {
 
     const hasActiveFilters = useMemo(() => selectedMasteries.length > 0 || selectedSources.length > 0, [selectedMasteries, selectedSources]);
 
-    // Data Processing
+    
     const filteredNodes = useMemo(() => {
         let result = nodes;
 
-        // 1. Array filters (Mastery & Source)
+        
         if (selectedMasteries.length > 0) {
             result = result.filter(n => selectedMasteries.includes(n.current_mastery));
         }
@@ -390,7 +390,7 @@ export default function VaultPage() {
             });
         }
 
-        // 2. Search filter
+        
         if (search.trim()) {
             const q = search.toLowerCase();
             const matchingCatIds = new Set(categories.filter(c => c.name.toLowerCase().includes(q)).map(c => c.id));
@@ -408,12 +408,12 @@ export default function VaultPage() {
         return result;
     }, [nodes, categories, search, selectedMasteries, selectedSources]);
 
-    // Construct Hierarchy Optimized O(N)
+    
     const hierarchy = useMemo(() => {
         const processedIds = new Set<string>();
         const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
 
-        // Group everything by parent for quick lookup
+        
         const nodesByParent = new Map<string, KnowledgeNode[]>();
         filteredNodes.forEach(n => {
             if (n.parent_concept_id && filteredNodeIds.has(n.parent_concept_id)) {
@@ -422,7 +422,7 @@ export default function VaultPage() {
             }
         });
 
-        // Helper to find all descendants (flattened for 2-level UI)
+        
         const getDescendants = (parentId: string): KnowledgeNode[] => {
             const direct = nodesByParent.get(parentId) || [];
             let all: KnowledgeNode[] = [...direct];
@@ -452,16 +452,16 @@ export default function VaultPage() {
             };
         };
 
-        // 1. Process Categorized Roots
+        
         const grouped: any[] = [];
         categories.sort((a, b) => a.display_order - b.display_order).forEach(cat => {
             const inCat = filteredNodes.filter(n => n.category_id === cat.id);
-            // Root in category: no parent OR parent is not in filteredNodes
+            
             const roots = inCat.filter(n => !n.parent_concept_id || !filteredNodeIds.has(n.parent_concept_id));
 
             const parentGroups = roots.map(createGroup);
 
-            // Also check for any stragglers in this category that somehow weren't processed
+            
             const stragglers = inCat.filter(n => !processedIds.has(n.id));
             stragglers.forEach(s => parentGroups.push(createGroup(s)));
 
@@ -484,7 +484,7 @@ export default function VaultPage() {
             }
         });
 
-        // 2. Uncategorized Roots
+        
         const uncategorizedRoots = filteredNodes.filter(n =>
             !processedIds.has(n.id) &&
             !n.category_id &&
@@ -492,7 +492,7 @@ export default function VaultPage() {
         );
         const uncategorizedGroups = uncategorizedRoots.map(createGroup);
 
-        // Subject auto-grouping for uncategorized
+        
         const subjectGroupsMap: Record<string, typeof uncategorizedGroups> = {};
         const realUncategorized: typeof uncategorizedGroups = [];
 
@@ -507,7 +507,7 @@ export default function VaultPage() {
             }
         });
 
-        // 3. Orphans (Stray nodes that somehow missed everything)
+        
         const orphans = filteredNodes.filter(n => !processedIds.has(n.id));
 
         return {
@@ -541,7 +541,7 @@ export default function VaultPage() {
             return next;
         });
 
-        // Update persistence in DB
+        
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
@@ -570,10 +570,10 @@ export default function VaultPage() {
         const pCollapsed = search ? false : collapsedParents.has(parent.id);
         return (
             <div key={parent.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm h-fit">
-                {/* Parent Row */}
+                {}
                 <div
                     onClick={(e) => {
-                        // If clicking specifically on the chevron or checkbox, don't open detail
+                        
                         const isAction = (e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.checkbox-area');
                         if (isAction) return;
                         setSelectedNodeForDetail(parent);
@@ -659,7 +659,7 @@ export default function VaultPage() {
                     </div>
                 </div>
 
-                {/* Sub-concepts */}
+                {}
                 {!pCollapsed && subs.length > 0 && (
                     <div className="border-t border-[var(--border)] bg-[#fafafa] dark:bg-[#0a0a0a]/30">
                         {subs.map((sub: KnowledgeNode) => (
@@ -712,7 +712,7 @@ export default function VaultPage() {
     const hasAnyConcepts = nodes.length > 0;
     const selectedArray = Array.from(selectedNodeIds);
 
-    // Handlers
+    
     const handleBulkAction = async (action: 'delete' | 'archive') => {
         if (selectedNodeIds.size === 0) return;
         const confirmMsg = action === 'delete' ? 'Are you sure you want to permanently delete these concepts?' : 'Archive these concepts?';
@@ -782,7 +782,7 @@ export default function VaultPage() {
             <SEO title="Concept Vault" />
 
             <div className="max-w-[1000px] mx-auto px-6 py-8 pb-32">
-                {/* Header */}
+                {}
                 <div className="flex items-start justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-3xl font-display text-[var(--text)]">Concept Vault</h1>
@@ -825,7 +825,7 @@ export default function VaultPage() {
                     </div>
                 </div>
 
-                {/* Filters & View Toggles */}
+                {}
                 {hasAnyConcepts && (
                     <div className="flex flex-col gap-4 mb-8">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -922,7 +922,7 @@ export default function VaultPage() {
                             </div>
                         </div>
 
-                        {/* Active Filter Chips */}
+                        {}
                         {hasActiveFilters && (
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-xs font-medium text-[var(--muted)]">Active Filters:</span>
@@ -950,7 +950,7 @@ export default function VaultPage() {
                     </div>
                 )}
 
-                {/* Study Sets Row (Pinned) */}
+                {}
                 {studySets.length > 0 && !search && tab === 'all' && hierarchyMode === 'hierarchical' && (
                     <div className="mb-8 overflow-hidden">
                         <h2 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3 px-1">
@@ -983,7 +983,7 @@ export default function VaultPage() {
                     </div>
                 )}
 
-                {/* Main Content Area */}
+                {}
                 {!loading && hasAnyConcepts && (
                     <div className="space-y-6">
                         {hierarchyMode === 'hierarchical' ? (
@@ -992,7 +992,7 @@ export default function VaultPage() {
                                     const isCollapsed = search ? false : collapsedCategories.has(category.id);
                                     return (
                                         <div key={category.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm">
-                                            {/* Category Header */}
+                                            {}
                                             <div
                                                 onClick={() => toggleCategory(category.id)}
                                                 onDragOver={(e) => handleDragOver(e, category.id)}
@@ -1040,7 +1040,7 @@ export default function VaultPage() {
                                                 </div>
                                             </div>
 
-                                            {/* Category Content */}
+                                            {}
                                             {!isCollapsed && (
                                                 <div
                                                     onDragOver={(e) => handleDragOver(e, category.id)}
@@ -1052,7 +1052,7 @@ export default function VaultPage() {
                                                         const pCollapsed = search ? false : collapsedParents.has(parent.id);
                                                         return (
                                                             <div key={parent.id} className="border-b border-[var(--border)] last:border-0 relative">
-                                                                {/* Parent Row */}
+                                                                {}
                                                                 <div
                                                                     onClick={(e) => toggleParent(parent.id, e)}
                                                                     draggable
@@ -1141,7 +1141,7 @@ export default function VaultPage() {
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Sub-concepts */}
+                                                                {}
                                                                 {!pCollapsed && subs.length > 0 && (
                                                                     <div className="pl-16 relative py-1 border-t border-[var(--border)] bg-[var(--surface)]">
                                                                         <div className="absolute left-[54px] top-0 bottom-4 w-px bg-[var(--border)]" />
@@ -1208,7 +1208,7 @@ export default function VaultPage() {
                                     );
                                 })}
 
-                                {/* Uncategorized */}
+                                {}
                                 {(hierarchy?.uncategorizedGroups.length > 0 || hierarchy?.orphans.length > 0) && (
                                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm">
                                         <div
@@ -1240,7 +1240,7 @@ export default function VaultPage() {
                                                 const pCollapsed = search ? false : collapsedParents.has(parent.id);
                                                 return (
                                                     <div key={parent.id} className="border-b border-[var(--border)] last:border-0 relative">
-                                                        {/* Parent Row */}
+                                                        {}
                                                         <div
                                                             onClick={(e) => toggleParent(parent.id, e)}
                                                             draggable
@@ -1317,7 +1317,7 @@ export default function VaultPage() {
                                                             </div>
                                                         </div>
 
-                                                        {/* Sub-concepts */}
+                                                        {}
                                                         {!pCollapsed && subs.length > 0 && (
                                                             <div className="pl-16 relative py-1 border-t border-[var(--border)] bg-[var(--surface)]">
                                                                 <div className="absolute left-[54px] top-0 bottom-4 w-px bg-[var(--border)]" />
@@ -1385,7 +1385,7 @@ export default function VaultPage() {
                                                     </div>
                                                 );
                                             })}
-                                            {/* Subject Groups */}
+                                            {}
                                             {hierarchy.subjectGroups.map(subject => (
                                                 <div key={subject.name} className="space-y-4">
                                                     <div className="flex items-center justify-between px-1">
@@ -1397,7 +1397,7 @@ export default function VaultPage() {
                                                     </div>
                                                 </div>
                                             ))}
-                                            {/* General concepts section */}
+                                            {}
                                             <div
                                                 onDrop={(e) => handleDrop(e, 'uncategorized', 'category')}
                                                 onDragOver={(e) => { e.preventDefault(); setDropTargetId('uncategorized'); }}
@@ -1506,7 +1506,7 @@ export default function VaultPage() {
                     </div>
                 )}
 
-                {/* Empty State */}
+                {}
                 {!loading && !hasAnyConcepts && (
                     <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
                         <div className="w-20 h-20 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center mb-6 glass">
@@ -1527,7 +1527,7 @@ export default function VaultPage() {
                 )}
             </div>
 
-            {/* Action Bar (slide up from bottom) */}
+            {}
             <div
                 className={`fixed bottom-0 left-0 right-0 md:left-64 bg-[var(--surface)] border-t border-[var(--border)] shadow-[var(--shadow-premium)] p-4 flex items-center justify-between transition-transform duration-300 z-50 glass sm:px-8
                 ${selectedNodeIds.size > 0 ? 'translate-y-0' : 'translate-y-full'}`}
@@ -1586,7 +1586,7 @@ export default function VaultPage() {
                 </div>
             </div>
 
-            {/* Rename Modal */}
+            {}
             {
                 renamingNode && (
                     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -1620,7 +1620,7 @@ export default function VaultPage() {
                 )
             }
 
-            {/* Move Modal */}
+            {}
             {
                 movingNode && (
                     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -1678,7 +1678,7 @@ export default function VaultPage() {
                 )
             }
 
-            {/* Concept Detail Modal */}
+            {}
             {selectedNodeForDetail && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
@@ -1763,7 +1763,7 @@ export default function VaultPage() {
                 </div>
             )}
 
-            {/* Merge Modal */}
+            {}
             {
                 mergingNode && (
                     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -1827,7 +1827,7 @@ export default function VaultPage() {
                     </div>
                 )
             }
-            {/* Add Concept Modal */}
+            {}
             {
                 isAddingConcept && (
                     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
@@ -1925,14 +1925,14 @@ export default function VaultPage() {
                 )
             }
 
-            {/* Modal Overlay for backdrop - simple global loading state if needed */}
+            {}
             {
                 actionLoading && (
                     <div className="fixed inset-0 bg-black/5 z-[1000] cursor-wait" />
                 )
             }
 
-            {/* Undo Toast */}
+            {}
             {
                 showUndoToast && (
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[2000] animate-in fade-in slide-in-from-bottom-4">

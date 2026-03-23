@@ -6,13 +6,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-// SuperMemo-2 Algorithm implementation
 function calculateSM2(quality: number, interval: number, easeFactor: number, consecutiveCorrect: number) {
-    // Quality: 0-5. We map 1-4 UI buttons to 1, 3, 4, 5.
-    // 1: Again (Complete blackout) -> Quality 1
-    // 2: Hard -> Quality 3
-    // 3: Good -> Quality 4
-    // 4: Easy -> Quality 5
+    
+    
+    
+    
+    
     let q = 4;
     if (quality === 1) q = 1;
     if (quality === 2) q = 3;
@@ -26,11 +25,11 @@ function calculateSM2(quality: number, interval: number, easeFactor: number, con
     let newConsecutive = consecutiveCorrect;
 
     if (q < 3) {
-        // Failed
+        
         newConsecutive = 0;
         newInterval = 1;
     } else {
-        // Passed
+        
         newConsecutive += 1;
         if (newConsecutive === 1) {
             newInterval = 1;
@@ -65,7 +64,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-        // Fetch current schedule
+        
         let { data: schedule, error: scheduleError } = await supabase
             .from('review_schedule')
             .select('*')
@@ -80,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let newScheduleData;
 
         if (!schedule) {
-            // If no schedule exists, treat it as a new item
+            
             const sm2 = calculateSM2(rating, 0, 2.5, 0);
             
             newScheduleData = {
@@ -98,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (insertError) throw insertError;
         } else {
-            // Update existing schedule
+            
             const sm2 = calculateSM2(rating, schedule.interval_days, schedule.ease_factor, schedule.consecutive_correct);
             
             newScheduleData = {
@@ -117,7 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (updateError) throw updateError;
         }
 
-        // Check if mastered (e.g., consecutive correct >= 3)
+        
         let isMastered = false;
         if (newScheduleData.consecutive_correct && newScheduleData.consecutive_correct >= 3) {
             isMastered = true;

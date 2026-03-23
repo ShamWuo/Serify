@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'Concept name is required' });
     }
 
-    // Generate a simple canonical name (lowercase, no special chars)
+    
     const canonical_name = display_name.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
     const { data, error } = await supabase
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             category_id: category_id || null,
             parent_concept_id: parent_concept_id || null,
             is_sub_concept: !!is_sub_concept,
-            current_mastery: 'developing', // Default for manually added
+            current_mastery: 'developing', 
             added_manually: true,
             importance,
             last_seen_at: new Date().toISOString(),

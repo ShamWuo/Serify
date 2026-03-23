@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             0
         );
 
-        // Safety net: remap any non-UUID concept IDs to valid UUIDs
+        
         const idMap = new Map<string, string>();
         units.forEach((unit: any) => {
             (unit.concepts || []).forEach((concept: any) => {
@@ -64,13 +64,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             0
         );
 
+        const title = curriculumData.title || userInput || 'Untitled Curriculum';
+
         const { data: savedCurriculum, error: saveError } = await supabase
             .from('curricula')
             .insert({
                 user_id: userId,
                 user_input: userInput,
-                title: curriculumData.title,
-                target_description: curriculumData.target_description,
+                title: title,
+                target_description: curriculumData.target_description || `Learning path for ${title}`,
                 scope_note: curriculumData.scope_note || null,
                 outcomes: curriculumData.outcomes ?? [],
                 units,
@@ -88,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw saveError;
         }
 
-        // Create curriculum_concept_progress rows for each concept
+        
         const progressRows: any[] = [];
         units.forEach((unit: any) => {
             (unit.concepts || []).forEach((concept: any) => {
@@ -109,11 +111,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .insert(progressRows);
             if (progressError) {
                 console.error('Error creating progress rows:', progressError);
-                // Non-fatal: the curriculum itself was saved, progress rows can be recovered
+                
             }
         }
 
-        // --- POPULATE CONCEPT VAULT (KNOWLEDGE NODES) ---
+        
         try {
             for (const unit of units) {
                 for (const concept of (unit.concepts || [])) {
@@ -128,7 +130,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } catch (vaultErr) {
             console.error('Error populating vault from curriculum:', vaultErr);
-            // Non-fatal
+            
         }
 
         res.status(200).json({ curriculumId: savedCurriculum.id });

@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const fetchProfileAndUsage = async (authUser: User, sessionToken?: string): Promise<UserProfile | null> => {
         try {
-            // 1. Fetch profile with timeout
+            
             const profilePromise = supabase
                 .from('profiles')
                 .select('*')
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 subscriptionTier: profile?.subscription_tier || 'free',
                 plan: plan,
                 preferences: parsedPreferences,
-                onboardingCompleted: profile?.onboarding_completed ?? true, // Assume complete on timeout to avoid blocking
+                onboardingCompleted: profile?.onboarding_completed ?? true, 
                 userType: profile?.user_type || 'user',
                 tokensUsed,
                 monthlyLimit,
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             };
         } catch (error) {
             console.error('Error in fetchProfileAndUsage, returning fallback profile:', error);
-            // Crucial: return a basic profile instead of null to prevent app hang/redirect
+            
             return {
                 id: authUser.id,
                 email: authUser.email || '',
@@ -143,13 +143,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.log(`[AuthContext] handleAuthChange event: ${event}`);
             if (session?.user) {
                 setToken(session.access_token);
-                // Wrap the whole profile fetch in a safety net so it can't hang the app
+                
                 const userProfile = await fetchProfileAndUsage(session.user, session.access_token);
                 
                 if (userProfile) {
                     setUser(userProfile);
                 } else {
-                    // If fetch completely failed, only wipe if we don't have a user already.
+                    
                     setUser(prev => prev);
                 }
             } else {
@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setToken(null);
             }
         } finally {
-            // CERTAINLY set loading to false so the app can render (e.g., login page)
+            
             setLoading(false);
         }
     };
@@ -165,16 +165,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let mounted = true;
         
+        // Safety timeout to prevent infinite loading if Supabase hangs
+        const safetyTimeout = setTimeout(() => {
+            if (mounted && loading) {
+                console.warn('[AuthContext] Safety timeout triggered after 6s. Forcing loading false.');
+                setLoading(false);
+            }
+        }, 6000);
+
         async function loadInitialSession() {
             try {
+                console.log('[AuthContext] Loading initial session...');
                 const { data: { session }, error } = await supabase.auth.getSession();
+                console.log('[AuthContext] Initial session result:', session ? 'Session found' : 'No session');
                 if (error) throw error;
                 if (mounted) {
                     await handleAuthChange('INITIAL_SESSION', session);
                 }
             } catch (err) {
-                console.error('Initial session fetch error:', err);
+                console.error('[AuthContext] Initial session fetch error:', err);
                 if (mounted) setLoading(false);
+            } finally {
+                clearTimeout(safetyTimeout);
             }
         }
         
@@ -185,6 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => {
             mounted = false;
             subscription.unsubscribe();
+            clearTimeout(safetyTimeout);
         };
     }, []);
 

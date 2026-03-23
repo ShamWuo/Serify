@@ -75,7 +75,6 @@ export default async function handler(req: Request) {
         ${processedContent.substring(0, 15000)}
         `;
 
-
         const schema = z.object({
             title: z.string().describe('A short descriptive title (3-5 words)'),
             concepts: z.array(
@@ -89,7 +88,6 @@ export default async function handler(req: Request) {
             )
         });
 
-
         if (!stream) {
             const { object } = await generateObject({
                 model: google('gemini-1.5-flash'),
@@ -98,7 +96,7 @@ export default async function handler(req: Request) {
                 schema
             });
 
-            // Usage already deducted via consumeTokens at the start to ensure atomic gating
+            
 
             return new Response(JSON.stringify(object), {
                 headers: { 'Content-Type': 'application/json' }
@@ -112,10 +110,9 @@ export default async function handler(req: Request) {
             prompt,
             schema,
             onFinish: async ({ object }) => {
-                // Usage already deducted at the start
+                
             }
         });
-
 
         return result.toTextStreamResponse();
     } catch (error) {

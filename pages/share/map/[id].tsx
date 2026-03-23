@@ -36,7 +36,7 @@ export default function PublicKnowledgeMap() {
 
         const fetchData = async () => {
             try {
-                // 1. Fetch Profile by Share Token
+                
                 const { data: profileData, error: profileError } = await supabase
                     .from('profiles')
                     .select('id, display_name, is_map_public')
@@ -49,7 +49,7 @@ export default function PublicKnowledgeMap() {
                 }
                 setProfile(profileData);
 
-                // 2. Fetch Public Nodes
+                
                 const { data: nodesData } = await supabase
                     .from('knowledge_nodes')
                     .select('*')
@@ -66,7 +66,7 @@ export default function PublicKnowledgeMap() {
         fetchData();
     }, [router.isReady, shareToken]);
 
-    // Simple layout seed
+    
     useEffect(() => {
         if (nodes.length === 0) return;
         const initial: Record<string, Point> = { 'root': { x: CENTER_X, y: CENTER_Y } };
@@ -101,7 +101,7 @@ export default function PublicKnowledgeMap() {
                 <title>{profile?.display_name}&apos;s Mastery Map | Serify</title>
             </Head>
 
-            {/* Public Header */}
+            {}
             <div className="absolute top-8 left-8 z-10 p-6 bg-[var(--surface)]/70 backdrop-blur-2xl border border-[var(--border)] rounded-[32px] shadow-2xl max-w-sm">
                 <div className="flex items-center gap-3 mb-3">
                     <div className="w-10 h-10 rounded-xl bg-[var(--accent)] flex items-center justify-center text-white">
@@ -117,7 +117,7 @@ export default function PublicKnowledgeMap() {
                 </p>
             </div>
 
-            {/* Branding Overlay */}
+            {}
             <Link href="/" className="absolute bottom-8 right-8 z-10 p-4 bg-white border border-[var(--border)] rounded-2xl shadow-xl flex items-center gap-3 hover:scale-105 transition-transform group">
                 <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white">
                     <Brain size={18} />
@@ -128,7 +128,7 @@ export default function PublicKnowledgeMap() {
                 </div>
             </Link>
 
-            {/* Controls */}
+            {}
             <div className="absolute top-8 right-8 z-10 flex flex-col gap-3">
                 <div className="bg-[var(--surface)]/70 backdrop-blur-md border border-[var(--border)] rounded-2xl p-1.5 flex flex-col gap-1 shadow-xl">
                     <button onClick={() => setZoom(z => Math.min(z * 1.2, 4))} className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text)] hover:bg-[var(--accent)] hover:text-white transition-all">
@@ -143,7 +143,7 @@ export default function PublicKnowledgeMap() {
                 </div>
             </div>
 
-            {/* Minimal Canvas (Read-only) */}
+            {}
             <div className="w-full h-full bg-[radial-gradient(var(--border)_1px,transparent_1px)] [background-size:40px_40px]">
                 <svg width="100%" height="100vh" viewBox="0 0 1600 1200" className="transition-transform duration-300 ease-out" style={{ 
                     transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,

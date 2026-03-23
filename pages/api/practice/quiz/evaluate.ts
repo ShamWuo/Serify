@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { sessionId, userAnswers } = req.body;
-  // userAnswers: { responseId: string, answer: string }[]
+  
 
   if (!sessionId || !userAnswers || !Array.isArray(userAnswers)) {
     return res.status(400).json({ error: 'Missing sessionId or userAnswers' });
@@ -48,19 +48,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to fetch questions' });
     }
 
-    // Evaluate answers
-    // Since Quiz is purely checking expected_answer against user answer
+    
+    
     let totalScore = 0;
     
     for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const uAnswer = userAnswers.find(ua => ua.responseId === q.id)?.answer || '';
         
-        // Parse expected answer from ai_feedback
+        
         const feedback = q.ai_feedback ? JSON.parse(q.ai_feedback) : {};
         const expectedAnswer = feedback.expected_answer || "";
         
-        // Ensure clean string comparison
+        
         const isCorrect = uAnswer.trim().toLowerCase() === expectedAnswer.trim().toLowerCase();
         const points = isCorrect ? 100 : 0;
         totalScore += points;
@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const finalScore = Math.round(totalScore / questions.length);
 
-    // Update session
+    
     await supabase
       .from('practice_sessions')
       .update({

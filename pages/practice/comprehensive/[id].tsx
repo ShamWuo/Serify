@@ -43,7 +43,7 @@ export default function ComprehensiveSession() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
     
-    // UI state
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCompleted, setIsCompleted] = useState(false);
     const [results, setResults] = useState<any>(null);
@@ -90,7 +90,7 @@ export default function ComprehensiveSession() {
 
                 setQuestions(formattedQs);
                 
-                // Initialize answers from existing data if resuming
+                
                 const initialAnswers: Record<string, string> = {};
                 formattedQs.forEach(q => {
                     if (q.user_answer) initialAnswers[q.id] = q.user_answer;
@@ -100,7 +100,7 @@ export default function ComprehensiveSession() {
                 if (sessionData.status === 'completed') {
                     setIsCompleted(true);
                     setShowIntro(false);
-                    // Load results if needed, though they are usually per-question
+                    
                 }
 
             } catch (err: any) {
@@ -126,7 +126,7 @@ export default function ComprehensiveSession() {
         if (currentIndex < questions.length - 1) {
             setCurrentIndex(prev => prev + 1);
         } else {
-            // Final submission
+            
             handleSubmitAll();
         }
     };
@@ -138,7 +138,7 @@ export default function ComprehensiveSession() {
     };
 
     const handleSubmitAll = async () => {
-        // Validation: Ensure all are answered? Or allow skip?
+        
         const unanswered = questions.filter(q => !answers[q.id]);
         if (unanswered.length > 0) {
             const proceed = confirm(`You have ${unanswered.length} unanswered questions. Submit anyway?`);
@@ -147,9 +147,9 @@ export default function ComprehensiveSession() {
 
         setIsSubmitting(true);
         try {
-            // Evaluate everything
-            // Note: We need a combined evaluation API or call multiple small ones.
-            // For now, let's call a new evaluation API that handles the whole session.
+            
+            
+            
             
             const res = await fetch('/api/practice/comprehensive/evaluate', {
                 method: 'POST',
@@ -248,9 +248,9 @@ export default function ComprehensiveSession() {
                         <h1 className="text-4xl font-display text-[var(--text)]">Mastery Evaluation complete.</h1>
                     </header>
 
-                    {/* Results Overview */}
+                    {}
                     <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                         {/* Performance Card */}
+                         {}
                          <div className="bg-white border rounded-3xl p-8 shadow-sm border-slate-100 flex flex-col items-center text-center space-y-6">
                             <div className={`w-24 h-24 rounded-full flex items-center justify-center ring-8 ${
                                 results?.overallPerformance === 'strong' ? 'bg-emerald-50 ring-emerald-50 text-emerald-600' :

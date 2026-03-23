@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!curriculumId) return res.status(400).json({ error: 'Missing curriculumId' });
 
     try {
-        // Fetch curriculum
+        
         const { data: curriculum, error: currErr } = await supabaseAdmin
             .from('curricula')
             .select('*')
@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: 'Curriculum not found' });
         }
 
-        // Get uncompleted concepts
+        
         const allConcepts = (curriculum.units as any[]).flatMap((u: any) => u.concepts);
         const completedIds = (curriculum.completed_concept_ids as string[]) || [];
         const pendingConcepts = allConcepts.filter((c: any) => !completedIds.includes(c.id));
@@ -44,8 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const currentConcept = pendingConcepts[0];
 
-        // STRATEGY: Try to find any EXISTING active flow session for this curriculum 
-        // that the user might have started previously.
+        
+        
         const { data: existingSession } = await supabaseAdmin
             .from('flow_sessions')
             .select('id')
@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         let flowSessionId = existingSession?.id;
 
-        // If no global session for curriculum, check if this specific concept has one
+        
         if (!flowSessionId) {
             const { data: conceptProgress } = await supabaseAdmin
                 .from('curriculum_concept_progress')
@@ -70,9 +70,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             flowSessionId = conceptProgress?.flow_session_id;
         }
 
-        // If we STILL don't have a session ID, create a fresh one
+        
         if (!flowSessionId) {
-            // Check usage BEFORE creating
+            
             const usage = await incrementUsage(userId, 'flow_sessions');
             if (!usage.allowed) {
                 return res.status(403).json({
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 });
             }
 
-            // Build the plan for Flow Mode
+            
             const planNodes = pendingConcepts.map((c: any) => ({
                 conceptId: c.id,
                 conceptName: c.name,
@@ -115,9 +115,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             flowSessionId = flowSession.id;
 
-            // Link this session to the current concept progress
-            // (Wait, we should ideally link it to ALL concepts in this flow if we wanted total persistence, 
-            // but linking at least the current one is good)
+            
+            
+            
             await supabaseAdmin
                 .from('curriculum_concept_progress')
                 .upsert({

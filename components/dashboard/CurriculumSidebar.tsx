@@ -48,7 +48,7 @@ export default function CurriculumSidebar({
 
             <div className="space-y-1 overflow-y-auto pr-2 custom-scrollbar">
                 {concepts.map((concept, i) => {
-                    // Show all concepts in the sidebar
+                    
 
                     const conceptId = concept.conceptId || concept.id || '';
                     const conceptName = concept.conceptName || concept.name || '';

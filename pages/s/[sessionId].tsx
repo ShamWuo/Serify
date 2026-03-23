@@ -89,7 +89,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                     name="description"
                     content={`Serify diagnostic report: "${session.summary_sentence ?? session.title}" — See how well the concepts were understood.`}
                 />
-                {/* Open Graph */}
+                {}
                 <meta property="og:title" content={`${session.title} | Serify Report`} />
                 <meta
                     property="og:description"
@@ -98,7 +98,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                 <meta property="og:image" content={ogImageUrl} />
                 <meta property="og:url" content={shareUrl} />
                 <meta property="og:type" content="website" />
-                {/* Twitter Card */}
+                {}
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content={`${session.title} | Serify`} />
                 <meta
@@ -117,7 +117,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                     color: '#1a1a1a'
                 }}
             >
-                {/* Viral CTA Banner — top of page for unauthenticated visitors */}
+                {}
                 <div
                     style={{
                         background: '#1b4332',
@@ -159,7 +159,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                         padding: '48px 24px 80px'
                     }}
                 >
-                    {/* Header */}
+                    {}
                     <div style={{ marginBottom: 48 }}>
                         <div
                             style={{
@@ -226,7 +226,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                         )}
                     </div>
 
-                    {/* Mastery Badges */}
+                    {}
                     <div
                         style={{
                             display: 'flex',
@@ -273,7 +273,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                         )}
                     </div>
 
-                    {/* Strength Map */}
+                    {}
                     {session.strength_map && session.strength_map.length > 0 && (
                         <section style={{ marginBottom: 48 }}>
                             <h2
@@ -357,7 +357,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                         </section>
                     )}
 
-                    {/* Bottom Viral CTA */}
+                    {}
                     <div
                         style={{
                             background: 'linear-gradient(135deg, #1b4332, #2d6a4f)',
@@ -412,7 +412,7 @@ export default function PublicSessionPage({ session, siteUrl }: Props) {
                         </p>
                     </div>
 
-                    {/* Footer */}
+                    {}
                     <div
                         style={{
                             marginTop: 40,
@@ -446,7 +446,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // Fetch the session
+    
     const { data: session } = await supabase
         .from('reflection_sessions')
         .select('id, title, depth_score, is_public, created_at')
@@ -457,7 +457,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         return { props: { session: null, siteUrl } };
     }
 
-    // Fetch concepts for name lookup
+    
     const { data: concepts } = await supabase
         .from('concepts')
         .select('id, name')
@@ -468,7 +468,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         conceptNames[c.id] = c.name;
     });
 
-    // Fetch the analysis (strength map + summary)
+    
     const { data: analysis } = await supabase
         .from('analyses')
         .select('strength_map, insights')
@@ -486,7 +486,7 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
         summarySentence = insights?.summary_sentence ?? null;
         overallCounts = insights?.overall_counts ?? {};
 
-        // Recompute overall_counts from strength_map if missing
+        
         if (Object.keys(overallCounts).length === 0 && strengthMap.length > 0) {
             strengthMap.forEach((item) => {
                 overallCounts[item.mastery_state] =

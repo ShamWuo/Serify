@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { sessionId, conceptId } = req.body;
     if (!sessionId || !conceptId) return res.status(400).json({ error: 'Missing sessionId or conceptId' });
 
-    // Set up SSE headers
+    
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -89,8 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.end();
         }
 
-        // STRATEGY: We use the vaultConceptId as the primary key for flow_concept_progress.
-        // However, we check for Plan ID fallback to handle legacy/mismatched records.
+        
+        
         let { data: existingProgress } = await supabaseAdmin
             .from('flow_concept_progress')
             .select('*')
@@ -248,8 +248,7 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
         clearTimeout(timeoutId);
         const text = result.response.text();
 
-
-        // ── Token / cost logging ──────────────────────────────
+        
         const usageMetadata = result.response.usageMetadata;
         if (usageMetadata) {
             const inputTokens = usageMetadata.promptTokenCount ?? 0;

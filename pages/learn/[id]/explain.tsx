@@ -1,9 +1,4 @@
-/**
- * explain.tsx
- * Purpose: Provides a personalized "Explain It To Me" mode for reviewing difficult concepts.
- * Key Logic: Generates AI-driven explanations for weak concepts using existing knowledge 
- * as context. Updates concept mastery based on user feedback on the explanation's clarity.
- */
+
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
@@ -15,7 +10,6 @@ import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { CheckCircle2 } from 'lucide-react';
 import GeneratingAnimation from '@/components/GeneratingAnimation';
-
 
 export default function ExplainMode() {
     const router = useRouter();

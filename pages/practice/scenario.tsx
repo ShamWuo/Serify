@@ -47,7 +47,7 @@ export default function ScenarioGenerator() {
                      throw new Error(data.error || 'Failed to generate scenario');
                  }
 
-                 // Redirect to the active session
+                 
                  router.replace(`/practice/scenario/${data.sessionId}`);
 
              } catch (err: any) {

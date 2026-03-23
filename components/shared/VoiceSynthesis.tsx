@@ -26,14 +26,14 @@ export default function VoiceSynthesis({ text, className = '' }: VoiceSynthesisP
         } else {
             const utterance = new SpeechSynthesisUtterance(text);
             
-            // Try to find a good natural-sounding voice if available
+            
             const voices = window.speechSynthesis.getVoices();
             const preferredVoice = voices.find(v => 
                 v.name.includes('Google') || v.name.includes('Natural') || v.lang === 'en-US'
             );
             
             if (preferredVoice) utterance.voice = preferredVoice;
-            utterance.rate = 0.9; // Slightly slower for clarity
+            utterance.rate = 0.9; 
             utterance.pitch = 1.0;
 
             utterance.onend = () => setIsSpeaking(false);
@@ -44,7 +44,7 @@ export default function VoiceSynthesis({ text, className = '' }: VoiceSynthesisP
         }
     };
 
-    // Cleanup on unmount
+    
     useEffect(() => {
         return () => {
             if (typeof window !== 'undefined' && window.speechSynthesis) {

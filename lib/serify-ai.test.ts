@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { extractConcepts, generateSessionTitle, classifyMessage } from './serify-ai';
 import { generateObject } from 'ai';
 
-// Mock AI SDK
 vi.mock('ai', () => ({
   generateObject: vi.fn(),
 }));
@@ -79,7 +78,7 @@ describe('Serify AI Logic', () => {
   
         const result = await classifyMessage('Explain more', true);
   
-        expect(result).toBe('tier2'); // Should be downgraded because it's a follow-up to tier3
+        expect(result).toBe('tier2'); 
       });
   });
 });

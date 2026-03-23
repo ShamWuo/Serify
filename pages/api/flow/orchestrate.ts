@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
         const conceptName = currentConcept.conceptName || 'Unknown Topic';
 
-        // ── Ensure concept exists in vault (FK requirement) ───────
+        
         const node = await findOrCreateConceptNode(
             supabaseAdmin as any,
             userId,
@@ -164,7 +164,7 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
         const result = await model.generateContent(promptText);
         const text = result.response.text();
 
-        // ── Token / cost logging ──────────────────────────────
+        
         const usage = result.response.usageMetadata;
         if (usage) {
             const inputTokens = usage.promptTokenCount ?? 0;
@@ -183,8 +183,8 @@ Reinforcements required so far this session: ${learnerProfile.reinforcementsRequ
         try {
             orchestratorPlan = JSON.parse(cleanedText);
         } catch (_firstErr) {
-            // LaTeX backslashes (e.g. \frac, \lim) are not valid JSON escapes.
-            // Replace any \ not already part of a valid JSON escape with \\.
+            
+            
             const reescaped = cleanedText.replace(/\\(?!["\\\/bfnrtu])/g, '\\\\');
             try {
                 orchestratorPlan = JSON.parse(reescaped);

@@ -47,7 +47,7 @@ export default function Signup() {
 
         try {
             await register(email, password, fullName);
-            // The useEffect will handle the redirect once user state updates to '/onboarding'
+            
         } catch (err: unknown) {
             const error = err as Error;
             const msg = error.message || '';
@@ -76,7 +76,7 @@ export default function Signup() {
 
     return (
         <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-center items-center p-6 font-sans relative overflow-hidden page-transition">
-            {/* Decorative blobs */}
+            {}
             <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] left-[-100px]" />
             <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] right-[-100px]" />
             <div className="auth-bg-blob w-[300px] h-[300px] bg-[#b8860b] top-[50%] right-[40%]" />

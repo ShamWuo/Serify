@@ -18,14 +18,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { sessionId, answers } = req.body;
-  // answers: { questionId: string, answer: string }[]
+  
 
   if (!sessionId || !answers || !Array.isArray(answers)) {
     return res.status(400).json({ error: 'Missing sessionId or answers' });
   }
 
   try {
-    // 1. Fetch the session and its questions
+    
     const { data: session, error: sessionError } = await supabase
       .from('practice_sessions')
       .select('*')
@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: 'Failed to fetch questions' });
     }
 
-    // Prepare payload for AI evaluation
+    
     const aiPayload = questions.map((q) => {
       const uAnswer = answers.find(ua => ua.questionId === q.id)?.answer || '';
       
@@ -79,11 +79,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const evaluation = await evaluateComprehensiveTest(aiPayload, plan);
 
-    // Calculate fractional score
+    
     const scoreMap = { 'strong': 100, 'developing': 60, 'shaky': 30, 'blank': 0 };
     let totalScore = 0;
 
-    // Update DB with feedback
+    
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
       const fb = evaluation.questionFeedback[i];
@@ -103,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const finalScore = Math.round(totalScore / questions.length);
 
-    // Update Session
+    
     await supabase
       .from('practice_sessions')
       .update({
@@ -113,12 +113,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         results: {
             overallPerformance: evaluation.overallPerformance,
             focusSuggestions: evaluation.focusSuggestions,
-            questionFeedback: evaluation.questionFeedback // Storing it here too for easy frontend access
+            questionFeedback: evaluation.questionFeedback 
         }
       } as any)
       .eq('id', sessionId);
       
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_comprehensive_evaluated',

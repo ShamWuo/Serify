@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const userId = await authenticateApiRequest(req);
-    // Feedback can be anonymous or authenticated
+    
     
     const { type, content, url, userAgent, screenResolution } = req.body;
 

@@ -22,10 +22,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Missing sessionId' });
   }
   
-  const spaceConfig = answerSpace || 'medium'; // 'none', 'small', 'medium', 'large'
+  const spaceConfig = answerSpace || 'medium'; 
 
   try {
-    // 1. Fetch Session Data
+    
     const { data: session, error: sessionError } = await supabase
         .from('practice_sessions')
         .select('*')
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).json({ error: 'Session not found' });
     }
     
-    // 2. Fetch Questions
+    
     const { data: responses, error: responsesError } = await supabase
         .from('practice_responses')
         .select('*, knowledge_nodes(name)')
@@ -48,10 +48,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(500).json({ error: 'Failed to fetch questions' });
     }
     
-    // 3. Generate HTML Content for Print
-    // In a real production app we'd use puppeteer or a service to render PDF.
-    // Given the constraints, we'll return an HTML payload that the frontend can print,
-    // or simulate a document structure. 
+    
+    
+    
+    
     
     const spacingStyle = 
         spaceConfig === 'large' ? 'height: 400px;' :
@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     htmlContent += `</div>`;
     
-    // 4. Record Export in DB
+    
     const { data: exportData, error: exportError } = await supabase
         .from('practice_exports')
         .insert({
@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         console.error("Failed to log export:", exportError);
     }
     
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_test_exported',

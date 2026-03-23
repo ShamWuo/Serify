@@ -99,7 +99,7 @@ export default async function handler(req: Request) {
 
                     let parentNodeId: string | undefined = undefined;
 
-                    // Hierarchical Graduation Check
+                    
                     if (concept.related_concept_names &&
                         Array.isArray(concept.related_concept_names) &&
                         concept.related_concept_names.length >= 2 &&

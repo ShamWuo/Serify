@@ -23,7 +23,7 @@ export default function Login() {
     }, []);
 
     useEffect(() => {
-        // Only redirect automatically if we aren't currently in the middle of a login attempt
+        
         if (user && !isLoading) {
             if (!user.onboardingCompleted) {
                 router.push('/onboarding');
@@ -48,7 +48,7 @@ export default function Login() {
                 }
             }
             
-            // Fallback: clear loading after 5s if redirect doesn't happen
+            
             setTimeout(() => {
                 if (mounted.current) setIsLoading(false);
             }, 5000);
@@ -73,7 +73,7 @@ export default function Login() {
 
     return (
         <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-center items-center p-6 font-sans relative overflow-hidden page-transition">
-            {/* Decorative blobs */}
+            {}
             <div className="auth-bg-blob w-[500px] h-[500px] bg-[var(--accent)] top-[-150px] right-[-100px]" />
             <div className="auth-bg-blob w-[400px] h-[400px] bg-[#7c3d9e] bottom-[-100px] left-[-100px]" />
             <div className="auth-bg-blob w-[300px] h-[300px] bg-[#b8860b] top-[40%] left-[60%]" />
@@ -123,13 +123,12 @@ export default function Login() {
                                 <label className="block text-xs font-bold text-[var(--muted)] uppercase tracking-wider">
                                     Password
                                 </label>
-                                {/* TODO: Implement password reset functionality */}
-                                {/* <Link
-                                    href="/reset-password"
-                                    className="text-xs text-[var(--accent)] hover:underline"
+                                <Link 
+                                    href="/forgot-password" 
+                                    className="text-xs font-medium text-[var(--accent)] hover:underline"
                                 >
                                     Forgot?
-                                </Link> */}
+                                </Link>
                             </div>
                             <div className="relative">
                                 <input

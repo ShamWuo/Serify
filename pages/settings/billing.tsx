@@ -24,7 +24,7 @@ export default function BillingSettings() {
         async function fetchData() {
             setLoading(true);
             try {
-                // We use useUsage hook for tokens/limits, but still need subscription details if not free
+                
                 setPlan(user?.plan || 'free');
 
                 if (user?.plan !== 'free' && user?.id !== 'demo-user') {
@@ -164,7 +164,7 @@ export default function BillingSettings() {
                                     </div>
                                 </div>
 
-                                {/* Detailed Breakdown */}
+                                {}
                                 <div className="pt-4 border-t border-border/50">
                                     <h3 className="text-xs font-bold text-text/40 uppercase tracking-widest mb-4">Detailed Breakdown</h3>
                                     <div className="grid gap-3">

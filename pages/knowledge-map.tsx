@@ -10,11 +10,11 @@ import toast from 'react-hot-toast';
 import { KnowledgeNode, VaultCategory, MasteryState } from '@/types/serify';
 
 const MASTERY_COLORS: Record<MasteryState, string> = {
-    mastered: '#1A4A38',   // Deep green
-    solid: '#2A5C45',      // Accent
-    developing: '#4A90A4', // Blue/Teal
-    shaky: '#B8860B',      // Shallow
-    revisit: '#C4541A'     // Warn
+    mastered: '#1A4A38',   
+    solid: '#2A5C45',      
+    developing: '#4A90A4', 
+    shaky: '#B8860B',      
+    revisit: '#C4541A'     
 };
 
 interface Point {
@@ -41,6 +41,12 @@ export default function KnowledgeMap() {
     const { user } = useAuth();
     const router = useRouter();
 
+    useEffect(() => {
+        router.replace('/');
+    }, [router]);
+
+    return null;
+
     const [nodes, setNodes] = useState<KnowledgeNode[]>([]);
     const [categories, setCategories] = useState<VaultCategory[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,7 +55,7 @@ export default function KnowledgeMap() {
     const [backfilling, setBackfilling] = useState(false);
     const [backfillDone, setBackfillDone] = useState(false);
 
-    // Physics State
+    
     const [nodePositions, setNodePositions] = useState<Record<string, Point>>({});
     const [zoom, setZoom] = useState(0.8);
     const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -61,7 +67,7 @@ export default function KnowledgeMap() {
     const [shareData, setShareData] = useState({ is_map_public: false, share_token: '' });
     const [isSharing, setIsSharing] = useState(false);
 
-    // Constants for physics
+    
     const REPULSION = 40000;
     const ATTRACTION = 0.035;
     const DAMPING = 0.82;
@@ -137,7 +143,7 @@ export default function KnowledgeMap() {
         }
     };
 
-    // Initial Layout Seed
+    
     useEffect(() => {
         if (nodes.length === 0) return;
         const initial: Record<string, Point> = {
@@ -164,7 +170,7 @@ export default function KnowledgeMap() {
         setNodePositions(initial);
     }, [nodes, categories]);
 
-    // Physics Loop
+    
     useEffect(() => {
         if (loading || nodes.length === 0 || isDragging) return;
 
@@ -176,12 +182,12 @@ export default function KnowledgeMap() {
                 const next = { ...prev };
                 const allIds = Object.keys(next);
 
-                // Initialize velocities if needed
+                
                 allIds.forEach(id => {
                     if (!velocities[id]) velocities[id] = { vx: 0, vy: 0 };
                 });
 
-                // 1. Repulsion (All nodes push each other)
+                
                 for (let i = 0; i < allIds.length; i++) {
                     for (let j = i + 1; j < allIds.length; j++) {
                         const idA = allIds[i];
@@ -204,8 +210,8 @@ export default function KnowledgeMap() {
                     }
                 }
 
-                // 2. Attraction (Hierarchy)
-                // Categories to Root
+                
+                
                 categories.forEach(c => {
                     const id = `category-${c.id}`;
                     if (!next[id]) return;
@@ -215,7 +221,7 @@ export default function KnowledgeMap() {
                     velocities[id].vy += dy * ATTRACTION;
                 });
 
-                // Concepts to Categories
+                
                 nodes.forEach(n => {
                     if (!next[n.id]) return;
                     const targetId = n.category_id ? `category-${n.category_id}` : 'root';
@@ -227,7 +233,7 @@ export default function KnowledgeMap() {
                     velocities[n.id].vy += dy * ATTRACTION * 1.5;
                 });
 
-                // 3. Center Gravity
+                
                 allIds.forEach(id => {
                     if (id === 'root') return;
                     const dx = CENTER_X - next[id].x;
@@ -236,9 +242,9 @@ export default function KnowledgeMap() {
                     velocities[id].vy += dy * 0.005;
                 });
 
-                // Apply velocities and damping
+                
                 allIds.forEach(id => {
-                    if (id === 'root' && !draggedNodeId) return; // Keep root stable unless dragged
+                    if (id === 'root' && !draggedNodeId) return; 
                     const v = velocities[id];
                     next[id] = {
                         x: next[id].x + v.vx,
@@ -293,7 +299,7 @@ export default function KnowledgeMap() {
         }
     }, [loading, nodes.length, backfillDone, backfilling, triggerBackfill]);
 
-    // Graph Data Helpers
+    
     const mapNodes = useMemo(() => {
         const out: MapNode[] = [];
         if (!nodePositions['root']) return [];
@@ -365,7 +371,7 @@ export default function KnowledgeMap() {
         return out;
     }, [nodes, categories, nodePositions, mapNodes]);
 
-    // Handlers
+    
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -386,11 +392,11 @@ export default function KnowledgeMap() {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        // Project cursor into map-space
+        
         const mapX = (x - pan.x) / zoom;
         const mapY = (y - pan.y) / zoom;
 
-        // Adjust pan to keep the projected point at the same screen position
+        
         setPan({
             x: x - mapX * nextZoom,
             y: y - mapY * nextZoom
@@ -398,7 +404,7 @@ export default function KnowledgeMap() {
         setZoom(nextZoom);
     };
 
-    // Native listener to prevent page zoom on pinch
+    
     useEffect(() => {
         const canvas = document.getElementById('map-canvas-container');
         if (!canvas) return;
@@ -428,7 +434,7 @@ export default function KnowledgeMap() {
             </Head>
 
             <div className="flex flex-col h-[calc(100vh-64px)] bg-[var(--bg)] relative overflow-hidden font-sans">
-                {/* Header Overlay */}
+                {}
                 <div
                     className={`absolute top-4 left-4 md:top-8 md:left-8 z-10 p-6 md:p-8 bg-[var(--surface)]/70 backdrop-blur-2xl border border-[var(--border)] rounded-[24px] md:rounded-[32px] shadow-2xl shadow-black/10 transition-all duration-500 animate-fade-in group
                     ${isHeaderCollapsed ? 'w-14 h-14 overflow-hidden p-0 rounded-2xl flex items-center justify-center cursor-pointer shadow-none border-none' : 'max-w-md'}
@@ -461,7 +467,7 @@ export default function KnowledgeMap() {
                     )}
                 </div>
 
-                {/* Separate Legend Layer (Bottom Left) */}
+                {}
                 {!isHeaderCollapsed && (
                     <div className="absolute bottom-24 left-4 md:bottom-8 md:left-8 z-10 p-4 bg-[var(--surface)]/40 backdrop-blur-md border border-[var(--border)] rounded-2xl flex flex-wrap gap-x-4 gap-y-2 animate-fade-in pointer-events-none md:pointer-events-auto">
                         {Object.entries(MASTERY_COLORS).map(([lvl, color]) => (
@@ -473,7 +479,7 @@ export default function KnowledgeMap() {
                     </div>
                 )}
 
-                {/* Controls overlay */}
+                {}
                 <div className="absolute top-6 right-6 z-10 flex flex-col gap-3">
                     <div className="bg-[var(--surface)]/70 backdrop-blur-md border border-[var(--border)] rounded-2xl p-1.5 flex flex-col gap-1 shadow-xl">
                         <button onClick={() => setZoom(z => Math.min(z * 1.2, 4))} className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text)] hover:bg-[var(--accent)] hover:text-white transition-all">
@@ -497,7 +503,7 @@ export default function KnowledgeMap() {
                     </button>
                 </div>
 
-                {/* Share Modal */}
+                {}
                 {showShareModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm animate-fade-in">
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-2xl max-w-md w-full p-8 animate-scale-in">
@@ -569,7 +575,7 @@ export default function KnowledgeMap() {
                     </div>
                 )}
 
-                {/* Canvas */}
+                {}
                 <div
                     id="map-canvas-container"
                     className="flex-1 w-full h-full cursor-grab active:cursor-grabbing transition-opacity duration-700"
@@ -637,7 +643,7 @@ export default function KnowledgeMap() {
                             </defs>
 
                             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-                                {/* Links layer */}
+                                {}
                                 {mapLinks.map((link, i) => (
                                     <line
                                         key={i}
@@ -649,7 +655,7 @@ export default function KnowledgeMap() {
                                     />
                                 ))}
 
-                                {/* Nodes layer */}
+                                {}
                                 {mapNodes.map((node) => {
                                     const isHovered = hoveredNodeId === node.id;
                                     const isConcept = node.type === 'concept';
@@ -665,7 +671,7 @@ export default function KnowledgeMap() {
                                             onMouseLeave={() => setHoveredNodeId(null)}
                                             className={`${isConcept ? 'cursor-pointer' : ''} transition-all duration-300`}
                                         >
-                                            {/* Glow background for concepts */}
+                                            {}
                                             {isConcept && (
                                                 <circle
                                                     r={node.r * 2.2}
@@ -675,7 +681,7 @@ export default function KnowledgeMap() {
                                                 />
                                             )}
 
-                                            {/* Topic ring */}
+                                            {}
                                             {isTopic && (
                                                 <circle
                                                     r={node.r + 8}
@@ -687,7 +693,7 @@ export default function KnowledgeMap() {
                                                 />
                                             )}
 
-                                            {/* Core node */}
+                                            {}
                                             <circle
                                                 r={node.r}
                                                 fill={isRoot ? 'var(--text)' : (isTopic ? 'var(--surface)' : node.color)}
@@ -697,10 +703,10 @@ export default function KnowledgeMap() {
                                                 style={isHovered && isConcept ? { filter: 'url(#glow)' } : {}}
                                             />
 
-                                            {/* Icon for topics/root */}
+                                            {}
                                             {isRoot && <Brain size={16} className="text-[var(--surface)] -translate-x-2 -translate-y-2" />}
 
-                                            {/* Labels (Visible only when zoomed in or hovered) */}
+                                            {}
                                             {(zoom > 0.6 || isHovered || isTopic || isRoot) && (
                                                 <text
                                                     y={node.r + 16}
@@ -721,7 +727,7 @@ export default function KnowledgeMap() {
                     )}
                 </div>
 
-                {/* Hover Tooltip Overlay */}
+                {}
                 {hoveredNode && hoveredNode.type === 'concept' && (
                     <div className="absolute bottom-6 left-6 z-20 w-80 bg-[var(--surface)]/80 backdrop-blur-xl border border-[var(--border)] rounded-3xl shadow-2xl p-6 animate-fade-in-up">
                         <div className="flex items-center justify-between mb-4">

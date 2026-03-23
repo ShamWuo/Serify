@@ -22,7 +22,7 @@ export default function PracticeTestSession() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
     
-    // Evaluation state
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCompleted, setIsCompleted] = useState(false);
     const [results, setResults] = useState<any>(null);
@@ -37,7 +37,7 @@ export default function PracticeTestSession() {
         const loadSession = async () => {
             setIsLoading(true);
             try {
-                // Fetch Session
+                
                 const { data: sessionData, error: sessionErr } = await supabase
                     .from('practice_sessions')
                     .select('*')
@@ -49,7 +49,7 @@ export default function PracticeTestSession() {
 
                 setSession(sessionData);
 
-                // Fetch Questions
+                
                 const { data: qData, error: qErr } = await supabase
                     .from('practice_responses')
                     .select('*')
@@ -60,7 +60,7 @@ export default function PracticeTestSession() {
 
                 setQuestions(qData);
 
-                // Initialize answers if revisiting an incomplete session or completed session
+                
                 const initialAnswers: Record<string, string> = {};
                 qData.forEach(q => {
                     if (q.user_response) {
@@ -91,7 +91,7 @@ export default function PracticeTestSession() {
     }, [user, router.isReady, id]);
 
     useEffect(() => {
-        // Auto-resize text area
+        
         if (textAreaRef.current && !isCompleted) {
             textAreaRef.current.style.height = 'auto';
             textAreaRef.current.style.height = textAreaRef.current.scrollHeight + 'px';
@@ -138,7 +138,7 @@ export default function PracticeTestSession() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            // Fetch the updated questions to get question-level feedback
+            
             const { data: finalQs } = await supabase
                 .from('practice_responses')
                 .select('*')
@@ -157,7 +157,7 @@ export default function PracticeTestSession() {
                 }
             });
             setIsCompleted(true);
-            setCurrentIndex(0); // Reset index to view results from start
+            setCurrentIndex(0); 
 
         } catch (err: any) {
             toast.error(err.message || 'Failed to submit test');
@@ -188,7 +188,7 @@ export default function PracticeTestSession() {
                 <title>SAQ Session | Serify</title>
             </Head>
 
-            {/* Top Navigation */}
+            {}
             <header className="fixed top-0 inset-x-0 h-16 bg-[var(--surface)] border-b border-[var(--border)] z-20 flex items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <button 
@@ -215,7 +215,7 @@ export default function PracticeTestSession() {
                 )}
             </header>
 
-            {/* Progress Bar */}
+            {}
             <div className="fixed top-16 inset-x-0 h-1 bg-[var(--border)] z-20">
                 <div 
                     className="h-full bg-blue-600 transition-all duration-300 ease-out"
@@ -227,10 +227,10 @@ export default function PracticeTestSession() {
                 <div className="max-w-3xl mx-auto space-y-8">
                     
                     {isCompleted ? (
-                        /* RESULTS VIEW */
+                        
                         <div className="space-y-10 animate-fade-in-up">
                             
-                            {/* Summary Card */}
+                            {}
                             {currentIndex === 0 && (
                                 <div className="bg-white border text-center p-8 rounded-2xl shadow-sm border-[var(--border)] space-y-6">
                                     <div className="w-20 h-20 rounded-full bg-blue-50 text-blue-600 mx-auto flex items-center justify-center border-4 border-blue-100">
@@ -300,7 +300,7 @@ export default function PracticeTestSession() {
                                 </div>
                             )}
 
-                            {/* Individual Question Review */}
+                            {}
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
                                     <h3 className="font-display text-xl text-[var(--text)]">
@@ -342,7 +342,7 @@ export default function PracticeTestSession() {
                             </div>
                         </div>
                     ) : (
-                        /* ACTIVE SESSION VIEW */
+                        
                         <div className="space-y-8 animate-fade-in-up">
                             
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold uppercase tracking-widest border border-blue-100">

@@ -29,7 +29,7 @@ const AssistantPanel: React.FC = () => {
 
     return (
         <div className="fixed bottom-0 right-0 md:bottom-24 md:right-6 w-full h-full md:w-[400px] md:h-[600px] md:max-h-[calc(100vh-120px)] bg-white md:rounded-3xl shadow-2xl border-t md:border border-[var(--border)] flex flex-col overflow-hidden animate-slide-up z-[998]">
-            {/* Header */}
+            {}
             <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-gray-50/50">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl bg-[var(--accent)] flex items-center justify-center text-white shadow-md shadow-[var(--accent)]/10">
@@ -58,7 +58,7 @@ const AssistantPanel: React.FC = () => {
                 </div>
             </div>
 
-            {/* Chat Body */}
+            {}
             <div className="flex-1 overflow-hidden">
                 <AssistantChat />
             </div>

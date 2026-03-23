@@ -31,7 +31,7 @@ export default function ConceptDetailPage() {
         const fetchConceptDetails = async () => {
             setLoading(true);
             try {
-                // 1. Fetch concept details
+                
                 const { data: node, error: nodeError } = await supabase
                     .from('knowledge_nodes')
                     .select('*')
@@ -40,7 +40,7 @@ export default function ConceptDetailPage() {
 
                 if (nodeError) throw nodeError;
 
-                // 2. Fetch related sessions
+                
                 let sessionIds = node.session_ids || [];
                 if (sessionIds.length > 0) {
                     const { data: sessionData, error: sessionError } = await supabase
@@ -146,7 +146,7 @@ export default function ConceptDetailPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                     <div className="md:col-span-2 space-y-12">
-                        {/* Summary / Pulse */}
+                        {}
                         {concept.synthesis && (
                             <section>
                                 <h2 className="text-sm font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
@@ -159,7 +159,7 @@ export default function ConceptDetailPage() {
                             </section>
                         )}
 
-                        {/* Recent History */}
+                        {}
                         <section>
                             <h2 className="text-sm font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
                                 <History size={14} />
@@ -193,7 +193,7 @@ export default function ConceptDetailPage() {
                     </div>
 
                     <div className="space-y-10">
-                        {/* Quick Actions */}
+                        {}
                         <section>
                             <h2 className="text-sm font-black uppercase tracking-widest text-[var(--muted)] mb-6">Mastery Flow</h2>
                             <div className="space-y-3">
@@ -213,7 +213,7 @@ export default function ConceptDetailPage() {
                             </div>
                         </section>
 
-                        {/* Stats Breakdown */}
+                        {}
                         <section className="p-6 bg-[var(--surface)] border border-[var(--border)] rounded-3xl">
                             <h3 className="text-xs font-black uppercase tracking-widest text-[var(--muted)] mb-4">Mastery Metrics</h3>
                             <div className="space-y-4">

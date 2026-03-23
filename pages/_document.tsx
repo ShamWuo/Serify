@@ -11,7 +11,7 @@ export default function Document() {
                     rel="stylesheet"
                 />
 
-                {/* Brand Identity & Favicons */}
+                {}
                 <link rel="icon" href="/favicon.png" type="image/png" />
                 <link rel="apple-touch-icon" href="/logo.png" />
                 <link rel="apple-touch-icon" href="/logo.png" />

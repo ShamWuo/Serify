@@ -40,7 +40,7 @@ export default function FlowModePage() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // 1. Fetch active flow sessions
+                
                 const { data: sessions, error: sessionError } = await supabase
                     .from('flow_sessions')
                     .select(`
@@ -63,7 +63,7 @@ export default function FlowModePage() {
 
                 if (sessionError) throw sessionError;
 
-                // 2. Fetch recent curricula that haven't been "flowed" yet or are in progress
+                
                 const { data: curricula, error: currError } = await supabase
                     .from('curricula')
                     .select('id, title, concept_count, created_at')
@@ -78,7 +78,7 @@ export default function FlowModePage() {
                     curriculum_title: (s as any).curriculum?.title || (s as any).reflection_session?.title || 'Continuous Flow',
                     curriculum_id: s.curriculum_id,
                     concepts_completed: s.concepts_completed || [],
-                    total_concepts: (s.concepts_completed?.length || 0) + 5, // Approximate
+                    total_concepts: (s.concepts_completed?.length || 0) + 5, 
                     last_activity_at: s.last_activity_at,
                     current_concept_id: s.current_concept_id
                 })) || []);
@@ -137,7 +137,7 @@ export default function FlowModePage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        {/* Active Flows */}
+                        {}
                         <section>
                             <h2 className="text-sm font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
                                 <Clock size={14} />
@@ -185,7 +185,7 @@ export default function FlowModePage() {
                             )}
                         </section>
 
-                        {/* Recent Curricula */}
+                        {}
                         <section>
                             <h2 className="text-sm font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
                                 <BookOpen size={14} />

@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const result = await checkUsage(userId, feature as FeatureName);
             return res.status(200).json(result);
         } else {
-            // Return all usage stats for the user
+            
             const client = supabaseAdmin || supabase;
             const { data: tracking } = await (client as any)
                 .from('usage_tracking')

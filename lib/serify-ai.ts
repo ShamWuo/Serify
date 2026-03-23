@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import {
@@ -11,7 +11,10 @@ import {
   ReflectionSession
 } from '../types/serify';
 
-// Models
+const googleProvider = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
+
 export const MODEL_PRO = 'gemini-2.5-flash';
 export const MODEL_FLASH = 'gemini-2.5-flash';
 
@@ -32,12 +35,9 @@ export function getGeminiModel(plan: string = 'free', systemInstruction?: string
   });
 }
 
-/**
- * Returns an AI SDK model instance
- */
 function getAISDKModel(plan: string = 'free') {
   const modelName = plan === 'proplus' || plan === 'pro' ? MODEL_PRO : MODEL_FLASH;
-  return google(modelName);
+  return googleProvider(modelName);
 }
 
 function getDefaultModel() {
@@ -45,11 +45,11 @@ function getDefaultModel() {
 }
 
 export function parseJSON<T>(text: string): T {
-  // Try to match standard markdown JSON fences
+  
   const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*(?:```|$)/);
   let toParse = jsonMatch ? jsonMatch[1] : text;
 
-  // Clean up any remaining leading formatting just in case
+  
   let cleaned = toParse.replace(/^\s+/, '').replace(/\s+$/, '').trim();
   if (cleaned.startsWith('```json')) cleaned = cleaned.replace(/^```json/, '').trim();
   if (cleaned.startsWith('```')) cleaned = cleaned.replace(/^```/, '').trim();
@@ -59,7 +59,7 @@ export function parseJSON<T>(text: string): T {
     return JSON.parse(cleaned);
   } catch (err) {
     console.error('Failed to parse JSON cleanly, attempting aggressive subset extraction...');
-    // If it's still failing (e.g. truncated JSON), aggressively find the bounds
+    
     try {
       const firstBrace = cleaned.indexOf('{');
       const lastBrace = cleaned.lastIndexOf('}');
@@ -108,7 +108,6 @@ REUSE EXISTING CATEGORIES: If the new material fits into any of the existing Pil
 
   const prompt = `You are an expert knowledge analyst.
 ${contentDescription}
-
 
 ${contextInstruction}
 
@@ -170,8 +169,8 @@ export async function generateSessionTitle(content: string, type: string): Promi
 export type MessageTier = 'tier1' | 'tier2' | 'tier3';
 
 export const classifyMessage = async (message: string, isFollowUpInTier3: boolean = false): Promise<MessageTier> => {
-  // Edge cases
-  // Message contains pasted content (over 200 characters) -> Tier 3
+  
+  
   if (message.length > 200) {
     return 'tier3';
   }
@@ -205,7 +204,7 @@ User message: "${message}"`;
     
     let tier = object.tier;
 
-    // Message is a follow-up in an existing Tier 3 conversation -> Tier 2
+    
     if (tier === 'tier3' && isFollowUpInTier3) {
       return 'tier2';
     }
@@ -213,7 +212,7 @@ User message: "${message}"`;
     return tier;
   } catch (error) {
     console.error('Failed to classify message tier:', error);
-    return 'tier2'; // Default to error
+    return 'tier2'; 
   }
 };
 
@@ -389,7 +388,7 @@ RULES:
     prompt,
   });
 
-  // Calculate conceptual metrics
+  
   let totalConcepts = 0;
   let totalMinutes = 0;
 
@@ -414,7 +413,7 @@ RULES:
     units: curriculumData.units || [],
     concept_count: totalConcepts,
     estimated_minutes: totalMinutes,
-    original_units: JSON.parse(JSON.stringify(curriculumData.units || [])), // deep copy
+    original_units: JSON.parse(JSON.stringify(curriculumData.units || [])), 
     edit_count: 0,
     recommended_start_index: curriculumData.recommended_start_index || 0,
     current_concept_index: curriculumData.recommended_start_index || 0,
@@ -422,10 +421,6 @@ RULES:
     skipped_concept_ids: []
   };
 }
-
-// ----------------------------------------------------------------------------
-// Practice Mode Integrations
-// ----------------------------------------------------------------------------
 
 export async function generatePracticeTest(
   concepts: { id: string; name: string; description: string }[],
@@ -575,8 +570,6 @@ Make them atomic (one idea per card).`;
   return object;
 }
 
-// ----------------------------------------------------------------------------
-
 export interface ExamQuestionConfig {
   format: 'standard' | 'problem_set' | 'essay' | 'case_study' | 'technical';
   questionCount: number;
@@ -671,7 +664,7 @@ export async function generateScenario(
   plan: string = 'free',
   topic?: string
 ): Promise<{ scenarioText: string; questionText: string }> {
-  // Scenario focus
+  
   const conceptNames = concepts.length > 0 
     ? concepts.slice(0, 2).map(c => c.name).join(' and ')
     : topic || 'this subject';
@@ -752,10 +745,6 @@ Grade them harshly to prevent false confidence. If they just give a surface resp
   });
   return object;
 }
-
-// ----------------------------------------------------------------------------
-// Comprehensive Practice Test
-// ----------------------------------------------------------------------------
 
 export async function generateComprehensiveTest(
   concepts: { id: string; name: string; description: string }[],

@@ -3,7 +3,6 @@ import { consumeTokens, processAssistantMessage, DEMO_USER_ID } from './usage';
 import { supabase, supabaseAdmin } from './supabase';
 import { classifyMessage } from './serify-ai';
 
-// Mock Supabase
 vi.mock('./supabase', () => ({
   supabase: {
     from: vi.fn(),
@@ -21,7 +20,6 @@ vi.mock('./supabase', () => ({
   },
 }));
 
-// Mock classifyMessage
 vi.mock('./serify-ai', () => ({
   classifyMessage: vi.fn(),
 }));
@@ -53,7 +51,7 @@ describe('Usage System', () => {
         error: null,
       };
 
-      // Mocking the rpc call on supabaseAdmin (preferred client)
+      
       (supabaseAdmin?.rpc as any).mockResolvedValue(mockRpcResult);
 
       const result = await consumeTokens(mockUserId, 'session_standard');
@@ -79,7 +77,7 @@ describe('Usage System', () => {
 
   describe('processAssistantMessage', () => {
     it('should skip check for Pro+ users', async () => {
-      // Mock tracking info
+      
       (supabaseAdmin?.from as any).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -97,7 +95,7 @@ describe('Usage System', () => {
     });
 
     it('should classify message and consume tokens for free users', async () => {
-      // Mock tracking info
+      
       (supabaseAdmin?.from as any).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -109,10 +107,10 @@ describe('Usage System', () => {
         }),
       });
 
-      // Mock classification as Tier 2
+      
       (classifyMessage as any).mockResolvedValue('tier2');
 
-      // Mock token consumption
+      
       const mockRpcResult = {
         data: {
           allowed: true,
@@ -137,7 +135,7 @@ describe('Usage System', () => {
     });
 
     it('should block if user is over limit', async () => {
-      // Mock tracking info
+      
       (supabaseAdmin?.from as any).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
@@ -151,7 +149,7 @@ describe('Usage System', () => {
 
       (classifyMessage as any).mockResolvedValue('tier2');
 
-      // Mock token consumption failure
+      
       const mockRpcResult = {
         data: {
           allowed: false,

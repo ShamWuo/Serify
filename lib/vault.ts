@@ -92,7 +92,7 @@ export async function findOrCreateConceptNode(
             .maybeSingle();
 
         if (exact) {
-            // If it exists but lacks a parent and we have one, update it
+            
             if (!exact.parent_concept_id && parentConceptId) {
                 await db.from('knowledge_nodes')
                     .update({ parent_concept_id: parentConceptId, is_sub_concept: true })
@@ -151,7 +151,7 @@ export async function findOrCreateConceptNode(
 
         if (error) {
             console.error('Error creating concept node:', error);
-            // If insert failed (maybe race condition), try one last fetch
+            
             const { data: retryFetch } = await db
                 .from('knowledge_nodes')
                 .select('*')
@@ -232,17 +232,17 @@ export async function upsertParentConcept(db: DbClient, userId: string, category
 }
 
 export async function updateVaultHierarchy(db: DbClient, userId: string) {
-    // Get ALL sub-concepts that need organizing (we re-cluster unorganized ones, but provide context of existing structured ones)
+    
     const { data: concepts } = await db
         .from('knowledge_nodes')
         .select('id, display_name, canonical_name, definition, category_id, parent_concept_id')
         .eq('user_id', userId)
-        // Only target sub-concepts (or unclassified ones that should become sub-concepts)
+        
         .neq('is_sub_concept', false);
 
     if (!concepts || concepts.length < 2) return;
 
-    // We focus on assigning unclassified concepts. For now, let's just pick those that lack a parent_concept_id.
+    
     const unclassified = concepts.filter((c) => !c.parent_concept_id);
     if (unclassified.length === 0) {
         console.log(`[vault] Hierarchy is up to date.`);
@@ -304,7 +304,7 @@ export async function updateVaultHierarchy(db: DbClient, userId: string) {
             for (const parent of cat.parentConcepts) {
                 const parentObj = await upsertParentConcept(db, userId, categoryObj.id, parent.parentName, parent.parentDefinition);
 
-                // Update children
+                
                 if (parent.subConceptIds && parent.subConceptIds.length > 0) {
                     await db.from('knowledge_nodes')
                         .update({
@@ -340,13 +340,13 @@ export async function getSessionsForConcept(
         .in('id', node.session_ids)
         .order('created_at', { ascending: false });
 
-    // Format them logically
+    
     const formattedSessions = [];
     if (sessions) {
         for (const session of sessions) {
-            // For synthesis, we pull the specific user answer and assessment for this concept.
-            // This can be expanded based on the table structure (e.g., querying user_answers)
-            // I'm putting placeholders for those details since they require deeper querying
+            
+            
+            
             formattedSessions.push({
                 date: session.created_at,
                 userAnswer: 'See answer in session',
@@ -376,7 +376,7 @@ export async function generateConceptSynthesis(
     const sessions = await getSessionsForConcept(db, userId, conceptId);
 
     if (sessions.length < 2) {
-        // Not enough data for synthesis yet
+        
         return null;
     }
 

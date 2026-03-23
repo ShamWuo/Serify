@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    const { action } = req.body; // 'enable', 'disable', 'regenerate'
+    const { action } = req.body; 
 
     try {
       let update: any = {};

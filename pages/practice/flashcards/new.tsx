@@ -64,12 +64,12 @@ export default function NewFlashcardDeck() {
                     setIsSubmitting(false);
                     return;
                 }
-                // Redirect to generator with query params
+                
                 router.push(`/practice/flashcards?topic=${encodeURIComponent(topic.trim())}&title=${encodeURIComponent(title.trim())}&description=${encodeURIComponent(description.trim())}`);
                 return;
             }
 
-            // Manual Mode
+            
             const validCards = manualCards.filter(c => c.front.trim() && c.back.trim());
             if (validCards.length === 0) {
                 toast.error('Please add at least one card with front and back text');
@@ -80,7 +80,7 @@ export default function NewFlashcardDeck() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
-            // 1. Create Deck
+            
             const { data: deck, error: deckError } = await supabase
                 .from('flashcard_decks')
                 .insert({
@@ -95,7 +95,7 @@ export default function NewFlashcardDeck() {
 
             if (deckError || !deck) throw deckError;
 
-            // 2. Create Cards
+            
             const cardsToInsert = validCards.map(c => ({
                 deck_id: deck.id,
                 user_id: user.id,
@@ -128,7 +128,7 @@ export default function NewFlashcardDeck() {
             </Head>
 
             <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8 pb-24">
-                {/* Header */}
+                {}
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={() => router.back()}
@@ -158,7 +158,7 @@ export default function NewFlashcardDeck() {
                         <p className="text-[var(--muted)]">Choose between AI generation or manual entry.</p>
                     </div>
 
-                    {/* Tabs */}
+                    {}
                     <div className="flex p-1 bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-full sm:w-fit">
                         <button 
                             onClick={() => setMode('ai')}
@@ -178,7 +178,7 @@ export default function NewFlashcardDeck() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Main Settings */}
+                    {}
                     <div className="md:col-span-2 space-y-6">
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 md:p-8 space-y-6 shadow-sm">
                             <div className="space-y-4">
@@ -286,7 +286,7 @@ export default function NewFlashcardDeck() {
                         </div>
                     </div>
 
-                    {/* Sidebar Tips */}
+                    {}
                     <div className="space-y-6">
                         <div className="bg-teal-50 border border-teal-100 rounded-3xl p-6 space-y-4">
                             <div className="flex items-center gap-3 text-teal-700 font-bold">

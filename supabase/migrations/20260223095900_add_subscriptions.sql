@@ -62,7 +62,6 @@ CREATE TABLE IF NOT EXISTS public.team_members (
   UNIQUE(team_id, user_id)
 );
 
-
 -- ROW LEVEL SECURITY (RLS) POLICIES
 
 -- Enable RLS

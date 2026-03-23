@@ -26,7 +26,7 @@ export default function DashboardV2({
 }: DashboardV2Props) {
     return (
         <div className="max-w-[1400px] mx-auto px-6 py-8 md:py-12 space-y-8 animate-fade-in">
-            {/* Header / Welcome Section */}
+            {}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2 border-b border-[var(--border)]">
                 <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[var(--accent)] font-black uppercase tracking-[0.2em] text-[10px]">
@@ -52,9 +52,9 @@ export default function DashboardV2({
             </header>
 
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-8">
-                {/* Main Content Area */}
+                {}
                 <div className="space-y-8">
-                    {/* Primary Action Card */}
+                    {}
                     <section className="relative overflow-hidden bg-indigo-600 rounded-[2.5rem] p-1 shadow-xl shadow-indigo-500/10">
                         <div className="absolute top-0 right-0 p-8 opacity-10">
                             <Brain size={120} />
@@ -76,7 +76,7 @@ export default function DashboardV2({
                         </div>
                     </section>
 
-                    {/* Secondary Grid */}
+                    {}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] p-8 space-y-6 hover:shadow-md transition-all">
                             <div className="flex items-center justify-between">
@@ -93,26 +93,13 @@ export default function DashboardV2({
                             <RecentSessions sessions={latestSessions.slice(0, 3)} />
                         </div>
 
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] p-8 space-y-6 hover:shadow-md transition-all">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl">
-                                        <Target size={20} />
-                                    </div>
-                                    <h3 className="font-bold">Knowledge Gaps</h3>
-                                </div>
-                                <div className="px-2 py-0.5 bg-amber-500/10 text-amber-600 text-[10px] font-black uppercase rounded-lg">
-                                    {focusConcepts.length} Issues
-                                </div>
-                            </div>
-                            <NeedsAttention concepts={focusConcepts} />
-                        </div>
+                        {}
                     </div>
                 </div>
 
-                {/* Sidebar area */}
+                {}
                 <aside className="space-y-8">
-                    {/* Activity Panel */}
+                    {}
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] p-8 space-y-6">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl">
@@ -123,11 +110,11 @@ export default function DashboardV2({
                         <ActivityDots 
                             days={activityDays} 
                             sessionsCount={latestSessions.length} 
-                            conceptsCount={vaultCount}
+                            conceptsCount={0}
                         />
                     </div>
 
-                    {/* Stats or Roadmap */}
+                    {}
                     <div className="p-8 rounded-[2rem] bg-gradient-to-br from-indigo-500 to-purple-600 text-white space-y-6 relative overflow-hidden shadow-lg shadow-indigo-500/20">
                         <div className="absolute -bottom-10 -right-10 opacity-20 transform rotate-12">
                             <Sparkles size={160} />

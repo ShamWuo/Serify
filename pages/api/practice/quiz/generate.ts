@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         console.log('/api/practice/quiz/generate: Starting for user', userId, { conceptIds, topic });
         
-        // Quick Quiz costs 3 tokens (cost handled in DB)
+        
         const usageResult = await consumeTokens(userId, 'practice_quiz_generation');
         console.log('/api/practice/quiz/generate: consumeTokens result', usageResult);
 
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const questions = await generateQuickQuiz(formattedConcepts, subscription_plan || 'free', topic, difficulty);
         console.log('/api/practice/quiz/generate: generateQuickQuiz success, items:', questions.length);
 
-        // Create session
+        
         console.log('/api/practice/quiz/generate: Creating practice session');
         const { data: sessionData, error: sessionError } = await supabase
             .from('practice_sessions')
@@ -90,7 +90,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw new Error('Failed to create practice session: ' + (sessionError?.message || 'Unknown error'));
         }
 
-        // Insert questions
+        
         console.log('/api/practice/quiz/generate: Inserting questions');
         const inserts = questions.map((q, index) => ({
           practice_session_id: sessionData.id,
@@ -117,7 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw new Error('Failed to insert quiz questions');
         }
 
-        // Track Analytics
+        
         console.log('/api/practice/quiz/generate: Recording AI message');
         await supabase.rpc('record_ai_message', {
            p_user_id: userId,

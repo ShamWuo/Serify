@@ -17,7 +17,7 @@ export default function QuickQuizSession() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
     
-    // Evaluation state
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCompleted, setIsCompleted] = useState(false);
     const [score, setScore] = useState<number | null>(null);
@@ -32,7 +32,7 @@ export default function QuickQuizSession() {
         const loadSession = async () => {
             setIsLoading(true);
             try {
-                // Fetch Session
+                
                 const { data: sessionData, error: sessionErr } = await supabase
                     .from('practice_sessions')
                     .select('*')
@@ -44,7 +44,7 @@ export default function QuickQuizSession() {
 
                 setSession(sessionData);
 
-                // Fetch Questions
+                
                 const { data: qData, error: qErr } = await supabase
                     .from('practice_responses')
                     .select('*')
@@ -53,7 +53,7 @@ export default function QuickQuizSession() {
 
                 if (qErr || !qData) throw new Error("Failed to load questions");
 
-                // Process questions to include options from ai_feedback
+                
                 const processedQuestions = qData.map(q => {
                     const feedback = q.ai_feedback ? JSON.parse(q.ai_feedback) : {};
                     return {
@@ -77,7 +77,7 @@ export default function QuickQuizSession() {
                     setScore(sessionData.overall_performance ? parseInt(sessionData.overall_performance) : 0);
                 }
 
-                // Try to load concept mapping if available
+                
                 const stored = localStorage.getItem('serify_last_quiz_concepts');
                 if (stored) {
                     try {
@@ -118,8 +118,8 @@ export default function QuickQuizSession() {
     const handlePrev = () => {
         if (currentIndex > 0) {
             setCurrentIndex(prev => prev - 1);
-            // If already completed, feedback is always shown. If in progress, we might not want to re-show feedback if they go back.
-            // But usually once feedback is shown for a question, it stays.
+            
+            
             setShowFeedback(!!answers[questions[currentIndex-1].id]);
         }
     };
@@ -151,7 +151,7 @@ export default function QuickQuizSession() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            // Fetch the updated questions to get evaluations (is_correct, ai_feedback contains correct answer and explanation)
+            
             const { data: finalQs } = await supabase
                 .from('practice_responses')
                 .select('*')
@@ -211,7 +211,7 @@ export default function QuickQuizSession() {
                 <title>MCQ Session | Serify</title>
             </Head>
 
-            {/* Top Navigation */}
+            {}
             <header className="fixed top-0 inset-x-0 h-16 bg-[var(--surface)] border-b border-[var(--border)] z-20 flex items-center justify-center px-6">
                 <div className="flex items-center gap-2">
                     <Zap size={18} className="text-yellow-600" />
@@ -222,7 +222,7 @@ export default function QuickQuizSession() {
                 </div>
             </header>
 
-            {/* Progress Bar */}
+            {}
             <div className="fixed top-16 inset-x-0 h-1 bg-[var(--border)] z-20">
                 <div 
                     className="h-full bg-yellow-500 transition-all duration-300 ease-out"

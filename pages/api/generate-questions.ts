@@ -51,7 +51,6 @@ export default async function handler(req: Request) {
     ${JSON.stringify(concepts, null, 2)}
     `;
 
-
         const schema = z.object({
             questions: z.array(
                 z.object({
@@ -86,7 +85,7 @@ export default async function handler(req: Request) {
             prompt,
             schema,
             onFinish: async ({ object }) => {
-                // Usage already deducted at the start
+                
             }
         });
 

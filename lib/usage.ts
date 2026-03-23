@@ -5,7 +5,7 @@ import { classifyMessage, MessageTier } from './serify-ai';
 export const DEMO_USER_ID = 'd85252ae-32c2-4a82-a630-46812ed7f5ec';
 
 export async function authenticateApiRequest(req: NextApiRequest | Request): Promise<string | null> {
-    // Handle demo mode
+    
     let demoHeader: string | null = null;
     if (req instanceof Request) {
         demoHeader = req.headers.get('x-serify-demo');
@@ -15,7 +15,7 @@ export async function authenticateApiRequest(req: NextApiRequest | Request): Pro
     }
 
     if (demoHeader === 'true') {
-        // Return the Test User 10k ID for demo consistency
+        
         return DEMO_USER_ID;
     }
 
@@ -38,7 +38,7 @@ export async function authenticateApiRequest(req: NextApiRequest | Request): Pro
     }
 
     try {
-        // Use admin client if available for more reliable token verification on server-side
+        
         const client = supabaseAdmin || supabase;
         const { data: { user }, error } = await client.auth.getUser(token);
         
@@ -50,7 +50,7 @@ export async function authenticateApiRequest(req: NextApiRequest | Request): Pro
                 console.error('[Auth] getUser error:', error?.message || 'No user returned for provided token');
             }
             
-            // Fallback to non-admin client if admin failed for some reason
+            
             if (client === supabaseAdmin) {
                 const { data: { user: fallbackUser }, error: fallbackError } = await supabase.auth.getUser(token);
                 if (!fallbackError && fallbackUser) return fallbackUser.id;
@@ -161,7 +161,7 @@ export async function consumeTokens(
 
     const client = supabaseAdmin || supabase;
     
-    // Map action to category for the DB update
+    
     const categories: Record<string, string> = {
         'session_standard': 'sessions',
         'session_pdf': 'sessions',
@@ -222,7 +222,7 @@ export async function processAssistantMessage(
 
   const client = supabaseAdmin || supabase;
   
-  // Get plan and usage
+  
   const { data: tracking } = await (client as any)
       .from('usage_tracking')
       .select('plan, tokens_used, monthly_limit')
@@ -231,12 +231,12 @@ export async function processAssistantMessage(
 
   const plan = tracking?.plan || 'free';
 
-  // Pro+ skips everything
+  
   if (plan === 'proplus') {
     return { allowed: true, tier: 'tier1', remaining: null };
   }
 
-  // Classify the message
+  
   const tier = await classifyMessage(message, isFollowUpInTier3);
   const action = tier === 'tier3' ? 'ai_message_tier3' : (tier === 'tier2' ? 'ai_message_tier2' : 'ai_message_tier1');
 
@@ -255,9 +255,6 @@ export async function processAssistantMessage(
 
 export type FeatureName = TokenAction;
 
-/**
- * Backward compatibility: checkUsage
- */
 export async function checkUsage(
     userId: string,
     feature: FeatureName
@@ -265,13 +262,10 @@ export async function checkUsage(
     return canAfford(userId, feature);
 }
 
-/**
- * Backward compatibility: incrementUsage
- */
 export async function incrementUsage(
     userId: string,
     feature: FeatureName,
-    amount: number = 1 // ignored in new system as costs are defined in DB
+    amount: number = 1 
 ): Promise<UsageCheckResult> {
     return consumeTokens(userId, feature);
 }

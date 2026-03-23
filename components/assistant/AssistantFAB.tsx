@@ -15,14 +15,14 @@ const AssistantFAB: React.FC = () => {
                         : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 hover:scale-105'
                 }`}
             >
-                {/* Floating Glow Effect */}
+                {}
                 {!isOpen && (
                     <div className="absolute inset-0 rounded-full bg-[var(--accent)] blur-lg opacity-40 group-hover:opacity-60 transition-opacity animate-pulse" />
                 )}
                 
                 {isOpen ? <X size={24} strokeWidth={2.5} /> : <MessageSquare size={24} strokeWidth={2.5} />}
 
-                {/* Suggestion Notification Badge */}
+                {}
                 {!isOpen && hasUnreadSuggestion && (
                     <>
                         <span className="absolute -top-1 -right-1 flex h-4 w-4">

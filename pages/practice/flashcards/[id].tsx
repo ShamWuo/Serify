@@ -21,7 +21,7 @@ export default function FlashcardsSession() {
     const [isLoading, setIsLoading] = useState(true);
     const [markingMastery, setMarkingMastery] = useState(false);
 
-    // Study Settings
+    
     const [showSide, setShowSide] = useState<'front' | 'back' | 'random'>('front');
     const [isShuffled, setIsShuffled] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -33,7 +33,7 @@ export default function FlashcardsSession() {
         const loadSession = async () => {
             setIsLoading(true);
             try {
-                // 1. Try fetching from New Schema (flashcard_decks)
+                
                 const { data: deckData, error: deckErr } = await supabase
                     .from('flashcard_decks')
                     .select('*')
@@ -43,7 +43,7 @@ export default function FlashcardsSession() {
                 if (!deckErr && deckData) {
                     setDeck(deckData);
                     
-                    // Fetch Cards for this deck
+                    
                     const { data: cardsData, error: cardsErr } = await supabase
                         .from('flashcards')
                         .select('*')
@@ -53,7 +53,7 @@ export default function FlashcardsSession() {
                     if (cardsErr) throw cardsErr;
                     setCards(cardsData || []);
                 } else {
-                    // 2. Legacy Fallback
+                    
                     const { data: sessionData, error: sessionErr } = await supabase
                         .from('practice_sessions')
                         .select('*')
@@ -91,13 +91,13 @@ export default function FlashcardsSession() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, router.isReady, id]);
 
-    // Handle Card Display Logic (Shuffle/Order)
+    
     useEffect(() => {
         if (cards.length === 0) return;
 
         let newDisplay = [...cards];
         if (isShuffled) {
-            // Fisher-Yates shuffle
+            
             for (let i = newDisplay.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [newDisplay[i], newDisplay[j]] = [newDisplay[j], newDisplay[i]];
@@ -105,7 +105,7 @@ export default function FlashcardsSession() {
         }
         
         setDisplayCards(newDisplay);
-        setCurrentIndex(0); // Reset progress when changing order
+        setCurrentIndex(0); 
         setIsFlipped(false);
     }, [isShuffled, cards]);
 
@@ -120,15 +120,15 @@ export default function FlashcardsSession() {
             const cardId = displayCards[currentIndex].id;
             const isCorrect = mastery === 'know_it';
             
-            // Update the display card state (optimistic)
+            
             const newDisplay = [...displayCards];
             newDisplay[currentIndex].progress_state = mastery;
             setDisplayCards(newDisplay);
             
-            // Also update the source cards array to keep it in sync for non-shuffled views
+            
             setCards(prev => prev.map(c => c.id === cardId ? { ...c, progress_state: mastery } : c));
 
-            // Update card progress
+            
             await supabase.rpc('increment_card_stats', {
                 p_card_id: cardId,
                 p_is_correct: isCorrect
@@ -160,12 +160,12 @@ export default function FlashcardsSession() {
 
     const handleComplete = async () => {
         if (isCompleted) {
-             setCurrentIndex(0); // Restart review
+             setCurrentIndex(0); 
              return;
         }
 
         try {
-            // Update deck stats (optional, could be trigger-based)
+            
             setIsCompleted(true);
             setCurrentIndex(0);
             toast.success("Study session finished!");
@@ -217,11 +217,11 @@ export default function FlashcardsSession() {
     const currentCard = displayCards[currentIndex];
     const progressPercent = ((currentIndex + 1) / displayCards.length) * 100;
 
-    // Side logic
+    
     const getFrontText = (card: any) => {
         if (showSide === 'back') return card.back;
         if (showSide === 'random') {
-            // Consistent random choice for this card/session
+            
             const hash = card.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
             return hash % 2 === 0 ? card.front : card.back;
         }
@@ -243,7 +243,7 @@ export default function FlashcardsSession() {
                 <title>{deck.title} | Flashcards | Serify</title>
             </Head>
 
-            {/* Top Navigation */}
+            {}
             <header className="fixed top-0 inset-x-0 h-16 bg-[var(--surface)] border-b border-[var(--border)] z-20 flex items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <button 
@@ -275,7 +275,7 @@ export default function FlashcardsSession() {
                 </div>
             </header>
 
-            {/* Progress Bar */}
+            {}
             <div className="fixed top-16 inset-x-0 h-1 bg-[var(--border)] z-20">
                 <div 
                     className="h-full bg-teal-500 transition-all duration-300 ease-out"
@@ -317,14 +317,14 @@ export default function FlashcardsSession() {
                         </div>
                     ) : (
                         <div className="space-y-12">
-                            {/* Card Container */}
+                            {}
                             <div className="space-y-6">
                                 <div 
                                     className="relative w-full aspect-[4/3] [perspective:1000px] cursor-pointer group"
                                     onClick={() => setIsFlipped(!isFlipped)}
                                 >
                                     <div className={`w-full h-full transition-all duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateX(180deg)]' : ''}`}>
-                                        {/* Front */}
+                                        {}
                                         <div className="absolute inset-0 w-full h-full bg-white border-2 border-[var(--border)] rounded-[40px] shadow-xl hover:border-teal-300 transition-all [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center">
                                             <div className="absolute top-8 left-8 text-[10px] font-black uppercase tracking-[0.2em] text-teal-500/40">Front</div>
                                             <p className="text-2xl md:text-3xl font-display text-[var(--text)] leading-tight">
@@ -335,7 +335,7 @@ export default function FlashcardsSession() {
                                             </div>
                                         </div>
 
-                                        {/* Back */}
+                                        {}
                                         <div className="absolute inset-0 w-full h-full bg-slate-50 border-2 border-[var(--border)] rounded-[40px] shadow-xl [transform:rotateX(180deg)] [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center overflow-y-auto">
                                             <div className="absolute top-8 left-8 text-[10px] font-black uppercase tracking-[0.2em] text-teal-600/40">Back</div>
                                             <p className="text-xl md:text-2xl font-display text-slate-800 leading-relaxed">
@@ -346,7 +346,7 @@ export default function FlashcardsSession() {
                                 </div>
                             </div>
 
-                            {/* Interaction Bar */}
+                            {}
                             <div className="flex flex-col items-center gap-8">
                                 <div className="flex items-center justify-center gap-6 w-full max-w-md">
                                     <button
@@ -370,7 +370,7 @@ export default function FlashcardsSession() {
                                     </button>
                                 </div>
 
-                                {/* Navigation Minimalist */}
+                                {}
                                 <div className="flex items-center gap-8 text-[var(--muted)]">
                                     <button
                                         onClick={handlePrev}
@@ -395,7 +395,7 @@ export default function FlashcardsSession() {
                 </div>
             </main>
 
-            {/* AI Assistant FAB (Phase 3) */}
+            {}
             <button 
                 className="fixed bottom-8 right-8 w-14 h-14 bg-teal-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all group"
                 onClick={() => toast.success("AI Explanation coming soon in Phase 3!")}
@@ -403,7 +403,7 @@ export default function FlashcardsSession() {
                 <Sparkles size={24} className="group-hover:animate-spin-slow" />
             </button>
 
-            {/* Settings Modal */}
+            {}
             {settingsOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div 
@@ -422,7 +422,7 @@ export default function FlashcardsSession() {
                         </div>
 
                         <div className="space-y-8">
-                            {/* Card Side */}
+                            {}
                             <div className="space-y-4">
                                 <label className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest flex items-center gap-2">
                                     <Repeat size={14} className="text-teal-500" />
@@ -450,7 +450,7 @@ export default function FlashcardsSession() {
                                 </div>
                             </div>
 
-                            {/* Shuffle */}
+                            {}
                             <div className="flex items-center justify-between p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-teal-50 text-teal-600 rounded-lg">

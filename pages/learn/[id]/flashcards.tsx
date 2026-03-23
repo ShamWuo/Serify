@@ -1,9 +1,4 @@
-/**
- * flashcards.tsx
- * Purpose: Provides an interactive flashcard review mode for session-specific concepts.
- * Key Logic: Generates or retrieves flashcards for weak concepts, manages card 
- * flipping state, and tracks user mastery updates in the database.
- */
+
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';

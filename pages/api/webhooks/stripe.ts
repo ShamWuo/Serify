@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // Idempotency check
+    
     const { data: existingEvent } = await supabase
         .from('processed_webhook_events')
         .select('id')
@@ -80,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                             })
                             .eq('user_id', userId);
 
-                        // Sync profiles table
+                        
                         await supabase
                             .from('profiles')
                             .update({
@@ -167,7 +167,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        // Mark event as processed
+        
         await supabase.from('processed_webhook_events').insert({ stripe_event_id: event.id });
 
         res.json({ received: true });

@@ -136,6 +136,4 @@ A suite of tools (`test`, `quiz`, `exam`, `scenario`, `flashcards`, `review`) to
 test-user-10k@serify.app
 Password123
 
-
-
 *Note: This guide is a living document. Please update it as the architecture evolves.*

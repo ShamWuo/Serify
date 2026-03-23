@@ -136,7 +136,7 @@ export default function PracticeDashboard() {
         const fetchDashboardData = async () => {
             setIsLoading(true);
             try {
-                // Fetch Due Reviews
+                
                 const { data: reviews } = await supabase
                     .from('review_schedule')
                     .select('*')
@@ -145,7 +145,7 @@ export default function PracticeDashboard() {
                     .eq('is_mastered', false);
                 setDueReviews(reviews || []);
 
-                // Fetch Recent Sessions
+                
                 const { data: sessions } = await supabase
                     .from('practice_sessions')
                     .select('*')
@@ -154,7 +154,8 @@ export default function PracticeDashboard() {
                     .limit(3);
                 setRecentSessions(sessions || []);
 
-                // Fetch Vault Concepts
+                
+                /* 
                 const { data: concepts } = await supabase
                     .from('knowledge_nodes')
                     .select('id, display_name, current_mastery')
@@ -163,6 +164,8 @@ export default function PracticeDashboard() {
                     .order('last_seen_at', { ascending: false })
                     .limit(20);
                 setVaultConcepts(concepts || []);
+                */
+                setVaultConcepts([]);
 
             } catch (error) {
                 console.error("Error fetching practice data:", error);
@@ -177,7 +180,7 @@ export default function PracticeDashboard() {
 
     const handleToolClick = (tool: ToolDef) => {
         if (tool.id === 'review') {
-            // Spaced Review has no input, just go
+            
             if (dueReviews.length === 0) {
                 toast("You have no concepts due for review right now.", { icon: '🙌' });
                 return;
@@ -206,11 +209,11 @@ export default function PracticeDashboard() {
         }
 
         setIsGenerating(true);
-        // We will pass data via URL or a temporary storage/API
-        // For now, redirect to the tool page with query params.
-        // The actual generation logic will live on the target tool page, OR we do it here. 
-        // According to the spec: "Clicking a tool card opens the input panel... Token cost shows correctly on Generate button"
-        // Let's redirect to the tool page which will handle the generation loading state.
+        
+        
+        
+        
+        
         
         const params = new URLSearchParams();
         if (topicInput.trim()) params.append('topic', topicInput.trim());
@@ -223,7 +226,7 @@ export default function PracticeDashboard() {
     if (!user && !isLoading) {
         return (
             <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-                {/* Background Decorations */}
+                {}
                 <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
                     <div className="absolute top-1/4 -left-20 w-80 h-80 bg-teal-500/10 blur-[100px] rounded-full animate-pulse" />
                     <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-blue-500/10 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />

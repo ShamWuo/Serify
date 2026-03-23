@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 1. Check Usage Limits (Unified Tokens)
+    
     const usageResult = await consumeTokens(userId, 'practice_scenario_generation');
     if (!usageResult.allowed) {
         return res.status(403).json({ 
@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { plan: subscription_plan } = usageResult;
 
-    // 2. Resolve scope
+    
     let formattedConcepts: { id: string; name: string; description: string }[] = [];
     if (isVaultMode) {
         const { data: qNodes, error: qNodesError } = await supabase
@@ -60,10 +60,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }));
     }
 
-    // 3. Generate Scenario
+    
     const scenario = await generateScenario(formattedConcepts, subscription_plan || 'free', topic);
 
-    // 4. Create Practice Session record
+    
     const { data: sessionData, error: sessionError } = await supabase
         .from('practice_sessions')
         .insert({
@@ -101,9 +101,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create scenario question placeholder');
     }
 
-    // Usage already deducted via consumeTokens at the start to ensure atomic gating
+    
 
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_scenario_generated',

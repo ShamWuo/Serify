@@ -31,7 +31,7 @@ const ActivityDots: React.FC<ActivityDotsProps> = ({ days, sessionsCount, concep
 
             <div className="flex flex-col gap-1 px-1">
                 <p className="text-[13px] font-bold text-[var(--text)] tracking-tight">
-                    {sessionsCount} Sessions <span className="text-gray-300 mx-1">·</span> {conceptsCount} Concepts
+                    {sessionsCount} Sessions
                 </p>
                 <div className="w-full h-1 bg-background rounded-full mt-2 overflow-hidden">
                     <div 

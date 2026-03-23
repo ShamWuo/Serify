@@ -24,7 +24,6 @@ import {
     Activity
 } from 'lucide-react';
 
-// Intersection Observer hook for scroll animations
 function useScrollReveal() {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -59,7 +58,7 @@ export default function LandingPage() {
     return (
         <div ref={revealRef} className="min-h-screen bg-[#030f08] text-[var(--text)] font-sans overflow-x-hidden">
             <SEO />
-            {/* ─── NAVBAR ─── */}
+            {}
             <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#030f08]/85 border-b border-[#2A5C45]/30">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
                     <Link href="/" className="text-2xl font-display tracking-tight text-white">
@@ -88,11 +87,11 @@ export default function LandingPage() {
                 </div>
             </nav>
 
-            {/* ─── HERO ─── */}
+            {}
             <section className="relative pt-20 pb-28 md:pt-32 md:pb-40 overflow-hidden" style={{ minHeight: '100vh' }}>
-                {/* Premium GIF Background Integration */}
+                {}
                 <div className="absolute inset-0 z-0 select-none pointer-events-none overflow-hidden bg-[#030f08]">
-                    {/* Base image with slight scale to hide edges, mixed into the dark theme */}
+                    {}
                     <img
                         src="/landingpage.gif"
                         alt=""
@@ -103,20 +102,19 @@ export default function LandingPage() {
                         }}
                     />
 
-                    {/* Complex gradients for seamless blending and text legibility */}
-                    {/* Top vignette for navbar */}
+                    {}
+                    {}
                     <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-[#030f08] via-[#030f08]/70 to-transparent z-10" />
-                    {/* Bottom gradient matching section transition */}
+                    {}
                     <div className="absolute bottom-0 inset-x-0 h-80 bg-gradient-to-t from-[#030f08] via-[#030f08]/90 via-[#030f08]/40 to-transparent z-10" />
-                    {/* Side fade for ultra-wide screens */}
+                    {}
                     <div className="absolute inset-y-0 left-0 w-48 md:w-96 bg-gradient-to-r from-[#030f08] via-[#030f08]/50 to-transparent z-10" />
                     <div className="absolute inset-y-0 right-0 w-48 md:w-96 bg-gradient-to-l from-[#030f08] via-[#030f08]/50 to-transparent z-10" />
-                    {/* Central radial vignette to draw focus to content */}
+                    {}
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#030f08_90%)] opacity-[0.85]" />
                 </div>
 
                 <div className="relative z-10 max-w-5xl mx-auto px-6 text-center" style={{ paddingTop: '2rem' }}>
-
 
                     <h1 className="scroll-reveal text-5xl sm:text-7xl md:text-8xl lg:text-[110px] font-display leading-[0.9] tracking-tight mb-8 text-white drop-shadow-[0_2px_32px_rgba(110,255,160,0.18)]">
                         Expose the{' '}
@@ -153,11 +151,11 @@ export default function LandingPage() {
                         </Link>
                     </div>
 
-                    {/* Hero visual — animated concept nodes */}
+                    {}
                     <div className="scroll-reveal relative mx-auto max-w-4xl">
                         <div className="relative rounded-3xl shadow-2xl shadow-black/50 p-2 md:p-3 overflow-hidden group glass-dark">
                             <div className="rounded-2xl p-6 md:p-8 overflow-hidden glass-premium-dark">
-                                {/* Fake app header */}
+                                {}
                                 <div className="flex items-center justify-between mb-8 pb-4" style={{ borderBottom: '1px solid rgba(42,92,69,0.3)' }}>
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-[var(--accent)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/30">
@@ -174,7 +172,7 @@ export default function LandingPage() {
                                 </div>
 
                                 <div className="grid md:grid-cols-2 gap-10">
-                                    {/* Left: Questions */}
+                                    {}
                                     <div className="space-y-6">
                                         <div className="text-left">
                                             <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-3" style={{ background: 'rgba(120,60,200,0.25)', color: '#c084fc' }}>
@@ -196,7 +194,7 @@ export default function LandingPage() {
                                         </div>
                                     </div>
 
-                                    {/* Right: Knowledge Map */}
+                                    {}
                                     <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'rgba(3,18,9,0.75)', border: '1px solid rgba(42,92,69,0.3)' }}>
                                         <div className="flex items-center justify-between mb-6">
                                             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(110,255,160,0.5)' }}>Strength Map</span>
@@ -225,12 +223,12 @@ export default function LandingPage() {
                                 </div>
                             </div>
 
-                            {/* Decorative interactive elements */}
+                            {}
                             <div className="absolute -top-12 -right-12 w-32 h-32 bg-[var(--accent)]/10 rounded-full blur-3xl" />
                             <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
                         </div>
 
-                        {/* Floating decorative badges */}
+                        {}
                         <div className="absolute -top-4 -right-4 md:-right-8 rounded-2xl px-4 py-2.5 shadow-xl animate-fade-in-up text-xs font-bold flex items-center gap-2 group transition-colors" style={{ animationDelay: '1200ms', background: 'rgba(3,20,10,0.85)', border: '1px solid rgba(110,255,160,0.2)', color: 'white', backdropFilter: 'blur(12px)' }}>
                             <div className="w-2 h-2 rounded-full bg-emerald-400 group-hover:animate-pulse" />
                             Metacognitive Analysis Active
@@ -243,7 +241,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── TRUST BAR ─── */}
+            {}
             <section className="py-12 border-y border-[var(--border)]/50 bg-[var(--surface)]/50 relative">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-10">
@@ -269,7 +267,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── METCOGNITION SECTION ─── */}
+            {}
             <section className="py-24 md:py-32 overflow-hidden">
                 <div className="max-w-6xl mx-auto px-6">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -348,14 +346,14 @@ export default function LandingPage() {
                                     </div>
                                 </div>
                             </div>
-                            {/* Decorative background circle */}
+                            {}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-[var(--accent)]/5 to-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
                         </div>
                     </div>
                 </div>
             </section>
 
-            {/* ─── HOW IT WORKS ─── */}
+            {}
             <section className="py-24 md:py-32">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -404,7 +402,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── FEATURE SHOWCASE ─── */}
+            {}
             <section className="py-24 md:py-32 bg-[var(--surface)] border-y border-[var(--border)]/50">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -474,7 +472,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── TESTIMONIALS ─── */}
+            {}
             <section className="py-24 md:py-32">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -532,7 +530,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── PRICING TEASER ─── */}
+            {}
             <section className="py-24 md:py-32 bg-[var(--surface)] border-y border-[var(--border)]/50">
                 <div className="max-w-4xl mx-auto px-6">
                     <div className="text-center mb-14 scroll-reveal">
@@ -543,7 +541,7 @@ export default function LandingPage() {
                     </div>
 
                     <div className="scroll-reveal grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-                        {/* Free */}
+                        {}
                         <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-7 flex flex-col">
                             <h3 className="text-xl font-bold mb-1">Free</h3>
                             <p className="text-[var(--muted)] text-sm mb-4">Try it. Find out what you actually know.</p>
@@ -574,7 +572,7 @@ export default function LandingPage() {
                             </Link>
                         </div>
 
-                        {/* Pro */}
+                        {}
                         <div className="relative bg-[var(--bg)] border-2 border-[var(--accent)] rounded-2xl p-7 flex flex-col">
                             <div className="absolute -top-3 right-6">
                                 <span className="bg-[var(--accent)] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
@@ -623,7 +621,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── FAQ SECTION ─── */}
+            {}
             <section className="py-24 md:py-32">
                 <div className="max-w-4xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -664,7 +662,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── FINAL CTA ─── */}
+            {}
             <section className="py-24 md:py-32 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)] via-emerald-700 to-teal-800" />
                 <div className="absolute inset-0 opacity-10">
@@ -697,7 +695,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ─── FOOTER ─── */}
+            {}
             <footer className="py-12 border-t border-[var(--border)]">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">

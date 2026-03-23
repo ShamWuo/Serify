@@ -62,7 +62,6 @@ CREATE POLICY "Users can delete their own learning sessions"
     ON public.learning_sessions FOR DELETE
     USING (auth.uid() = user_id);
 
-
 CREATE POLICY "Users can insert their own mastery updates"
     ON public.mastery_updates FOR INSERT
     WITH CHECK (auth.uid() = user_id);
@@ -78,7 +77,6 @@ CREATE POLICY "Users can update their own mastery updates"
 CREATE POLICY "Users can delete their own mastery updates"
     ON public.mastery_updates FOR DELETE
     USING (auth.uid() = user_id);
-
 
 CREATE POLICY "Users can insert their own tutor conversations"
     ON public.tutor_conversations FOR INSERT
@@ -107,7 +105,6 @@ CREATE POLICY "Users can delete their own tutor conversations"
         SELECT 1 FROM public.learning_sessions ls
         WHERE ls.id = tutor_conversations.learning_session_id AND ls.user_id = auth.uid()
     ));
-
 
 CREATE POLICY "Users can insert their own flashcard decks"
     ON public.flashcard_decks FOR INSERT

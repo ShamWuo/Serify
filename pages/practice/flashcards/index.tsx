@@ -105,7 +105,7 @@ export default function FlashcardsPage() {
                 throw new Error(data.error || 'Failed to generate flashcards');
             }
 
-            // Redirect to the active session
+            
             router.replace(`/practice/flashcards/${data.sessionId}`);
 
         } catch (err: any) {
@@ -196,7 +196,7 @@ export default function FlashcardsPage() {
             </Head>
 
             <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
-                {/* Header Section */}
+                {}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="space-y-1">
                         <div className="flex items-center gap-3 text-teal-600 mb-2">
@@ -220,7 +220,7 @@ export default function FlashcardsPage() {
                     </div>
                 </div>
 
-                {/* Search and Filters */}
+                {}
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="relative w-full md:max-w-md group">
                         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] group-focus-within:text-teal-500 transition-colors" />
@@ -249,7 +249,7 @@ export default function FlashcardsPage() {
                     </div>
                 </div>
 
-                {/* Decks Grid/List */}
+                {}
                 {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[1, 2, 3].map((i) => (
@@ -264,7 +264,7 @@ export default function FlashcardsPage() {
                                 key={deck.id}
                                 className={`group bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden hover:border-teal-500/30 transition-all active:scale-[0.98] ${viewMode === 'list' ? 'flex items-center gap-6 p-4' : 'flex flex-col h-full'}`}
                             >
-                                {/* Thumbnail/Icon */}
+                                {}
                                 <div className={`flex items-center justify-center bg-gradient-to-br from-teal-500/10 to-blue-500/10 ${viewMode === 'list' ? 'w-16 h-16 rounded-2xl flex-shrink-0' : 'h-32 p-6'}`}>
                                     <Layers size={viewMode === 'list' ? 32 : 48} className="text-teal-600/80 group-hover:scale-110 transition-transform" />
                                 </div>
@@ -298,7 +298,7 @@ export default function FlashcardsPage() {
                                     </div>
 
                                     <div className="mt-auto pt-6 flex flex-col gap-4">
-                                        {/* Progress Bar */}
+                                        {}
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
                                                 <span>Mastery</span>

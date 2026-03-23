@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        // Mock data for demo user
+        
         if (userId === 'demo-user') {
             return res.status(200).json({ 
                 stats: { solid: 18, developing: 24, shaky: 12, revisit: 6 }, 
@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             else if (m === 'developing') stats.developing++;
             else if (m === 'shaky') stats.shaky++;
             else if (m === 'revisit') stats.revisit++;
-            else if (m === 'mastered') stats.solid++; // Backup for common alias
+            else if (m === 'mastered') stats.solid++; 
         });
 
         const needsWork = stats.shaky + stats.revisit;

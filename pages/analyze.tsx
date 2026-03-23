@@ -80,7 +80,6 @@ export default function Analyze() {
     const [questionData, setQuestionData] = useState<any>(null);
     const [currentStep, setCurrentStep] = useState<'extracting' | 'concepts' | 'questions' | 'saving' | 'completed'>('extracting');
 
-
     useEffect(() => {
         if (displayProgress < progress) {
             const timer = setTimeout(() => {

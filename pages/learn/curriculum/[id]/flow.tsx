@@ -16,10 +16,6 @@ import { useUsage } from '@/hooks/useUsage';
 import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 import confetti from 'canvas-confetti';
 
-// ────────────────────────────────────────────────────────────
-// Small utilities
-// ────────────────────────────────────────────────────────────
-
 function ProgressBar({ concepts, currentConceptId }: { concepts: any[]; currentConceptId?: string }) {
     const done = concepts.filter((c) => c.status === 'completed').length;
     const total = concepts.length;
@@ -69,10 +65,6 @@ function ActionButton({ label, icon, primary, secondary, onClick, disabled }: {
     );
 }
 
-// ────────────────────────────────────────────────────────────
-// Step components (read-only aware)
-// ────────────────────────────────────────────────────────────
-
 function ReadOnlyNotice() {
     return (
         <div className="mt-4 inline-flex items-center gap-1.5 text-xs text-[var(--muted)] bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-1.5">
@@ -93,7 +85,7 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                 const parsed = JSON.parse(savedAnswer);
                 if (parsed.answers) return parsed.answers;
             } catch (e) {
-                // Return empty array on parse error
+                
             }
         }
         return Array(quickChecks.length).fill(null);
@@ -234,8 +226,6 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
     );
 }
 
-
-
 function CheckQuestionStep({ content, stepId, isEvaluated, onEvaluated, readOnly, savedAnswer }: {
     content: any; stepId: string; isEvaluated: boolean;
     onEvaluated: (response: string, evaluation: any) => void;
@@ -343,7 +333,6 @@ function EvaluationBanner({ evaluation, onContinue }: { evaluation: any; onConti
     );
 }
 
-// Concept-complete interstitial shown after a concept is mastered
 function ConceptCompleteCard({ conceptName, onNext, onReview, isLast }: {
     conceptName: string; onNext: () => void; onReview: () => void; isLast: boolean;
 }) {
@@ -373,10 +362,6 @@ function ConceptCompleteCard({ conceptName, onNext, onReview, isLast }: {
     );
 }
 
-// ────────────────────────────────────────────────────────────
-// Main page
-// ────────────────────────────────────────────────────────────
-
 export default function CurriculumFlowSessionPage() {
     const router = useRouter();
     const { id: curriculumId } = router.query as { id?: string };
@@ -386,13 +371,13 @@ export default function CurriculumFlowSessionPage() {
     const [flowSession, setFlowSession] = useState<FlowSession | null>(null);
     const [currentConceptIndex, setCurrentConceptIndex] = useState(0);
 
-    // Step history is the full ordered list of steps for the current concept
+    
     const [stepHistory, setStepHistory] = useState<FlowStep[]>([]);
-    // Which step in history we are viewing (not necessarily the last)
+    
     const [viewingStepIndex, setViewingStepIndex] = useState(-1);
     const [pendingEvaluation, setPendingEvaluation] = useState<any | null>(null);
 
-    // When true, concept just completed — show interstitial instead of next step
+    
     const [conceptJustCompleted, setConceptJustCompleted] = useState(false);
 
     const [conceptStatuses, setConceptStatuses] = useState<Record<string, 'not_started' | 'in_progress' | 'completed'>>({});
@@ -410,14 +395,14 @@ export default function CurriculumFlowSessionPage() {
     const currentConcept = flowSession?.initial_plan?.concepts?.[currentConceptIndex];
     const totalConcepts = flowSession?.initial_plan?.concepts?.length || 0;
 
-    // Derived: the step we're currently displaying
+    
     const displayStep = viewingStepIndex >= 0 ? stepHistory[viewingStepIndex] : null;
     const isReadOnly = viewingStepIndex >= 0 && viewingStepIndex < stepHistory.length - 1;
     const currentLiveStep = stepHistory[stepHistory.length - 1] ?? null;
 
-    // Timer-based loading is now replaced by real-time SSE updates
+    
 
-    // Smooth count-up for percentage
+    
     useEffect(() => {
         if (displayProgress < progress) {
             const timer = setTimeout(() => {
@@ -429,7 +414,7 @@ export default function CurriculumFlowSessionPage() {
         }
     }, [displayProgress, progress]);
 
-    // ── 1. Initialize flow session ──────────────────────────
+    
     useEffect(() => {
         if (authLoading || !curriculumId || !user) { setLoading(false); return; }
 
@@ -456,7 +441,7 @@ export default function CurriculumFlowSessionPage() {
         })();
     }, [curriculumId, user, authLoading]);
 
-    // ── 2. Load flow session + concept statuses ─────────────
+    
     useEffect(() => {
         if (!flowSessionId) return;
         (async () => {
@@ -481,7 +466,7 @@ export default function CurriculumFlowSessionPage() {
             }
             setLoading(false);
 
-            // Kick off background orchestration for the next 3 concepts immediately
+            
             const token = (await supabase.auth.getSession()).data.session?.access_token;
             const allConcepts = data.initial_plan?.concepts || [];
             const completed: string[] = data.concepts_completed || [];
@@ -493,12 +478,12 @@ export default function CurriculumFlowSessionPage() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({ sessionId: data.id, conceptId: c.conceptId }),
-                }).catch(() => { /* silently ignore prefetch failures */ });
+                }).catch(() => {  });
             });
         })();
     }, [flowSessionId]);
 
-    // ── 3. Fetch next step for current concept ──────────────
+    
     const fetchNextStep = useCallback(async (retryOrchestrate = true) => {
         if (!flowSession || !currentConcept || stepping) return;
         setStepping(true);
@@ -509,7 +494,7 @@ export default function CurriculumFlowSessionPage() {
         try {
             const { data: { session: authSession } } = await supabase.auth.getSession();
 
-            // Try to get step directly
+            
             const res = await fetch('/api/flow/step', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authSession?.access_token}` },
@@ -517,7 +502,7 @@ export default function CurriculumFlowSessionPage() {
             });
             const data = await res.json();
 
-            // If plan is not initialized, we need to orchestrate first
+            
             if (!res.ok && data.error === 'Orchestrator plan not initialized. Call /api/flow/orchestrate first.' && retryOrchestrate) {
                 console.log('[flow] Plan not initialized, triggering orchestration...');
                 setStatusMessage('Generating learning path...');
@@ -548,7 +533,7 @@ export default function CurriculumFlowSessionPage() {
                                     if (d.error) {
                                         setError(d.error);
                                         setStepping(false);
-                                        return; // Stop processing
+                                        return; 
                                     }
                                     if (d.progress) setProgress(d.progress);
                                     if (d.status) setStatusMessage(d.status);
@@ -560,7 +545,7 @@ export default function CurriculumFlowSessionPage() {
                     }
                 }
 
-                // After orchestration, try fetching the step again (disable retry to avoid infinite loop)
+                
                 return fetchNextStep(false);
             }
 
@@ -617,14 +602,14 @@ export default function CurriculumFlowSessionPage() {
         }
     }, [flowSession, currentConcept, stepping, conceptStatuses]);
 
-    // ── Auto-fetch first step when concept changes ──────────
+    
     useEffect(() => {
         if (flowSession && !stepping && currentConcept && !sessionDone && !conceptJustCompleted && stepHistory.length === 0 && !fetchError) {
             fetchNextStep();
         }
     }, [flowSession, currentConcept, sessionDone, stepping, conceptJustCompleted, stepHistory.length, fetchNextStep, fetchError]);
 
-    // ── Handle "Got it / Continue" buttons ──────────────────
+    
     const handleUserResponse = async (responseType: string) => {
         if (!displayStep || isReadOnly) return;
 
@@ -646,7 +631,7 @@ export default function CurriculumFlowSessionPage() {
         setPendingEvaluation(evaluation);
     };
 
-    // ── Concept-complete advancement ────────────────────────
+    
     const handleAdvanceConcept = () => {
         const nextIdx = currentConceptIndex + 1;
         setConceptJustCompleted(false);
@@ -656,14 +641,14 @@ export default function CurriculumFlowSessionPage() {
             setViewingStepIndex(-1);
             setPendingEvaluation(null);
 
-            // Prefetch orchestration for the 3 concepts after the one we're moving to
+            
             if (flowSession) {
                 const completed = (flowSession.concepts_completed || []).concat(
                     currentConcept?.conceptId ? [currentConcept.conceptId] : []
                 );
                 const upcoming = (flowSession.initial_plan?.concepts || [])
                     .filter((c: any) => !completed.includes(c.conceptId))
-                    .slice(1, 4); // skip the one we just moved to (already being loaded), grab next 3
+                    .slice(1, 4); 
                 supabase.auth.getSession().then(({ data: { session: s } }) => {
                     upcoming.forEach((c: any) => {
                         fetch('/api/flow/orchestrate', {
@@ -682,7 +667,7 @@ export default function CurriculumFlowSessionPage() {
     const handleReviewConcept = () => {
         setConceptJustCompleted(false);
         setFetchError(null);
-        // Step history should already be populated from the mastery flow
+        
         if (stepHistory.length > 0) {
             setViewingStepIndex(stepHistory.length - 1);
         }
@@ -703,43 +688,43 @@ export default function CurriculumFlowSessionPage() {
         setFetchError(null);
     };
 
-    // ── Sidebar: load completed concept for review ──────────
-    // const handleSidebarConceptClick = async (conceptIndex: number) => { // Replaced by handleConceptSelect
-    //     const concept = flowSession?.initial_plan?.concepts?.[conceptIndex];
-    //     if (!concept || !flowSession) return;
-    //     const status = conceptStatuses[concept.conceptId];
+    
+    
+    
+    
+    
 
-    //     // Jump back to in-progress/completed concept, loading its history
-    //     if (status === 'completed' || status === 'in_progress') {
-    //         setStepping(true);
-    //         setError(null);
-    //         setConceptJustCompleted(false);
-    //         try {
-    //             const { data: { session: authSession } } = await supabase.auth.getSession();
-    //             const res = await fetch(
-    //                 `/api/flow/get-steps?sessionId=${flowSession.id}&conceptId=${concept.conceptId}`,
-    //                 { headers: { Authorization: `Bearer ${authSession?.access_token}` } }
-    //             );
-    //             const data = await res.json();
-    //             const steps: FlowStep[] = data.steps || [];
-    //             setCurrentConceptIndex(conceptIndex);
-    //             setStepHistory(steps);
-    //             setViewingStepIndex(steps.length - 1);
-    //             setPendingEvaluation(null);
-    //             // If completed, show review mode
-    //             if (status === 'completed') {
-    //                 setConceptJustCompleted(true);
-    //             }
-    //         } catch (err: any) {
-    //             setError(err.message);
-    //         } finally {
-    //             setStepping(false);
-    //         }
-    //     }
-    //     // not_started: do nothing (no clicking ahead)
-    // };
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
-    // ── Render current visible step ─────────────────────────
+    
     const renderStep = () => {
         if (!displayStep) return null;
         const { step_type, content, user_response } = displayStep;
@@ -771,9 +756,9 @@ export default function CurriculumFlowSessionPage() {
         );
     };
 
-    // ────────────────────────────────────────────────────────
-    // Render states
-    // ────────────────────────────────────────────────────────
+    
+    
+    
 
     if (isLimitReached) {
         return (
@@ -846,7 +831,7 @@ export default function CurriculumFlowSessionPage() {
             >
                 <div className="max-w-5xl mx-auto px-4 py-6">
 
-                    {/* Top bar */}
+                    {}
                     <div className="mb-5">
                         {flowSession && (
                             <ProgressBar
@@ -870,7 +855,7 @@ export default function CurriculumFlowSessionPage() {
                         </div>
                     </div>
 
-                    {/* Error State */}
+                    {}
                     {fetchError && (
                         <div className="max-w-2xl mx-auto mb-8 bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-500/20 rounded-2xl p-6 shadow-sm">
                             <div className="flex items-start gap-4">
@@ -905,7 +890,7 @@ export default function CurriculumFlowSessionPage() {
                         {stepping ? (
                             <div className="flex flex-col items-center justify-center min-h-[320px] gap-8 animate-fade-in">
                                 <div className="relative">
-                                    {/* The core spinner */}
+                                    {}
                                     <div className="w-20 h-20 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin-slow transition-all duration-300 relative z-10"
                                         style={{
                                             borderTopColor: 'var(--accent)',
@@ -914,7 +899,7 @@ export default function CurriculumFlowSessionPage() {
                                         }}
                                     />
 
-                                    {/* Center percentage */}
+                                    {}
                                     <div className="absolute inset-0 flex items-center justify-center z-20">
                                         <div className="flex flex-col items-center">
                                             <span className="text-sm font-black text-[var(--accent)] transition-none">
@@ -941,7 +926,7 @@ export default function CurriculumFlowSessionPage() {
                                             className="h-full bg-[var(--accent)] transition-all duration-300 rounded-full relative overflow-hidden"
                                             style={{ width: `${progress}%` }}
                                         >
-                                            {/* Shimmer effect inside progress */}
+                                            {}
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shimmer"
                                                 style={{ animationDuration: '2s' }} />
                                         </div>
@@ -953,7 +938,7 @@ export default function CurriculumFlowSessionPage() {
                                 </div>
                             </div>
                         ) : conceptJustCompleted ? (
-                            /* Show interstitial trophy screen when concept is mastered */
+                            
                             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 shadow-sm">
                                 <ConceptCompleteCard
                                     conceptName={currentConcept?.conceptName || ''}
@@ -972,7 +957,7 @@ export default function CurriculumFlowSessionPage() {
                         )}
                     </div>
 
-                    {/* Back / Forward navigation */}
+                    {}
                     {stepHistory.length > 1 && !conceptJustCompleted && (
                         <div className="flex items-center justify-between mt-4">
                             <button
@@ -988,7 +973,7 @@ export default function CurriculumFlowSessionPage() {
                                 <ChevronLeft size={16} /> Back
                             </button>
 
-                            {/* Step counter */}
+                            {}
                             <span className="text-xs text-[var(--muted)]">
                                 Step {viewingStepIndex + 1} of {stepHistory.length}
                             </span>

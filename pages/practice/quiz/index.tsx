@@ -15,10 +15,10 @@ export default function QuickQuizGenerator() {
     useEffect(() => {
         if (!router.isReady || authLoading || isTriggered) return;
         
-        // Ensure we have a token before proceeding
+        
         if (!token) {
-            // If not loading and no token, we might need a moment or to redirect
-            // But usually the layout handles this. We'll wait a bit.
+            
+            
             return;
         }
 
@@ -52,7 +52,7 @@ export default function QuickQuizGenerator() {
                      throw new Error(data.error || 'Failed to generate quiz');
                  }
 
-                 // Redirect to the active session
+                 
                  router.replace(`/practice/quiz/${data.sessionId}`);
 
              } catch (err: any) {

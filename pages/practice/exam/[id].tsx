@@ -16,14 +16,14 @@ export default function ExamSession() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
     
-    // Evaluation state
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCompleted, setIsCompleted] = useState(false);
     const [results, setResults] = useState<any>(null);
 
     const [isLoading, setIsLoading] = useState(true);
     
-    // Timer state
+    
     const [timeLeftSeconds, setTimeLeftSeconds] = useState<number | null>(null);
 
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -34,7 +34,7 @@ export default function ExamSession() {
         const loadSession = async () => {
             setIsLoading(true);
             try {
-                // Fetch Session
+                
                 const { data: sessionData, error: sessionErr } = await supabase
                     .from('practice_sessions')
                     .select('*')
@@ -46,7 +46,7 @@ export default function ExamSession() {
 
                 setSession(sessionData);
 
-                // Fetch Questions
+                
                 const { data: qData, error: qErr } = await supabase
                     .from('practice_responses')
                     .select('*')
@@ -72,7 +72,7 @@ export default function ExamSession() {
                         ai_summary: sessionData.results || null
                     });
                 } else if (sessionData.time_limit_minutes) {
-                     // Calculate elapsed time from started_at
+                     
                      const startedAt = new Date(sessionData.started_at).getTime();
                      const now = Date.now();
                      const elapsedSeconds = Math.floor((now - startedAt) / 1000);
@@ -94,7 +94,7 @@ export default function ExamSession() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, router.isReady, id]);
 
-    // Timer effect
+    
     useEffect(() => {
         if (isCompleted || timeLeftSeconds === null || timeLeftSeconds <= 0) return;
 
@@ -102,7 +102,7 @@ export default function ExamSession() {
             setTimeLeftSeconds(prev => {
                 if (prev !== null && prev <= 1) {
                     clearInterval(timer);
-                    handleSubmit(); // Auto-submit when time is perfectly up
+                    handleSubmit(); 
                     return 0;
                 }
                 return prev ? prev - 1 : 0;
@@ -112,7 +112,6 @@ export default function ExamSession() {
         return () => clearInterval(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [timeLeftSeconds, isCompleted]);
-
 
     useEffect(() => {
         if (textAreaRef.current && !isCompleted && questions[currentIndex]?.question_type === 'open_ended') {
@@ -151,11 +150,11 @@ export default function ExamSession() {
         setIsSubmitting(true);
         try {
             const payloadArray = questions.map(q => ({
-                questionId: q.id, // Exam submit uses questionId based on our refactor earlier! Wait, actually I rewrote submit.ts: it uses questionId in answers array.
+                questionId: q.id, 
                 answer: answers[q.id] || ''
             }));
 
-            // Calculate exact time spent
+            
             const startedAt = new Date(session.started_at).getTime();
             const timeSpentSeconds = Math.floor((Date.now() - startedAt) / 1000);
 
@@ -176,7 +175,7 @@ export default function ExamSession() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            // Fetch final questions for feedback
+            
             const { data: finalQs } = await supabase
                 .from('practice_responses')
                 .select('*')
@@ -187,7 +186,7 @@ export default function ExamSession() {
                 setQuestions(finalQs);
             }
 
-            // Refetch session for score
+            
             const { data: finalSession } = await supabase
                 .from('practice_sessions')
                 .select('*')
@@ -237,7 +236,7 @@ export default function ExamSession() {
                 <title>Timed Exam | Serify</title>
             </Head>
 
-            {/* Top Navigation */}
+            {}
             <header className="fixed top-0 inset-x-0 h-16 bg-[var(--surface)] border-b border-[var(--border)] z-20 flex items-center justify-between px-6">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -266,7 +265,7 @@ export default function ExamSession() {
                 )}
             </header>
 
-            {/* Progress Bar */}
+            {}
             <div className="fixed top-16 inset-x-0 h-1 bg-[var(--border)] z-20">
                 <div 
                     className="h-full bg-orange-500 transition-all duration-300 ease-out"
@@ -344,7 +343,7 @@ export default function ExamSession() {
                                 </div>
                             )}
 
-                             {/* Review Questions */}
+                             {}
                              <div className="space-y-6">
                                 <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
                                     <h3 className="font-display text-xl text-[var(--text)]">

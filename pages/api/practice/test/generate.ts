@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // Practice Test costs 8 tokens (cost handled in DB)
+    
     const usageResult = await consumeTokens(userId, 'practice_test_generation');
     if (!usageResult.allowed) {
         return res.status(403).json({ 
@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const questions = await generatePracticeTest(formattedConcepts, subscription_plan || 'free', topic, difficulty);
 
-    // Create session
+    
     const { data: sessionData, error: sessionError } = await supabase
         .from('practice_sessions')
         .insert({
@@ -81,15 +81,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to create practice session: ' + (sessionError?.message || 'Unknown error'));
     }
 
-    // Insert questions
+    
     const inserts = questions.map((q, index) => ({
       practice_session_id: sessionData.id,
       user_id: userId,
       target_concept: q.conceptId || (isVaultMode ? conceptIds[0] : null), 
       question_text: q.text,
-      question_type: q.type, // 'retrieval' | 'application' | 'misconception'
+      question_type: q.type, 
       question_number: index + 1,
-      // Store everything needed to display/grade
+      
       ai_feedback: JSON.stringify({
           expected_answer: q.answer,
           options: q.options,
@@ -108,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('Failed to insert test questions');
     }
 
-    // Track Analytics
+    
     await supabase.rpc('record_ai_message', {
        p_user_id: userId,
        p_message_type: 'practice_test_generated',
