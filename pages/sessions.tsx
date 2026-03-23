@@ -206,11 +206,11 @@ function SessionRow({
                         {getIcon(session.contentType)}
                     </div>
                     <div className="min-w-0">
-                        <div className="font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 text-sm" title={session.title}>
+                        <div className="font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 text-sm max-w-[200px] md:max-w-[300px]" title={session.title}>
                             {session.title}
                         </div>
                         <div className="text-xs text-[var(--muted)] mt-0.5">
-                            {session.type === 'flow' ? 'Flow Mode' : session.contentType}
+                            {session.type === 'flow' ? 'Learn Mode' : session.contentType}
                         </div>
                     </div>
                     { }
@@ -290,7 +290,7 @@ function SessionRow({
             { }
             <td className="py-4 px-4">
                 <span
-                    className={`inline-flex items-center text-xs font-bold px-2 py-1 rounded-lg border ${statusColor}`}
+                    className={`inline-flex items-center justify-center text-[10px] font-black uppercase tracking-tight px-2 py-0.5 rounded-lg border whitespace-nowrap min-w-[80px] ${statusColor}`}
                 >
                     {statusLabel}
                 </span>
@@ -468,7 +468,7 @@ export default function LibraryPage() {
                                 [
                                     ['all', 'All', sessions.length],
                                     ['reflection', 'Analysis', reflectionCount],
-                                    ['flow', 'Flow', flowCount],
+                                    ['flow', 'Learn', flowCount],
                                     ['in_progress', 'In Progress', inProgressCount],
                                     ['completed', 'Completed', completedCount]
 

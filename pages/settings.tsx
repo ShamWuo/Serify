@@ -178,8 +178,9 @@ export default function Settings() {
                         <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[var(--accent)]/5 to-transparent">
                             <div>
                                 <h3 className="font-bold flex items-center gap-3 text-[var(--text)]">
-                                    <CreditCard size={18} className="text-[var(--accent)]" /> Current
-                                    Plan: <span className={user?.plan === 'pro' ? 'text-[var(--accent)]' : 'text-[var(--text)]'}>{user?.plan === 'pro' ? 'Pro Tier' : 'Free Tier'}</span>
+                                    Plan: <span className={user?.plan === 'pro' || user?.plan === 'proplus' ? 'text-[var(--accent)]' : 'text-[var(--text)]'}>
+                                        {user?.plan === 'proplus' ? 'Pro Plus' : user?.plan === 'pro' ? 'Pro Tier' : 'Free Tier'}
+                                    </span>
                                 </h3>
                                 <p className="text-sm text-[var(--muted)] mt-1 ml-7">
                                     {user?.plan === 'pro' || user?.plan === 'proplus'
@@ -204,7 +205,7 @@ export default function Settings() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-sm font-bold text-[var(--accent)] bg-[var(--accent)]/5 px-2 py-1 rounded-lg border border-[var(--accent)]/10">
-                                    {user?.plan || 'Free'}
+                                    {user?.plan === 'proplus' ? 'Pro Plus' : user?.plan === 'pro' ? 'Pro' : 'Free'}
                                 </span>
                                 <ChevronRight size={16} className="text-[var(--muted)]" />
                             </div>

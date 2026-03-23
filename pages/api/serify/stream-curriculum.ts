@@ -3,6 +3,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 import { checkUsage, incrementUsage, authenticateApiRequest } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -71,9 +72,13 @@ export default async function handler(req: Request) {
             );
         }
 
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: `Bearer ${token}` } }
-        });
+        const isDemo = req.headers.get('x-serify-demo') === 'true' || req.headers.get('X-Serify-Demo') === 'true';
+
+        const supabase = (isDemo || !token) && supabaseAdmin 
+            ? supabaseAdmin 
+            : createClient(supabaseUrl, supabaseAnonKey, {
+                global: { headers: { Authorization: `Bearer ${token}` } }
+            });
 
         const { data: knowledgeNodes } = await supabase
             .from('knowledge_nodes')
@@ -195,7 +200,7 @@ Output the JSON object now:`;
             const google = createGoogleGenerativeAI({ apiKey: geminiApiKey });
 
             let result = await generateObject({
-                model: google('gemini-2.5-flash'),
+                model: google('gemini-1.5-flash'),
                 temperature: 0,
                 maxOutputTokens: 8192,
                 prompt,
@@ -205,7 +210,7 @@ Output the JSON object now:`;
 
             if (!object.units?.length) {
                 result = await generateObject({
-                    model: google('gemini-2.5-flash'),
+                    model: google('gemini-1.5-flash'),
                     temperature: 0.3,
                     maxOutputTokens: 8192,
                     prompt:

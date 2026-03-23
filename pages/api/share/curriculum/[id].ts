@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const { data, error } = await supabaseAdmin
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .select('id, title, target_description, outcomes, units, concept_count, estimated_minutes, created_at')
             .eq('id', id)
             .single();

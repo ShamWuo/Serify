@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             systemInstruction: `Explain the concept.
 Tone: clear, direct, engaging. Use analogies. Length: 3-5 paragraphs.
 Return markdown text.`

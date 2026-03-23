@@ -38,14 +38,19 @@ export default function Home() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
 
+    const [showSlowLoadingNotice, setShowSlowLoadingNotice] = useState(false);
+
     useEffect(() => {
         if (!user) return;
 
         // 1. Fetch Latest Sessions
         const fetchDashboardData = async () => {
             setDataLoading(true);
+            const timer = setTimeout(() => setShowSlowLoadingNotice(true), 6000);
+
             try {
-                const [sessionsRes, attentionRes, vaultRes, activityRes] = await Promise.all([
+                // Wrap Promise.all with a timeout safety net
+                const dashboardPromise = Promise.all([
                     supabase.from('reflection_sessions')
                         .select('id, title, content_type, created_at, depth_score')
                         .eq('user_id', user.id)
@@ -65,11 +70,18 @@ export default function Home() {
                         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
                 ]);
 
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Dashboard timeout')), 10000));
+                
+                const [sessionsRes, attentionRes, vaultRes, activityRes]: any = await Promise.race([
+                    dashboardPromise,
+                    timeoutPromise
+                ]);
+
                 // Map Sessions to SessionRow
-                if (sessionsRes.data) {
-                    const mapped: SessionRow[] = sessionsRes.data.map(s => ({
+                if (sessionsRes && sessionsRes.data) {
+                    const mapped: SessionRow[] = sessionsRes.data.map((s: any) => ({
                         id: s.id,
-                        title: s.title || 'Untitled Session',
+                        title: s.title || `${s.content_type?.charAt(0).toUpperCase()}${s.content_type?.slice(1) || 'Session'} • ${formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}`,
                         type: s.content_type || 'text',
                         date: formatDistanceToNow(new Date(s.created_at), { addSuffix: true }),
                         mastery: {
@@ -85,13 +97,13 @@ export default function Home() {
                 }
 
 
-                setFocusConcepts((attentionRes.data || []).map(c => ({
+                setFocusConcepts(((attentionRes?.data) || []).map((c: any) => ({
                     id: c.id,
                     name: c.display_name,
                     status: c.current_mastery as 'shaky' | 'revisit',
                     sessionsCount: 1 // Placeholder
                 })));
-                setVaultCount(vaultRes.count || 0);
+                setVaultCount(vaultRes?.count || 0);
                 
                 // Map Activity
                 const today = new Date();
@@ -99,10 +111,14 @@ export default function Home() {
                     const d = new Date(today);
                     d.setDate(today.getDate() - (6 - i));
                     const dStr = d.toISOString().split('T')[0];
-                    return (activityRes.data || []).some(s => s.created_at.startsWith(dStr));
+                    return (activityRes?.data || []).some((s: any) => s.created_at.startsWith(dStr));
                 });
                 setActivityDays(days);
+            } catch (err) {
+                console.warn('Dashboard data fetch taking too long or failed:', err);
+                // We keep moving so the user isn't stuck
             } finally {
+                clearTimeout(timer);
                 setDataLoading(false);
             }
         };
@@ -142,9 +158,30 @@ export default function Home() {
     if (loading || (!!user && dataLoading)) {
         return (
             <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Brain className="animate-pulse text-[var(--accent)]" size={48} />
-                    <p className="text-sm font-bold tracking-widest text-[var(--muted)] uppercase">Loading Serify...</p>
+                <div className="flex flex-col items-center gap-6">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-[var(--accent)]/20 blur-2xl rounded-full scale-150 animate-pulse" />
+                        <Brain className="animate-pulse text-[var(--accent)] relative z-10" size={64} />
+                    </div>
+                    
+                    <div className="flex flex-col items-center gap-2">
+                        <p className="text-sm font-black tracking-[0.2em] text-[var(--text)] uppercase opacity-80">Serify is arriving</p>
+                        <p className="text-[10px] text-[var(--muted)] font-medium">Preparing your personalized knowledge landscape...</p>
+                    </div>
+
+                    {showSlowLoadingNotice && (
+                        <div className="mt-4 flex flex-col items-center gap-3 animate-fade-in">
+                            <button 
+                                onClick={() => setDataLoading(false)}
+                                className="px-5 py-2 rounded-full border border-[var(--border)] text-xs font-bold hover:bg-[var(--surface)] transition-all"
+                            >
+                                Skip & Enter anyway
+                            </button>
+                            <p className="text-[10px] text-[var(--muted)] max-w-[240px] text-center leading-relaxed">
+                                The connection is taking longer than usual. You can enter now and data will load in the background.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
         );

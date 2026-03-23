@@ -14,23 +14,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Use a user-scoped client for fetching to respect RLS
+    const isDemo = req.headers['x-serify-demo'] === 'true' || req.headers['X-Serify-Demo'] === 'true';
+
+    // Use a user-scoped client for fetching to respect RLS, but fallback to admin for demo
     const authHeader = req.headers.authorization;
     const token = authHeader?.replace('Bearer ', '');
-    const supabaseUser = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-        auth: { persistSession: false, autoRefreshToken: false },
-        global: { headers: { Authorization: `Bearer ${token}` } }
-    });
+    
+    const supabaseWithAuth = (isDemo || !token) && supabaseAdmin
+        ? supabaseAdmin
+        : createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+            auth: { persistSession: false, autoRefreshToken: false },
+            global: { headers: { Authorization: `Bearer ${token}` } }
+        });
 
     if (req.method === 'GET') {
         try {
             const [reflectionRes, flowRes] = await Promise.all([
-                supabaseUser
+                supabaseWithAuth
                     .from('reflection_sessions')
                     .select('id, title, content_type, status, created_at, completed_at, session_type')
                     .eq('user_id', userId)
                     .order('created_at', { ascending: false }),
-                supabaseUser
+                supabaseWithAuth
                     .from('flow_sessions')
                     .select(
                         'id, status, initial_plan, started_at, completed_at, created_at, concepts_completed, source_type, source_session_id'

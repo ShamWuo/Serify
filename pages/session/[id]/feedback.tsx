@@ -71,10 +71,27 @@ export default function FeedbackReport() {
         ).optional()
     });
 
-    const { object, submit, isLoading } = useObject({
+    const [hasError, setHasError] = useState(false);
+    const [isTimedOut, setIsTimedOut] = useState(false);
+
+    const { object, submit, isLoading, error: aiError } = useObject({
         api: '/api/synthesize-feedback',
-        schema: feedbackSchema
+        schema: feedbackSchema,
+        onFinish: () => {
+            setIsTimedOut(false);
+            setHasError(false);
+        },
+        onError: (err) => {
+            console.error('AI synthesis error:', err);
+            setHasError(true);
+        }
     });
+
+    useEffect(() => {
+        if (aiError) {
+            setHasError(true);
+        }
+    }, [aiError]);
 
     const displayReport = report || object;
 
@@ -146,6 +163,30 @@ export default function FeedbackReport() {
             setIsShareModalOpen(false);
         } catch (e) {
             console.error('Unshare failed', e);
+        }
+    };
+
+    const handleRetry = () => {
+        setHasError(false);
+        setIsTimedOut(false);
+        hasSubmittedRef.current = false;
+        
+        // Re-trigger the synthesis logic
+        const stored = localStorage.getItem('serify_feedback_report');
+        if (stored && id) {
+            try {
+                const parsed = JSON.parse(stored);
+                hasSubmittedRef.current = true;
+                submit({
+                    sessionData: { ...parsed.sessionData, sessionId: id, title: parsed.title, isBasicMode: parsed.isBasicMode },
+                    assessments: parsed.assessments,
+                    concepts: parsed.concepts,
+                    isBasicMode: parsed.isBasicMode || false
+                });
+            } catch (e) {
+                console.error('Retry failed', e);
+                setHasError(true);
+            }
         }
     };
 
@@ -292,14 +333,12 @@ export default function FeedbackReport() {
         }
     }, [object, isLoading]);
 
-    const [showTimeoutNotice, setShowTimeoutNotice] = useState(false);
-
     useEffect(() => {
         let timer: any;
         if (isLoading && !displayReport) {
             timer = setTimeout(() => {
-                setShowTimeoutNotice(true);
-            }, 25000); // 25 seconds
+                setIsTimedOut(true);
+            }, 30000); // 30 second hard timeout threshold
         }
         return () => clearTimeout(timer);
     }, [isLoading, displayReport]);
@@ -307,43 +346,67 @@ export default function FeedbackReport() {
     const getConceptName = (id: string) => {
         const c = concepts.find((c) => c.id === id);
         return c ? c.name : 'Concept';
-    };
-
-    if (!displayReport) {
+    };    if (!displayReport || hasError || (isTimedOut && !displayReport)) {
         return (
             <DashboardLayout>
                 <Head>
-                    <title>Synthesizing Feedback | Serify</title>
+                    <title>{hasError || isTimedOut ? 'Synthesis Failed' : 'Synthesizing Feedback'} | Serify</title>
                 </Head>
-                <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6 text-center animate-fade-in">
-                    <div className="relative">
-                        <div className="w-16 h-16 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <BrainCircuit size={24} className="text-[var(--accent)]" />
-                        </div>
-                    </div>
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <h2 className="text-xl font-bold text-[var(--text)]">Synthesizing Feedback</h2>
-                            <p className="text-[var(--muted)] text-sm font-medium animate-pulse max-w-xs mx-auto">
-                                Our AI is mapping your understanding patterns and identifying cognitive gaps...
-                            </p>
-                        </div>
-
-                        {showTimeoutNotice && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <p className="text-xs text-amber-600 font-medium mb-4">
-                                    This is taking longer than expected. The AI might be deep in thought...
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6 text-center animate-fade-in relative z-10">
+                    {hasError || isTimedOut ? (
+                        <div className="max-w-md p-8 bg-white border border-red-100 rounded-3xl shadow-xl space-y-6 animate-scale-in">
+                            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto scale-110">
+                                <Bot size={32} />
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-xl font-bold text-[var(--text)]">Synthesis Interrupted</h2>
+                                <p className="text-[var(--muted)] text-sm">
+                                    {isTimedOut 
+                                        ? "Our AI is taking longer than expected to process your session. This can happen with complex topics." 
+                                        : "Something went wrong while generating your feedback report. Please try again."}
                                 </p>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={handleRetry}
+                                    className="w-full py-3 bg-[var(--accent)] text-white rounded-xl font-bold hover:bg-[var(--accent)]/90 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <RotateCcw size={18} /> Try Again
+                                </button>
                                 <button
                                     onClick={() => router.push('/sessions')}
-                                    className="px-4 py-2 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold hover:bg-[var(--bg)] transition-all"
+                                    className="w-full py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] rounded-xl text-sm font-bold hover:bg-[var(--bg)] transition-all"
                                 >
                                     Return to Sessions
                                 </button>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="relative">
+                                <div className="w-16 h-16 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin"></div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <BrainCircuit size={24} className="text-[var(--accent)]" />
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="space-y-3">
+                                    <h2 className="text-xl font-bold text-[var(--text)]">Synthesizing Feedback</h2>
+                                    <p className="text-[var(--muted)] text-sm font-medium animate-pulse max-w-xs mx-auto">
+                                        Our AI is mapping your understanding patterns and identifying cognitive gaps...
+                                    </p>
+                                </div>
+                                <div className="pt-4">
+                                    <button
+                                        onClick={() => router.push('/')}
+                                        className="text-xs font-bold text-[var(--muted)] hover:text-[var(--accent)] transition-colors py-2 px-4 rounded-lg bg-[var(--surface)] border border-[var(--border)]"
+                                    >
+                                        Skip to Dashboard
+                                    </button>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
             </DashboardLayout>
         );

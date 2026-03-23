@@ -4,8 +4,8 @@ import { Sparkles, BookOpen, Target, History, ChevronRight } from 'lucide-react'
 
 const QuickLaunch: React.FC = () => {
     const links = [
-        { href: '/flow', icon: Sparkles, label: 'Flow Mode', meta: '1/Q' },
-        { href: '/learn', icon: BookOpen, label: 'Learn Mode', meta: null },
+        { href: '/flow', icon: BookOpen, label: 'Learn Mode', meta: '1/Q' },
+        { href: '/learn', icon: Sparkles, label: 'Roadmaps', meta: null },
         { href: '/practice', icon: Target, label: 'Practice', meta: null },
         { href: '/sessions', icon: History, label: 'All Sessions', meta: 'history' },
     ];

@@ -37,7 +37,7 @@ export default function CurriculumSidebar({
                     <div className="flex items-center gap-2 text-[var(--accent)] mb-1">
                         <Library size={16} />
                         <span className="text-[10px] uppercase font-bold tracking-widest">
-                            Curriculum
+                            Roadmap
                         </span>
                     </div>
                     <h3 className="text-sm font-semibold text-[var(--text)] truncate">

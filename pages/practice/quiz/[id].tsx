@@ -23,6 +23,8 @@ export default function QuickQuizSession() {
     const [score, setScore] = useState<number | null>(null);
 
     const [isLoading, setIsLoading] = useState(true);
+    const [concepts, setConcepts] = useState<any[]>([]);
+    const [showFeedback, setShowFeedback] = useState(false);
 
     useEffect(() => {
         if (!user || !router.isReady || !id) return;
@@ -75,6 +77,15 @@ export default function QuickQuizSession() {
                     setScore(sessionData.overall_performance ? parseInt(sessionData.overall_performance) : 0);
                 }
 
+                // Try to load concept mapping if available
+                const stored = localStorage.getItem('serify_last_quiz_concepts');
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        setConcepts(parsed);
+                    } catch (e) { }
+                }
+
             } catch (err: any) {
                 console.error(err);
                 toast.error(err.message);
@@ -89,14 +100,16 @@ export default function QuickQuizSession() {
     }, [user, router.isReady, id]);
 
     const handleAnswerSelect = (option: string) => {
-        if (isCompleted) return;
+        if (isCompleted || showFeedback) return;
         const qId = questions[currentIndex].id;
         setAnswers(prev => ({ ...prev, [qId]: option }));
+        setShowFeedback(true);
     };
 
     const handleNext = () => {
         if (currentIndex < questions.length - 1) {
             setCurrentIndex(prev => prev + 1);
+            setShowFeedback(false);
         } else {
             handleSubmit();
         }
@@ -105,6 +118,9 @@ export default function QuickQuizSession() {
     const handlePrev = () => {
         if (currentIndex > 0) {
             setCurrentIndex(prev => prev - 1);
+            // If already completed, feedback is always shown. If in progress, we might not want to re-show feedback if they go back.
+            // But usually once feedback is shown for a question, it stays.
+            setShowFeedback(!!answers[questions[currentIndex-1].id]);
         }
     };
 
@@ -156,6 +172,7 @@ export default function QuickQuizSession() {
             setScore(data.score);
             setIsCompleted(true);
             setCurrentIndex(0); 
+            setShowFeedback(true);
 
         } catch (err: any) {
             toast.error(err.message || 'Failed to submit quiz');
@@ -166,10 +183,10 @@ export default function QuickQuizSession() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center px-6">
-                <div className="w-full max-w-lg">
-                    <p className="text-center text-xl font-display text-[var(--text)] mb-8">Loading your quiz...</p>
-                    <GeneratingAnimation type="cards" />
+            <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center px-6 text-center">
+                <div className="w-full max-w-lg space-y-8">
+                    <p className="text-xl font-display text-[var(--text)]">Loading your session...</p>
+                    <Loader2 size={40} className="animate-spin text-yellow-500 mx-auto" />
                 </div>
             </div>
         );
@@ -179,6 +196,14 @@ export default function QuickQuizSession() {
 
     const currentQuestion = questions[currentIndex];
     const progressPercent = ((currentIndex + 1) / questions.length) * 100;
+    const fbData = currentQuestion.ai_feedback ? JSON.parse(currentQuestion.ai_feedback) : null;
+    const isAnswered = !!answers[currentQuestion.id];
+    const isCorrect = isAnswered && fbData && (answers[currentQuestion.id] === fbData.expected_answer);
+
+    const getConceptName = (id: string) => {
+        const c = concepts.find((c) => c.id === id);
+        return c ? (c.display_name || c.name) : 'Concept';
+    };
 
     return (
         <div className="min-h-screen bg-[var(--bg)] flex flex-col relative overflow-hidden">
@@ -192,7 +217,7 @@ export default function QuickQuizSession() {
                     <Zap size={18} className="text-yellow-600" />
                     <span className="font-medium text-[var(--text)]">MCQ Session</span>
                     <span className="text-[var(--muted)] text-sm ml-2 hidden sm:inline">
-                        {session.custom_topic || 'Concept Check'}
+                        {session.topic || session.custom_topic || 'Concept Check'}
                     </span>
                 </div>
             </header>
@@ -236,34 +261,38 @@ export default function QuickQuizSession() {
                             <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-50 text-yellow-800 rounded-full text-xs font-bold uppercase tracking-widest border border-yellow-100">
                                 Question {currentIndex + 1} of {questions.length}
                             </div>
-                            {isCompleted && (
+                            {(showFeedback || isCompleted) && isAnswered && (
                                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border ${
-                                    currentQuestion.response_quality === 'strong' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
+                                    isCorrect ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
                                 }`}>
-                                    {currentQuestion.response_quality === 'strong' ? 'Correct' : 'Incorrect'}
+                                    {isCorrect ? 'Correct' : 'Incorrect'}
                                 </div>
                             )}
                         </div>
 
-                        <h2 className="text-2xl md:text-3xl font-display text-[var(--text)] leading-tight">
-                            {currentQuestion.question_text}
-                        </h2>
+                        <div className="space-y-2">
+                             {currentQuestion.target_concept && (
+                                 <p className="text-sm font-bold text-yellow-700/60 uppercase tracking-tighter">
+                                     Focus: {getConceptName(currentQuestion.target_concept)}
+                                 </p>
+                             )}
+                            <h2 className="text-2xl md:text-3xl font-display text-[var(--text)] leading-tight">
+                                {currentQuestion.question_text}
+                            </h2>
+                        </div>
 
                         <div className="space-y-3">
                             {(currentQuestion.options as string[])?.map((option, idx) => {
                                 const isSelected = answers[currentQuestion.id] === option;
+                                const isCorrectOpt = fbData && fbData.expected_answer === option;
                                 
-                                // In review mode, highlight correct answer vs selected answer
                                 let optionStyle = "border-[var(--border)] bg-gray-50/50 hover:bg-gray-50 text-[var(--text)]";
                                 
-                                if (!isCompleted) {
+                                if (!showFeedback && !isCompleted) {
                                     if (isSelected) {
                                         optionStyle = "border-yellow-500 bg-yellow-50 text-yellow-900 shadow-[0_0_0_1px_rgba(234,179,8,1)]";
                                     }
                                 } else {
-                                    const fbData = currentQuestion.ai_feedback ? JSON.parse(currentQuestion.ai_feedback) : null;
-                                    const isCorrectOpt = fbData && fbData.correctAnswer === option;
-                                    
                                     if (isCorrectOpt) {
                                         optionStyle = "border-emerald-500 bg-emerald-50 text-emerald-900";
                                     } else if (isSelected && !isCorrectOpt) {
@@ -277,15 +306,15 @@ export default function QuickQuizSession() {
                                     <button
                                         key={idx}
                                         onClick={() => handleAnswerSelect(option)}
-                                        disabled={isCompleted}
-                                        className={`w-full text-left p-5 rounded-xl border-2 transition-all ${optionStyle} ${!isCompleted && !isSelected ? 'hover:border-yellow-300' : ''}`}
+                                        disabled={isCompleted || showFeedback}
+                                        className={`w-full text-left p-5 rounded-xl border-2 transition-all ${optionStyle} ${!isCompleted && !showFeedback && !isSelected ? 'hover:border-yellow-300' : ''}`}
                                     >
                                         <div className="flex gap-4 items-start">
                                             <div className={`w-6 h-6 rounded-full border flex-shrink-0 flex items-center justify-center mt-0.5 ${
-                                                isSelected ? (!isCompleted ? 'border-yellow-500 bg-yellow-500 text-white' : (currentQuestion.response_quality === 'strong' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-red-500 bg-red-500 text-white')) : 'border-gray-300'
+                                                isSelected ? (!showFeedback && !isCompleted ? 'border-yellow-500 bg-yellow-500 text-white' : (isCorrectOpt ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-red-500 bg-red-500 text-white')) : 'border-gray-300'
                                             }`}>
                                                 {isSelected && <div className="w-2.5 h-2.5 bg-white rounded-full" />}
-                                                {isCompleted && currentQuestion.ai_feedback && JSON.parse(currentQuestion.ai_feedback).correctAnswer === option && !isSelected && <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />}
+                                                {(showFeedback || isCompleted) && isCorrectOpt && !isSelected && <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />}
                                             </div>
                                             <span className="text-lg leading-snug">{option}</span>
                                         </div>
@@ -294,13 +323,13 @@ export default function QuickQuizSession() {
                             })}
                         </div>
                         
-                        {isCompleted && currentQuestion.ai_feedback && (
-                            <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex gap-4 mt-6">
+                        {(showFeedback || isCompleted) && fbData?.explanation && (
+                            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex gap-4 mt-6 animate-fade-in-up">
                                 <Info className="text-blue-500 flex-shrink-0 mt-0.5" size={20} />
-                                <div className="space-y-2">
-                                    <p className="font-semibold text-slate-800">Explanation</p>
+                                <div className="space-y-1">
+                                    <p className="font-bold text-slate-800 text-xs uppercase tracking-wider">Concept Insight</p>
                                     <p className="text-slate-700 leading-relaxed text-sm">
-                                        {JSON.parse(currentQuestion.ai_feedback).explanation}
+                                        {fbData.explanation}
                                     </p>
                                 </div>
                             </div>
@@ -309,7 +338,7 @@ export default function QuickQuizSession() {
                         <div className="flex justify-between items-center pt-8 border-t border-[var(--border)]">
                             <button
                                 onClick={handlePrev}
-                                disabled={currentIndex === 0}
+                                disabled={currentIndex === 0 || isSubmitting}
                                 className="px-5 py-3 flex flex-row-reverse items-center justify-center gap-2 rounded-xl text-[var(--text)] font-medium bg-[var(--surface)] hover:bg-[var(--border)] border border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed transition"
                             >
                                 Previous <ArrowLeft size={18} className="translate-y-px" />
@@ -317,7 +346,7 @@ export default function QuickQuizSession() {
 
                             <button
                                 onClick={handleNext}
-                                disabled={isSubmitting || (!answers[currentQuestion.id] && !isCompleted)}
+                                disabled={isSubmitting || (!isAnswered && !isCompleted)}
                                 className="px-6 py-3 flex items-center justify-center gap-2 rounded-xl text-white font-medium bg-yellow-600 hover:bg-yellow-700 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-wait transition-all"
                             >
                                 {isSubmitting ? (

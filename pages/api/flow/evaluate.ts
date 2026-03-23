@@ -106,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!usage.allowed) return res.status(403).json({ error: 'limit_reached' });
 
         const evaluatorModel = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             generationConfig: { responseMimeType: 'application/json' },
             systemInstruction: `You are evaluating a learner's answer to a check question in a Flow Mode session.
 Return JSON strictly:
@@ -188,7 +188,7 @@ USED ANGLES FOR THIS CONCEPT: ${anglesUsedStr}
 
             if (reinforceUsage.allowed) {
                 const reinforceModel = genAI.getGenerativeModel({
-                    model: 'gemini-2.5-flash',
+                    model: 'gemini-1.5-flash',
                     systemInstruction: `You are Serify's adaptive reinforcement engine. Provide a targeted re-explanation of a specific concept area where the learner is struggling.
                     
                     RULES:

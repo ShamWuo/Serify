@@ -58,17 +58,31 @@ function createInMemoryLock() {
 
     return async function lock<R>(
         name: string,
-        _acquireTimeout: number,
+        acquireTimeout: number,
         fn: () => Promise<R>
     ): Promise<R> {
         // Chain onto the existing promise for this lock name, ensuring serialization
         const current = mutexMap.get(name) ?? Promise.resolve();
+        
+        // Ensure we don't wait forever for the previous lock to release
+        // Use a 15s timeout by default if not specified or too small
+        const timeoutMs = Math.max(acquireTimeout || 15000, 5000);
+        
         let resolveNext!: () => void;
         const next = new Promise<void>((resolve) => { resolveNext = resolve; });
         mutexMap.set(name, next);
 
-        // Wait our turn
-        await current;
+        try {
+            // Wait our turn, but with a timeout
+            await Promise.race([
+                current,
+                new Promise((_, reject) => setTimeout(() => reject(new Error(`Lock timeout for "${name}"`)), timeoutMs))
+            ]);
+        } catch (err) {
+            console.warn(`[Supabase Lock] Proceeding after timeout/error:`, err);
+            // We proceed anyway to avoid permanent hang of the auth system
+        }
+
         try {
             return await fn();
         } finally {

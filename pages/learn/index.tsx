@@ -230,7 +230,7 @@ export default function LearnIndex() {
     const fetchCurricula = async () => {
         setLoadingCurricula(true);
         const { data, error } = await supabase
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .select('*')
             .order('last_activity_at', { ascending: false });
         if (!error && data) {
@@ -262,7 +262,7 @@ export default function LearnIndex() {
         if (!curriculumToDelete) return;
         setIsDeleting(true);
         try {
-            await supabase.from('learn_mode_curriculum').delete().eq('id', curriculumToDelete.id);
+            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
             setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
             setDeleteModalOpen(false);
             setCurriculumToDelete(null);
@@ -371,7 +371,7 @@ export default function LearnIndex() {
 
     return (
         <DashboardLayout>
-            <Head><title>Learn Mode | Serify</title></Head>
+            <Head><title>Roadmaps | Serify</title></Head>
 
             {deleteModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -417,7 +417,7 @@ export default function LearnIndex() {
             <div className="p-6 md:p-10 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
 
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-[var(--text)] mb-1">Learn Mode</h1>
+                    <h1 className="text-2xl font-bold text-[var(--text)] mb-1">Roadmaps</h1>
                     <p className="text-[var(--muted)] text-sm">Build a tailored curriculum and master it concept by concept.</p>
                 </div>
 

@@ -8,6 +8,7 @@ import AnalyzeButton from './AnalyzeButton';
 interface SmartInputCardProps {
     onAnalyze: (data: { content: string; type: DetectedType; mode: SearchMode }) => void;
     tokenBalance: number;
+    compact?: boolean;
 }
 
 const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance }) => {
@@ -262,11 +263,11 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                                     <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Spaced Review</span>
                                 </button>
                                 <button 
-                                    onClick={() => router.push('/learn')}
+                                    onClick={() => router.push('/flow')}
                                     className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
                                 >
                                     <span className="text-sm">✦</span>
-                                    <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Flow Mode</span>
+                                    <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Learn Mode</span>
                                 </button>
                             </div>
                         </div>

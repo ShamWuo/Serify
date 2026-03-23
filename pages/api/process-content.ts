@@ -92,7 +92,7 @@ export default async function handler(req: Request) {
 
         if (!stream) {
             const { object } = await generateObject({
-                model: google('gemini-2.5-flash'),
+                model: google('gemini-1.5-flash'),
                 temperature: 0.1,
                 prompt,
                 schema
@@ -106,7 +106,7 @@ export default async function handler(req: Request) {
         }
 
         const result = await streamObject({
-            model: google('gemini-2.5-flash'),
+            model: google('gemini-1.5-flash'),
             temperature: 0.1,
             system: "You are an expert knowledge extraction agent. You excel at distilling complex material into its constituent concepts. Ensure definitions are high-quality and standalone.",
             prompt,

@@ -115,7 +115,7 @@ export default function PricingPage() {
         },
         {
             name: 'proplus',
-            label: 'Pro+',
+            label: 'Pro Plus',
             price: isAnnual ? '13.33' : '19.99',
             displayPrice: isAnnual ? '159.99' : '19.99',
             description: 'For power users who need the ultimate cognitive edge.',
@@ -130,7 +130,7 @@ export default function PricingPage() {
                 'Best available AI models (Gemini 2.5 Pro)',
                 'Priority support',
             ],
-            buttonText: 'Get Pro+',
+            buttonText: 'Start Pro Plus',
             priceId: isAnnual ? process.env.NEXT_PUBLIC_STRIPE_PRICE_SCHOLAR_YEARLY : process.env.NEXT_PUBLIC_STRIPE_PRICE_SCHOLAR_MONTHLY,
             popular: false
         }

@@ -460,7 +460,7 @@ export default function CurriculumFlowSessionPage() {
     useEffect(() => {
         if (!flowSessionId) return;
         (async () => {
-            const { data, error: dbErr } = await supabase.from('flow_mode_session').select('*').eq('id', flowSessionId).single();
+            const { data, error: dbErr } = await supabase.from('flow_sessions').select('*').eq('id', flowSessionId).single();
             if (dbErr || !data) { setError('Flow Engine connection lost.'); setLoading(false); return; }
             setFlowSession(data as FlowSession);
 
@@ -581,10 +581,10 @@ export default function CurriculumFlowSessionPage() {
                         last_activity_at: new Date().toISOString()
                     }).eq('id', flowSession.id);
 
-                    const { data: curriculum } = await supabase.from('learn_mode_curriculum').select('completed_concept_ids, concept_count').eq('id', flowSession.source_session_id).single();
+                    const { data: curriculum } = await supabase.from('curricula').select('completed_concept_ids, concept_count').eq('id', flowSession.source_session_id).single();
                     const currCompleted = [...new Set([...(curriculum?.completed_concept_ids || []), currentConcept.conceptId])];
 
-                    await supabase.from('learn_mode_curriculum').update({
+                    await supabase.from('curricula').update({
                         completed_concept_ids: currCompleted,
                         current_concept_index: currCompleted.length,
                         status: (curriculum?.concept_count && currCompleted.length >= curriculum.concept_count) ? 'completed' : 'active',
@@ -798,7 +798,7 @@ export default function CurriculumFlowSessionPage() {
                         </div>
                     </div>
                     <div className="flex flex-col items-center gap-2 text-center">
-                        <h2 className="text-xl font-semibold text-[var(--text)]">Serify is preparing your flow</h2>
+                        <h2 className="text-xl font-semibold text-[var(--text)]">Serify is preparing your lesson</h2>
                         <p className="text-[var(--muted)] animate-pulse-subtle">
                             Initializing personalized curriculum orchestration...
                         </p>
@@ -828,7 +828,7 @@ export default function CurriculumFlowSessionPage() {
 
     return (
         <>
-            <Head><title>Flow Mode — {currentConcept?.conceptName || 'Loading'}</title></Head>
+            <Head><title>Learn Mode — {currentConcept?.conceptName || 'Loading'}</title></Head>
             <DashboardLayout
                 backLink={`/learn/curriculum/${curriculumId}`}
                 sidebarContent={

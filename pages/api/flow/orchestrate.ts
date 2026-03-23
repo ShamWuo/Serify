@@ -76,7 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const learnerProfile = sessionData.learner_profile || defaultProfile;
 
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             generationConfig: { responseMimeType: 'application/json' },
             systemInstruction: `You are Serify's Flow Mode teaching engine. Plan a tight teaching experience for one concept that reads like a coherent lesson page, not a series of disconnected steps.
 

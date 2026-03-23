@@ -31,7 +31,7 @@ describe('Serify AI Logic', () => {
 
       (generateObject as any).mockResolvedValue({ object: mockConcepts });
 
-      const result = await extractConcepts({ type: 'text', content: 'DNS is...', title: 'DNS' });
+      const result = await extractConcepts({ id: 'test-id', type: 'text', content: 'DNS is...', title: 'DNS' });
 
       expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({
         model: expect.anything(),

@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             systemInstruction: `You are a quiz master creating targeted practice questions for a student based on their learning gaps.
 
 For each concept provided, generate 1-2 multiple choice questions (MCQs).

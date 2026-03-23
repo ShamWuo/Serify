@@ -61,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const model = genAI.getGenerativeModel({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             generationConfig: { responseMimeType: 'application/json' },
             systemInstruction: `You are a strict but encouraging teacher evaluating a student's answer to a quiz question.
 The question was multiple choice or open-ended.

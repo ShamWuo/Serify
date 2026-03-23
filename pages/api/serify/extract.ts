@@ -4,6 +4,7 @@ import { extractConcepts, generateSessionTitle } from '@/lib/serify-ai';
 import { ContentSource } from '@/types/serify';
 import { authenticateApiRequest, consumeTokens } from '@/lib/usage';
 import { YoutubeTranscript } from 'youtube-transcript';
+import { supabaseAdmin } from '@/lib/supabase';
 import { sendError } from '@/lib/api-utils';
 import { z } from 'zod';
 
@@ -56,13 +57,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const token = req.headers.authorization?.split(' ').pop();
 
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
-        global: {
-            headers: (token && token !== 'undefined') ? {
-                Authorization: `Bearer ${token}`
-            } : {}
-        }
-    });
+    const isDemo = req.headers['x-serify-demo'] === 'true' || req.headers['X-Serify-Demo'] === 'true';
+
+    const supabaseWithAuth = (isDemo || !token) && supabaseAdmin 
+        ? supabaseAdmin 
+        : createClient(supabaseUrl, supabaseAnonKey, {
+            global: {
+                headers: (token && token !== 'undefined') ? {
+                    Authorization: `Bearer ${token}`
+                } : {}
+            }
+        });
 
     let { contentType, content, url, title, difficulty } = validatedBody.data;
 

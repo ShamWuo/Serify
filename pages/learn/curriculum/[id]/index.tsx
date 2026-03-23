@@ -63,7 +63,7 @@ export default function CurriculumView() {
 
     const fetchCurriculum = async () => {
         setLoading(true);
-        const { data, error } = await supabase.from('learn_mode_curriculum').select('*').eq('id', id).single();
+        const { data, error } = await supabase.from('curricula').select('*').eq('id', id).single();
         if (error || !data) {
             setErrorMsg('Curriculum not found or you do not have permission to view it.');
         } else {
@@ -89,7 +89,7 @@ export default function CurriculumView() {
                     <AlertTriangle size={32} className="text-[var(--warn)] mb-4" />
                     <h2 className="text-xl font-display text-[var(--text)] mb-2">Error loading curriculum</h2>
                     <p className="text-[var(--muted)] mb-6">{errorMsg}</p>
-                    <Link href="/learn" className="text-[var(--accent)] hover:underline">Return to Learn Mode</Link>
+                    <Link href="/learn" className="text-[var(--accent)] hover:underline">Return to Roadmaps</Link>
                 </div>
             </DashboardLayout>
         );
@@ -150,7 +150,7 @@ export default function CurriculumView() {
         setSaving(true);
         const newTotalCount = editUnits.reduce((acc, u) => acc + u.concepts.length, 0);
         const { error } = await supabase
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .update({
                 units: editUnits,
                 concept_count: newTotalCount,
@@ -184,7 +184,7 @@ export default function CurriculumView() {
     return (
         <DashboardLayout
             backLink="/learn"
-            backLinkText="Back to Curricula"
+            backLinkText="Back to Roadmaps"
             sidebarContent={
                 <CurriculumSidebar
                     concepts={allConcepts}
@@ -223,7 +223,7 @@ export default function CurriculumView() {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-1 rounded-full">
-                                        Learning Path
+                                        Roadmap
                                     </span>
                                     {curriculum.status === 'completed' && (
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
@@ -435,7 +435,7 @@ export default function CurriculumView() {
                 <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm">
                     <div className="w-full max-w-md bg-[var(--surface)] h-full border-l border-[var(--border)] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
                         <div className="p-6 border-b border-[var(--border)] flex justify-between items-center">
-                            <h3 className="font-display text-xl text-[var(--text)]">Edit Curriculum</h3>
+                            <h3 className="font-display text-xl text-[var(--text)]">Edit Roadmap</h3>
                             <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-[var(--bg)] rounded-lg transition-colors">
                                 <X size={20} className="text-[var(--muted)]" />
                             </button>

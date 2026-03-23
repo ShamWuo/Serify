@@ -119,7 +119,8 @@ Refinement Rules:
 - A Mastery Pillar must be a broad, high-level theme (e.g., "DNS", "Derivatives", "Quantum Mechanics").
 - Sub-concepts must be specific, actionable components of that pillar (e.g., "DNS Resolution", "Implicit Differentiation", "Wave-Particle Duality").
 - CRITICAL NAMING RULE: Concept names MUST be concise nouns or short technical terms. 
-- DO NOT use full sentences or questions (e.g., use "DNS" instead of "The problem DNS solves").
+- DO NOT use full sentences, questions, or action-based names (e.g., use "DNS" instead of "Understanding DNS" or "How does DNS work?").
+- AVOID generic names like "Concept", "Idea", "Basics", or "Introduction" unless they are part of a specific technical term.
 - REUSE existing Pillar names from the provided context whenever possible.
 
 Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
@@ -128,12 +129,12 @@ Focus on breadth for the pillars (high-level themes) and depth for the sub-conce
     model: getAISDKModel(plan),
     schema: z.array(z.object({
       id: z.string().describe('Short semantic string like "pillar-1"'),
-      name: z.string().describe('Concise noun or technical term'),
+      name: z.string().describe('Concise noun or technical term. Max 3-4 words.'),
       description: z.string().describe('Broad, comprehensive definition (1-2 sentences)'),
       importance: z.enum(['high', 'medium', 'low']),
       relatedConcepts: z.array(z.string()).describe('IDs of other extracted pillars this one builds upon'),
       subConcepts: z.array(z.object({
-        name: z.string().describe('Concise sub-concept name'),
+        name: z.string().describe('Concise sub-concept name. Max 3-4 words.'),
         description: z.string().describe('Concise explanation of how this fits into the pillar')
       }))
     })),
@@ -145,20 +146,25 @@ Focus on breadth for the pillars (high-level themes) and depth for the sub-conce
 }
 
 export async function generateSessionTitle(content: string, type: string): Promise<string> {
-  const prompt = `Given the following ${type} content, generate a concise, professional title (3-5 words) that captures the core subject. 
+  const prompt = `Given the following ${type} content, generate a concise, professional title (2-4 words) that captures the core subject matter. 
   
-  CONTENT:
+  RULES:
+  - Focus on the technical subject or core concept.
+  - AVOID generic prefixes like "Understanding...", "Introduction to...", "Lecture on...", "Notes about...".
+  - DO NOT use "Learning about X" if X is the subject. Just use "X".
+  
+  CONTENT SNIPPET:
   ${content.substring(0, 2000)}`;
 
   const { object } = await generateObject({
     model: getAISDKModel('free'),
     schema: z.object({
-      title: z.string().describe('A 3-5 word concise title')
+      title: z.string().describe('A 2-4 word concise subject title')
     }),
     prompt,
   });
 
-  return object.title.trim().replace(/^"|"$/g, '');
+  return object.title.trim().replace(/^"|"$/g, '').replace(/\.$/, '');
 }
 
 export type MessageTier = 'tier1' | 'tier2' | 'tier3';

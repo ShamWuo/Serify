@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -137,16 +137,20 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
         window.location.href = '/';
     };
 
-    const navItems = [
+    const navItems = useMemo(() => [
         { href: '/', label: 'Home', icon: <Home size={20} /> },
         { href: '/analyze', label: 'New Session', icon: <PlusCircle size={20} /> },
         {
-            href: '/learn',
-            label: 'Learn',
-            icon: <LibraryBig size={20} className="text-[var(--accent)]" />
+            href: '/flow',
+            label: 'Learn Mode',
+            icon: <Zap size={20} className="text-purple-500" />
         },
         { href: '/practice', label: 'Practice', icon: <Brain size={20} /> },
-        { href: '/flow', label: 'Flow Mode', icon: <Zap size={20} className="text-purple-500" /> },
+        {
+            href: '/learn',
+            label: 'Roadmaps',
+            icon: <LibraryBig size={20} className="text-[var(--accent)]" /> 
+        },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
         {
             href: '/vault',
@@ -156,7 +160,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
         },
         { href: '/feedback', label: 'Feedback', icon: <MessageSquarePlus size={20} /> },
         { href: '/settings', label: 'Settings', icon: <Settings size={20} /> }
-    ];
+    ], [vaultNeedsWork]);
 
     const themeToggleItem = (
         <button
@@ -177,10 +181,10 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
     return (
         <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-sans relative">
             {/* Dashboard Premium Aesthetic Blobs */}
-            <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-[var(--accent)] rounded-full filter blur-[120px] opacity-[0.03] pointer-events-none z-0" />
-            <div className="fixed bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] bg-[#7c3d9e] rounded-full filter blur-[120px] opacity-[0.03] pointer-events-none z-0" />
+            <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-[var(--accent)] rounded-full filter blur-[80px] opacity-[0.03] pointer-events-none z-0" />
+            <div className="fixed bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] bg-[#7c3d9e] rounded-full filter blur-[80px] opacity-[0.03] pointer-events-none z-0" />
 
-            <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-gradient-to-b from-[var(--surface)] to-[var(--bg)] backdrop-blur-xl h-screen sticky top-0 shrink-0 z-40">
+            <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md h-screen sticky top-0 shrink-0 z-50 shadow-sm">
                 <div className="px-6 pt-8 pb-4">
                     {backLink ? (
                         <Link
@@ -235,7 +239,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     {sidebarContent ? (
                         <div className="space-y-1">{sidebarContent}</div>
                     ) : (
-                        navItems.map((item) => {
+                        navItems.map((item: any) => {
                             const isActive =
                                 router.pathname.startsWith(item.href) &&
                                 (item.href !== '/' || router.pathname === '/');
@@ -346,7 +350,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
             </aside>
 
-            <div className="md:hidden sticky top-0 z-40 bg-[var(--surface)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
+            <div className="md:hidden sticky top-0 z-[60] bg-[var(--surface)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
                 <Link href={router.query.demo === 'true' ? '/?demo=true' : '/'} className="flex items-center gap-2">
                     {!logoError && (
                         <Image
@@ -399,7 +403,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 z-50 bg-[var(--bg)] animate-fade-in flex flex-col pt-16">
+                <div className="md:hidden fixed inset-0 z-[70] bg-[var(--bg)] animate-fade-in flex flex-col pt-16">
                     <div className="absolute top-4 right-4">
                         <button
                             onClick={() => setIsMobileMenuOpen(false)}
@@ -411,7 +415,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
                     <div className="flex-1 overflow-y-auto px-6 py-10 space-y-8">
                         <nav className="space-y-2">
-                            {navItems.map((item) => {
+                            {navItems.map((item: any) => {
                                 const isActive =
                                     router.pathname.startsWith(item.href) &&
                                     (item.href !== '/' || router.pathname === '/');
@@ -454,7 +458,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <Sparkles size={16} className="text-[var(--accent)]" />
-                                                <span className="text-xs font-bold text-[var(--text)] uppercase tracking-wider">Serify Pro+</span>
+                                                <span className="text-xs font-bold text-[var(--text)] uppercase tracking-wider">Serify Pro Plus</span>
                                             </div>
                                             <div className="text-lg font-display font-bold bg-gradient-to-r from-[var(--accent)] to-[#a855f7] bg-clip-text text-transparent">
                                                 Unlimited Access
@@ -508,7 +512,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             </main>
 
             <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around pb-safe">
-                {navItems.slice(0, 5).map((item) => {
+                {navItems.slice(0, 5).map((item: any) => {
                     const isActive =
                         router.pathname.startsWith(item.href) &&
                         (item.href !== '/' || router.pathname === '/');

@@ -102,7 +102,7 @@ export default function BillingSettings() {
                             <div className="mb-6">
                                 <div className="flex items-center gap-3 mb-1">
                                     <span className="text-3xl font-bold text-text capitalize">
-                                        {plan === 'free' ? 'Free' : `Serify ${plan}`}
+                                        {plan === 'free' ? 'Free' : plan === 'proplus' ? 'Serify Pro Plus' : 'Serify Pro'}
                                     </span>
                                     {plan !== 'free' && (
                                         <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20">

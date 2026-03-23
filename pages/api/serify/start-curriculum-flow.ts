@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         // Fetch curriculum
         const { data: curriculum, error: currErr } = await supabaseAdmin
-            .from('learn_mode_curriculum')
+            .from('curricula')
             .select('*')
             .eq('id', curriculumId)
             .eq('user_id', userId)
@@ -97,6 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     user_id: userId,
                     source_type: 'curriculum',
                     source_session_id: curriculumId,
+                    curriculum_id: curriculumId,
                     initial_plan: {
                         concepts: planNodes,
                         overallStrategy: `Curriculum: ${curriculum.title}`

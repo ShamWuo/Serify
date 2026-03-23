@@ -50,7 +50,10 @@ export default function FlowModePage() {
                         concepts_completed,
                         current_concept_id,
                         curriculum_id,
-                        reflection_sessions (
+                        reflection_session:reflection_session_id (
+                            title
+                        ),
+                        curriculum:curriculum_id (
                             title
                         )
                     `)
@@ -72,7 +75,8 @@ export default function FlowModePage() {
 
                 setActiveSessions(sessions?.map(s => ({
                     id: s.id,
-                    curriculum_title: (s.reflection_sessions as any)?.title || 'Continuous Flow',
+                    curriculum_title: (s as any).curriculum?.title || (s as any).reflection_session?.title || 'Continuous Flow',
+                    curriculum_id: s.curriculum_id,
                     concepts_completed: s.concepts_completed || [],
                     total_concepts: (s.concepts_completed?.length || 0) + 5, // Approximate
                     last_activity_at: s.last_activity_at,
@@ -112,7 +116,7 @@ export default function FlowModePage() {
 
     return (
         <DashboardLayout>
-            <SEO title="Flow Mode" description="Guided step-by-step learning journey." />
+            <SEO title="Learn Mode" description="Guided step-by-step learning journey." />
             
             <div className="max-w-5xl mx-auto px-6 py-12 pb-32">
                 <header className="mb-12">
@@ -120,10 +124,10 @@ export default function FlowModePage() {
                         <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 shadow-sm border border-purple-200">
                             <Zap size={22} fill="currentColor" />
                         </div>
-                        <h1 className="text-3xl font-display text-[var(--text)]">Flow Mode</h1>
+                        <h1 className="text-3xl font-display text-[var(--text)]">Learn Mode</h1>
                     </div>
                     <p className="text-[var(--muted)] max-w-2xl">
-                        Guided learning trips through your curricula and concepts. We handle the structure, you handle the understanding.
+                        Guided learning journeys through your roadmaps and concepts. We handle the structure, you handle the mastery.
                     </p>
                 </header>
 
@@ -137,7 +141,7 @@ export default function FlowModePage() {
                         <section>
                             <h2 className="text-sm font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
                                 <Clock size={14} />
-                                Active Flows
+                                Ongoing Lessons
                             </h2>
                             
                             {activeSessions.length > 0 ? (
@@ -176,7 +180,7 @@ export default function FlowModePage() {
                             ) : (
                                 <div className="p-8 border-2 border-dashed border-[var(--border)] rounded-2xl text-center">
                                     <Brain className="mx-auto text-[var(--muted)] opacity-30 mb-4" size={32} />
-                                    <p className="text-sm text-[var(--muted)]">No active flows. Pick a curriculum to start.</p>
+                                    <p className="text-sm text-[var(--muted)]">No active lessons. Pick a roadmap to start.</p>
                                 </div>
                             )}
                         </section>
