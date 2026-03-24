@@ -6,12 +6,12 @@ import ModeToggle, { SearchMode } from './ModeToggle';
 import AnalyzeButton from './AnalyzeButton';
 
 interface SmartInputCardProps {
-    onAnalyze: (data: { content: string; type: DetectedType; mode: SearchMode }) => void;
+    onAnalyze: (data: { content: string; type: DetectedType; mode: SearchMode; file?: File }) => Promise<void>;
     tokenBalance: number;
     compact?: boolean;
 }
 
-const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance }) => {
+const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance, compact = false }) => {
     const router = useRouter();
     const [input, setInput] = useState('');
     const [detectedType, setDetectedType] = useState<DetectedType | null>(null);
@@ -77,7 +77,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
 
     const handleFileSelect = (selectedFile: File) => {
         setFile(selectedFile);
-        setDetectedType('pdf'); 
+        setDetectedType('file'); 
         setInput(selectedFile.name);
     };
 
@@ -112,7 +112,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
         return () => clearInterval(interval);
     }, [isProcessing]);
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         if (!input.trim() && !file) return;
         
         const cost = mode === 'analyze' ? 8 : 2;
@@ -124,10 +124,12 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
         setError(null);
         setIsProcessing(true);
         
-        
-        setTimeout(() => {
-            onAnalyze({ content: input, type: detectedType || 'text', mode });
-        }, 5000);
+        try {
+            await onAnalyze({ content: input, type: detectedType || 'text', mode, file: file || undefined });
+        } catch (err: any) {
+            setError(err.message || 'Analysis failed');
+            setIsProcessing(false);
+        }
     };
 
     if (isProcessing) {
@@ -164,15 +166,17 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
-            <div className="mb-8">
-                <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shadow-lg shadow-[var(--accent)]/20 animate-bounce-slow">
-                        <Sparkles size={16} />
+            {!compact && (
+                <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shadow-lg shadow-[var(--accent)]/20 animate-bounce-slow">
+                            <Sparkles size={16} />
+                        </div>
+                        <h2 className="font-display text-2xl text-[var(--text)] tracking-tight">What are you mastering today?</h2>
                     </div>
-                    <h2 className="font-display text-2xl text-[var(--text)] tracking-tight">What are you mastering today?</h2>
+                    <p className="text-[var(--muted)] text-[14px] leading-relaxed">Paste anything — a URL, a PDF, or your rough notes. Serify extracts the core concepts and builds your study session.</p>
                 </div>
-                <p className="text-[var(--muted)] text-[14px] leading-relaxed">Paste anything — a URL, a PDF, or your rough notes. Serify extracts the core concepts and builds your study session.</p>
-            </div>
+            )}
 
             <div className="relative mb-6">
                 {detectedType && (
@@ -213,7 +217,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                     ref={fileInputRef} 
                     className="hidden" 
                     onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-                    accept=".pdf,.txt,.md,.docx"
+                    accept=".pdf,.txt,.md,.docx,.mp3,.mp4,.wav,.jpg,.png"
                 />
 
                 {!isDragging && (

@@ -59,7 +59,7 @@ export default function ExplainMode() {
         } finally {
             setGenerating(false);
         }
-    }, [id, router]);
+    }, [id, router, token]);
 
     useEffect(() => {
         if (!id) return;

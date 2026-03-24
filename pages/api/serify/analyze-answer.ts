@@ -18,7 +18,7 @@ export default async function handler(req: Request) {
 
     try {
         const body = await req.json().catch(() => ({}));
-        const { answerText, question, concept, explanationRequested, skipped } = body;
+        const { answerText, question, concept, explanationRequested, skipped, confidenceScore } = body;
 
         if ((!answerText && !skipped) || !question || !concept) {
             return createErrorResponse('Missing required fields', 400, 'Bad Request');
@@ -59,12 +59,15 @@ export default async function handler(req: Request) {
     Question: ${question.text}
     Student Answer: "${answerText}"
     Explanation Requested Before Answering: ${explanationRequested ? 'Yes' : 'No'}
+    Student Reported Confidence (1-5): ${confidenceScore || 'Not provided'} 
+      (1 = Wild Guess, 5 = Very Confident)
 
     Assess factual accuracy, conceptual depth, misconception detection, and confidence calibration.
+    If the student reports absolute high confidence (4 or 5) but their answer is fundamentally flawed or shallow, flag this as "overconfident" (an illusion of competence) and address it directly in the analysis text.
     `;
 
         const result = await streamObject({
-            model: google('gemini-1.5-flash'),
+            model: google('gemini-2.5-flash'),
             temperature: 0.1,
             // @ts-ignore
             maxTokens: 1024,
@@ -99,13 +102,11 @@ export default async function handler(req: Request) {
 
                     let parentNodeId: string | undefined = undefined;
 
-                    
-                    if (concept.related_concept_names &&
-                        Array.isArray(concept.related_concept_names) &&
-                        concept.related_concept_names.length >= 2 &&
-                        concept.related_concept_names[1] === "IS_SUB") {
+                    // Improved sub-concept detection using the standardized relationships object
+                    const isSub = concept.relationships?.isSub === true;
+                    const parentName = concept.relationships?.parentName;
 
-                        const parentName = concept.related_concept_names[0];
+                    if (isSub && parentName) {
                         const parentNode = await findOrCreateConceptNode(
                             supabase as any,
                             userId,

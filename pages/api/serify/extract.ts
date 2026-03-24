@@ -9,11 +9,15 @@ import { sendError } from '@/lib/api-utils';
 import { z } from 'zod';
 
 const extractRequestSchema = z.object({
-    contentType: z.enum(['youtube', 'article', 'pdf', 'text']),
+    contentType: z.enum(['youtube', 'article', 'pdf', 'text', 'file']),
     content: z.string().optional(),
     url: z.string().optional(),
     title: z.string().optional(),
-    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional()
+    difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    fileData: z.object({
+        base64: z.string(),
+        mimeType: z.string()
+    }).optional()
 });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -69,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         });
 
-    let { contentType, content, url, title, difficulty } = validatedBody.data;
+    let { contentType, content, url, title, difficulty, fileData } = validatedBody.data;
 
     
     const action = contentType === 'pdf' ? 'session_pdf' : 'session_standard';
@@ -127,7 +131,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id: Date.now().toString(),
             type: contentType,
             title,
-            content: content || '',
+            content: content || (fileData ? '[File Upload]' : ''),
             url: url || ''
         };
 
@@ -135,11 +139,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         let cachedConcepts = null;
 
-        const { data: existingSession, error: checkErr } = await supabaseWithAuth
+        const { data: existingSession, error: checkErr } = await (supabaseWithAuth as any)
             .from('reflection_sessions')
             .select('id, status')
             .eq('user_id', userId)
-            .eq('content', targetContent)
+            .eq('content', targetContent || '')
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -159,8 +163,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
 
             
-            if (['assessment', 'feedback', 'complete'].includes(existingSession.status)) {
-                const { data: existingConcepts } = await supabaseWithAuth
+            if (['assessment', 'feedback', 'complete'].includes(existingSession.status!)) {
+                const { data: existingConcepts } = await (supabaseWithAuth as any)
                     .from('concepts')
                     .select('*')
                     .eq('session_id', existingSession.id);
@@ -173,13 +177,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         console.log('Creating session in database...');
-        const { data: session, error: sessionError } = await supabaseWithAuth
+        const { data: session, error: sessionError } = await (supabaseWithAuth as any)
             .from('reflection_sessions')
             .insert({
                 user_id: userId,
                 title,
                 content_type: contentType,
-                content: content ?? url,
+                content: content ?? url ?? '',
                 difficulty: difficulty ?? 'intermediate',
                 status: 'processing'
             })
@@ -230,7 +234,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Error fetching vault context:', vErr);
         }
 
-        const { data: tracking } = await supabaseWithAuth
+        const { data: tracking } = await (supabaseWithAuth as any)
             .from('usage_tracking')
             .select('plan')
             .eq('user_id', userId)
@@ -264,7 +268,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } else {
             console.log('Extracting concepts via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
-            const extracted = await extractConcepts(contentSource, tracking?.plan || 'free', processedTranscript, vaultContextString);
+            const extracted = await extractConcepts(contentSource, tracking?.plan || 'free', processedTranscript, vaultContextString, fileData);
             console.log('Concepts extracted:', extracted.length);
             finalConcepts = extracted;
 

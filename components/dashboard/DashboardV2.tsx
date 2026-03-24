@@ -11,7 +11,7 @@ interface DashboardV2Props {
     focusConcepts: any[];
     activityDays: boolean[];
     vaultCount: number;
-    handleAnalyze: (data: any) => void;
+    handleAnalyze: (data: any) => Promise<void>;
     isDemo?: boolean;
 }
 

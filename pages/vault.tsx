@@ -60,13 +60,6 @@ export default function VaultPage() {
     const { user } = useAuth();
     const router = useRouter();
 
-    useEffect(() => {
-        router.replace('/');
-    }, [router]);
-
-    return null;
-
-    
     const [nodes, setNodes] = useState<KnowledgeNode[]>([]);
     const [categories, setCategories] = useState<VaultCategory[]>([]);
     const [studySets, setStudySets] = useState<StudySet[]>([]);

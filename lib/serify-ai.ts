@@ -11,16 +11,23 @@ import {
   ReflectionSession
 } from '../types/serify';
 
+const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY || '';
+if (!geminiApiKey && typeof window === 'undefined') {
+  console.warn('[Serify AI] Warning: No Gemini API key found in GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY');
+}
+
 const googleProvider = createGoogleGenerativeAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  apiKey: geminiApiKey,
 });
 
 export const MODEL_PRO = 'gemini-2.5-flash';
 export const MODEL_FLASH = 'gemini-2.5-flash';
 
 export function getGeminiModel(plan: string = 'free', systemInstruction?: string) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
+  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Missing AI configuration: Neither GEMINI_API_KEY nor GOOGLE_GENERATIVE_AI_API_KEY found in environment.');
+  }
   
   const genAI = new GoogleGenerativeAI(apiKey);
   const modelName = plan === 'proplus' || plan === 'pro' ? MODEL_PRO : MODEL_FLASH;
@@ -90,7 +97,13 @@ export function parseJSON<T>(text: string): T {
   }
 }
 
-export async function extractConcepts(content: ContentSource, plan: string = 'free', transcript?: string, vaultContext?: string): Promise<Concept[]> {
+export async function extractConcepts(
+  content: ContentSource, 
+  plan: string = 'free', 
+  transcript?: string, 
+  vaultContext?: string,
+  fileData?: { base64: string, mimeType: string }
+): Promise<Concept[]> {
   const contextInstruction = vaultContext 
     ? `EXISTING KNOWLEDGE STRUCTURE:
 The user already has the following broad categories (Pillars) and sub-concepts in their vault:
@@ -124,6 +137,29 @@ Refinement Rules:
 
 Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
 
+  let messages: any;
+  if (fileData) {
+    const isImage = fileData.mimeType.startsWith('image/');
+    messages = [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          isImage 
+            ? { type: 'image', image: fileData.base64, mimeType: fileData.mimeType } 
+            : { type: 'file', data: fileData.base64, mimeType: fileData.mimeType }
+        ]
+      }
+    ];
+  } else {
+    messages = [
+      {
+        role: 'user',
+        content: prompt
+      }
+    ];
+  }
+
   const { object } = await generateObject({
     model: getAISDKModel(plan),
     schema: z.array(z.object({
@@ -137,7 +173,7 @@ Focus on breadth for the pillars (high-level themes) and depth for the sub-conce
         description: z.string().describe('Concise explanation of how this fits into the pillar')
       }))
     })),
-    prompt,
+    messages,
     temperature: plan === 'free' ? 0.1 : 0.3,
   });
 

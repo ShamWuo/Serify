@@ -49,7 +49,7 @@ export default async function handler(req: Request) {
     if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 });
 
     try {
-        const { userInput, inputType, priorKnowledge, skipTopics, focusGoal } = await req.json();
+        const { userInput, inputType, priorKnowledge, skipTopics, focusGoal, targetDate } = await req.json();
 
         if (!userInput || !inputType) {
             return new Response(JSON.stringify({ message: 'Missing inputs' }), { status: 400 });
@@ -121,6 +121,9 @@ export default async function handler(req: Request) {
         const focusBlock = focusGoal
             ? `\nFOCUS GOAL: "${focusGoal}"\n- The curriculum should converge toward this specific outcome above all else.`
             : '';
+        const targetDateBlock = targetDate
+            ? `\nTARGET COMPLETION DATE: "${targetDate}"\n- The user must master this entire curriculum by this date. Adjust the curriculum size, depth, and pacing to be realistically achievable by this deadline while covering the critical concepts.`
+            : '';
 
         const prompt = `You are Serify's curriculum architect. Your response must be ONLY a single JSON object: no markdown, no code block, no extra text. The "units" array is required and must contain at least one unit; each unit must have a non-empty "concepts" array. Never output an empty "units" array.
 
@@ -133,7 +136,7 @@ Shaky: ${vaultContext.shakyConcepts.map((c) => c.name).join(', ') || 'none'}
 Revisit: ${vaultContext.revisitConcepts.map((c) => c.name).join(', ') || 'none'}
 User type: ${userType}
 Learning context: ${learningContext}
-${priorKnowledgeBlock}${skipBlock}${focusBlock}
+${priorKnowledgeBlock}${skipBlock}${focusBlock}${targetDateBlock}
 
 RULES:
 - Output exactly one JSON object. First character must be { and last character must be }.

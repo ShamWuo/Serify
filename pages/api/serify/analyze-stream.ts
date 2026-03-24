@@ -124,7 +124,7 @@ export default async function handler(req: Request) {
 
                 const { object: conceptData } = await generateObject({
                     // @ts-ignore
-                    model: google('gemini-1.5-flash'),
+                    model: google('gemini-2.5-flash'),
                     temperature: 0.1,
                     prompt: conceptPrompt,
                     schema: conceptSchema
@@ -146,7 +146,7 @@ export default async function handler(req: Request) {
 
                 const { object: questionData } = await generateObject({
                     // @ts-ignore
-                    model: google('gemini-1.5-flash'),
+                    model: google('gemini-2.5-flash'),
                     temperature: 0.1,
                     prompt: questionPrompt,
                     schema: questionSchema

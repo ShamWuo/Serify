@@ -70,7 +70,7 @@ export async function findSimilarConcept(
         .eq('user_id', userId)
         .ilike('canonical_name', `%${conceptName}%`)
         .limit(1)
-        .single();
+        .maybeSingle();
 
     return data;
 }
@@ -173,7 +173,7 @@ export async function upsertCategory(db: DbClient, userId: string, categoryName:
         .select('*')
         .eq('user_id', userId)
         .eq('name', categoryName)
-        .single();
+        .maybeSingle();
 
     if (existing) return existing;
 
@@ -197,7 +197,7 @@ export async function upsertParentConcept(db: DbClient, userId: string, category
         .eq('user_id', userId)
         .eq('is_sub_concept', false)
         .eq('canonical_name', parentName.toLowerCase())
-        .single();
+        .maybeSingle();
 
     if (existing) {
         if (existing.category_id !== categoryId) {
@@ -226,7 +226,7 @@ export async function upsertParentConcept(db: DbClient, userId: string, category
             updated_at: new Date().toISOString()
         })
         .select()
-        .single();
+        .maybeSingle();
 
     return inserted!;
 }
@@ -330,7 +330,7 @@ export async function getSessionsForConcept(
         .from('knowledge_nodes')
         .select('*')
         .eq('id', conceptId)
-        .single();
+        .maybeSingle();
 
     if (!node || !node.session_ids || node.session_ids.length === 0) return [];
 
@@ -369,7 +369,7 @@ export async function generateConceptSynthesis(
         .from('knowledge_nodes')
         .select('*')
         .eq('id', conceptId)
-        .single();
+        .maybeSingle();
 
     if (!node) return null;
 
@@ -433,7 +433,7 @@ export async function updateConceptMastery(
         .from('knowledge_nodes')
         .select('*')
         .eq('id', conceptId)
-        .single();
+        .maybeSingle();
 
     if (!node) return;
 

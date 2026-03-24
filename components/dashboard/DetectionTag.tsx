@@ -1,7 +1,7 @@
 import React from 'react';
 import { Youtube, Link as LinkIcon, FileText, File, X } from 'lucide-react';
 
-export type DetectedType = 'youtube' | 'article' | 'text' | 'pdf';
+export type DetectedType = 'youtube' | 'article' | 'text' | 'pdf' | 'file';
 
 interface DetectionTagProps {
     type: DetectedType;
@@ -14,6 +14,7 @@ const DetectionTag: React.FC<DetectionTagProps> = ({ type, onDismiss }) => {
         article: { icon: LinkIcon, label: 'Article or webpage' },
         text: { icon: FileText, label: 'Notes or text' },
         pdf: { icon: File, label: 'PDF document' },
+        file: { icon: File, label: 'File upload' },
     };
 
     const { icon: Icon, label } = config[type];

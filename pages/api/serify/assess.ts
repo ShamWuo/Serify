@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     id: q.id,
                     type: q.type,
                     text: q.text,
-                    relatedConcepts: q.related_concept_ids ?? []
+                    relatedConcepts: q.related_concept_ids ?? q.related_concept_names ?? []
                 }))
             });
         }
@@ -150,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             session_id: sessionId,
             type: q.type,
             text: q.text,
-            related_concept_ids: []
+            related_concept_ids: q.relatedConcepts || []
         }));
 
         const { data: savedQuestions, error: saveError } = await supabaseWithAuth
@@ -170,7 +170,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id: q.id,
             type: q.type,
             text: q.text,
-            relatedConcepts: questions[i]?.relatedConcepts ?? []
+            relatedConcepts: q.related_concept_ids || questions[i]?.relatedConcepts || []
         }));
 
         return res.status(200).json({ questions: responseQuestions });

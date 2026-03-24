@@ -728,38 +728,41 @@ export default function KnowledgeMap() {
                 </div>
 
                 {}
-                {hoveredNode && hoveredNode.type === 'concept' && (
-                    <div className="absolute bottom-6 left-6 z-20 w-80 bg-[var(--surface)]/80 backdrop-blur-xl border border-[var(--border)] rounded-3xl shadow-2xl p-6 animate-fade-in-up">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: hoveredNode.color }} />
-                                <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--muted)]">Concept Node</span>
+                {hoveredNode?.type === 'concept' && (() => {
+                    const node = hoveredNode!;
+                    return (
+                        <div className="absolute bottom-6 left-6 z-20 w-80 bg-[var(--surface)]/80 backdrop-blur-xl border border-[var(--border)] rounded-3xl shadow-2xl p-6 animate-fade-in-up">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: node.color }} />
+                                    <span className="text-[10px] uppercase font-bold tracking-widest text-[var(--muted)]">Concept Node</span>
+                                </div>
+                                <div className="px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-bold">
+                                    {node.data?.session_count} Sessions
+                                </div>
                             </div>
-                            <div className="px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] text-[10px] font-bold">
-                                {hoveredNode.data?.session_count} Sessions
+
+                            <h3 className="text-xl font-display font-medium text-[var(--text)] leading-tight mb-3">{node.label}</h3>
+
+                            {node.data?.definition ? (
+                                <p className="text-xs text-[var(--muted)] line-clamp-3 mb-5 leading-relaxed">
+                                    {node.data.definition}
+                                </p>
+                            ) : (
+                                <div className="h-px bg-[var(--border)] w-full mb-5" />
+                            )}
+
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: node.color }}>
+                                    {node.data?.current_mastery} Mastery
+                                </span>
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] group cursor-pointer" onClick={() => handleNodeClick(node)}>
+                                    View Context <ChevronLeft size={14} className="rotate-180 transition-transform group-hover:translate-x-1" />
+                                </div>
                             </div>
                         </div>
-
-                        <h3 className="text-xl font-display font-medium text-[var(--text)] leading-tight mb-3">{hoveredNode.label}</h3>
-
-                        {hoveredNode.data?.definition ? (
-                            <p className="text-xs text-[var(--muted)] line-clamp-3 mb-5 leading-relaxed">
-                                {hoveredNode.data.definition}
-                            </p>
-                        ) : (
-                            <div className="h-px bg-[var(--border)] w-full mb-5" />
-                        )}
-
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: hoveredNode.color }}>
-                                {hoveredNode.data?.current_mastery} Mastery
-                            </span>
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] group cursor-pointer" onClick={() => handleNodeClick(hoveredNode)}>
-                                View Context <ChevronLeft size={14} className="rotate-180 transition-transform group-hover:translate-x-1" />
-                            </div>
-                        </div>
-                    </div>
-                )}
+                    );
+                })()}
             </div>
         </DashboardLayout>
     );

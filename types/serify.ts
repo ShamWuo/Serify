@@ -1,7 +1,7 @@
-export type ContentType = 'youtube' | 'article' | 'pdf' | 'text';
+export type ContentType = 'youtube' | 'article' | 'pdf' | 'text' | 'file';
 
 export interface ContentSource {
-    id: string;
+    id?: string;
     type: ContentType;
     url?: string;
     content?: string;

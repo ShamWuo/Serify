@@ -561,7 +561,7 @@ export default function CurriculumFlowSessionPage() {
                 const updatedCompleted = [...new Set([...(flowSession.concepts_completed || []), currentConcept.conceptId])];
 
                 if (updatedCompleted.length > (flowSession.concepts_completed?.length || 0)) {
-                    await supabase.from('flow_mode_session').update({
+                    await supabase.from('flow_sessions').update({
                         concepts_completed: updatedCompleted,
                         last_activity_at: new Date().toISOString()
                     }).eq('id', flowSession.id);

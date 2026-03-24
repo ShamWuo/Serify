@@ -113,6 +113,23 @@ export default function Home() {
     const handleAnalyze = async (data: any) => {
         setIsProcessing(true);
         try {
+            let fileData = undefined;
+            if (data.file) {
+                const base64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(data.file);
+                    reader.onload = () => {
+                        const res = reader.result as string;
+                        resolve(res.split(',')[1]);
+                    };
+                    reader.onerror = error => reject(error);
+                });
+                fileData = {
+                    base64,
+                    mimeType: data.file.type || 'application/octet-stream'
+                };
+            }
+
             const res = await fetch('/api/serify/extract', {
                 method: 'POST',
                 headers: {
@@ -122,18 +139,23 @@ export default function Home() {
                 },
                 body: JSON.stringify({
                     content: data.type === 'text' ? data.content : undefined,
-                    url: data.type !== 'text' ? data.content : undefined,
+                    url: data.type !== 'text' && data.type !== 'pdf' && data.type !== 'file' ? data.content : undefined,
                     contentType: data.type,
-                    mode: data.mode
+                    mode: data.mode,
+                    fileData
                 })
             });
             
             if (res.ok) {
                 const { sessionId } = await res.json();
                 router.push(`/session/${sessionId}`);
+            } else {
+                const errData = await res.json();
+                throw new Error(errData.error || 'Failed to extract content');
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
+            throw err;
         } finally {
             setIsProcessing(false);
         }

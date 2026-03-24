@@ -50,6 +50,7 @@ export default function ActiveSession() {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answer, setAnswer] = useState('');
+    const [confidenceScore, setConfidenceScore] = useState<number>(3);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
     const [assessments, setAssessments] = useState<any[]>([]);
@@ -345,6 +346,7 @@ export default function ActiveSession() {
         };
 
         setAnswer('');
+        setConfidenceScore(3);
         setSkippingId(null);
 
         const explanationRequested = !!explanations[currentQ.id]?.text;
@@ -369,7 +371,8 @@ export default function ActiveSession() {
                 question: currentQ,
                 concept: currentConcept,
                 explanationRequested,
-                skipped: isSkip
+                skipped: isSkip,
+                confidenceScore: isSkip ? null : confidenceScore
             })
         })
             .then((res) => res.json())
@@ -726,6 +729,33 @@ export default function ActiveSession() {
                                 placeholder="Write your answer here — use your own words."
                                 className="w-full min-h-[160px] p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-lg outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 transition-all resize-y shadow-sm disabled:opacity-50"
                             />
+
+                            {answer.trim() && skippingId !== currentQuestion.id && (
+                                <div className="space-y-3 animate-fade-in p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-sm font-bold text-[var(--text)]">How confident are you in this answer?</label>
+                                        <span className="text-xs font-bold px-2 py-1 rounded bg-[var(--accent)]/10 text-[var(--accent)]">
+                                            {confidenceScore === 1 ? '1 - Wild Guess' : 
+                                             confidenceScore === 2 ? '2 - Unsure' : 
+                                             confidenceScore === 3 ? '3 - Moderate' : 
+                                             confidenceScore === 4 ? '4 - Fairly Confident' : 
+                                             '5 - Very Confident'}
+                                        </span>
+                                    </div>
+                                    <input 
+                                        type="range" 
+                                        min="1" max="5" step="1" 
+                                        value={confidenceScore} 
+                                        onChange={(e) => setConfidenceScore(parseInt(e.target.value))} 
+                                        className="w-full accent-[var(--accent)] cursor-pointer"
+                                        disabled={isAnalyzing}
+                                    />
+                                    <div className="flex justify-between text-xs text-[var(--muted)] font-medium px-1 mt-1">
+                                        <span>Guessing</span>
+                                        <span>Certain</span>
+                                    </div>
+                                </div>
+                            )}
 
                             {showGuidance2 &&
                                 currentIndex === 0 &&

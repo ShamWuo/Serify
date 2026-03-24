@@ -12,8 +12,16 @@ export default function VoiceSynthesis({ text, className = '' }: VoiceSynthesisP
     const [isSupported, setIsSupported] = useState(false);
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-            setIsSupported(true);
+        const checkSupport = () => {
+            if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                setIsSupported(true);
+            }
+        };
+        
+        checkSupport();
+        
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.onvoiceschanged = checkSupport;
         }
     }, []);
 

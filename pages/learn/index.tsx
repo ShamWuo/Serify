@@ -73,6 +73,7 @@ export default function LearnIndex() {
     const [priorKnowledge, setPriorKnowledge] = useState('');
     const [skipTopics, setSkipTopics] = useState('');
     const [focusGoal, setFocusGoal] = useState('');
+    const [targetDate, setTargetDate] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
     const [curricula, setCurricula] = useState<any[]>([]);
@@ -218,6 +219,7 @@ export default function LearnIndex() {
                 priorKnowledge: pkVal.trim() || undefined,
                 skipTopics: stVal.trim() || undefined,
                 focusGoal: fgVal.trim() || undefined,
+                targetDate: targetDate || undefined,
             };
 
             lastSubmitRef.current = payload;
@@ -225,7 +227,7 @@ export default function LearnIndex() {
             setIsGenerating(true);
             submit(payload);
         }
-    }, [router.query, token, submit, usage, refreshUsage]);
+    }, [router.query, token, submit, usage, refreshUsage, targetDate]);
 
     const fetchCurricula = async () => {
         setLoadingCurricula(true);
@@ -307,6 +309,7 @@ export default function LearnIndex() {
             priorKnowledge: priorKnowledge.trim() || undefined,
             skipTopics: skipTopics.trim() || undefined,
             focusGoal: focusGoal.trim() || undefined,
+            targetDate: targetDate || undefined,
         };
         lastSubmitRef.current = payload;
         submit(payload);
@@ -523,6 +526,22 @@ export default function LearnIndex() {
                                         placeholder="e.g. Solve optimization word problems on my exam next week"
                                         className="w-full h-11 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-sm"
                                     />
+                                </div>
+                                
+                                <div>
+                                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
+                                        <AlertTriangle size={15} className="text-[var(--accent)]" />
+                                        Completion Target Date (Optional)
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={targetDate}
+                                        onChange={(e) => setTargetDate(e.target.value)}
+                                        className="w-full h-11 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-sm"
+                                    />
+                                    <p className="text-xs text-[var(--muted)] mt-1">
+                                        We will build a paced schedule to ensure you master the topic by this date.
+                                    </p>
                                 </div>
                             </div>
 

@@ -165,27 +165,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let mounted = true;
         
+        // Logging to track initialization flow
+        console.log('[AuthContext] Provider mounted, initializing auth flow...');
+
         // Safety timeout to prevent infinite loading if Supabase hangs
         const safetyTimeout = setTimeout(() => {
             if (mounted && loading) {
-                console.warn('[AuthContext] Safety timeout triggered after 6s. Forcing loading false.');
+                console.warn('[AuthContext] Safety timeout triggered after 4s (Aggressive). Forcing loading false.');
                 setLoading(false);
             }
-        }, 6000);
+        }, 4000);
 
         async function loadInitialSession() {
             try {
-                console.log('[AuthContext] Loading initial session...');
-                const { data: { session }, error } = await supabase.auth.getSession();
-                console.log('[AuthContext] Initial session result:', session ? 'Session found' : 'No session');
+                console.log('[AuthContext] loadInitialSession starting...');
+                const sessionRes = await supabase.auth.getSession();
+                const session = sessionRes.data.session;
+                const error = sessionRes.error;
+
+                console.log('[AuthContext] getSession result:', session ? 'Session found' : 'No session', error || '');
                 if (error) throw error;
                 if (mounted) {
                     await handleAuthChange('INITIAL_SESSION', session);
                 }
             } catch (err) {
-                console.error('[AuthContext] Initial session fetch error:', err);
+                console.error('[AuthContext] loadInitialSession error:', err);
                 if (mounted) setLoading(false);
             } finally {
+                if (mounted) {
+                    console.log('[AuthContext] loadInitialSession completed.');
+                }
                 clearTimeout(safetyTimeout);
             }
         }

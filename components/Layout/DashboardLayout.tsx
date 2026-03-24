@@ -152,10 +152,11 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
             icon: <LibraryBig size={20} className="text-[var(--accent)]" /> 
         },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
+        { href: '/vault', label: 'Vault', icon: <Archive size={20} /> },
         
         { href: '/feedback', label: 'Feedback', icon: <MessageSquarePlus size={20} /> },
         { href: '/settings', label: 'Settings', icon: <Settings size={20} /> }
-    ], [vaultNeedsWork]);
+    ], []);
 
     const themeToggleItem = (
         <button

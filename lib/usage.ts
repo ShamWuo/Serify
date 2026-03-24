@@ -120,13 +120,13 @@ export async function canAfford(
         .from('usage_tracking')
         .select('plan, tokens_used, monthly_limit')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
     const { data: costData } = await (client as any)
         .from('token_costs')
         .select('token_cost')
         .eq('action', action)
-        .single();
+        .maybeSingle();
 
     if (!tracking || !costData) {
         return { allowed: false, cost: 0, tokensUsed: 0, monthlyLimit: 0, percentUsed: 100, plan: 'free' };
@@ -227,7 +227,7 @@ export async function processAssistantMessage(
       .from('usage_tracking')
       .select('plan, tokens_used, monthly_limit')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
   const plan = tracking?.plan || 'free';
 

@@ -29,18 +29,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
         const userInput =
-            curriculumData.user_input ?? curriculumData.title ?? '';
+            curriculumData.user_input || curriculumData.title || '';
         const units = Array.isArray(curriculumData.units) ? curriculumData.units : [];
         const originalUnits = Array.isArray(curriculumData.original_units)
             ? curriculumData.original_units
-            : units;
+            : (units.length > 0 ? units : []);
+        
         const { v4: uuidv4 } = await import('uuid');
         const conceptCount = units.reduce(
             (sum: number, u: { concepts?: unknown[] }) => sum + (u.concepts?.length ?? 0),
             0
         );
 
-        
+        // Pre-validate for DB constraints
+        if (!userInput || userInput.trim() === '') {
+            console.error('[SaveCurriculum] user_input is missing even after fallback:', { curriculumData });
+        }
+
         const idMap = new Map<string, string>();
         units.forEach((unit: any) => {
             (unit.concepts || []).forEach((concept: any) => {
@@ -65,6 +70,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
 
         const title = curriculumData.title || userInput || 'Untitled Curriculum';
+
+        console.log('[SaveCurriculum] Attempting insert with:', {
+            user_id: userId,
+            user_input: userInput,
+            title: title,
+            unitCount: units.length,
+            conceptCount
+        });
 
         const { data: savedCurriculum, error: saveError } = await supabase
             .from('curricula')
@@ -92,16 +105,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         
         const progressRows: any[] = [];
+        const seenConceptIds = new Set<string>();
+        
         units.forEach((unit: any) => {
             (unit.concepts || []).forEach((concept: any) => {
-                progressRows.push({
-                    id: uuidv4(),
-                    curriculum_id: savedCurriculum.id,
-                    user_id: userId,
-                    concept_id: concept.id,
-                    concept_name: concept.name,
-                    status: 'not_started'
-                });
+                if (!seenConceptIds.has(concept.id)) {
+                    seenConceptIds.add(concept.id);
+                    progressRows.push({
+                        id: uuidv4(),
+                        curriculum_id: savedCurriculum.id,
+                        user_id: userId,
+                        concept_id: concept.id,
+                        concept_name: concept.name,
+                        status: 'not_started'
+                    });
+                }
             });
         });
 
