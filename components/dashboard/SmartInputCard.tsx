@@ -185,8 +185,8 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                     </div>
                 )}
                 <div className={`relative rounded-2xl border-2 transition-all duration-300 ${
-                    isDragging ? 'border-transparent' : 'border-[var(--border)] focus-within:border-[var(--accent)]/30 focus-within:ring-4 focus-within:ring-[var(--accent)]/[0.03] group bg-[var(--bg)]/20 backdrop-blur-sm'
-                }`}>
+                    isDragging ? 'border-transparent' : (detectedType ? 'border-emerald-500/30' : 'border-[var(--border)]')
+                } focus-within:border-[var(--accent)]/30 focus-within:ring-4 focus-within:ring-[var(--accent)]/[0.03] group bg-[var(--bg)]/20 backdrop-blur-sm`}>
                     {isDragging ? (
                         <div className="h-[100px] flex flex-col items-center justify-center text-[var(--accent)] gap-2">
                             <Paperclip size={24} className="animate-bounce" />
@@ -209,6 +209,11 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                             >
                                 <Paperclip size={18} className="group-hover:rotate-12 transition-transform" />
                             </button>
+                            {detectedType && (
+                                <div className="absolute top-4 right-16 px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 animate-fade-in pointer-events-none">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Ready to Master</span>
+                                </div>
+                            )}
                         </>
                     )}
                 </div>

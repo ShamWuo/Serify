@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import SEO from '@/components/Layout/SEO';
 import {
     Brain,
@@ -92,9 +93,12 @@ export default function LandingPage() {
                 {}
                 <div className="absolute inset-0 z-0 select-none pointer-events-none overflow-hidden bg-[#030f08]">
                     {}
-                    <img
+                    <Image
                         src="/landingpage.gif"
                         alt=""
+                        width={1920}
+                        height={1080}
+                        priority
                         className="w-full h-[105vh] object-contain object-top opacity-100 mix-blend-screen"
                         style={{ 
                             maskImage: 'radial-gradient(circle at top, black 30%, rgba(0,0,0,0.8) 60%, transparent 95%)',

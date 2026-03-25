@@ -59,6 +59,10 @@ export default function ActiveSession() {
         Record<string, { requesting: boolean; text: string | null }>
     >({});
 
+    const [elapsedTime, setElapsedTime] = useState(0);
+    const [showFeedback, setShowFeedback] = useState(false);
+    const [currentAssessment, setCurrentAssessment] = useState<any>(null);
+
     const [skippingId, setSkippingId] = useState<string | null>(null);
 
     const [isFirstSession, setIsFirstSession] = useState(false);
@@ -66,6 +70,8 @@ export default function ActiveSession() {
     const [showGuidance2, setShowGuidance2] = useState(false);
     const [isUsageLimitModalOpen, setIsUsageLimitModalOpen] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
+    const confidenceRef = useRef<HTMLDivElement>(null);
+    const [hasScrolledToConfidence, setHasScrolledToConfidence] = useState(false);
     const guidanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const analysisPromises = useRef<Promise<any>[]>([]);
@@ -94,6 +100,38 @@ export default function ActiveSession() {
     };
 
     useEffect(() => {
+        const handleBrowseAway = (url: string) => {
+            if (currentIndex < questions.length && !isAnalyzing && questions.length > 0 && !showFeedback) {
+                if (!window.confirm('Are you sure you want to leave? Your progress for the current question will be lost.')) {
+                    router.events.emit('routeChangeError');
+                    throw 'routeChange aborted.';
+                }
+            }
+        };
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (currentIndex < questions.length && !isAnalyzing && questions.length > 0 && !showFeedback) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        router.events.on('routeChangeStart', handleBrowseAway);
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            router.events.off('routeChangeStart', handleBrowseAway);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [currentIndex, questions.length, isAnalyzing, router, showFeedback]);
+
+    useEffect(() => {
+        if (answer.trim() && !hasScrolledToConfidence && confidenceRef.current) {
+            confidenceRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setHasScrolledToConfidence(true);
+        } else if (!answer.trim()) {
+            setHasScrolledToConfidence(false);
+        }
+    }, [answer, hasScrolledToConfidence]);
+
+    useEffect(() => {
         if (isFirstSession && currentIndex === 0 && !isAnalyzing && answer.length < 10) {
             guidanceTimerRef.current = setTimeout(() => {
                 setShowGuidance2(true);
@@ -106,6 +144,20 @@ export default function ActiveSession() {
             if (guidanceTimerRef.current) clearTimeout(guidanceTimerRef.current);
         };
     }, [isFirstSession, currentIndex, answer, isAnalyzing]);
+
+    useEffect(() => {
+        if (isAnalyzing || isPaused || showFeedback) return;
+        const interval = setInterval(() => {
+            setElapsedTime(prev => prev + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isAnalyzing, isPaused, showFeedback]);
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
 
     const handleSaveAndExit = async () => {
         setIsAnalyzing(true);
@@ -345,10 +397,7 @@ export default function ActiveSession() {
             definition: ''
         };
 
-        setAnswer('');
-        setConfidenceScore(3);
-        setSkippingId(null);
-
+        setIsAnalyzing(true);
         const explanationRequested = !!explanations[currentQ.id]?.text;
 
         const {
@@ -363,73 +412,98 @@ export default function ActiveSession() {
             ...(!token && isDemo ? { 'x-serify-demo': 'true' } : {})
         };
 
-        const analysisPromise = fetch('/api/analyze-answer', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                answerText: currentAnswer,
-                question: currentQ,
-                concept: currentConcept,
-                explanationRequested,
-                skipped: isSkip,
-                confidenceScore: isSkip ? null : confidenceScore
-            })
-        })
-            .then((res) => res.json())
-            .then(({ assessment }) => {
-                return {
-                    ...assessment,
-                    question_id: currentQ.id,
-                    concept_id: currentConcept.id,
-                    explanation_requested: explanationRequested,
-                    skipped: isSkip
-                };
+        try {
+            const res = await fetch('/api/serify/analyze-answer', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    answerText: currentAnswer,
+                    question: currentQ,
+                    concept: currentConcept,
+                    explanationRequested,
+                    skipped: isSkip,
+                    confidenceScore: isSkip ? null : confidenceScore
+                })
             });
 
-        analysisPromises.current.push(analysisPromise);
+            if (res.status === 429) {
+                setIsUsageLimitModalOpen(true);
+                setIsAnalyzing(false);
+                return;
+            }
 
+            if (!res.ok) throw new Error('Analysis failed');
+            
+            const { assessment } = await res.json();
+            const fullAssessment = {
+                ...assessment,
+                question_id: currentQ.id,
+                concept_id: currentConcept.id,
+                explanation_requested: explanationRequested,
+                skipped: isSkip
+            };
+
+            setCurrentAssessment(fullAssessment);
+            setAssessments(prev => [...prev, fullAssessment]);
+            setShowFeedback(true);
+            setIsAnalyzing(false);
+            
+            // Clear current inputs
+            setAnswer('');
+            setConfidenceScore(3);
+            setSkippingId(null);
+
+        } catch (error) {
+            console.error(error);
+            alert('Failed to analyze. Please try again.');
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleNext = async () => {
         if (currentIndex < questions.length - 1) {
             setCurrentIndex((prev) => prev + 1);
+            setShowFeedback(false);
+            setCurrentAssessment(null);
+            setHasScrolledToConfidence(false);
         } else {
-            setIsAnalyzing(true);
-            try {
-                const newAssessments = await Promise.all(analysisPromises.current);
-                const allAssessments = [...assessments, ...newAssessments];
-                setAssessments(allAssessments);
+            finishSession();
+        }
+    };
 
-                localStorage.setItem(
-                    'serify_feedback_report',
-                    JSON.stringify({
-                        title,
-                        isBasicMode: sessionData?.isBasicMode,
-                        report: null, 
-                        concepts,
-                        assessments: allAssessments
-                    })
-                );
-
-                storage.saveSession({
-                    id: id as string,
+    const finishSession = async () => {
+        setIsAnalyzing(true);
+        try {
+            localStorage.setItem(
+                'serify_feedback_report',
+                JSON.stringify({
                     title,
-                    type: sessionData?.type || 'Session',
-                    date: new Date().toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                    }),
-                    last_activity: new Date().toISOString(),
-                    status: 'Completed',
-                    result: 'Default'
-                });
+                    isBasicMode: sessionData?.isBasicMode,
+                    report: null, 
+                    concepts,
+                    assessments: assessments
+                })
+            );
 
-                router.push(`/session/${id}/feedback`);
-            } catch (error) {
-                console.error(error);
-                alert('Failed to analyze. Please try again.');
-                setIsAnalyzing(false);
-                setAnswer(currentAnswer);
-                analysisPromises.current.pop();
-            }
+            storage.saveSession({
+                id: id as string,
+                title,
+                type: sessionData?.type || 'Session',
+                date: new Date().toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                }),
+                last_activity: new Date().toISOString(),
+                status: 'Completed',
+                result: 'Default'
+            });
+
+            router.push(`/session/${id}/feedback`);
+        } catch (error) {
+            console.error(error);
+            alert('Failed to complete session. Progress was saved locally.');
+            setIsAnalyzing(false);
         }
     };
 
@@ -577,8 +651,11 @@ export default function ActiveSession() {
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                         {concepts.map((concept, idx) => {
-                            const isAnswered = questions.findIndex(q => q.target_concept_id === concept.id) < currentIndex;
+                            const qIdx = questions.findIndex(q => q.target_concept_id === concept.id);
+                            const isAnswered = qIdx !== -1 && qIdx < currentIndex;
                             const isCurrent = questions[currentIndex]?.target_concept_id === concept.id;
+                            const assessment = assessments.find(a => a.concept_id === concept.id);
+                            const isSkipped = assessment?.skipped;
 
                             return (
                                 <div
@@ -588,7 +665,11 @@ export default function ActiveSession() {
                                 >
                                     <div className="mt-0.5 shrink-0">
                                         {isAnswered ? (
-                                            <CheckCircle2 size={14} className="text-emerald-500" />
+                                            isSkipped ? (
+                                                <X size={14} className="text-orange-400" />
+                                            ) : (
+                                                <CheckCircle2 size={14} className="text-emerald-500" />
+                                            )
                                         ) : isCurrent ? (
                                             <div className="w-3.5 h-3.5 rounded-full border-2 border-[var(--accent)] flex items-center justify-center animate-pulse">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
@@ -602,6 +683,7 @@ export default function ActiveSession() {
                                             'text-[var(--muted)] font-medium'
                                         }`}>
                                         {concept.name}
+                                        {isAnswered && isSkipped && <span className="ml-2 text-[10px] font-bold text-orange-400/60 uppercase tracking-tighter">(Skipped)</span>}
                                     </span>
                                 </div>
                             );
@@ -618,211 +700,306 @@ export default function ActiveSession() {
                 {}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[var(--accent)]/5 rounded-full blur-[100px] -mr-64 -mt-64 pointer-events-none" />
 
-                <div className="sticky top-0 z-10 w-full flex items-center justify-between px-6 py-4 md:px-8 bg-[var(--bg)]/80 backdrop-blur-md border-b border-[var(--border)]/50">
-                    <div className="flex items-center gap-4">
-                        <Link href="/" className="md:hidden w-8 h-8 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface)]">
-                            <ChevronLeft size={18} />
-                        </Link>
-                        <div className="flex flex-col md:hidden">
-                            <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{currentIndex + 1} of {questions.length}</span>
-                            <span className="text-xs font-bold text-[var(--text)] truncate max-w-[150px]">{title}</span>
-                        </div>
+                <div className="sticky top-0 z-10 w-full bg-[var(--bg)]/80 backdrop-blur-md border-b border-[var(--border)]/50">
+                    <div className="h-1 w-full bg-[var(--border)] overflow-hidden">
+                        <div 
+                            className="h-full bg-[var(--accent)] transition-all duration-500 shadow-[0_0_8px_var(--accent)]"
+                            style={{ width: `${((currentIndex + (showFeedback ? 1 : 0)) / questions.length) * 100}%` }}
+                        />
                     </div>
+                    <div className="flex items-center justify-between px-6 py-4 md:px-8">
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={handleAbandon}
+                                className="w-8 h-8 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface)] hover:bg-red-50 hover:text-red-500 transition-colors"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">
+                                        Question {currentIndex + 1} of {questions.length}
+                                    </span>
+                                    <div className="w-1 h-1 rounded-full bg-[var(--border)]" />
+                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--muted)]">
+                                        <Pause size={10} /> {formatTime(elapsedTime)}
+                                    </div>
+                                </div>
+                                <span className="text-xs font-bold text-[var(--text)] truncate max-w-[200px]">{title}</span>
+                            </div>
+                        </div>
 
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setIsPaused(true)}
-                            disabled={isAnalyzing}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] border border-transparent hover:border-[var(--border)] transition-all disabled:opacity-50"
-                        >
-                            <Pause size={14} /> <span className="hidden sm:inline">Pause</span>
-                        </button>
-                        <button
-                            onClick={handleAbandon}
-                            disabled={isAnalyzing}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 transition-all disabled:opacity-50"
-                        >
-                            <X size={14} /> <span className="hidden sm:inline">Abandon</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setIsPaused(true)}
+                                disabled={isAnalyzing}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] border border-transparent hover:border-[var(--border)] transition-all disabled:opacity-50"
+                            >
+                                <Pause size={14} /> <span className="hidden sm:inline">Pause</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full px-6 py-12 md:py-20 relative z-0">
-                    <div className="animate-slide-up" key={currentQuestion.id || currentIndex}>
-                        {isFirstSession && currentIndex === 0 && showGuidance1 && (
-                            <div className="mb-8 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm relative animate-fade-in group transition-all">
-                                <button
-                                    onClick={dismissGuidance1}
-                                    className="absolute top-4 right-4 text-[var(--muted)] hover:text-[var(--text)] transition-colors"
-                                >
-                                    <X size={18} />
-                                </button>
-                                <div className="flex items-center gap-2 text-sm font-bold text-[var(--accent)] mb-3">
-                                    <Zap size={16} /> Answer in your own words
-                                </div>
-                                <p className="text-[var(--text)] text-sm leading-relaxed max-w-[90%]">
-                                    There&apos;s no right or wrong format. Write as much or as
-                                    little as you naturally would. The quality of your feedback
-                                    depends on the quality of your answer.
-                                </p>
-                            </div>
-                        )}
-
-                        <div
-                            className={`inline-flex items-center px-3 py-1 rounded text-[11px] font-bold uppercase tracking-wider mb-6 ${getTypeColor(currentQuestion.type)}`}
-                        >
-                            {currentQuestion.type}
-                        </div>
-
-                        <div className="flex flex-col gap-6 mb-8">
-                            <h1 className="text-3xl md:text-4xl font-display leading-[1.3] text-[var(--text)]">
-                                {currentQuestion.text}
-                            </h1>
-                            <VoiceSynthesis text={currentQuestion.text} />
-                        </div>
-
-                        {explanations[currentQuestion.id]?.text ? (
-                            <div className="mb-8 p-5 rounded-2xl bg-[var(--accent-light)] border border-[var(--accent)]/20 animate-fade-in relative">
-                                <span className="absolute -top-3 left-6 px-3 py-0.5 bg-[var(--bg)] border border-[var(--accent)]/20 text-[11px] font-bold tracking-wider uppercase text-[var(--accent)] rounded-full">
-                                    Concept Hint
-                                </span>
-                                <div className="space-y-4">
-                                    <div className="text-[var(--text)] leading-relaxed text-[15px]">
-                                        {explanations[currentQuestion.id]
-                                            .text!.split('\n')
-                                            .map((line, i) => (
-                                                <span key={i}>
-                                                    {line}
-                                                    {i <
-                                                        explanations[currentQuestion.id].text!.split(
-                                                            '\n'
-                                                        ).length -
-                                                        1 && <br />}
-                                                </span>
-                                            ))}
+                        {showFeedback ? (
+                            <div className="w-full animate-fade-in space-y-8">
+                                <div className="p-8 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-xl relative overflow-hidden">
+                                     <div className={`absolute top-0 right-0 px-6 py-2 rounded-bl-2xl text-[10px] font-bold uppercase tracking-widest ${
+                                        currentAssessment?.depthScore >= 70 ? 'bg-emerald-500 text-white' : 
+                                        currentAssessment?.depthScore >= 40 ? 'bg-amber-500 text-white' : 'bg-red-500 text-white'
+                                    }`}>
+                                        Mastery: {currentAssessment?.depthScore}%
                                     </div>
-                                    <VoiceSynthesis text={explanations[currentQuestion.id].text!} />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="mb-8 flex justify-start">
-                                <button
-                                    onClick={requestExplanation}
-                                    disabled={explanations[currentQuestion.id]?.requesting}
-                                    className="flex items-center gap-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
-                                >
-                                    <span className="w-5 h-5 flex items-center justify-center rounded-full border border-current text-xs">
-                                        ?
-                                    </span>
-                                    {explanations[currentQuestion.id]?.requesting
-                                        ? 'Loading hint...'
-                                        : 'Explain this concept'}
-                                </button>
-                            </div>
-                        )}
 
-                        <div className="space-y-6">
-                            <textarea
-                                value={answer}
-                                onChange={(e) => setAnswer(e.target.value)}
-                                disabled={isAnalyzing || skippingId === currentQuestion.id}
-                                placeholder="Write your answer here — use your own words."
-                                className="w-full min-h-[160px] p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-lg outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 transition-all resize-y shadow-sm disabled:opacity-50"
-                            />
-
-                            {answer.trim() && skippingId !== currentQuestion.id && (
-                                <div className="space-y-3 animate-fade-in p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-sm font-bold text-[var(--text)]">How confident are you in this answer?</label>
-                                        <span className="text-xs font-bold px-2 py-1 rounded bg-[var(--accent)]/10 text-[var(--accent)]">
-                                            {confidenceScore === 1 ? '1 - Wild Guess' : 
-                                             confidenceScore === 2 ? '2 - Unsure' : 
-                                             confidenceScore === 3 ? '3 - Moderate' : 
-                                             confidenceScore === 4 ? '4 - Fairly Confident' : 
-                                             '5 - Very Confident'}
-                                        </span>
+                                    <div className="flex items-center gap-3 mb-6">
+                                        {currentAssessment?.depthScore >= 70 ? (
+                                            <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                                <CheckCircle2 size={24} />
+                                            </div>
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                                                <Zap size={24} />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <h3 className="text-xl font-bold">Quick Feedback</h3>
+                                            <p className="text-sm text-[var(--muted)]">Based on your last answer</p>
+                                        </div>
                                     </div>
-                                    <input 
-                                        type="range" 
-                                        min="1" max="5" step="1" 
-                                        value={confidenceScore} 
-                                        onChange={(e) => setConfidenceScore(parseInt(e.target.value))} 
-                                        className="w-full accent-[var(--accent)] cursor-pointer"
-                                        disabled={isAnalyzing}
-                                    />
-                                    <div className="flex justify-between text-xs text-[var(--muted)] font-medium px-1 mt-1">
-                                        <span>Guessing</span>
-                                        <span>Certain</span>
-                                    </div>
-                                </div>
-                            )}
 
-                            {showGuidance2 &&
-                                currentIndex === 0 &&
-                                answer.length < 10 &&
-                                skippingId !== currentQuestion.id && (
-                                    <div className="text-sm text-[var(--muted)] mt-3 animate-fade-in font-medium italic mb-2">
-                                        Even a partial answer helps. Write what you know.
-                                    </div>
-                                )}
+                                    <div className="space-y-6">
+                                        <div className="p-6 rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+                                            <h4 className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest mb-3">AI Analysis</h4>
+                                            <p className="text-[var(--text)] leading-relaxed italic">
+                                                &quot;{currentAssessment?.feedbackText || "Analysis complete."}&quot;
+                                            </p>
+                                        </div>
 
-                            {skippingId === currentQuestion.id ? (
-                                <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 animate-fade-in flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <p className="text-orange-900 text-sm font-medium">
-                                        Try writing anything, even partial — it helps Serify
-                                        understand where the gap is.
-                                    </p>
-                                    <div className="flex items-center gap-3 shrink-0">
-                                        <button
-                                            onClick={() => setSkippingId(null)}
-                                            className="px-4 py-2 text-sm font-bold text-orange-900 bg-orange-200/50 hover:bg-orange-200 rounded-lg transition-colors"
-                                        >
-                                            Try Anyway
-                                        </button>
-                                        <button
-                                            onClick={() => handleSubmit(true)}
-                                            className="px-4 py-2 text-sm font-medium text-orange-700 hover:text-orange-900 opacity-80 hover:opacity-100 transition-colors"
-                                        >
-                                            Skip This One
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-[var(--muted)] font-medium">
-                                        Question {currentIndex + 1} of {questions.length}
-                                    </span>
-
-                                    <div className="flex items-center gap-4 flex-row-reverse">
-                                        <button
-                                            onClick={() => handleSubmit(false)}
-                                            disabled={!answer.trim() || isAnalyzing}
-                                            className={`px-8 py-3.5 rounded-xl font-medium transition-all flex items-center ${answer.trim() && !isAnalyzing ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-md shadow-[var(--accent)]/20 hover:-translate-y-0.5' : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-50'}`}
-                                        >
-                                            {isAnalyzing && currentIndex < questions.length - 1
-                                                ? 'Analyzing...'
-                                                : currentIndex === questions.length - 1
-                                                    ? concepts.length > questions.length
-                                                        ? 'Submit & Save Remaining Concepts'
-                                                        : 'Submit & Finish Session'
-                                                    : 'Submit Answer \u2192'}
-                                        </button>
-
-                                        {!answer.trim() && !isAnalyzing && (
-                                            <button
-                                                onClick={() => setSkippingId(currentQuestion.id)}
-                                                className="text-xs font-medium text-[var(--muted)] hover:text-[var(--text)] transition-colors opacity-70 hover:opacity-100"
-                                            >
-                                                I can&apos;t recall this
-                                            </button>
+                                        {currentAssessment?.strengths?.length > 0 && (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                                                    <h5 className="text-[10px] font-bold text-emerald-600 uppercase mb-2">Strengths</h5>
+                                                    <ul className="space-y-1">
+                                                        {currentAssessment.strengths.map((s: string, i: number) => (
+                                                            <li key={i} className="text-xs flex items-center gap-2">
+                                                                <div className="w-1 h-1 rounded-full bg-emerald-500" /> {s}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                                {currentAssessment?.gaps?.length > 0 && (
+                                                    <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                                                        <h5 className="text-[10px] font-bold text-amber-600 uppercase mb-2">Areas to refine</h5>
+                                                        <ul className="space-y-1">
+                                                            {currentAssessment.gaps.map((g: string, i: number) => (
+                                                                <li key={i} className="text-xs flex items-center gap-2">
+                                                                    <div className="w-1 h-1 rounded-full bg-amber-500" /> {g}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
-                            )}
+
+                                <div className="flex justify-center">
+                                    <button
+                                        onClick={handleNext}
+                                        className="inline-flex items-center gap-3 px-10 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent)]/20 hover:-translate-y-1 transition-all"
+                                    >
+                                        {currentIndex === questions.length - 1 ? 'Finish Session' : 'Continue to Next Question \u2192'}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="w-full animate-slide-up" key={currentQuestion.id || currentIndex}>
+                                {isFirstSession && currentIndex === 0 && showGuidance1 && (
+                                    <div className="mb-8 p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm relative animate-fade-in group transition-all">
+                                        <button
+                                            onClick={dismissGuidance1}
+                                            className="absolute top-4 right-4 text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                        <div className="flex items-center gap-2 text-sm font-bold text-[var(--accent)] mb-3">
+                                            <Zap size={16} /> Answer in your own words
+                                        </div>
+                                        <p className="text-[var(--text)] text-sm leading-relaxed max-w-[90%]">
+                                            There&apos;s no right or wrong format. Write as much or as
+                                            little as you naturally would. The quality of your feedback
+                                            depends on the quality of your answer.
+                                        </p>
+                                    </div>
+                                )}
+
+                                <div className="group relative inline-block mb-6">
+                                    <div
+                                        className={`inline-flex items-center px-3 py-1 rounded text-[11px] font-bold uppercase tracking-wider ${getTypeColor(currentQuestion.type)} cursor-help`}
+                                    >
+                                        {currentQuestion.type}
+                                    </div>
+                                    <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-xl text-[10px] text-[var(--muted)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                        {currentQuestion.type === 'RETRIEVAL' && 'Tests your ability to recall information directly from the source.'}
+                                        {currentQuestion.type === 'APPLICATION' && 'Tests if you can apply the concept to a new scenario.'}
+                                        {currentQuestion.type === 'MISCONCEPTION PROBE' && 'Targets common misunderstandings to ensure deep clarity.'}
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col gap-6 mb-8">
+                                    <h1 className="text-3xl md:text-4xl font-display leading-[1.3] text-[var(--text)]">
+                                        {currentQuestion.text}
+                                    </h1>
+                                    <VoiceSynthesis text={currentQuestion.text} />
+                                </div>
+
+                                {explanations[currentQuestion.id]?.text ? (
+                                    <div className="mb-8 p-5 rounded-2xl bg-[var(--accent-light)] border border-[var(--accent)]/20 animate-fade-in relative">
+                                        <span className="absolute -top-3 left-6 px-3 py-0.5 bg-[var(--bg)] border border-[var(--accent)]/20 text-[11px] font-bold tracking-wider uppercase text-[var(--accent)] rounded-full">
+                                            Concept Hint
+                                        </span>
+                                        <div className="space-y-4">
+                                            <div className="text-[var(--text)] leading-relaxed text-[15px]">
+                                                {explanations[currentQuestion.id]
+                                                    .text!.split('\n')
+                                                    .map((line, i) => (
+                                                        <span key={i}>
+                                                            {line}
+                                                            {i <
+                                                                explanations[currentQuestion.id].text!.split(
+                                                                    '\n'
+                                                                ).length -
+                                                                1 && <br />}
+                                                        </span>
+                                                    ))}
+                                            </div>
+                                            <VoiceSynthesis text={explanations[currentQuestion.id].text!} />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-8 flex justify-start">
+                                        <button
+                                            onClick={requestExplanation}
+                                            disabled={explanations[currentQuestion.id]?.requesting}
+                                            className="flex items-center gap-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--accent)] transition-colors disabled:opacity-50"
+                                        >
+                                            <span className="w-5 h-5 flex items-center justify-center rounded-full border border-current text-xs">
+                                                ?
+                                            </span>
+                                            {explanations[currentQuestion.id]?.requesting
+                                                ? 'Loading hint...'
+                                                : 'Explain this concept'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="space-y-6">
+                                    <textarea
+                                        value={answer}
+                                        onChange={(e) => setAnswer(e.target.value)}
+                                        disabled={isAnalyzing || skippingId === currentQuestion.id}
+                                        placeholder="Write your answer here — use your own words."
+                                        autoFocus
+                                        className="w-full min-h-[160px] p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-lg outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 transition-all resize-y shadow-sm disabled:opacity-50"
+                                    />
+
+                                    {answer.trim() && skippingId !== currentQuestion.id && (
+                                        <div ref={confidenceRef} className="space-y-3 animate-fade-in p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)] shadow-sm focus-within:ring-2 ring-[var(--accent)]/20">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-sm font-bold text-[var(--text)]">Confidence Level</label>
+                                                <span className="text-[10px] font-bold px-2 py-1 rounded bg-[var(--accent)] text-white uppercase tracking-wider">
+                                                    {confidenceScore === 1 ? 'Wild Guess' : 
+                                                     confidenceScore === 2 ? 'Unsure' : 
+                                                     confidenceScore === 3 ? 'Moderate' : 
+                                                     confidenceScore === 4 ? 'Confident' : 
+                                                     'Total Mastery'}
+                                                </span>
+                                            </div>
+                                            <input 
+                                                type="range" 
+                                                min="1" max="5" step="1" 
+                                                value={confidenceScore} 
+                                                onChange={(e) => setConfidenceScore(parseInt(e.target.value))} 
+                                                className="w-full accent-[var(--accent)] cursor-pointer h-2 bg-[var(--border)] rounded-lg appearance-none"
+                                                disabled={isAnalyzing}
+                                            />
+                                            <div className="flex justify-between text-[10px] text-[var(--muted)] font-bold uppercase tracking-widest px-1">
+                                                <span>Shaky</span>
+                                                <span>Solid</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {showGuidance2 &&
+                                        currentIndex === 0 &&
+                                        answer.length < 10 &&
+                                        skippingId !== currentQuestion.id && (
+                                            <div className="text-sm text-[var(--muted)] mt-3 animate-fade-in font-medium italic mb-2">
+                                                Even a partial answer helps. Write what you know.
+                                            </div>
+                                        )}
+
+                                    {skippingId === currentQuestion.id ? (
+                                        <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 animate-fade-in flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <p className="text-orange-900 text-sm font-medium">
+                                                Try writing anything, even partial — it helps Serify
+                                                understand where the gap is.
+                                            </p>
+                                            <div className="flex items-center gap-3 shrink-0">
+                                                <button
+                                                    onClick={() => setSkippingId(null)}
+                                                    className="px-4 py-2 text-sm font-bold text-orange-900 bg-orange-200/50 hover:bg-orange-200 rounded-lg transition-colors"
+                                                >
+                                                    Try Anyway
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSubmit(true)}
+                                                    className="px-4 py-2 text-sm font-medium text-orange-700 hover:text-orange-900 opacity-80 hover:opacity-100 transition-colors"
+                                                >
+                                                    Skip This One
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs text-[var(--muted)] font-bold uppercase tracking-widest">
+                                                {currentIndex + 1} / {questions.length}
+                                            </span>
+
+                                            <div className="flex items-center gap-4 flex-row-reverse">
+                                                <button
+                                                    onClick={() => handleSubmit(false)}
+                                                    disabled={!answer.trim() || isAnalyzing}
+                                                    className={`px-8 py-3.5 rounded-xl font-bold transition-all flex items-center gap-2 ${answer.trim() && !isAnalyzing ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:-translate-y-0.5' : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-50'}`}
+                                                >
+                                                    {isAnalyzing ? (
+                                                        <>
+                                                            <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                                                            Analyzing...
+                                                        </>
+                                                    ) : (
+                                                        <>Submit Answer & Review</>
+                                                    )}
+                                                </button>
+
+                                                {!answer.trim() && !isAnalyzing && (
+                                                    <button
+                                                        onClick={() => setSkippingId(currentQuestion.id)}
+                                                        className="text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors opacity-70 hover:opacity-100 uppercase tracking-widest"
+                                                    >
+                                                        I don&apos;t know
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                         </div>
                     </div>
-                </div>
-            </div>
 
             {isPaused && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">

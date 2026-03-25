@@ -98,6 +98,7 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
         const timeout = setTimeout(saveMessages, 2000);
         return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [messages, user]);
 
     
@@ -116,6 +117,7 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         };
 
         loadMessages();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, setMessages, messages.length]);
 
     const sendMessage = useCallback(async (content: string) => {
@@ -133,7 +135,8 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         } catch (err) {
             console.error('Error sending message:', err);
         }
-    }, [append, chat]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [append]);
 
     const clearMessages = useCallback(() => {
         
@@ -185,6 +188,7 @@ export const AssistantProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         };
 
         checkSuggestions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
     

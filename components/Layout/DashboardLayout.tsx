@@ -104,16 +104,21 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
     }, []);
 
     useEffect(() => {
-        if (!user || !token) {
+        if (!authLoading && !user && !token) {
             if (router.query.demo === 'true') return; 
-            if (!authLoading && !user && !router.pathname.startsWith('/auth') && router.pathname !== '/404') {
+            
+            // Only redirect if we are not on a public page and not currently in an auth flow
+            const isPublicPage = router.pathname.startsWith('/auth') || router.pathname === '/404' || router.pathname === '/privacy' || router.pathname === '/terms';
+            
+            if (!isPublicPage && router.pathname !== '/') {
+                console.log('[DashboardLayout] No user/token found, redirecting to home...');
                 router.push('/');
             }
             return;
         }
 
         
-        if (user.onboardingCompleted === false && !router.pathname.startsWith('/onboarding')) {
+        if (user?.onboardingCompleted === false && !router.pathname.startsWith('/onboarding')) {
             router.push('/onboarding');
         }
 
@@ -139,16 +144,16 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
     const navItems = useMemo(() => [
         { href: '/', label: 'Home', icon: <Home size={20} /> },
-        { href: '/analyze', label: 'New Session', icon: <PlusCircle size={20} /> },
+        { href: '/analyze', label: 'Diagnose', icon: <PlusCircle size={20} /> },
         {
             href: '/flow',
-            label: 'Learn Mode',
+            label: 'Flow',
             icon: <Zap size={20} className="text-purple-500" />
         },
-        { href: '/practice', label: 'Practice', icon: <Brain size={20} /> },
+        { href: '/practice', label: 'Quick Test', icon: <Brain size={20} /> },
         {
             href: '/learn',
-            label: 'Roadmaps',
+            label: 'Roadmap',
             icon: <LibraryBig size={20} className="text-[var(--accent)]" /> 
         },
         { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
@@ -324,18 +329,18 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                                     <p className="text-[9px] text-[var(--muted)] truncate uppercase font-bold tracking-wider">
                                         {user?.subscriptionTier === 'free' ? 'Free' : user?.subscriptionTier}
                                     </p>
-                                    {user.plan !== 'proplus' && (
+                                    {user?.plan !== 'proplus' && (
                                         <span className="text-[9px] font-bold text-[var(--muted)]">
-                                            {user.tokensUsed} / {user.monthlyLimit}
+                                            {user?.tokensUsed} / {user?.monthlyLimit}
                                         </span>
                                     )}
                                 </div>
                                 
-                                {user.plan !== 'proplus' && (
+                                {user?.plan !== 'proplus' && (
                                     <div className="h-1 w-full bg-[var(--border)] rounded-full mt-1 overflow-hidden">
                                         <div 
-                                            className={`h-full transition-all duration-700 ${user.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'}`}
-                                            style={{ width: `${Math.min(user.percentUsed, 100)}%` }}
+                                            className={`h-full transition-all duration-700 ${user?.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'}`}
+                                            style={{ width: `${Math.min(user?.percentUsed || 0, 100)}%` }}
                                         />
                                     </div>
                                 )}
@@ -448,8 +453,8 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
                         {user && (
                             <div className="pt-6 border-t border-[var(--border)]">
-                                <div className={`p-5 rounded-2xl border ${user.plan === 'proplus' ? 'bg-[var(--accent)]/5 border-[var(--accent)]/20' : 'bg-[var(--surface)] border-[var(--border)]'} shadow-sm`}>
-                                    {user.plan === 'proplus' ? (
+                                <div className={`p-5 rounded-2xl border ${user?.plan === 'proplus' ? 'bg-[var(--accent)]/5 border-[var(--accent)]/20' : 'bg-[var(--surface)] border-[var(--border)]'} shadow-sm`}>
+                                    {user?.plan === 'proplus' ? (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-2">
                                                 <Sparkles size={16} className="text-[var(--accent)]" />
@@ -466,17 +471,17 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider italic">Usage</span>
-                                                <span className="text-sm font-bold text-[var(--text)]">{user.tokensUsed} / {user.monthlyLimit}</span>
+                                                <span className="text-sm font-bold text-[var(--text)]">{user?.tokensUsed} / {user?.monthlyLimit}</span>
                                             </div>
                                             <div className="h-2.5 bg-[var(--border)] rounded-full overflow-hidden shadow-inner relative">
                                                 <div
-                                                    className={`h-full transition-all duration-700 rounded-full ${user.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'
+                                                    className={`h-full transition-all duration-700 rounded-full ${user?.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'
                                                         }`}
-                                                    style={{ width: `${Math.min(user.percentUsed, 100)}%` }}
+                                                    style={{ width: `${Math.min(user?.percentUsed || 0, 100)}%` }}
                                                 />
                                             </div>
-                                            <Link href="/settings/billing" className={`block text-center py-2 rounded-xl border font-bold text-xs transition-all ${user.percentUsed >= 100 ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--accent)]'}`}>
-                                                {user.percentUsed >= 100 ? 'Limit reached - Upgrade' : 'Manage Subscription →'}
+                                            <Link href="/settings/billing" className={`block text-center py-2 rounded-xl border font-bold text-xs transition-all ${user?.percentUsed >= 100 ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--accent)]'}`}>
+                                                {user?.percentUsed >= 100 ? 'Limit reached - Upgrade' : 'Manage Subscription →'}
                                             </Link>
                                         </div>
                                     )}

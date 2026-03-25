@@ -44,18 +44,6 @@ export function calculateMasteryState(history: MasteryHistoryEntry[]): MasterySt
         return 'solid';
     }
 
-    if (calcState === 'solid' && history.filter((h) => h.state === 'solid').length < 2) {
-        return 'developing';
-    }
-
-    const lastThree = history.slice(-3);
-    if (lastThree.length === 3 && lastThree.every((h) => h.state === 'mastered')) {
-        return 'mastered';
-    }
-    if (lastThree.length === 3 && lastThree.every((h) => h.state === 'solid')) {
-        return 'solid';
-    }
-
     return calcState;
 }
 

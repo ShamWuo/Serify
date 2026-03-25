@@ -28,7 +28,7 @@ const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
                         : 'text-[var(--muted)] hover:text-[var(--text)]'
                 }`}
             >
-                Learn
+                Roadmap
             </button>
         </div>
     );

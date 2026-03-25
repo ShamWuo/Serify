@@ -108,22 +108,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             } catch (err: any) {
                 console.error('YouTube transcript error:', err);
                 const msg = err.message || '';
+                let errorResponse = 'Could not extract transcript from this video. Please ensure the URL is correct.';
+                
                 if (msg.includes('Transcript is disabled') || msg.includes('No transcript found')) {
-                    throw new Error('This video has no available transcript. Please try a different video or paste the content manually.');
+                    errorResponse = 'This video has no available transcript. Please try a different video or paste the content manually.';
                 }
-                throw new Error('Could not extract transcript from this video. Please ensure the URL is correct.');
+                
+                return res.status(400).json({
+                    error: 'transcript_unavailable',
+                    message: errorResponse
+                });
             }
         }
 
         
-        if (!title || title === 'New Session' || title === 'pasted notes' || title.length < 5) {
+        if (!title || title === 'New Session' || title === 'pasted notes' || title.length < 5 || title.toLowerCase().includes('no concepts')) {
             try {
                 console.log('Generating session title...');
                 const contentForTitle = processedTranscript || content || url;
                 title = await generateSessionTitle(contentForTitle || '', contentType);
                 console.log('Generated title:', title);
+
+                // If the generated title still looks like an error message, use a fallback
+                if (title.toLowerCase().includes('no concepts') || title.toLowerCase().includes('failed')) {
+                    throw new Error('AI returned error-like title');
+                }
             } catch (e) {
-                title = title || 'Untitled Session';
+                // Better fallback based on source
+                if (contentType === 'youtube') title = 'YouTube Session';
+                else if (contentType === 'pdf') title = 'PDF Session';
+                else if (contentType === 'article') title = 'Article Review';
+                else title = 'Study Session';
             }
         }
 

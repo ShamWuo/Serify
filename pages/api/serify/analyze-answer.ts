@@ -94,55 +94,7 @@ export default async function handler(req: Request) {
                 })
             }),
             onFinish: async ({ object }) => {
-                if (object?.assessment) {
-                    const supabase = createClient(
-                        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                        process.env.SUPABASE_SERVICE_ROLE_KEY!
-                    );
-
-                    let parentNodeId: string | undefined = undefined;
-
-                    // Improved sub-concept detection using the standardized relationships object
-                    const isSub = concept.relationships?.isSub === true;
-                    const parentName = concept.relationships?.parentName;
-
-                    if (isSub && parentName) {
-                        const parentNode = await findOrCreateConceptNode(
-                            supabase as any,
-                            userId,
-                            parentName,
-                            question.session_id,
-                            `Mastery Pillar for ${parentName}.`
-                        );
-                        if (parentNode) {
-                            parentNodeId = parentNode.id;
-                        }
-                    }
-
-                    const node = await findOrCreateConceptNode(
-                        supabase as any,
-                        userId,
-                        concept.name,
-                        question.session_id,
-                        concept.definition || '',
-                        parentNodeId
-                    );
-
-                    if (node) {
-                        let finalState: MasteryState = object.assessment
-                            .mastery_state as MasteryState;
-                        if (object.assessment.misconception) finalState = 'revisit';
-
-                        await updateConceptMastery(
-                            supabase as any,
-                            userId,
-                            node.id,
-                            finalState,
-                            'session',
-                            question.session_id
-                        );
-                    }
-                }
+                // Vault updates moved to analyze.ts (batch) to prevent race conditions during streaming
             }
         });
 

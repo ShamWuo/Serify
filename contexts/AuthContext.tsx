@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchProfileAndUsage = async (authUser: User, sessionToken?: string): Promise<UserProfile | null> => {
+    const fetchProfileAndUsage = useCallback(async (authUser: User, sessionToken?: string): Promise<UserProfile | null> => {
         try {
             
             const profilePromise = supabase
@@ -136,9 +136,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 percentUsed: 0,
             };
         }
-    };
+    }, []);
 
-    const handleAuthChange = async (event: string, session: Session | null) => {
+    const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
         try {
             console.log(`[AuthContext] handleAuthChange event: ${event}`);
             if (session?.user) {
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             setLoading(false);
         }
-    };
+    }, [fetchProfileAndUsage]);
 
     useEffect(() => {
         let mounted = true;
@@ -171,10 +171,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Safety timeout to prevent infinite loading if Supabase hangs
         const safetyTimeout = setTimeout(() => {
             if (mounted && loading) {
-                console.warn('[AuthContext] Safety timeout triggered after 4s (Aggressive). Forcing loading false.');
+                console.warn('[AuthContext] Safety timeout triggered after 10s. Forcing loading false as fallback.');
                 setLoading(false);
             }
-        }, 4000);
+        }, 10000);
 
         async function loadInitialSession() {
             try {
@@ -208,7 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             subscription.unsubscribe();
             clearTimeout(safetyTimeout);
         };
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [handleAuthChange]);
 
     const login = async (email: string, password: string): Promise<UserProfile> => {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });

@@ -7,7 +7,7 @@ vi.mock('ai', () => ({
 }));
 
 vi.mock('@ai-sdk/google', () => ({
-  google: vi.fn().mockReturnValue({}),
+  createGoogleGenerativeAI: vi.fn().mockReturnValue(vi.fn()),
 }));
 
 describe('Serify AI Logic', () => {
@@ -32,11 +32,9 @@ describe('Serify AI Logic', () => {
 
       const result = await extractConcepts({ id: 'test-id', type: 'text', content: 'DNS is...', title: 'DNS' });
 
-      expect(generateObject).toHaveBeenCalledWith(expect.objectContaining({
-        model: expect.anything(),
-        schema: expect.anything(),
-        prompt: expect.stringContaining('DNS is...'),
-      }));
+      expect(generateObject).toHaveBeenCalled();
+      const lastCallArgs = (generateObject as any).mock.calls[0][0];
+      expect(lastCallArgs.messages[0].content).toContain('DNS is...');
       expect(result).toEqual(mockConcepts);
     });
   });

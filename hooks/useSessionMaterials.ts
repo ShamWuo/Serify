@@ -76,7 +76,7 @@ export function useSessionMaterials(sessionId: string | null) {
         } finally {
             setIsLoading(false);
         }
-    }, [sessionId]);
+    }, [sessionId, token]);
 
     useEffect(() => {
         fetchMaterials();

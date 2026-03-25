@@ -81,7 +81,7 @@ describe('Usage System', () => {
       (supabaseAdmin?.from as any).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
+            maybeSingle: vi.fn().mockResolvedValue({
               data: { plan: 'proplus', tokens_used: 100, monthly_limit: 500 },
               error: null,
             }),
@@ -99,7 +99,7 @@ describe('Usage System', () => {
       (supabaseAdmin?.from as any).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
+            maybeSingle: vi.fn().mockResolvedValue({
               data: { plan: 'free', tokens_used: 10, monthly_limit: 50 },
               error: null,
             }),
@@ -139,7 +139,7 @@ describe('Usage System', () => {
       (supabaseAdmin?.from as any).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
+            maybeSingle: vi.fn().mockResolvedValue({
               data: { plan: 'free', tokens_used: 50, monthly_limit: 50 },
               error: null,
             }),

@@ -24,7 +24,7 @@ export default function Settings() {
     const [aiTutorEnabled, setAiTutorEnabled] = useState(false);
 
     useEffect(() => {
-        if (user?.subscriptionTier === 'pro') {
+        if (user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'proplus') {
             setAiTutorEnabled(true);
         } else {
             setAiTutorEnabled(false);
@@ -101,18 +101,22 @@ export default function Settings() {
                     </h2>
                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] shadow-sm">
                         <div
-                            className="p-4 flex items-center justify-between hover:bg-black/5 cursor-default transition-all row-hover-accent"
+                            className={`p-4 flex items-center justify-between ${user?.subscriptionTier === 'proplus' ? 'hover:bg-[var(--accent)]/5 cursor-pointer' : 'cursor-default'} transition-all row-hover-accent`}
                         >
                             <div>
                                 <h3 className="font-bold flex items-center gap-3">
                                     <Layout size={18} className="text-[var(--accent)]" /> Default
                                     Learning Method
                                 </h3>
-                                <p className="text-sm text-[var(--muted)] mt-1 ml-7">
-                                    Standard Mode (Default)
+                                <p className="text-sm text-[var(--muted)] mt-1 ml-7 leading-relaxed">
+                                    Standard Mode (Balanced Analysis)
                                 </p>
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-black/5 px-2 py-1 rounded">Locked</span>
+                            {user?.subscriptionTier === 'proplus' ? (
+                                <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider bg-[var(--accent)]/10 px-2 py-1 rounded border border-[var(--accent)]/20">Active</span>
+                            ) : (
+                                <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-black/5 px-2 py-1 rounded">Locked</span>
+                            )}
                         </div>
 
                         <div className="p-4 flex items-center justify-between hover:bg-black/5 cursor-pointer transition-colors">
@@ -120,26 +124,26 @@ export default function Settings() {
                                 <h3 className="font-bold flex items-center gap-3 text-[var(--text)]">
                                     <Bot size={18} className="text-[var(--accent)]" /> AI Tutor &
                                     Guidance
-                                    {user?.subscriptionTier !== 'pro' && (
+                                    {(user?.subscriptionTier !== 'pro' && user?.subscriptionTier !== 'proplus') && (
                                         <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-bold uppercase tracking-tight ml-2">
                                             Pro
                                         </span>
                                     )}
                                 </h3>
                                 <p className="text-sm text-[var(--muted)] mt-1 ml-7 leading-relaxed max-w-md">
-                                    {user?.subscriptionTier === 'pro'
+                                    {(user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'proplus')
                                         ? 'Personalized AI coaching and active guidance enabled during sessions.'
                                         : 'Unlock personalized AI coaching and active-recall guidance with Serify Pro.'}
                                 </p>
                             </div>
                             <label
-                                className={`relative inline-flex items-center ${user?.subscriptionTier === 'pro' ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
+                                className={`relative inline-flex items-center ${(user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'proplus') ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}
                             >
                                 <input
                                     type="checkbox"
                                     className="sr-only peer"
-                                    disabled={user?.subscriptionTier !== 'pro'}
-                                    defaultChecked={user?.subscriptionTier === 'pro'}
+                                    disabled={user?.subscriptionTier !== 'pro' && user?.subscriptionTier !== 'proplus'}
+                                    defaultChecked={user?.subscriptionTier === 'pro' || user?.subscriptionTier === 'proplus'}
                                 />
                                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
                             </label>
@@ -189,10 +193,10 @@ export default function Settings() {
                                 </p>
                             </div>
                             <button
-                                onClick={() => (window.location.href = '/pricing')}
+                                onClick={() => (window.location.href = user?.plan === 'free' ? '/pricing' : '/settings/billing')}
                                 className="px-5 py-2.5 bg-gradient-to-r from-[var(--accent)] to-emerald-600 text-white rounded-xl text-sm font-bold hover:opacity-90 hover:shadow-lg hover:shadow-[var(--accent)]/20 hover:-translate-y-0.5 transition-all shrink-0 shadow-md shadow-[var(--accent)]/10"
                             >
-                                {user?.plan === 'pro' ? 'Manage Plan' : 'Upgrade to Pro'}
+                                {user?.plan === 'free' ? 'Upgrade to Pro' : 'Manage Plan'}
                             </button>
                         </div>
                         <Link

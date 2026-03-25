@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { getAllEnabledFlags } from '@/lib/flags';
 
@@ -32,7 +32,7 @@ export const FeatureFlagProvider: React.FC<{ children: React.ReactNode }> = ({ c
         loadFlags();
     }, [user?.id, user?.subscriptionTier]);
 
-    const isEnabled = (flagKey: string) => flags.includes(flagKey);
+    const isEnabled = useCallback((flagKey: string) => flags.includes(flagKey), [flags]);
 
     return (
         <FeatureFlagContext.Provider value={{ flags, isEnabled, isLoading }}>

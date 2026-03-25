@@ -37,10 +37,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
                             An unexpected error occurred. Refreshing the page usually fixes this.
                         </p>
                         <button
-                            onClick={() => window.location.reload()}
+                            onClick={() => window.location.href = '/'}
                             className="px-6 py-2.5 bg-white text-slate-900 rounded-lg font-medium hover:bg-slate-200 transition-colors"
                         >
-                            Reload Page
+                            Return to Home
                         </button>
                     </div>
                 </div>

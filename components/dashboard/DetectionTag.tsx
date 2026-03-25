@@ -20,12 +20,13 @@ const DetectionTag: React.FC<DetectionTagProps> = ({ type, onDismiss }) => {
     const { icon: Icon, label } = config[type];
 
     return (
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 animate-fade-in text-xs font-medium">
-            <Icon size={14} />
-            <span>{label}</span>
+        <div className="inline-flex items-center gap-2.5 px-4 py-1.5 bg-emerald-50 text-emerald-700 rounded-full border-2 border-emerald-500/20 animate-fade-in text-xs font-bold shadow-sm shadow-emerald-500/10 transition-all">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Icon size={14} className="stroke-[2.5px]" />
+            <span className="tracking-tight">{label} detected</span>
             <button 
                 onClick={onDismiss}
-                className="hover:bg-emerald-200/50 rounded-full p-0.5 transition-colors"
+                className="ml-1 hover:bg-emerald-200/50 rounded-full p-0.5 transition-colors"
                 aria-label="Dismiss"
             >
                 <X size={12} />

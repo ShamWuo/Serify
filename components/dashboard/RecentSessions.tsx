@@ -75,7 +75,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions }) => {
                             </div>
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center justify-between gap-4 mb-2.5">
-                                    <h4 className="text-[14px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors truncate">{session.title}</h4>
+                                    <h4 className="text-[14px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors truncate" title={session.title}>{session.title}</h4>
                                     <span className="text-[9px] font-black uppercase tracking-widest text-[var(--muted)]/50 whitespace-nowrap">{session.date}</span>
                                 </div>
                                 <div className="flex items-center gap-6">
