@@ -15,19 +15,19 @@ const TokenPill: React.FC<TokenPillProps> = ({ used, limit, className = "" }) =>
     let pulseClass = "";
 
     if (percent >= 90) {
-        colorClass = "text-orange-700";
-        iconClass = "text-orange-700";
+        colorClass = "text-red-600";
+        iconClass = "text-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)]";
         pulseClass = "animate-pulse";
     } else if (percent >= 70) {
-        colorClass = "text-amber-600";
-        iconClass = "text-amber-600";
+        colorClass = "text-orange-600";
+        iconClass = "text-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)]";
     }
 
     return (
-        <div className={`flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-full shadow-sm ${pulseClass} ${className}`}>
-            <Zap size={14} className={iconClass} fill={percent >= 70 ? "currentColor" : "none"} />
-            <span className={`text-xs font-bold ${colorClass}`}>
-                {limit - used} <span className="text-[var(--muted)]/60 font-medium">tokens left</span>
+        <div className={`flex items-center gap-2.5 px-4 py-2 bg-white border border-[var(--border)] rounded-2xl shadow-xl shadow-black/[0.02] ${pulseClass} ${className}`}>
+            <Zap size={14} strokeWidth={3} className={iconClass} fill={percent >= 70 ? "currentColor" : "none"} />
+            <span className={`text-[10px] font-black uppercase tracking-[0.2em] italic ${colorClass}`}>
+                {limit - used} <span className="text-[var(--muted)]/40 font-black not-italic ml-1">UNITS REMAINING</span>
             </span>
         </div>
     );

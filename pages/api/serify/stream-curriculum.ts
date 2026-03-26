@@ -40,7 +40,13 @@ const curriculumSchema = z.object({
         })
     ),
     recommended_start_index: z.number(),
-    scope_note: z.string().nullable()
+    scope_note: z.string().nullable(),
+    deadline: z.string().nullable().optional(),
+    schedule: z.array(z.object({
+        concept_id: z.string(),
+        date: z.string().describe('ISO date string (YYYY-MM-DD)'),
+        label: z.string().describe('Short label for the day (e.g., "Day 1: Foundations", "Review Session")')
+    })).nullable().optional()
 });
 
 type Curriculum = z.infer<typeof curriculumSchema>;
@@ -145,6 +151,8 @@ RULES:
 - Each concept: "id", "name", "definition", "difficulty" ("simple"|"moderate"|"complex"), "estimatedMinutes" (number), "isPrerequisite", "prerequisiteFor" (array), "alreadyInVault", "vaultMasteryState" (null or string), "whyIncluded", "misconceptionRisk" ("low"|"medium"|"high"), "orderIndex" (number).
 - Order concepts from foundational to advanced. For narrow topics use one unit (3-7 concepts); for broad topics use 3-5 units. Use a short slug for concept ids like "related-rates" or "derivatives-intro".
 - CRITICAL: Respect the user's prior knowledge. If they say they know something, skip it or mention it only as a brief reference.
+- SCHEDULE: If a TARGET COMPLETION DATE is provided, you MUST include a "schedule" array. Distribute the concepts across the available time (starting from today, which is ${new Date().toISOString().split('T')[0]}) fairly, allowing time for reviews. If no date is provided, "schedule" can be null.
+- "deadline": Set this to the TARGET COMPLETION DATE string if provided, otherwise null.
 
 Output the JSON object now:`;
 
@@ -247,6 +255,14 @@ Output the JSON object now:`;
                 }
             });
         });
+
+        if (object.schedule && Array.isArray(object.schedule)) {
+            object.schedule.forEach((item: any) => {
+                if (idMap.has(item.concept_id)) {
+                    item.concept_id = idMap.get(item.concept_id)!;
+                }
+            });
+        }
 
         const body = JSON.stringify(object);
         return new Response(body, {

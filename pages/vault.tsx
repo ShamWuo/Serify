@@ -41,6 +41,14 @@ const MASTERY_CONFIG: Record<MasteryState, { label: string; color: string; bg: s
     revisit: { label: 'Revisit', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0 } 
 };
 
+const MASTERY_DESCRIPTIONS: Record<MasteryState, string> = {
+    mastered: 'Concept deeply understood and correctly applied in multiple contexts.',
+    solid: 'High accuracy, low friction recall.',
+    developing: 'Basic understanding, needs reinforcement.',
+    shaky: 'Misconceptions detected or failed recall.',
+    revisit: 'Not seen for a while, retention at risk.'
+};
+
 const DEFAULT_MASTERY = { label: 'Not Studied', color: 'text-[var(--muted)]', bg: 'bg-[var(--border)]', dot: 'bg-[var(--border)]', weight: -1 };
 
 type Tab = 'all' | 'needs_work' | 'solid';
@@ -53,6 +61,18 @@ function MasteryDot({ state, size = 10, className = '' }: { state: MasteryState 
             className={`inline-block rounded-full shrink-0 ${cfg.dot} ${className}`}
             style={{ width: size, height: size }}
         />
+    );
+}
+
+function Tooltip({ content, children }: { content: string; children: React.ReactNode }) {
+    return (
+        <div className="group relative flex items-center">
+            {children}
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-[var(--text)] text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl border border-white/10 z-[200]">
+                {content}
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-[var(--text)]" />
+            </div>
+        </div>
     );
 }
 
@@ -74,6 +94,7 @@ export default function VaultPage() {
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [hierarchyMode, setHierarchyMode] = useState<'hierarchical' | 'flat'>('hierarchical');
+    const [showOnlyShaky, setShowOnlyShaky] = useState(false);
 
     
     const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
@@ -382,6 +403,9 @@ export default function VaultPage() {
                 return selectedSources.some(s => sources.includes(s as any));
             });
         }
+        if (showOnlyShaky) {
+            result = result.filter(n => n.current_mastery === 'shaky' || n.current_mastery === 'revisit');
+        }
 
         
         if (search.trim()) {
@@ -399,7 +423,7 @@ export default function VaultPage() {
         }
 
         return result;
-    }, [nodes, categories, search, selectedMasteries, selectedSources]);
+    }, [nodes, categories, search, selectedMasteries, selectedSources, showOnlyShaky]);
 
     
     const hierarchy = useMemo(() => {
@@ -559,6 +583,18 @@ export default function VaultPage() {
         });
     };
 
+    const collapseAll = () => {
+        const catIds = categories.map(c => c.id);
+        const parentIds = nodes.filter(n => !n.is_sub_concept).map(n => n.id);
+        setCollapsedCategories(new Set(catIds));
+        setCollapsedParents(new Set(parentIds));
+    };
+
+    const expandAll = () => {
+        setCollapsedCategories(new Set());
+        setCollapsedParents(new Set());
+    };
+
     const renderParentNode = ({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
         const pCollapsed = search ? false : collapsedParents.has(parent.id);
         return (
@@ -613,9 +649,11 @@ export default function VaultPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${MASTERY_CONFIG[aggregateMastery].bg} ${MASTERY_CONFIG[aggregateMastery].color} border-current`}>
-                            {MASTERY_CONFIG[aggregateMastery].label}
-                        </span>
+                        <Tooltip content={MASTERY_DESCRIPTIONS[aggregateMastery]}>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${MASTERY_CONFIG[aggregateMastery].bg} ${MASTERY_CONFIG[aggregateMastery].color} border-current cursor-help`}>
+                                {MASTERY_CONFIG[aggregateMastery].label}
+                            </span>
+                        </Tooltip>
                         <div className="relative" onClick={(e) => e.stopPropagation()}>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === parent.id ? null : parent.id); }}
@@ -674,7 +712,9 @@ export default function VaultPage() {
                                 >
                                     {selectedNodeIds.has(sub.id) && <Check size={10} className="text-white" strokeWidth={3} />}
                                 </div>
-                                <MasteryDot state={sub.current_mastery} size={8} className="mr-2.5" />
+                                <Tooltip content={MASTERY_DESCRIPTIONS[sub.current_mastery as MasteryState] || 'Not studied yet'}>
+                                    <MasteryDot state={sub.current_mastery} size={8} className="mr-2.5 cursor-help" />
+                                </Tooltip>
                                 <span className="text-sm text-[var(--text)] truncate flex-1">{sub.display_name}</span>
                                 <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
                                     <button
@@ -778,9 +818,15 @@ export default function VaultPage() {
                 {}
                 <div className="flex items-start justify-between gap-4 mb-8">
                     <div>
-                        <h1 className="text-3xl font-display text-[var(--text)]">Concept Vault</h1>
+                        <div className="flex items-center gap-3 mb-1">
+                            <h1 className="text-3xl font-display text-[var(--text)]">Concept Vault</h1>
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 animate-pulse-subtle">
+                                <Zap size={10} className="text-[var(--accent)]" />
+                                <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-tight">Quick Start</span>
+                            </div>
+                        </div>
                         <p className="text-[var(--muted)] text-sm mt-1">
-                            Your organized library of mastered and developing concepts.
+                            Hover over mastery dots to see definitions. Drag and drop concepts to organize them into folders.
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
@@ -985,7 +1031,7 @@ export default function VaultPage() {
                                     const isCollapsed = search ? false : collapsedCategories.has(category.id);
                                     return (
                                         <div key={category.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm">
-                                            {}
+                                            {/* Category Header */}
                                             <div
                                                 onClick={() => toggleCategory(category.id)}
                                                 onDragOver={(e) => handleDragOver(e, category.id)}
@@ -1033,176 +1079,26 @@ export default function VaultPage() {
                                                 </div>
                                             </div>
 
-                                            {}
+                                            {/* Sub-node List (Hierarchical) */}
                                             {!isCollapsed && (
                                                 <div
                                                     onDragOver={(e) => handleDragOver(e, category.id)}
                                                     onDragLeave={handleDragLeave}
                                                     onDrop={(e) => handleDrop(e, category.id, 'category')}
-                                                    className={`border-t border-[var(--border)] bg-[#fafafa] dark:bg-[#0a0a0a] min-h-[40px] transition-colors ${dropTargetId === category.id ? 'bg-[var(--accent)]/5' : ''}`}
+                                                    className={`border-t border-[var(--border)] bg-[#fafafa] dark:bg-[#0a0a0a] min-h-[40px] transition-colors p-4 ${dropTargetId === category.id ? 'bg-[var(--accent)]/5' : ''}`}
                                                 >
-                                                    {parentGroups.map(({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
-                                                        const pCollapsed = search ? false : collapsedParents.has(parent.id);
-                                                        return (
-                                                            <div key={parent.id} className="border-b border-[var(--border)] last:border-0 relative">
-                                                                {}
-                                                                <div
-                                                                    onClick={(e) => toggleParent(parent.id, e)}
-                                                                    draggable
-                                                                    onDragStart={(e) => handleDragStart(e, parent.id)}
-                                                                    onDragEnd={handleDragEnd}
-                                                                    onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, parent.id); }}
-                                                                    onDragLeave={handleDragLeave}
-                                                                    onDrop={(e) => { e.stopPropagation(); handleDrop(e, parent.id, 'concept'); }}
-                                                                    className={`flex items-center pl-10 pr-5 py-3.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
-                                                                >
-                                                                    <div
-                                                                        onClick={(e) => {
-                                                                            const allIds = [parent.id, ...subs.map((s) => s.id)];
-                                                                            toggleSelection(allIds, e);
-                                                                        }}
-                                                                        className={`w-4 h-4 rounded mt-0.5 border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors ${[parent.id, ...subs.map((s) => s.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`}
-                                                                    >
-                                                                        {[parent.id, ...subs.map((s) => s.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
-                                                                    </div>
-
-                                                                    <div className="flex-1 min-w-0 pr-4">
-                                                                        <div className="flex items-center gap-2">
-                                                                            {subs.length > 0 && (
-                                                                                <div className="shrink-0 text-[var(--muted)] opacity-50 group-hover:opacity-100 transition-opacity">
-                                                                                    {pCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                                                                                </div>
-                                                                            )}
-                                                                            <span className="font-semibold text-[15px] text-[var(--text)] truncate">
-                                                                                {parent.display_name}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="flex items-center gap-2 mr-2">
-                                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${MASTERY_CONFIG[aggregateMastery].bg} ${MASTERY_CONFIG[aggregateMastery].color} border-current`}>
-                                                                                {MASTERY_CONFIG[aggregateMastery].label}
-                                                                            </span>
-                                                                            <div className="flex items-center">
-                                                                                {allMasteries.slice(0, 5).map((m: any, i: number) => (
-                                                                                    <MasteryDot key={i} state={m} size={10} className="border-2 border-[var(--surface)] relative -ml-1 first:ml-0" />
-                                                                                ))}
-                                                                                {allMasteries.length > 5 && (
-                                                                                    <span className="text-[10px] text-[var(--muted)] font-bold ml-1">+{allMasteries.length - 5}</span>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                        {needsWork > 0 && (
-                                                                            <span className="text-[10px] font-bold text-[#B8860B] bg-[#B8860B]/10 px-2 py-0.5 rounded-md border border-[#B8860B]/20">
-                                                                                {needsWork} shaky
-                                                                            </span>
-                                                                        )}
-                                                                        <Link
-                                                                            href={`/vault/drill?parent=${parent.id}`}
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                            className="opacity-0 group-hover:opacity-100 flex h-7 px-2.5 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] text-[11px] font-bold items-center gap-1.5 hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all shadow-sm"
-                                                                        >
-                                                                            <Brain size={12} />
-                                                                            Study
-                                                                        </Link>
-                                                                        <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                                                            <button
-                                                                                onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === parent.id ? null : parent.id); }}
-                                                                                className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--surface)] border border-transparent hover:border-[var(--border)] transition-all text-[var(--muted)] hover:text-[var(--text)]"
-                                                                            >
-                                                                                <MoreHorizontal size={16} />
-                                                                            </button>
-                                                                            {activeMenuId === parent.id && (
-                                                                                <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
-                                                                                    <button onClick={() => { setRenamingNode(parent); setNewName(parent.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                        <Edit2 size={14} className="text-[var(--muted)]" /> Rename
-                                                                                    </button>
-                                                                                    <button onClick={() => { setMovingNode(parent); setSelectedMoveCatId(parent.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                        <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
-                                                                                    </button>
-                                                                                    <button onClick={() => { setMergingNode(parent); setSelectedMergeTargetId(''); setMergeSearch(''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                        <GitMerge size={14} className="text-[var(--muted)]" /> Merge Into...
-                                                                                    </button>
-                                                                                    <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                                                                    <button onClick={() => handleUpdateNode(parent.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
-                                                                                        <Archive size={14} /> Archive
-                                                                                    </button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-
-                                                                {}
-                                                                {!pCollapsed && subs.length > 0 && (
-                                                                    <div className="pl-16 relative py-1 border-t border-[var(--border)] bg-[var(--surface)]">
-                                                                        <div className="absolute left-[54px] top-0 bottom-4 w-px bg-[var(--border)]" />
-                                                                        {subs.map((sub: KnowledgeNode) => (
-                                                                            <div
-                                                                                key={sub.id}
-                                                                                onClick={(e) => toggleSelection([sub.id], e)}
-                                                                                draggable
-                                                                                onDragStart={(e) => handleDragStart(e, sub.id)}
-                                                                                onDragEnd={handleDragEnd}
-                                                                                onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, sub.id); }}
-                                                                                onDragLeave={handleDragLeave}
-                                                                                onDrop={(e) => { e.stopPropagation(); handleDrop(e, sub.id, 'concept'); }}
-                                                                                className={`relative flex items-center pr-5 py-2 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group ${draggedNodeId === sub.id ? 'opacity-40' : ''} ${dropTargetId === sub.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
-                                                                            >
-                                                                                <div className="absolute left-[-22px] top-1/2 w-4 h-px bg-[var(--border)]" />
-                                                                                <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors z-10 ${selectedNodeIds.has(sub.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--bg)] group-hover:border-[var(--accent)]'}`} onClick={(e) => toggleSelection([sub.id], e)}>
-                                                                                    {selectedNodeIds.has(sub.id) && <Check size={12} className="text-white" strokeWidth={3} />}
-                                                                                </div>
-                                                                                <div className="w-2 h-2 rounded-full mr-2 shrink-0">
-                                                                                    <MasteryDot state={sub.current_mastery} size={8} />
-                                                                                </div>
-                                                                                <span className="text-sm font-medium text-[var(--muted)] group-hover:text-[var(--text)] transition-colors truncate">
-                                                                                    {sub.display_name}
-                                                                                </span>
-                                                                                <span className="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                                    <span className="text-[11px] text-[var(--accent)] font-medium">View →</span>
-                                                                                    <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                                                                        <button
-                                                                                            onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === sub.id ? null : sub.id); }}
-                                                                                            className="flex items-center justify-center w-6 h-6 rounded-lg hover:bg-[var(--border)] transition-colors text-[var(--muted)] hover:text-[var(--text)]"
-                                                                                        >
-                                                                                            <MoreHorizontal size={14} />
-                                                                                        </button>
-                                                                                        {activeMenuId === sub.id && (
-                                                                                            <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
-                                                                                                <button onClick={() => { setRenamingNode(sub); setNewName(sub.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                                    <Edit2 size={14} className="text-[var(--muted)]" /> Rename
-                                                                                                </button>
-                                                                                                <button onClick={() => { setMovingNode(sub); setSelectedMoveCatId(sub.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                                    <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
-                                                                                                </button>
-                                                                                                <button onClick={() => { setMergingNode(sub); setSelectedMergeTargetId(''); setMergeSearch(''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                                    <GitMerge size={14} className="text-[var(--muted)]" /> Merge Into...
-                                                                                                </button>
-                                                                                                <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                                                                                <button onClick={() => handleUpdateNode(sub.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
-                                                                                                    <Archive size={14} /> Archive
-                                                                                                </button>
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </span>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                        {parentGroups.map((group: any) => renderParentNode(group))}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
                                     );
                                 })}
 
+
                                 {}
-                                {(hierarchy?.uncategorizedGroups.length > 0 || hierarchy?.orphans.length > 0) && (
+                                {(hierarchy?.uncategorizedGroups.length > 0 || hierarchy?.orphans.length > 0 || (hierarchy?.subjectGroups && hierarchy.subjectGroups.length > 0)) && (
                                     <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm">
                                         <div
                                             onDragOver={(e) => handleDragOver(e, 'other')}
@@ -1212,10 +1108,10 @@ export default function VaultPage() {
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    onClick={(e) => toggleSelection([...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)], e)}
-                                                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${[...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].length > 0 && [...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]'}`}
+                                                    onClick={(e) => { e.stopPropagation(); toggleSelection([...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)], e); }}
+                                                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${[...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].length > 0 && [...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]'}`}
                                                 >
-                                                    {[...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].length > 0 && [...hierarchy?.uncategorizedGroups.flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...hierarchy?.orphans.map(o => o.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
+                                                    {[...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].length > 0 && [...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
                                                 </div>
                                                 <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
                                                     <Layers size={14} />
@@ -1223,253 +1119,52 @@ export default function VaultPage() {
                                                 <h2 className="text-lg font-bold text-[var(--text)]">General Concepts</h2>
                                             </div>
                                         </div>
-                                        <div
-                                            onDragOver={(e) => handleDragOver(e, 'other')}
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={(e) => handleDrop(e, 'other', 'category')}
-                                            className={`divide-y divide-[var(--border)] min-h-[40px] transition-colors ${dropTargetId === 'other' ? 'bg-[var(--accent)]/5' : ''}`}
-                                        >
-                                            {hierarchy?.uncategorizedGroups.map(({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
-                                                const pCollapsed = search ? false : collapsedParents.has(parent.id);
-                                                return (
-                                                    <div key={parent.id} className="border-b border-[var(--border)] last:border-0 relative">
-                                                        {}
-                                                        <div
-                                                            onClick={(e) => toggleParent(parent.id, e)}
-                                                            draggable
-                                                            onDragStart={(e) => handleDragStart(e, parent.id)}
-                                                            onDragEnd={handleDragEnd}
-                                                            onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, parent.id); }}
-                                                            onDragLeave={handleDragLeave}
-                                                            onDrop={(e) => { e.stopPropagation(); handleDrop(e, parent.id, 'concept'); }}
-                                                            className={`flex items-center pl-10 pr-5 py-3.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
-                                                        >
-                                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                                                                <div
-                                                                    onClick={(e) => toggleSelection([parent.id, ...subs.map(s => s.id)], e)}
-                                                                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 cursor-pointer transition-colors z-10 ${[parent.id, ...subs.map(s => s.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`}
-                                                                >
-                                                                    {[parent.id, ...subs.map(s => s.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-3 min-w-0 flex-1 ml-2">
-                                                                <div className="relative flex items-center">
-                                                                    <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:border-[var(--accent)] transition-colors">
-                                                                        <Box size={14} />
-                                                                    </div>
-                                                                    {subs.length > 0 && (
-                                                                        <div className="absolute -left-1.5 -top-1.5 w-4 h-4 rounded-full bg-[var(--accent)] text-white text-[9px] font-bold flex items-center justify-center shadow-sm border border-[var(--surface)]">
-                                                                            {subs.length}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex-1 min-w-0 flex items-center gap-2">
-                                                                    {subs.length > 0 && (
-                                                                        <div className="shrink-0 text-[var(--muted)] opacity-50 group-hover:opacity-100 transition-opacity">
-                                                                            {pCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                                                                        </div>
-                                                                    )}
-                                                                    <span className="font-semibold text-[15px] text-[var(--text)] truncate">
-                                                                        {parent.display_name}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="flex items-center gap-2 mr-2">
-                                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${MASTERY_CONFIG[aggregateMastery].bg} ${MASTERY_CONFIG[aggregateMastery].color} border-current`}>
-                                                                        {MASTERY_CONFIG[aggregateMastery].label}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                                                    <button
-                                                                        onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === parent.id ? null : parent.id); }}
-                                                                        className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--surface)] border border-transparent hover:border-[var(--border)] transition-all text-[var(--muted)] hover:text-[var(--text)]"
-                                                                    >
-                                                                        <MoreHorizontal size={16} />
-                                                                    </button>
-                                                                    {activeMenuId === parent.id && (
-                                                                        <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
-                                                                            <button onClick={() => { setRenamingNode(parent); setNewName(parent.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                <Edit2 size={14} className="text-[var(--muted)]" /> Rename
-                                                                            </button>
-                                                                            <button onClick={() => { setMovingNode(parent); setSelectedMoveCatId(parent.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
-                                                                            </button>
-                                                                            <button onClick={() => { setMergingNode(parent); setSelectedMergeTargetId(''); setMergeSearch(''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                <GitMerge size={14} className="text-[var(--muted)]" /> Merge Into...
-                                                                            </button>
-                                                                            <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                                                            <button onClick={() => handleUpdateNode(parent.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
-                                                                                <Archive size={14} /> Archive
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        {}
-                                                        {!pCollapsed && subs.length > 0 && (
-                                                            <div className="pl-16 relative py-1 border-t border-[var(--border)] bg-[var(--surface)]">
-                                                                <div className="absolute left-[54px] top-0 bottom-4 w-px bg-[var(--border)]" />
-                                                                {subs.map((sub: KnowledgeNode) => (
-                                                                    <div
-                                                                        key={sub.id}
-                                                                        onClick={(e) => toggleSelection([sub.id], e)}
-                                                                        draggable
-                                                                        onDragStart={(e) => handleDragStart(e, sub.id)}
-                                                                        onDragEnd={handleDragEnd}
-                                                                        onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, sub.id); }}
-                                                                        onDragLeave={handleDragLeave}
-                                                                        onDrop={(e) => { e.stopPropagation(); handleDrop(e, sub.id, 'concept'); }}
-                                                                        className={`relative flex items-center pr-5 py-2 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group ${draggedNodeId === sub.id ? 'opacity-40' : ''} ${dropTargetId === sub.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
-                                                                    >
-                                                                        <div className="absolute left-[-22px] top-1/2 w-4 h-px bg-[var(--border)]" />
-                                                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors z-10 ${selectedNodeIds.has(sub.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--bg)] group-hover:border-[var(--accent)]'}`} onClick={(e) => toggleSelection([sub.id], e)}>
-                                                                            {selectedNodeIds.has(sub.id) && <Check size={12} className="text-white" strokeWidth={3} />}
-                                                                        </div>
-                                                                        <div className="w-2 h-2 rounded-full mr-2 shrink-0">
-                                                                            <MasteryDot state={sub.current_mastery} size={8} />
-                                                                        </div>
-                                                                        <span className="text-sm font-medium text-[var(--muted)] group-hover:text-[var(--text)] transition-colors truncate">
-                                                                            {sub.display_name}
-                                                                        </span>
-                                                                        <span className="ml-auto flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                            <span className="text-[11px] text-[var(--accent)] font-medium">View →</span>
-                                                                            <div className="relative" onClick={(e) => e.stopPropagation()}>
-                                                                                <button
-                                                                                    onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === sub.id ? null : sub.id); }}
-                                                                                    className="flex items-center justify-center w-6 h-6 rounded-lg hover:bg-[var(--border)] transition-colors text-[var(--muted)] hover:text-[var(--text)]"
-                                                                                >
-                                                                                    <MoreHorizontal size={14} />
-                                                                                </button>
-                                                                                {activeMenuId === sub.id && (
-                                                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
-                                                                                        <button onClick={() => { setRenamingNode(sub); setNewName(sub.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                            <Edit2 size={14} className="text-[var(--muted)]" /> Rename
-                                                                                        </button>
-                                                                                        <button onClick={() => { setMovingNode(sub); setSelectedMoveCatId(sub.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                            <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
-                                                                                        </button>
-                                                                                        <button onClick={() => { setMergingNode(sub); setSelectedMergeTargetId(''); setMergeSearch(''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                                            <GitMerge size={14} className="text-[var(--muted)]" /> Merge Into...
-                                                                                        </button>
-                                                                                        <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                                                                        <button onClick={() => handleUpdateNode(sub.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
-                                                                                            <Archive size={14} /> Archive
-                                                                                        </button>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-
-                                                        <div
-                                                            onDragOver={(e) => handleDragOver(e, 'other')}
-                                                            onDragLeave={handleDragLeave}
-                                                            onDrop={(e) => handleDrop(e, 'other', 'category')}
-                                                            className={`h-4 w-full transition-colors ${dropTargetId === 'other' ? 'bg-[var(--accent)]/10 border-t border-[var(--accent)]' : ''}`}
-                                                        />
-                                                    </div>
-                                                );
-                                            })}
-                                            {}
-                                            {hierarchy.subjectGroups.map(subject => (
+                                        <div className="p-4 space-y-8">
+                                            {hierarchy?.subjectGroups && hierarchy.subjectGroups.map(subject => (
                                                 <div key={subject.name} className="space-y-4">
                                                     <div className="flex items-center justify-between px-1">
                                                         <h3 className="text-sm font-medium text-[var(--muted)]">{subject.name}</h3>
                                                         <span className="text-[10px] font-bold text-[var(--muted)]/50 uppercase tracking-widest">{subject.totalNodes} concepts</span>
                                                     </div>
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                        {subject.items.map(group => renderParentNode(group))}
+                                                        {subject.items.map((group: any) => renderParentNode(group))}
                                                     </div>
                                                 </div>
                                             ))}
-                                            {}
-                                            <div
-                                                onDrop={(e) => handleDrop(e, 'uncategorized', 'category')}
-                                                onDragOver={(e) => { e.preventDefault(); setDropTargetId('uncategorized'); }}
-                                                onDragLeave={() => setDropTargetId(null)}
-                                                className={`space-y-4 rounded-2xl p-4 transition-all duration-300 border-2 border-dashed ${dropTargetId === 'uncategorized'
-                                                    ? 'bg-[var(--accent)]/5 border-[var(--accent)]'
-                                                    : draggedNodeId
-                                                        ? 'bg-[var(--surface)] border-[var(--border)]'
-                                                        : 'border-transparent'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center justify-between px-1">
-                                                    <h3 className="text-sm font-medium text-[var(--muted)]">General Concepts</h3>
-                                                    {dropTargetId === 'uncategorized' && (
-                                                        <span className="text-xs text-[var(--accent)] font-medium animate-pulse">Drop to move to General</span>
-                                                    )}
-                                                </div>
 
-                                                {hierarchy.uncategorizedGroups.length > 0 ? (
+                                            {hierarchy?.uncategorizedGroups.length > 0 && (
+                                                <div className="space-y-4">
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                        {hierarchy.uncategorizedGroups.map(group => renderParentNode(group))}
-                                                    </div>
-                                                ) : !draggedNodeId && (
-                                                    <div className="py-8 flex flex-col items-center justify-center text-[var(--muted)] border border-[var(--border)] rounded-xl bg-[var(--surface)]/50">
-                                                        <p className="text-sm">No general concepts</p>
-                                                    </div>
-                                                )}
-
-                                                {draggedNodeId && hierarchy.uncategorizedGroups.length === 0 && dropTargetId !== 'uncategorized' && (
-                                                    <div className="py-8 flex flex-col items-center justify-center text-[var(--muted)]">
-                                                        <p className="text-sm">Drag here to remove from folder</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {hierarchy?.orphans.map(node => (
-                                                <div
-                                                    key={node.id}
-                                                    onClick={(e) => toggleSelection([node.id], e)}
-                                                    draggable
-                                                    onDragStart={(e) => handleDragStart(e, node.id)}
-                                                    onDragEnd={handleDragEnd}
-                                                    onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, node.id); }}
-                                                    onDragLeave={handleDragLeave}
-                                                    onDrop={(e) => { e.stopPropagation(); handleDrop(e, node.id, 'concept'); }}
-                                                    className={`flex items-center px-5 py-3 cursor-pointer hover:bg-[var(--accent)]/[0.03] transition-all group relative ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === node.id ? 'opacity-40' : ''} ${dropTargetId === node.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
-                                                >
-                                                    <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`} onClick={(e) => toggleSelection([node.id], e)}>
-                                                        {selectedNodeIds.has(node.id) && <Check size={12} className="text-white" strokeWidth={3} />}
-                                                    </div>
-                                                    <MasteryDot state={node.current_mastery} size={10} className="mr-3" />
-                                                    <span className="font-medium text-[15px] text-[var(--text)]">{node.display_name}</span>
-
-                                                    <div className="ml-auto relative" onClick={(e) => e.stopPropagation()}>
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === node.id ? null : node.id); }}
-                                                            className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-all text-[var(--muted)] hover:text-[var(--text)]"
-                                                        >
-                                                            <MoreHorizontal size={16} />
-                                                        </button>
-                                                        {activeMenuId === node.id && (
-                                                            <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
-                                                                <button onClick={() => { setRenamingNode(node); setNewName(node.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                    <Edit2 size={14} className="text-[var(--muted)]" /> Rename
-                                                                </button>
-                                                                <button onClick={() => { setMovingNode(node); setSelectedMoveCatId(node.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                    <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
-                                                                </button>
-                                                                <button onClick={() => { setMergingNode(node); setSelectedMergeTargetId(''); setMergeSearch(''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                                    <GitMerge size={14} className="text-[var(--muted)]" /> Merge Into...
-                                                                </button>
-                                                                <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                                                <button onClick={() => handleUpdateNode(node.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
-                                                                    <Archive size={14} /> Archive
-                                                                </button>
-                                                            </div>
-                                                        )}
+                                                        {hierarchy.uncategorizedGroups.map((group: any) => renderParentNode(group))}
                                                     </div>
                                                 </div>
-                                            ))}
+                                            )}
+
+                                            {hierarchy?.orphans.length > 0 && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    {hierarchy.orphans.map(node => (
+                                                        <div
+                                                            key={node.id}
+                                                            onClick={(e) => toggleSelection([node.id], e)}
+                                                            draggable
+                                                            onDragStart={(e) => handleDragStart(e, node.id)}
+                                                            onDragEnd={handleDragEnd}
+                                                            onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, node.id); }}
+                                                            onDragLeave={handleDragLeave}
+                                                            onDrop={(e) => { e.stopPropagation(); handleDrop(e, node.id, 'concept'); }}
+                                                            className={`flex items-center px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)]/[0.03] border-[var(--accent)]/30' : ''} ${draggedNodeId === node.id ? 'opacity-40' : ''} ${dropTargetId === node.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
+                                                        >
+                                                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--bg)] group-hover:border-[var(--accent)]'}`} onClick={(e) => toggleSelection([node.id], e)}>
+                                                                {selectedNodeIds.has(node.id) && <Check size={10} className="text-white" strokeWidth={3} />}
+                                                            </div>
+                                                            <Tooltip content={MASTERY_DESCRIPTIONS[node.current_mastery as MasteryState] || 'Not studied yet'}>
+                                                                <MasteryDot state={node.current_mastery} size={8} className="mr-2.5 cursor-help" />
+                                                            </Tooltip>
+                                                            <span className="text-sm font-medium text-[var(--text)] truncate flex-1">{node.display_name}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

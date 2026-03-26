@@ -29,7 +29,7 @@ const AssistantFAB: React.FC = () => {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-4 w-4 bg-orange-500 border-2 border-white"></span>
                         </span>
-                        <div className="absolute -left-20 top-1/2 -translate-y-1/2 bg-white px-3 py-1.5 rounded-lg shadow-xl border border-[var(--border)] flex items-center gap-2 animate-bounce-horizontal whitespace-nowrap">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white px-3 py-1.5 rounded-lg shadow-xl border border-[var(--border)] flex items-center gap-2 animate-bounce whitespace-nowrap transition-all">
                             <Sparkles size={12} className="text-orange-500" />
                             <span className="text-[10px] font-black text-[var(--text)] uppercase tracking-widest">New tip</span>
                         </div>

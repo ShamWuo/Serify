@@ -77,6 +77,10 @@ export default function FeedbackReport() {
     const { object, submit, isLoading, error: aiError } = useObject({
         api: '/api/synthesize-feedback',
         schema: feedbackSchema,
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            'X-Serify-Demo': typeof window !== 'undefined' && localStorage.getItem('serify_demo_mode') === 'true' ? 'true' : 'false'
+        },
         onFinish: () => {
             setIsTimedOut(false);
             setHasError(false);
@@ -299,7 +303,7 @@ export default function FeedbackReport() {
 
                     if (parsed.report) {
                         setReport(parsed.report);
-                    } else if (!hasSubmittedRef.current) {
+                    } else if (!hasSubmittedRef.current && token) {
                         
                         hasSubmittedRef.current = true;
                         submit({
@@ -317,7 +321,7 @@ export default function FeedbackReport() {
 
         loadReport();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id, user]); 
+    }, [id, user, token]); 
 
     useEffect(() => {
         if (object && !isLoading) {
@@ -1309,7 +1313,7 @@ export default function FeedbackReport() {
                     </section>
                 )}
 
-                <section className="pt-8 border-t border-[var(--border)]">
+                <section className="pt-8 border-t border-[var(--border)] pb-32">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <div>
                             <h3 className="font-bold text-[var(--text)] text-base">

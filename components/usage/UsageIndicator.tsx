@@ -7,13 +7,12 @@ interface UsageIndicatorProps {
     showAlways?: boolean;
 }
 
-export const UsageIndicator: React.FC<UsageIndicatorProps> = ({ className, showAlways = false }) => {
+export const UsageIndicator: React.FC<UsageIndicatorProps> = ({ className, showAlways = true }) => {
     const { user } = useAuth();
     
     if (!user || user.plan === 'proplus') return null;
 
     const { percentUsed, tokensUsed, monthlyLimit } = user;
-    
     
     if (!showAlways && percentUsed < 70) return null;
 
@@ -21,20 +20,24 @@ export const UsageIndicator: React.FC<UsageIndicatorProps> = ({ className, showA
     const isAtLimit = percentUsed >= 100;
 
     return (
-        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all backdrop-blur-md ${
-            isAtLimit ? 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]' :
-            isNearLimit ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.1)]' :
-            'bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 shadow-[0_0_10px_rgba(var(--accent-rgb),0.1)]'
+        <div className={`flex items-center gap-3 px-4 py-2 rounded-2xl text-[10px] font-bold transition-all border ${
+            isAtLimit ? 'bg-red-500/5 text-red-500 border-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.05)]' :
+            isNearLimit ? 'bg-orange-500/5 text-orange-500 border-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.05)]' :
+            'bg-indigo-500/5 text-indigo-500 border-indigo-500/10 shadow-[0_0_15px_rgba(79,70,229,0.05)]'
         } ${className}`}>
-            <span className="relative flex h-1.5 w-1.5 mr-0.5" title="Compute usage over 70%">
-                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    isAtLimit ? 'bg-red-400' : isNearLimit ? 'bg-orange-400' : 'bg-[var(--accent)]'
+            <div className="relative flex h-1.5 w-1.5 shrink-0">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-40 ${
+                    isAtLimit ? 'bg-red-400' : isNearLimit ? 'bg-orange-400' : 'bg-indigo-400'
                 }`}></span>
                 <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-                    isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-orange-500' : 'bg-[var(--accent)]'
+                    isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-orange-500' : 'bg-indigo-500'
                 }`}></span>
-            </span>
-            <span>{Math.round(percentUsed)}%</span>
+            </div>
+            <div className="flex items-center justify-between flex-1">
+                <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-50">Storage</span>
+                <span className="font-black tabular-nums">{Math.round(percentUsed)}%</span>
+            </div>
         </div>
     );
+
 };

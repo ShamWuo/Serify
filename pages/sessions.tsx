@@ -325,6 +325,9 @@ export default function LibraryPage() {
     const [filterTab, setFilterTab] = useState<FilterTab>('all');
     const [deleteTarget, setDeleteTarget] = useState<UnifiedSession | null>(null);
     const [deleting, setDeleting] = useState(false);
+    
+    // Multi-selection state
+    const [selectedSessions, setSelectedSessions] = useState<Map<string, SessionType>>(new Map());
 
     useEffect(() => {
         const timer = setTimeout(() => setIsInitialLoading(false), 800);
@@ -373,12 +376,61 @@ export default function LibraryPage() {
             if (res.ok) {
                 setSessions((prev) => prev.filter((s) => s.id !== deleteTarget.id));
                 setDeleteTarget(null);
+                // Remove from selection if it was there
+                const nextSelected = new Map(selectedSessions);
+                nextSelected.delete(deleteTarget.id);
+                setSelectedSessions(nextSelected);
             }
         } catch (e) {
             console.error('[library] deleteSession error:', e);
         } finally {
             setDeleting(false);
         }
+    }
+
+    async function handleBulkDelete() {
+        if (selectedSessions.size === 0) return;
+        if (!confirm(`Delete ${selectedSessions.size} sessions permanently?`)) return;
+
+        setDeleting(true);
+        try {
+            const sessionsToDelete = Array.from(selectedSessions.entries()).map(([id, type]) => ({
+                id,
+                type
+            }));
+
+            const res = await fetch('/api/sessions/bulk-action', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    action: 'delete',
+                    sessions: sessionsToDelete
+                })
+            });
+
+            if (res.ok) {
+                const deletedIds = new Set(sessionsToDelete.map(s => s.id));
+                setSessions((prev) => prev.filter((s) => !deletedIds.has(s.id)));
+                setSelectedSessions(new Map());
+            }
+        } catch (e) {
+            console.error('[library] bulkDeleteSession error:', e);
+        } finally {
+            setDeleting(false);
+        }
+    }
+
+    function toggleSelection(id: string, type: SessionType) {
+        const next = new Map(selectedSessions);
+        if (next.has(id)) {
+            next.delete(id);
+        } else {
+            next.set(id, type);
+        }
+        setSelectedSessions(next);
     }
 
     const filtered = sessions.filter((s) => {
@@ -401,6 +453,20 @@ export default function LibraryPage() {
         return matchesTab && matchesSearch;
     });
 
+    const isAllSelected = filtered.length > 0 && filtered.every(s => selectedSessions.has(s.id));
+
+    function toggleSelectAll() {
+        if (isAllSelected) {
+            const next = new Map(selectedSessions);
+            filtered.forEach(s => next.delete(s.id));
+            setSelectedSessions(next);
+        } else {
+            const next = new Map(selectedSessions);
+            filtered.forEach(s => next.set(s.id, s.type));
+            setSelectedSessions(next);
+        }
+    }
+
     const reflectionCount = sessions.filter((s) => s.type === 'reflection' || (s as any).session_type === 'analysis' || (s as any).session_type === 'reflection').length;
     const flowCount = sessions.filter((s) => s.type === 'flow').length;
     const completedCount = sessions.filter(
@@ -420,7 +486,7 @@ export default function LibraryPage() {
         <DashboardLayout>
             <SEO title="Sessions" />
 
-            <div className="max-w-5xl mx-auto w-full px-6 md:px-10 py-8 pb-24">
+            <div className="max-w-5xl mx-auto w-full px-6 md:px-10 py-8 pb-32">
                 {isInitialLoading && !user ? (
                     <div className="animate-pulse">
                         <div className="h-10 w-48 bg-[var(--border)] rounded-lg mb-4"></div>
@@ -500,7 +566,7 @@ export default function LibraryPage() {
                             ))}
                         </div>
 
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass">
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass relative">
                             {loading && sessions.length === 0 ? (
                                 <div className="animate-pulse">
                                     <div className="h-12 bg-black/[0.02] border-b border-[var(--border)]"></div>
@@ -522,7 +588,15 @@ export default function LibraryPage() {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="border-b border-[var(--border)] bg-black/[0.02]">
-                                            <th className="py-3 px-6 font-medium text-xs uppercase text-[var(--muted)] tracking-wider">
+                                            <th className="py-3 px-6 w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isAllSelected}
+                                                    onChange={toggleSelectAll}
+                                                    className="w-4 h-4 rounded-md border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] transition-all cursor-pointer accent-[var(--accent)]"
+                                                />
+                                            </th>
+                                            <th className="py-3 px-2 font-medium text-xs uppercase text-[var(--muted)] tracking-wider">
                                                 Session
                                             </th>
                                             <th className="py-3 px-4 font-medium text-xs uppercase text-[var(--muted)] tracking-wider hidden sm:table-cell">
@@ -535,13 +609,133 @@ export default function LibraryPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="stagger-children">
-                                        {filtered.map((session) => (
-                                            <SessionRow
-                                                key={session.id}
-                                                session={session}
-                                                onDelete={setDeleteTarget}
-                                            />
-                                        ))}
+                                        {filtered.map((session) => {
+                                            const isSelected = selectedSessions.has(session.id);
+                                            return (
+                                                <tr
+                                                    key={session.id}
+                                                    className={`border-b border-[var(--border)] hover:bg-[var(--accent)]/[0.025] transition-all group row-hover-accent cursor-pointer ${isSelected ? 'bg-[var(--accent)]/[0.04]' : ''}`}
+                                                    onClick={() => {
+                                                        const isStale =
+                                                            (session.status.toLowerCase() === 'processing' || session.status.toLowerCase() === 'analyzing') &&
+                                                            new Date().getTime() - new Date(session.createdAt).getTime() > 60 * 60 * 1000;
+                                                        if (isStale) return;
+
+                                                        if (session.type === 'flow') {
+                                                            if (session.sourceType === 'curriculum' && session.sourceId) {
+                                                                router.push(`/learn/curriculum/${session.sourceId}/flow?session=${session.id}`);
+                                                            } else {
+                                                                router.push(`/flow/${session.id}`);
+                                                            }
+                                                        } else {
+                                                            router.push(
+                                                                session.status === 'complete' || session.status === 'completed'
+                                                                    ? `/session/${session.id}/feedback`
+                                                                    : `/session/${session.id}`
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    <td className="py-4 px-6" onClick={(e) => e.stopPropagation()}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => toggleSelection(session.id, session.type)}
+                                                            className="w-4 h-4 rounded-md border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] transition-all cursor-pointer accent-[var(--accent)]"
+                                                        />
+                                                    </td>
+                                                    <td className="py-4 px-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-9 h-9 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-center shrink-0 group-hover:border-[var(--accent)]/30 group-hover:bg-[var(--accent)]/5 transition-all">
+                                                                {getIcon(session.contentType)}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="font-semibold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 text-sm max-w-[200px] md:max-w-[300px]" title={session.title}>
+                                                                    {session.title}
+                                                                </div>
+                                                                <div className="text-xs text-[var(--muted)] mt-0.5">
+                                                                    {session.type === 'flow' ? 'Learn Mode' : session.contentType}
+                                                                </div>
+                                                            </div>
+                                                            {session.type === 'reflection' && (
+                                                                <div
+                                                                    className="flex items-center gap-1.5 ml-2 hidden lg:flex"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    {[
+                                                                        { label: 'Quiz', icon: <Target size={10} />, href: `/learn/${session.id}/practice`, cls: 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' },
+                                                                        { label: 'Deep Dive', icon: <BookOpen size={10} />, href: `/learn/${session.id}/deepdive`, cls: 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100' },
+                                                                        { label: 'Tutor', icon: <Bot size={10} />, href: `/learn/${session.id}/tutor`, cls: 'bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100' }
+                                                                    ].map((m) => (
+                                                                        <Link
+                                                                            key={m.label}
+                                                                            href={m.href}
+                                                                            title={m.label}
+                                                                            className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border ${m.cls} transition-colors`}
+                                                                        >
+                                                                            {m.icon} {m.label}
+                                                                        </Link>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                            {session.type === 'flow' && (
+                                                                <div
+                                                                    className="ml-2 hidden lg:flex items-center"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <Link
+                                                                        href={session.sourceType === 'curriculum' && session.sourceId ? `/learn/curriculum/${session.sourceId}/flow?session=${session.id}` : `/flow/${session.id}`}
+                                                                        className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors"
+                                                                    >
+                                                                        <Zap size={9} /> {session.completedCount === 0 ? 'Start' : 'Resume'}
+                                                                    </Link>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-4 px-4 text-sm text-[var(--muted)] whitespace-nowrap hidden sm:table-cell">
+                                                        {formatDate(session.createdAt)}
+                                                    </td>
+                                                    <td className="py-4 px-4">
+                                                        <span
+                                                            className={`inline-flex items-center justify-center text-[10px] font-black uppercase tracking-tight px-2 py-0.5 rounded-lg border whitespace-nowrap min-w-[80px] ${
+                                                                (session.status.toLowerCase() === 'processing' || session.status.toLowerCase() === 'analyzing') &&
+                                                                new Date().getTime() - new Date(session.createdAt).getTime() > 60 * 60 * 1000
+                                                                    ? 'bg-red-50 text-red-600 border-red-200'
+                                                                    : session.type === 'flow'
+                                                                        ? 'bg-purple-50 text-purple-600 border-purple-200'
+                                                                        : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed' || session.status.toLowerCase() === 'feedback'
+                                                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                                                            : session.status.toLowerCase() === 'assessment'
+                                                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                                                                : session.status.toLowerCase() === 'practicing'
+                                                                                    ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                                                                    : 'bg-amber-50 text-amber-600 border-amber-200'
+                                                            }`}
+                                                        >
+                                                            {session.type === 'flow'
+                                                                ? `${session.completedCount ?? 0}/${session.totalCount ?? 0} concepts`
+                                                                : session.status.toLowerCase() === 'complete' || session.status.toLowerCase() === 'completed' || session.status.toLowerCase() === 'feedback'
+                                                                    ? 'Ready'
+                                                                    : session.status.toLowerCase() === 'assessment'
+                                                                        ? 'Ready'
+                                                                        : session.status.toLowerCase() === 'practicing'
+                                                                            ? 'Practicing'
+                                                                            : 'Analyzing'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-4 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                                        <button
+                                                            onClick={() => setDeleteTarget(session)}
+                                                            className="p-1.5 rounded-lg text-[var(--muted)] hover:text-red-500 hover:bg-red-50 transition-colors opacity-40 group-hover:opacity-100"
+                                                            title="Delete session"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             ) : (
@@ -596,7 +790,46 @@ export default function LibraryPage() {
                 )}
             </div>
 
-            { }
+            {/* Bulk Action Bar */}
+            {selectedSessions.size > 0 && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-modal-in">
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-6 glass min-w-[300px] border-t-2 border-t-[var(--accent)]">
+                        <div className="flex items-center gap-3 pr-6 border-r border-[var(--border)]">
+                            <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)] font-bold text-sm">
+                                {selectedSessions.size}
+                            </div>
+                            <span className="text-sm font-medium text-[var(--text)] whitespace-nowrap">
+                                selected
+                            </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={handleBulkDelete}
+                                disabled={deleting}
+                                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-red-500/20"
+                            >
+                                {deleting ? (
+                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    <Trash2 size={16} />
+                                )}
+                                Delete Selected
+                            </button>
+                            
+                            <button
+                                onClick={() => setSelectedSessions(new Map())}
+                                disabled={deleting}
+                                className="flex items-center gap-2 px-4 py-2 bg-[var(--bg)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] rounded-xl text-sm font-medium transition-all"
+                            >
+                                <X size={16} />
+                                Deselect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {deleteTarget && (
                 <DeleteModal
                     session={deleteTarget}

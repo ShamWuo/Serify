@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Paperclip, X, AlertCircle, Sparkles, ChevronRight } from 'lucide-react';
+import { Paperclip, X, AlertCircle, Zap, ChevronRight, Brain, Target, MessageSquare, History, FileText, Search, Play } from 'lucide-react';
 import { useRouter } from 'next/router';
 import DetectionTag, { DetectedType } from './DetectionTag';
 import ModeToggle, { SearchMode } from './ModeToggle';
@@ -7,11 +7,11 @@ import AnalyzeButton from './AnalyzeButton';
 
 interface SmartInputCardProps {
     onAnalyze: (data: { content: string; type: DetectedType; mode: SearchMode; file?: File }) => Promise<void>;
-    tokenBalance: number;
+    percentUsed: number;
     compact?: boolean;
 }
 
-const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance, compact = false }) => {
+const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed, compact = false }) => {
     const router = useRouter();
     const [input, setInput] = useState('');
     const [detectedType, setDetectedType] = useState<DetectedType | null>(null);
@@ -47,7 +47,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
         const textarea = textareaRef.current;
         if (textarea) {
             textarea.style.height = 'auto';
-            textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+            textarea.style.height = `${Math.max(100, Math.min(textarea.scrollHeight, 200))}px`;
         }
     }, [input]);
 
@@ -115,9 +115,8 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
     const handleAnalyze = async () => {
         if (!input.trim() && !file) return;
         
-        const cost = mode === 'analyze' ? 8 : 2;
-        if (tokenBalance < cost) {
-            setError('Not enough tokens');
+        if (percentUsed >= 100) {
+            setError('Usage limit reached');
             return;
         }
 
@@ -134,63 +133,62 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
 
     if (isProcessing) {
         return (
-            <div className="bg-surface rounded-2xl p-7 shadow-xl border border-[var(--border)] animate-fade-in min-h-[160px] flex flex-col justify-center">
-                <h3 className="font-display text-xl text-[var(--text)] mb-6">Building study session...</h3>
-                <div className="w-full bg-background h-2 rounded-full overflow-hidden mb-4">
+            <div className="bg-[var(--surface)] rounded-[2rem] p-8 shadow-md border border-[var(--border)] animate-fade-in flex flex-col justify-center min-h-[200px]">
+                <div className="flex items-center gap-4 mb-7">
+                    <div className="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center animate-pulse">
+                        <Brain size={22} strokeWidth={2} />
+                    </div>
+                    <div>
+                        <h3 className="text-[15px] font-semibold text-[var(--text)]">Building your session</h3>
+                        <p className="text-[11px] text-[var(--muted)] opacity-50 mt-0.5">thinking...</p>
+                    </div>
+                </div>
+                <div className="w-full bg-[var(--bg)] h-1.5 rounded-full overflow-hidden mb-5 border border-[var(--border)]">
                     <div 
-                        className="bg-[var(--accent)] h-full transition-all duration-300 ease-out"
+                        className="bg-indigo-500 h-full rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${progress}%` }}
                     />
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                    <p className="text-[var(--muted)] font-medium animate-pulse">
-                        {stepText} <span className="ml-1 opacity-50">{progress}%</span>
+                <div className="flex justify-between items-center px-0.5">
+                    <p className="text-[var(--muted)] text-[11px] flex items-center gap-2">
+                        {stepText} <span className="opacity-40 tabular-nums">{progress}%</span>
                     </p>
                     <button 
                         onClick={() => setIsProcessing(false)}
-                        className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] hover:text-orange-600 transition-colors"
+                        className="text-[11px] text-[var(--muted)]/40 hover:text-red-400 transition-colors"
                     >
-                        Cancel
+                        cancel
                     </button>
                 </div>
             </div>
         );
     }
 
+
     return (
         <div 
-            className={`glass rounded-[32px] p-8 transition-all duration-500 border-2 ${
-                isDragging ? 'border-dashed border-[var(--accent)] bg-[var(--accent)]/[0.03]' : 'border-transparent shadow-[0_20px_50px_rgba(0,0,0,0.04)] dark:shadow-none'
+            className={`bg-[var(--surface)] rounded-[2.5rem] p-8 transition-all duration-500 border border-[var(--border)] shadow-sm group/card ${
+                isDragging ? 'border-dashed border-indigo-500 bg-indigo-500/[0.03]' : 'hover:shadow-[0_20px_40px_rgba(0,0,0,0.03)]'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
-            {!compact && (
-                <div className="mb-8">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-8 h-8 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shadow-lg shadow-[var(--accent)]/20 animate-bounce-slow">
-                            <Sparkles size={16} />
-                        </div>
-                        <h2 className="font-display text-2xl text-[var(--text)] tracking-tight">What are you mastering today?</h2>
-                    </div>
-                    <p className="text-[var(--muted)] text-[14px] leading-relaxed">Paste anything — a URL, a PDF, or your rough notes. Serify extracts the core concepts and builds your study session.</p>
-                </div>
-            )}
-
-            <div className="relative mb-6">
+            <div className="relative">
                 {detectedType && (
-                    <div className="absolute -top-10 left-0 animate-fade-in">
+                    <div className="absolute -top-12 left-0 animate-fade-in z-10">
                         <DetectionTag type={detectedType} onDismiss={() => setDetectedType(null)} />
                     </div>
                 )}
-                <div className={`relative rounded-2xl border-2 transition-all duration-300 ${
-                    isDragging ? 'border-transparent' : (detectedType ? 'border-emerald-500/30' : 'border-[var(--border)]')
-                } focus-within:border-[var(--accent)]/30 focus-within:ring-4 focus-within:ring-[var(--accent)]/[0.03] group bg-[var(--bg)]/20 backdrop-blur-sm`}>
+                <div className={`relative rounded-[1.5rem] border transition-all duration-500 ${
+                    isDragging ? 'border-transparent shadow-none' : 'border-[var(--border)] shadow-sm'
+                } focus-within:border-indigo-500/30 focus-within:ring-8 focus-within:ring-indigo-500/[0.02] bg-[var(--bg)]/50 group-hover/card:bg-white transition-all`}>
                     {isDragging ? (
-                        <div className="h-[100px] flex flex-col items-center justify-center text-[var(--accent)] gap-2">
-                            <Paperclip size={24} className="animate-bounce" />
-                            <p className="font-black uppercase tracking-widest text-[10px]">Release to Study</p>
+                        <div className="h-[140px] flex flex-col items-center justify-center text-indigo-400 gap-3">
+                            <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                                <Paperclip size={20} strokeWidth={2} />
+                            </div>
+                            <p className="text-[12px] text-indigo-400">Drop it here</p>
                         </div>
                     ) : (
                         <>
@@ -199,24 +197,37 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onPaste={handlePaste}
-                                placeholder={mode === 'analyze' ? "Paste any content to start studying..." : "Type a goal (e.g. \"Learn Quantum Physics\") to build a roadmap..."}
-                                className="w-full min-h-[100px] bg-transparent border-none focus:ring-0 p-5 pb-12 text-[15.5px] leading-relaxed resize-none overflow-hidden placeholder:text-[var(--muted)]/50 font-medium"
+                                placeholder="Paste a link, PDF text, or your notes..."
+                                className="w-full min-h-[140px] bg-transparent border-none focus:ring-0 p-6 pb-16 text-[15px] leading-relaxed resize-none overflow-hidden placeholder:text-[var(--muted)]/30 font-normal"
                             />
-                            <button 
-                                onClick={() => fileInputRef.current?.click()}
-                                className="absolute bottom-4 right-4 p-2.5 rounded-xl bg-surface border border-[var(--border)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/30 hover:shadow-md transition-all group"
-                                aria-label="Attach file"
-                            >
-                                <Paperclip size={18} className="group-hover:rotate-12 transition-transform" />
-                            </button>
-                            {detectedType && (
-                                <div className="absolute top-4 right-16 px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 animate-fade-in pointer-events-none">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Ready to Master</span>
+                            <div className="absolute bottom-4 left-5 right-5 flex items-center justify-between">
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="px-4 py-2 rounded-xl bg-white border border-[var(--border)] text-[var(--muted)] hover:text-indigo-500 hover:border-indigo-500/20 hover:shadow-sm transition-all flex items-center gap-2.5 group/btn"
+                                    aria-label="Attach file"
+                                >
+                                    <Paperclip size={15} strokeWidth={2} />
+                                    <span className="text-[11px] font-medium">Attach file</span>
+                                </button>
+
+                                <div className="flex items-center gap-3">
+                                    {detectedType && (
+                                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-xl animate-fade-in border border-indigo-500/10">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                                            <span className="text-[10px] text-indigo-500">ready</span>
+                                        </div>
+                                    )}
+                                    <AnalyzeButton 
+                                        onClick={handleAnalyze} 
+                                        disabled={(!input.trim() && !file) || percentUsed >= 100}
+                                        label="Start session"
+                                    />
                                 </div>
-                            )}
+                            </div>
                         </>
                     )}
                 </div>
+
                 <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -226,103 +237,75 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                 />
 
                 {!isDragging && (
-                    <div className="mt-8 pt-8 border-t border-dashed border-gray-100/80 animate-fade-in-up">
-                        <div className="flex flex-col gap-4">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.1em] text-[var(--muted)] opacity-60">Or jump straight in:</h4>
-                            <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2.5">
+                    <div className="mt-8 pt-7 border-t border-[var(--border)]/50 animate-fade-in-up">
+                        <div className="space-y-4">
+                            <h4 className="text-[11px] text-[var(--muted)] px-1 opacity-50">or jump straight to</h4>
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                 <button 
-                                    onClick={() => {
-                                        if (input.trim()) {
-                                            router.push(`/practice/flashcards?topic=${encodeURIComponent(input.trim())}`);
-                                        } else {
-                                            
-                                            
-                                            router.push('/practice/flashcards');
-                                        }
-                                    }}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    onClick={() => router.push('/practice/flashcards')}
+                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-orange-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
                                 >
-                                    <span className="text-sm">🃏</span>
-                                    <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Generate Flashcards</span>
+                                    <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                        <Zap size={15} strokeWidth={2} />
+                                    </div>
+                                    <span className="text-[12px] font-medium text-[var(--text)]">Flashcards</span>
                                 </button>
                                 <button 
-                                    onClick={() => {
-                                        if (input.trim()) {
-                                            router.push(`/practice/test?topic=${encodeURIComponent(input.trim())}`);
-                                        } else {
-                                            router.push('/practice/test');
-                                        }
-                                    }}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    onClick={() => router.push('/practice/test')}
+                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-blue-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
                                 >
-                                    <span className="text-sm">📝</span>
-                                    <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Practice Test</span>
+                                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                        <Target size={15} strokeWidth={2} />
+                                    </div>
+                                    <span className="text-[12px] font-medium text-[var(--text)]">Test mode</span>
                                 </button>
                                 <button 
-                                    onClick={() => {
-                                        if (input.trim()) {
-                                            router.push(`/practice/review?topic=${encodeURIComponent(input.trim())}`);
-                                        } else {
-                                            router.push('/practice/review');
-                                        }
-                                    }}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    onClick={() => router.push('/practice/review')}
+                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-purple-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
                                 >
-                                    <span className="text-sm">🔄</span>
-                                    <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Spaced Review</span>
+                                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                        <History size={15} strokeWidth={2} />
+                                    </div>
+                                    <span className="text-[12px] font-medium text-[var(--text)]">Review</span>
                                 </button>
                                 <button 
                                     onClick={() => router.push('/flow')}
-                                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--bg)]/50 border border-[var(--border)] hover:border-[var(--accent)]/30 hover:bg-surface hover:shadow-md transition-all group shrink-0"
+                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-indigo-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
                                 >
-                                    <span className="text-sm">✦</span>
-                                    <span className="text-[13px] font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">Learn Mode</span>
+                                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                        <Play size={15} fill="currentColor" strokeWidth={0} />
+                                    </div>
+                                    <span className="text-[12px] font-medium text-[var(--text)]">Flow mode</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 )}
+
             </div>
 
             {error && (
-                <div className="mb-6 p-5 rounded-2xl bg-warn-soft border border-warn/10 flex items-start gap-4 animate-modal-in">
-                    <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-warn shadow-sm shrink-0">
-                        <AlertCircle size={18} />
+                <div className="mt-6 p-5 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3 animate-modal-in">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 text-red-500 flex items-center justify-center shrink-0">
+                        <AlertCircle size={18} strokeWidth={2} />
                     </div>
-                    <div className="flex-1">
-                        <p className="text-[13px] font-bold text-orange-900 leading-tight">{error}</p>
-                        {error === 'Not enough tokens' ? (
+                    <div className="flex-1 min-w-0 pt-1">
+                        <p className="text-[12px] font-medium text-red-600">{error}</p>
+                        {error === 'Usage limit reached' && (
                             <button 
                                 onClick={() => router.push('/settings/billing')}
-                                className="mt-2 text-[10px] font-black uppercase tracking-wider text-orange-600 hover:text-orange-700 flex items-center gap-1 group"
+                                className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-500 hover:text-red-700 underline underline-offset-4 transition-all"
                             >
-                                Upgrade to Pro <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                                Upgrade your plan <ChevronRight size={11} strokeWidth={2} />
                             </button>
-                        ) : (
-                            <p className="mt-1 text-[11px] text-orange-700/70 leading-relaxed italic">Try pasting the raw text instead of a URL.</p>
                         )}
                     </div>
                 </div>
             )}
 
-            <div className="flex items-center justify-between gap-6 pt-4 border-t border-gray-100/50">
-                <div className="flex items-center gap-6">
-                    <ModeToggle mode={mode} onChange={setMode} />
-                    <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg)]/50 border border-[var(--border)]">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">
-                            {mode === 'analyze' ? "Study — test what you learned" : "Roadmap Mode"}
-                        </span>
-                    </div>
-                </div>
-                <AnalyzeButton 
-                    onClick={handleAnalyze} 
-                    disabled={!input.trim() && !file}
-                    label={mode === 'analyze' ? "Study →" : "Generate Roadmap"}
-                />
-            </div>
         </div>
     );
 };
 
 export default SmartInputCard;
+

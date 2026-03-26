@@ -20,7 +20,7 @@ const SEO = ({ title, description, image, article, keywords, robots }: SEOProps)
     const defaultRobots = 'index, follow';
 
     const seo = {
-        title: title ? `${title} | Serify` : defaultTitle,
+        title: title ? (title.includes('Serify') ? title : `${title} | Serify`) : defaultTitle,
         description: description || defaultDescription,
         image: image ? (image.startsWith('http') ? image : `${siteUrl}${image}`) : defaultImage,
         url: `${siteUrl}${router.asPath === '/' ? '' : router.asPath}`,

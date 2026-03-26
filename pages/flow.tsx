@@ -35,6 +35,44 @@ export default function FlowModePage() {
     const [recentCurricula, setRecentCurricula] = useState<any[]>([]);
 
     useEffect(() => {
+        if (!user || !router.isReady) return;
+
+        const handleReflectionSession = async () => {
+            const reflectionSessionId = router.query.session as string;
+            if (!reflectionSessionId) return;
+
+            setLoading(true);
+            try {
+                const res = await fetch('/api/serify/start-reflection-flow', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ reflectionSessionId })
+                });
+
+                if (res.ok) {
+                    const { flowSessionId } = await res.json();
+                    // Redirect to the continuous/reflection flow execution page
+                    router.push(`/learn/curriculum/continuous/flow?session=${flowSessionId}`);
+                } else {
+                    const error = await res.json();
+                    console.error('[flow] Error starting reflection flow:', error);
+                }
+            } catch (err) {
+                console.error('[flow] Error handling reflection session:', err);
+            } finally {
+                // We keep loading true if redirecting, otherwise false
+                // But since router.push is async, let's keep it safe
+                setLoading(false);
+            }
+        };
+
+        handleReflectionSession();
+    }, [user, router.query.session, token, router]);
+
+    useEffect(() => {
         if (!user) return;
 
         const fetchData = async () => {

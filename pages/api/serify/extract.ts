@@ -284,6 +284,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         } else {
             console.log('Extracting concepts via Gemini (Plan:', (tracking?.plan || 'free'), ')...');
             const extracted = await extractConcepts(contentSource, tracking?.plan || 'free', processedTranscript, vaultContextString, fileData);
+            
+            if (!extracted || extracted.length === 0) {
+                console.log('Zero concepts extracted. Marking session as failed.');
+                await supabaseWithAuth
+                    .from('reflection_sessions')
+                    .update({ 
+                        status: 'failed',
+                        title: 'No Concepts Extracted' 
+                    })
+                    .eq('id', session.id);
+                
+                return res.status(400).json({
+                    error: 'no_concepts',
+                    message: 'We couldn\'t extract any distinct concepts from this material. Try a different source or more specific text.'
+                });
+            }
+
             console.log('Concepts extracted:', extracted.length);
             finalConcepts = extracted;
 

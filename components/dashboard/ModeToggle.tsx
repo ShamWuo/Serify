@@ -9,23 +9,23 @@ interface ModeToggleProps {
 
 const ModeToggle: React.FC<ModeToggleProps> = ({ mode, onChange }) => {
     return (
-        <div className="flex items-center gap-1.5 bg-gray-50/50 p-1 rounded-2xl border border-[var(--border)]">
+        <div className="flex items-center gap-1 p-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl">
             <button
                 onClick={() => onChange('analyze')}
-                className={`px-5 py-2 rounded-xl text-[11px] font-bold transition-all uppercase tracking-wider ${
+                className={`px-5 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
                     mode === 'analyze'
-                        ? 'bg-[var(--accent)] text-white shadow-sm'
-                        : 'text-[var(--muted)] hover:text-[var(--text)]'
+                        ? 'bg-indigo-500 text-white shadow-sm'
+                        : 'text-[var(--muted)] hover:text-indigo-500'
                 }`}
             >
                 Study
             </button>
             <button
                 onClick={() => onChange('learn')}
-                className={`px-5 py-2 rounded-xl text-[11px] font-bold transition-all uppercase tracking-wider ${
+                className={`px-5 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
                     mode === 'learn'
-                        ? 'bg-[var(--accent)] text-white shadow-sm'
-                        : 'text-[var(--muted)] hover:text-[var(--text)]'
+                        ? 'bg-indigo-500 text-white shadow-sm'
+                        : 'text-[var(--muted)] hover:text-indigo-500'
                 }`}
             >
                 Roadmap

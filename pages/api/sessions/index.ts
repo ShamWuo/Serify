@@ -34,6 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .from('reflection_sessions')
                     .select('id, title, content_type, status, created_at, completed_at, session_type')
                     .eq('user_id', userId)
+                    .not('status', 'in', '("failed","error")')
+                    .not('title', 'ilike', '%no concepts%')
+                    .not('title', 'ilike', '%untitled%')
                     .order('created_at', { ascending: false }),
                 supabaseWithAuth
                     .from('flow_sessions')

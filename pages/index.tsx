@@ -32,6 +32,8 @@ export default function Home() {
     const [focusConcepts, setFocusConcepts] = useState<any[]>([]);
     const [vaultCount, setVaultCount] = useState<number>(0);
     const [activityDays, setActivityDays] = useState<boolean[]>([]);
+    const [streak, setStreak] = useState(0);
+    const [trend, setTrend] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [dataLoading, setDataLoading] = useState(true);
 
@@ -49,8 +51,11 @@ export default function Home() {
                 
                 const dashboardPromise = Promise.all([
                     supabase.from('reflection_sessions')
-                        .select('id, title, content_type, created_at, depth_score')
+                        .select('id, title, content_type, created_at, depth_score, status')
                         .eq('user_id', user.id)
+                        .not('status', 'in', '("failed","error")')
+                        .not('title', 'ilike', '%no concepts%')
+                        .not('title', 'ilike', '%untitled%')
                         .order('created_at', { ascending: false })
                         .limit(5),
                     
@@ -98,6 +103,16 @@ export default function Home() {
                     return (activityRes?.data || []).some((s: any) => s.created_at.startsWith(dStr));
                 });
                 setActivityDays(days);
+                
+                
+                const currentStreak = [...days].reverse().findIndex(d => !d);
+                setStreak(currentStreak === -1 ? 7 : currentStreak);
+                
+                
+                const activeCount = days.filter(Boolean).length;
+                if (activeCount > 3) setTrend('+24% increase');
+                else if (activeCount > 0) setTrend('Maintain momentum');
+                else setTrend('Start your week');
             } catch (err) {
                 console.warn('Dashboard data fetch taking too long or failed:', err);
                 
@@ -205,6 +220,8 @@ export default function Home() {
                     latestSessions={latestSessions}
                     focusConcepts={focusConcepts}
                     activityDays={activityDays}
+                    streak={streak}
+                    trend={trend}
                     vaultCount={vaultCount}
                     handleAnalyze={handleAnalyze}
                     isDemo={isDemo}
@@ -266,6 +283,8 @@ export default function Home() {
                                     days={activityDays} 
                                     sessionsCount={latestSessions.length} 
                                     conceptsCount={vaultCount}
+                                    streak={streak}
+                                    trend={trend}
                                 />
                             </section>
                             
@@ -274,13 +293,13 @@ export default function Home() {
                                 <div className="w-10 h-10 rounded-xl bg-white border border-[var(--border)] flex items-center justify-center text-[var(--accent)] mb-4 shadow-sm group-hover:scale-110 transition-transform">
                                     <Sparkles size={18} />
                                 </div>
-                                <h4 className="text-[15px] font-bold text-[var(--text)] mb-2">Build a Roadmap</h4>
+                                <h4 className="text-[15px] font-bold text-[var(--text)] mb-2">Start Learning</h4>
                                 <p className="text-xs text-[var(--muted)] leading-relaxed mb-4">Give the AI your goal and it will generate a structured multi-session curriculum.</p>
                                 <button 
                                     onClick={() => router.push('/learn')}
                                     className="w-full py-2.5 bg-white border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold hover:text-[var(--accent)] hover:border-[var(--accent)]/50 transition-all"
                                 >
-                                    Explore Roadmap
+                                    Learn →
                                 </button>
                             </div>
                         </div>

@@ -15,14 +15,14 @@ import {
     HelpCircle,
     Search,
     Database,
+    Zap,
     AlertTriangle,
-    Youtube,
-    FileText,
-    FileUp,
-    ClipboardPaste,
     ArrowRight,
     Lock
 } from 'lucide-react';
+import SmartInputCard from '@/components/dashboard/SmartInputCard';
+import { DetectedType } from '@/components/dashboard/DetectionTag';
+import { SearchMode } from '@/components/dashboard/ModeToggle';
 
 const conceptSchema = z.object({
     title: z.string(),
@@ -91,10 +91,8 @@ export default function Analyze() {
         }
     }, [displayProgress, progress]);
 
-    const handleAnalyze = async () => {
+    const handleAnalyze = async (data: { content: string; type: DetectedType; mode: SearchMode; file?: File }) => {
         if (isProcessing) return;
-        if (!inputValue.trim() && activeTab !== 'pdf') return;
-        if (activeTab === 'pdf' && !pdfFile) return;
 
         if (usage && !usage.allowed) {
             setIsGateOpen(true);
@@ -108,7 +106,7 @@ export default function Analyze() {
         setQuestionData(null);
 
         try {
-            const contentPayload = activeTab === 'pdf' ? `[PDF File: ${pdfFile?.name}]` : inputValue;
+            const contentPayload = data.type === 'file' ? `[File: ${data.file?.name}]` : data.content;
 
             const response = await fetch('/api/serify/analyze-stream', {
                 method: 'POST',
@@ -119,7 +117,7 @@ export default function Analyze() {
                 },
                 body: JSON.stringify({
                     content: contentPayload,
-                    contentType: activeTab
+                    contentType: data.type === 'file' ? 'pdf' : data.type // Use 'pdf' for file to match API expectation
                 })
             });
 
@@ -369,105 +367,29 @@ export default function Analyze() {
                                     </div>
                                 )}
 
-                                <div className="flex flex-nowrap overflow-x-auto no-scrollbar items-center justify-start sm:justify-center gap-2 mb-8 pb-2">
-                                    {[
-                                        { id: 'youtube', label: 'YouTube URL', icon: <Youtube size={16} /> },
-                                        { id: 'article', label: 'Article URL', icon: <FileText size={16} /> },
-                                        { id: 'pdf', label: 'PDF Upload', icon: <FileUp size={16} /> },
-                                        { id: 'notes', label: 'Paste Notes', icon: <ClipboardPaste size={16} /> }
-                                    ].map((tab) => (
-                                        <button
-                                            key={tab.id}
-                                            onClick={() => setActiveTab(tab.id as any)}
-                                            className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id
-                                                ? 'bg-[var(--text)] text-[var(--surface)] shadow-lg translate-y-[-1px]'
-                                                : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)]'
-                                                }`}
-                                        >
-                                            <span className={`${activeTab === tab.id ? 'opacity-100' : 'opacity-60'}`}>{tab.icon}</span> {tab.label}
-                                        </button>
-                                    ))}
+                                <div className="w-full text-left">
+                                    <SmartInputCard 
+                                        onAnalyze={handleAnalyze as any} 
+                                        tokenBalance={100} // Simplified for now since UsageGate handles enforcement
+                                    />
                                 </div>
 
-                                <div className="flex flex-col gap-4 text-left">
-                                    <div className="w-full">
-                                        {activeTab === 'youtube' && (
-                                            <input
-                                                value={inputValue}
-                                                onChange={(e) => setInputValue(e.target.value)}
-                                                type="text"
-                                                placeholder="https://youtube.com/watch?v=..."
-                                                className="w-full h-14 px-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none input-focus-ring text-base"
-                                            />
-                                        )}
-                                        {activeTab === 'article' && (
-                                            <input
-                                                value={inputValue}
-                                                onChange={(e) => setInputValue(e.target.value)}
-                                                type="text"
-                                                placeholder="https://..."
-                                                className="w-full h-14 px-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none input-focus-ring text-base"
-                                            />
-                                        )}
-                                        {activeTab === 'pdf' && (
-                                            <label className="w-full h-32 px-5 rounded-xl border-2 border-[var(--border)] bg-[var(--bg)] border-dashed flex flex-col items-center justify-center text-[var(--muted)] cursor-pointer hover:bg-[var(--border)]/10 hover:border-[var(--accent)]/40 transition-all relative overflow-hidden group">
-                                                <input
-                                                    type="file"
-                                                    accept=".pdf"
-                                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) setPdfFile(file);
-                                                    }}
-                                                />
-                                                <div className="w-10 h-10 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                                                    <FileUp size={20} className="text-[var(--accent)]" />
-                                                </div>
-                                                <span className="text-sm font-medium max-w-[80%] truncate text-center">
-                                                    {pdfFile ? pdfFile.name : 'Click to select or drag and drop .pdf'}
-                                                </span>
-                                            </label>
-                                        )}
-                                        {activeTab === 'notes' && (
-                                            <textarea
-                                                value={inputValue}
-                                                onChange={(e) => setInputValue(e.target.value)}
-                                                placeholder="Paste your notes, highlights, or any text here..."
-                                                className="w-full min-h-[160px] p-5 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none input-focus-ring resize-y text-base"
-                                            />
-                                        )}
-                                    </div>
-
-                                    {usage && (
-                                        <div className="mb-2">
-                                            <UsageWarning feature="session_standard" usage={usage} />
+                                <div className="mt-12 pt-8 border-t border-[var(--border)]/50 grid grid-cols-1 md:grid-cols-3 gap-6 text-left animate-fade-in" style={{ animationDelay: '300ms' }}>
+                                    {[
+                                        { icon: Search, title: 'Deconstruct', desc: 'AI breaks down your content into core pillars and sub-concepts.' },
+                                        { icon: Brain, title: 'Diagnose', desc: 'Active recall questions map exactly what you understand vs. what you think you know.' },
+                                        { icon: Zap, title: 'Master', desc: 'Identified gaps are fed into your Concept Vault for targeted reinforcement.' }
+                                    ].map((step, idx) => (
+                                        <div key={idx} className="space-y-2">
+                                            <div className="flex items-center gap-2 text-[var(--text)] font-bold text-xs uppercase tracking-widest">
+                                                <step.icon size={14} className="text-[var(--accent)]" />
+                                                {step.title}
+                                            </div>
+                                            <p className="text-[var(--muted)] text-xs leading-relaxed">
+                                                {step.desc}
+                                            </p>
                                         </div>
-                                    )}
-
-                                    <button
-                                        onClick={handleAnalyze}
-                                        disabled={
-                                            isProcessing ||
-                                            usageLoading ||
-                                            (activeTab === 'pdf' ? !pdfFile : !inputValue.trim())
-                                        }
-                                        className={`w-full h-14 rounded-xl font-bold transition-all flex items-center justify-center text-lg ${(activeTab === 'pdf' ? pdfFile : inputValue.trim()) && !isProcessing
-                                            ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20 hover:scale-[1.01] active:scale-[0.99] cursor-pointer'
-                                            : 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-60'
-                                            }`}
-                                    >
-                                        {usageLoading ? (
-                                            <Loader2 className="animate-spin" size={20} />
-                                        ) : usage && !usage.allowed ? (
-                                            <span className="flex items-center gap-2">
-                                                <Lock size={18} /> Plan Limit Reached
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center">
-                                                Analyze Content <ArrowRight size={20} className="ml-2" />
-                                            </span>
-                                        )}
-                                    </button>
+                                    ))}
                                 </div>
 
                                 {usage && !usage.allowed && (

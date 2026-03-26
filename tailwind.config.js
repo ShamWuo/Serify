@@ -33,7 +33,8 @@ module.exports = {
             },
             fontFamily: {
                 sans: ['"DM Sans"', 'sans-serif'],
-                display: ['"Instrument Serif"', 'serif']
+                display: ['"Instrument Serif"', 'serif'],
+                serif: ['"Instrument Serif"', 'serif']
             },
             animation: {
                 'fade-in': 'fadeIn 0.5s ease-out',

@@ -2026,6 +2026,85 @@ export type Database = {
           },
         ]
       }
+      interview_sessions: {
+        Row: {
+          id: string
+          user_id: string
+          status: string
+          target_concepts: Json
+          history: Json
+          started_at: string | null
+          completed_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          status?: string
+          target_concepts?: Json
+          history?: Json
+          started_at?: string | null
+          completed_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          status?: string
+          target_concepts?: Json
+          history?: Json
+          started_at?: string | null
+          completed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roadmaps: {
+        Row: {
+          id: string
+          user_id: string
+          goal: string
+          target_date: string
+          curriculum_data: Json
+          status: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          goal: string
+          target_date: string
+          curriculum_data?: Json
+          status?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          goal?: string
+          target_date?: string
+          curriculum_data?: Json
+          status?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmaps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vault_categories: {
         Row: {
           created_at: string | null

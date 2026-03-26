@@ -17,8 +17,10 @@ import {
     Menu,
     X,
     Brain,
+    Users,
     MessageSquarePlus,
     Zap,
+    Image as ImageIcon,
     Moon,
     Sun,
 } from 'lucide-react';
@@ -37,8 +39,9 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, sidebarContent, backLink, backLinkText, hideWidgets = false }: DashboardLayoutProps) {
-    const { user, token, logout, loading: authLoading } = useAuth();
+    const { user, logout, token, loading: authLoading } = useAuth();
     const router = useRouter();
+    const isDemo = router.query.demo === 'true';
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -143,24 +146,17 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
     };
 
     const navItems = useMemo(() => [
-        { href: '/', label: 'Home', icon: <Home size={20} /> },
-        { href: '/analyze', label: 'Diagnose', icon: <PlusCircle size={20} /> },
-        {
-            href: '/flow',
-            label: 'Flow',
-            icon: <Zap size={20} className="text-purple-500" />
-        },
-        { href: '/practice', label: 'Quick Test', icon: <Brain size={20} /> },
-        {
-            href: '/learn',
-            label: 'Roadmap',
-            icon: <LibraryBig size={20} className="text-[var(--accent)]" /> 
-        },
-        { href: '/sessions', label: 'Sessions', icon: <History size={20} /> },
-        { href: '/vault', label: 'Vault', icon: <Archive size={20} /> },
-        
-        { href: '/feedback', label: 'Feedback', icon: <MessageSquarePlus size={20} /> },
-        { href: '/settings', label: 'Settings', icon: <Settings size={20} /> }
+        { href: '/', label: 'Workbench', icon: <Home size={20} /> },
+        { href: '/analyze', label: 'Analyze', icon: <PlusCircle size={20} className="text-blue-500" /> },
+        { href: '/learn', label: 'Curriculum', icon: <LibraryBig size={20} className="text-emerald-500" /> },
+        { href: '/practice', label: 'Study', icon: <Brain size={20} className="text-orange-500" /> },
+        { href: '/flow', label: 'Learn Mode', icon: <Zap size={20} className="text-purple-500" /> },
+    ], []);
+
+    const secondaryItems = useMemo(() => [
+        { href: '/vault', label: 'Concept Vault', icon: <Archive size={18} /> },
+        { href: '/sessions', label: 'Journal', icon: <History size={18} /> },
+        { href: '/settings', label: 'Settings', icon: <Settings size={18} /> }
     ], []);
 
     const themeToggleItem = (
@@ -223,130 +219,135 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     )}
                 </div>
 
-                <div className="px-3 mb-4">
+                <div className="px-4 mb-6 space-y-4">
                     <button
                         onClick={() => setIsCommandPaletteOpen(true)}
-                        className="w-full flex items-center gap-3 px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--bg)]/50 text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition-all group"
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)]/50 text-[var(--muted)] hover:text-[var(--text)] hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/[0.02] transition-all group"
                     >
-                        <Search size={16} className="group-hover:text-[var(--accent)] transition-colors" />
-                        <span className="text-xs font-medium flex-1 text-left">Search...</span>
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[var(--surface)] border border-[var(--border)] rounded text-[9px] font-bold">
+                        <Search size={14} className="group-hover:text-indigo-500 transition-colors" />
+                        <span className="text-[11px] font-bold flex-1 text-left uppercase tracking-wider">Search</span>
+                        <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-[var(--surface)] border border-[var(--border)] rounded text-[9px] font-black opacity-40">
                             ⌘K
                         </div>
                     </button>
+                    <div className="px-1">
+                        <UsageIndicator className="w-full justify-between py-2.5 px-4 rounded-2xl border border-[var(--border)] shadow-sm bg-[var(--surface)] hover:border-indigo-500/30 transition-all cursor-default" />
+                    </div>
                 </div>
 
-                <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-                    {sidebarContent ? (
-                        <div className="space-y-1">{sidebarContent}</div>
-                    ) : (
-                        navItems.map((item: any) => {
-                            const isActive =
-                                router.pathname.startsWith(item.href) &&
-                                (item.href !== '/' || router.pathname === '/');
+
+                <nav className="flex-1 px-3 py-4 space-y-8 overflow-y-auto custom-scrollbar">
+                    {}
+                    <div className="space-y-1.5">
+                        <div className="px-4 mb-3 text-[9px] font-black text-[var(--muted)]/40 uppercase tracking-[0.3em]">Main</div>
+                        {navItems.map((item: any) => {
+                            const isActive = router.pathname === item.href || (item.href !== '/' && router.pathname.startsWith(item.href));
                             return (
                                 <Link
                                     key={item.href}
-                                    href={router.query.demo === 'true'
-                                        ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true`
-                                        : item.href}
-                                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden ${isActive
-                                        ? 'bg-[var(--accent)]/5 text-[var(--accent)] font-semibold shadow-sm'
-                                        : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]'
-                                        }`}
+                                    href={router.query.demo === 'true' ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 group ${
+                                        isActive
+                                            ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 font-bold translate-x-1'
+                                            : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] hover:translate-x-1'
+                                    }`}
                                 >
-                                    {isActive && (
-                                        <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)] animate-fade-in" />
-                                    )}
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className={`transition-all duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110 group-hover:text-[var(--accent)]'}`}
-                                        >
-                                            {item.icon}
-                                        </div>
-                                        <span className="text-sm tracking-wide">
-                                            {item.label}
-                                        </span>
+                                    <div className={`${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform shrink-0`}>
+                                        {item.icon}
                                     </div>
-                                    {item.badge !== undefined && (
-                                        <span
-                                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isActive
-                                                ? 'bg-[var(--accent)] text-white'
-                                                : 'bg-[var(--border)] text-[var(--muted)] group-hover:bg-[var(--accent)]/20 group-hover:text-[var(--accent)] transition-colors'
-                                                }`}
-                                        >
-                                            {item.badge}
-                                        </span>
-                                    )}
+                                    <span className={`text-[13px] tracking-tight ${isActive ? 'font-black' : 'font-bold'}`}>
+                                        {item.label}
+                                    </span>
                                 </Link>
                             );
-                        })
-                    )}
-                    {themeToggleItem}
+                        })}
+                    </div>
+
+
+                    {}
+                    <div className="space-y-1.5">
+                        <div className="px-4 mb-3 text-[9px] font-black text-[var(--muted)]/40 uppercase tracking-[0.3em]">Library</div>
+                        {secondaryItems.map((item: any) => {
+                            const isActive = router.pathname === item.href;
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={router.query.demo === 'true' ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
+                                    className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all duration-300 group ${
+                                        isActive
+                                            ? 'bg-[var(--bg)] text-[var(--text)] font-bold translate-x-1'
+                                            : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] hover:translate-x-1'
+                                    }`}
+                                >
+                                    <div className={`${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform shrink-0`}>
+                                        {item.icon}
+                                    </div>
+                                    <span className={`text-[12px] tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+                                        {item.label}
+                                    </span>
+
+                                </Link>
+                            );
+                        })}
+                    </div>
+
+
+                    {}
+                    <div className="pt-2">
+                        {themeToggleItem}
+                    </div>
                 </nav>
                 {}
 
                 <div className="p-3 relative border-t border-[var(--border)]" ref={profileRef}>
                     {isProfileOpen && (
-                        <div className="absolute bottom-full mb-2 left-3 right-3 glass border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden animate-modal-in z-50">
+                        <div className="absolute bottom-full mb-4 left-4 right-4 bg-[var(--surface)] border border-[var(--border)] rounded-[1.5rem] shadow-2xl overflow-hidden animate-modal-in z-50">
                             <Link
                                 href="/settings"
                                 onClick={() => setIsProfileOpen(false)}
-                                className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--accent)]/5 transition-colors text-xs font-semibold"
+                                className="flex items-center gap-3 px-5 py-4 hover:bg-indigo-500/5 transition-colors text-[11px] font-bold uppercase tracking-widest text-[var(--text)]"
                             >
                                 <Settings size={14} className="text-[var(--muted)]" /> Settings
                             </Link>
                             <button
                                 onClick={handleLogout}
-                                className="w-full flex items-center gap-2 px-4 py-3 hover:bg-red-500/5 transition-colors text-xs font-semibold text-left border-t border-[var(--border)] text-red-500"
+                                className="w-full flex items-center gap-3 px-5 py-4 hover:bg-red-500/5 transition-colors text-[11px] font-bold uppercase tracking-widest text-left border-t border-[var(--border)]/50 text-red-500"
                             >
                                 <LogOut size={14} /> Sign Out
                             </button>
                         </div>
                     )}
 
+
                     {authLoading || !user ? (
-                        <div className="w-full flex items-center gap-2 p-2 rounded-xl animate-pulse">
-                            <div className="w-8 h-8 rounded-full bg-[var(--border)]" />
+                        <div className="w-full flex items-center gap-3 p-3 rounded-2xl animate-pulse">
+                            <div className="w-10 h-10 rounded-full bg-[var(--border)]" />
                             <div className="flex-1 space-y-2">
-                                <div className="h-3 bg-[var(--border)] rounded w-3/4" />
-                                <div className="h-2 bg-[var(--border)] rounded w-1/2 opacity-50" />
+                                <div className="h-4 bg-[var(--border)] rounded w-3/4" />
+                                <div className="h-3 bg-[var(--border)] rounded w-1/2 opacity-50" />
                             </div>
                         </div>
                     ) : (
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            className="w-full flex items-center gap-2 p-2 rounded-xl hover:bg-[var(--accent)]/5 transition-all text-left group overflow-hidden"
+                            className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-indigo-500/[0.03] transition-all text-left group overflow-hidden"
                         >
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-md shadow-[var(--accent)]/20 group-hover:scale-105 transition-transform">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-[14px] font-black shrink-0 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
                                 {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-[var(--text)] truncate">
+                                <p className="text-[13px] font-black text-[var(--text)] truncate tracking-tight">
                                     {user?.displayName || 'User'}
                                 </p>
-                                <div className="flex items-center justify-between gap-2 mt-0.5">
-                                    <p className="text-[9px] text-[var(--muted)] truncate uppercase font-bold tracking-wider">
-                                        {user?.subscriptionTier === 'free' ? 'Free' : user?.subscriptionTier}
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[9px] text-[var(--muted)] truncate uppercase font-black tracking-widest opacity-60">
+                                        {user?.subscriptionTier === 'free' ? 'Scholar' : user?.subscriptionTier}
                                     </p>
-                                    {user?.plan !== 'proplus' && (
-                                        <span className="text-[9px] font-bold text-[var(--muted)]">
-                                            {user?.tokensUsed} / {user?.monthlyLimit}
-                                        </span>
-                                    )}
                                 </div>
-                                
-                                {user?.plan !== 'proplus' && (
-                                    <div className="h-1 w-full bg-[var(--border)] rounded-full mt-1 overflow-hidden">
-                                        <div 
-                                            className={`h-full transition-all duration-700 ${user?.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'}`}
-                                            style={{ width: `${Math.min(user?.percentUsed || 0, 100)}%` }}
-                                        />
-                                    </div>
-                                )}
                             </div>
                         </button>
                     )}
+
                 </div>
             </aside>
 
@@ -470,18 +471,10 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                                     ) : (
                                         <div className="space-y-4">
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider italic">Usage</span>
-                                                <span className="text-sm font-bold text-[var(--text)]">{user?.tokensUsed} / {user?.monthlyLimit}</span>
+                                                <UsageIndicator showAlways={true} className="w-full justify-between" />
                                             </div>
-                                            <div className="h-2.5 bg-[var(--border)] rounded-full overflow-hidden shadow-inner relative">
-                                                <div
-                                                    className={`h-full transition-all duration-700 rounded-full ${user?.percentUsed > 85 ? 'bg-orange-500' : 'bg-[var(--accent)]'
-                                                        }`}
-                                                    style={{ width: `${Math.min(user?.percentUsed || 0, 100)}%` }}
-                                                />
-                                            </div>
-                                            <Link href="/settings/billing" className={`block text-center py-2 rounded-xl border font-bold text-xs transition-all ${user?.percentUsed >= 100 ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--accent)]'}`}>
-                                                {user?.percentUsed >= 100 ? 'Limit reached - Upgrade' : 'Manage Subscription →'}
+                                            <Link href="/settings/billing" className={`block text-center py-2 rounded-xl border font-bold text-xs transition-all ${(user.percentUsed || 0) >= 100 ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--accent)]'}`}>
+                                                {(user.percentUsed || 0) >= 100 ? 'Limit reached - Upgrade' : 'Manage Subscription →'}
                                             </Link>
                                         </div>
                                     )}

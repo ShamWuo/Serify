@@ -263,6 +263,8 @@ export interface Curriculum {
     started_at: Date | string;
     last_activity_at: Date | string;
     completed_at?: Date | string | null;
+    deadline?: Date | string | null;
+    schedule?: any | null;
     created_at: Date | string;
 }
 

@@ -113,9 +113,12 @@ export default function Settings() {
                                 </p>
                             </div>
                             {user?.subscriptionTier === 'proplus' ? (
-                                <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider bg-[var(--accent)]/10 px-2 py-1 rounded border border-[var(--accent)]/20">Active</span>
+                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 shadow-[0_0_10px_rgba(var(--accent-rgb),0.1)]">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+                                    <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider">Active</span>
+                                </div>
                             ) : (
-                                <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-black/5 px-2 py-1 rounded">Locked</span>
+                                <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider bg-[var(--bg)] px-2.5 py-1 rounded-full border border-[var(--border)]">Locked</span>
                             )}
                         </div>
 
@@ -208,9 +211,12 @@ export default function Settings() {
                                 Plan Details & Billing History
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="text-sm font-bold text-[var(--accent)] bg-[var(--accent)]/5 px-2 py-1 rounded-lg border border-[var(--accent)]/10">
-                                    {user?.plan === 'proplus' ? 'Pro Plus' : user?.plan === 'pro' ? 'Pro' : 'Free'}
-                                </span>
+                                <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+                                    <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider text-xs">
+                                        {user?.plan === 'proplus' ? 'Pro Plus' : user?.plan === 'pro' ? 'Pro' : 'Free'}
+                                    </span>
+                                </div>
                                 <ChevronRight size={16} className="text-[var(--muted)]" />
                             </div>
                         </Link>

@@ -48,7 +48,7 @@ export default function FeedbackPage() {
         <DashboardLayout>
             <SEO title="Feedback" />
             
-            <div className="max-w-[800px] mx-auto px-6 py-12">
+            <div className="max-w-[800px] mx-auto px-6 py-12 pb-32">
                 <div className="mb-10">
                     <h1 className="text-4xl font-display text-[var(--text)] mb-2">Feedback</h1>
                     <p className="text-[var(--muted)] text-lg">Help us shape the future of Serify.</p>

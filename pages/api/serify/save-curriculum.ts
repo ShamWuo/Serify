@@ -64,6 +64,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
         });
 
+        if (curriculumData.schedule && Array.isArray(curriculumData.schedule)) {
+            curriculumData.schedule.forEach((item: any) => {
+                if (idMap.has(item.concept_id)) {
+                    item.concept_id = idMap.get(item.concept_id);
+                }
+            });
+        }
+
         const totalEstimatedMinutes = units.reduce(
             (sum: number, u: { concepts?: any[] }) => sum + (u.concepts?.reduce((s, c) => s + (c.estimated_minutes || 15), 0) ?? 0),
             0
@@ -93,6 +101,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 concept_count: conceptCount,
                 estimated_minutes: totalEstimatedMinutes,
                 recommended_start_index: curriculumData.recommended_start_index ?? 0,
+                deadline: curriculumData.deadline || null,
+                schedule: curriculumData.schedule || null,
                 status: 'draft'
             })
             .select()

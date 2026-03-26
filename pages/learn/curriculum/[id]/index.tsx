@@ -20,7 +20,8 @@ import {
     PlayCircle,
     Lock,
     ListChecks,
-    Loader2
+    Loader2,
+    Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -184,7 +185,7 @@ export default function CurriculumView() {
     return (
         <DashboardLayout
             backLink="/learn"
-            backLinkText="Back to Roadmaps"
+            backLinkText="Back to Learning"
             sidebarContent={
                 <CurriculumSidebar
                     concepts={allConcepts}
@@ -223,7 +224,7 @@ export default function CurriculumView() {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] bg-[var(--accent)]/10 px-2.5 py-1 rounded-full">
-                                        Roadmap
+                                        Learning Path
                                     </span>
                                     {curriculum.status === 'completed' && (
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
@@ -273,6 +274,12 @@ export default function CurriculumView() {
                                 <CheckCircle2 size={14} className="text-emerald-500" />
                                 <span>{completedCount} done</span>
                             </div>
+                            {curriculum.deadline && (
+                                <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-100">
+                                    <Clock size={14} />
+                                    <span className="font-semibold">Target: {new Date(curriculum.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                </div>
+                            )}
                         </div>
 
                         {}
@@ -318,6 +325,40 @@ export default function CurriculumView() {
                         </div>
                     </div>
                 </div>
+
+                {}
+                {curriculum.schedule && curriculum.schedule.length > 0 && (
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 sm:p-8 mb-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-[var(--text)] mb-6 flex items-center gap-2">
+                            <Calendar size={20} className="text-[var(--accent)]" />
+                            Mastery Schedule
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {curriculum.schedule.map((item: any, i: number) => {
+                                const isConceptCompleted = curriculum.completed_concept_ids?.includes(item.concept_id);
+                                return (
+                                    <div key={i} className={`flex items-start gap-3 p-4 rounded-2xl border transition-all ${isConceptCompleted ? 'bg-emerald-50/50 border-emerald-100 opacity-60' : 'bg-[var(--bg)] border-[var(--border)] shadow-sm hover:shadow-md'}`}>
+                                        <div className="shrink-0 w-10 text-center">
+                                            <p className={`text-[10px] font-bold uppercase ${isConceptCompleted ? 'text-emerald-600' : 'text-[var(--accent)]'}`}>
+                                                {new Date(item.date).toLocaleDateString(undefined, { month: 'short' })}
+                                            </p>
+                                            <p className="text-lg font-bold text-[var(--text)]">
+                                                {new Date(item.date).toLocaleDateString(undefined, { day: 'numeric' })}
+                                            </p>
+                                        </div>
+                                        <div className="w-px h-8 bg-[var(--border)] mt-1" />
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`font-bold text-sm truncate ${isConceptCompleted ? 'text-emerald-700 line-through' : 'text-[var(--text)]'}`} title={item.label}>{item.label}</p>
+                                            <p className="text-[10px] text-[var(--muted)] truncate uppercase tracking-wider font-semibold">
+                                                {isConceptCompleted ? 'Mastered' : 'Scheduled'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {}
                 <div className="space-y-3">

@@ -19,7 +19,9 @@ import {
     Brain,
     SkipForward,
     Loader2,
-    Lock
+    Lock,
+    Clock,
+    Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { experimental_useObject as useObject } from '@ai-sdk/react';
@@ -52,7 +54,9 @@ const curriculumSchema = z
         outcomes: z.array(z.string()).default([]),
         units: z.array(unitSchema).default([]),
         recommended_start_index: z.coerce.number().default(0),
-        scope_note: z.string().nullable().default(null)
+        scope_note: z.string().nullable().default(null),
+        deadline: z.string().nullable().default(null),
+        schedule: z.array(z.any()).nullable().default(null)
     })
     .default({
         title: '',
@@ -60,7 +64,9 @@ const curriculumSchema = z
         outcomes: [],
         units: [],
         recommended_start_index: 0,
-        scope_note: null
+        scope_note: null,
+        deadline: null,
+        schedule: null
     });
 
 type Step = 'input' | 'context' | 'generating';
@@ -88,7 +94,8 @@ export default function LearnIndex() {
 
     const curriculumInitialValue = {
         title: '', target_description: '', outcomes: [] as string[],
-        units: [] as any[], recommended_start_index: 0, scope_note: null as string | null
+        units: [] as any[], recommended_start_index: 0, scope_note: null as string | null,
+        deadline: null as string | null, schedule: null as any[] | null
     };
 
     const curriculumDataRef = useRef<z.infer<typeof curriculumSchema>>(curriculumInitialValue);
@@ -338,10 +345,18 @@ export default function LearnIndex() {
                     )}
                 </div>
 
-                <p className="text-[var(--muted)] text-[11px] mb-4 flex items-center gap-1.5">
-                    <span className="font-medium text-[var(--text)]">{conceptsCompleted}/{totalConcepts}</span>
-                    <span>concepts mastered</span>
-                </p>
+                <div className="flex items-center gap-2 mb-4">
+                    <p className="text-[var(--muted)] text-[11px] flex items-center gap-1.5">
+                        <span className="font-medium text-[var(--text)]">{conceptsCompleted}/{totalConcepts}</span>
+                        <span>concepts mastered</span>
+                    </p>
+                    {curriculum.deadline && (
+                        <div className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full border border-amber-100 font-medium">
+                            <Clock size={10} />
+                            {new Date(curriculum.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </div>
+                    )}
+                </div>
 
                 <div className="w-full h-1.5 bg-[var(--border)]/60 rounded-full mb-5 overflow-hidden">
                     <div
@@ -374,7 +389,7 @@ export default function LearnIndex() {
 
     return (
         <DashboardLayout>
-            <Head><title>Roadmaps | Serify</title></Head>
+            <Head><title>Learning | Serify</title></Head>
 
             {deleteModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -420,7 +435,7 @@ export default function LearnIndex() {
             <div className="p-6 md:p-10 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
 
                 <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-[var(--text)] mb-1">Roadmaps</h1>
+                    <h1 className="text-2xl font-bold text-[var(--text)] mb-1">Learning</h1>
                     <p className="text-[var(--muted)] text-sm">Build a tailored curriculum and master it concept by concept.</p>
                 </div>
 
@@ -530,7 +545,7 @@ export default function LearnIndex() {
                                 
                                 <div>
                                     <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
-                                        <AlertTriangle size={15} className="text-[var(--accent)]" />
+                                        <Clock size={15} className="text-[var(--accent)]" />
                                         Completion Target Date (Optional)
                                     </label>
                                     <input
@@ -617,7 +632,7 @@ export default function LearnIndex() {
 
                             {curriculumData?.units && curriculumData.units.length > 0 && (
                                 <div className="space-y-3">
-                                    {curriculumData.units.map((unit, i) => (
+                                    {curriculumData.units.map((unit: any, i: number) => (
                                         <div key={i} className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="bg-[var(--accent)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded">
@@ -638,6 +653,37 @@ export default function LearnIndex() {
                                             )}
                                         </div>
                                     ))}
+                                </div>
+                            )}
+
+                            {curriculumData?.schedule && curriculumData.schedule.length > 0 && (
+                                <div className="mt-8 border-t border-[var(--border)] pt-8">
+                                    <h3 className="text-sm font-bold text-[var(--text)] mb-4 flex items-center gap-2">
+                                        <Calendar size={16} className="text-[var(--accent)]" /> 
+                                        Mastery Schedule
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {curriculumData.schedule.map((item: any, i: number) => (
+                                            <div key={i} className="flex items-start gap-3 text-sm p-3 rounded-xl bg-white/50 border border-[var(--border)] group hover:border-[var(--accent)]/30 transition-colors">
+                                                <div className="shrink-0 w-12 text-center">
+                                                    <p className="text-[10px] font-bold text-[var(--accent)] uppercase leading-none">
+                                                        {new Date(item.date).toLocaleDateString(undefined, { month: 'short' })}
+                                                    </p>
+                                                    <p className="text-base font-bold text-[var(--text)]">
+                                                        {new Date(item.date).toLocaleDateString(undefined, { day: 'numeric' })}
+                                                    </p>
+                                                </div>
+                                                <div className="h-6 w-px bg-[var(--border)] mt-2" />
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                        <p className="font-semibold text-[var(--text)]">{item.label}</p>
+                                                        <span className="text-[10px] px-1.5 py-0.5 bg-[var(--bg)] border border-[var(--border)] rounded text-[var(--muted)] font-medium">Concept</span>
+                                                    </div>
+                                                    <p className="text-xs text-[var(--muted)]">Focus: {item.concept_id.length > 20 ? 'Selected concept' : item.concept_id}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 

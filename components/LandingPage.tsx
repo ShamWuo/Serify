@@ -120,7 +120,7 @@ export default function LandingPage() {
 
                 <div className="relative z-10 max-w-5xl mx-auto px-6 text-center" style={{ paddingTop: '2rem' }}>
 
-                    <h1 className="scroll-reveal text-5xl sm:text-7xl md:text-8xl lg:text-[110px] font-display leading-[0.9] tracking-tight mb-8 text-white drop-shadow-[0_2px_32px_rgba(110,255,160,0.18)]">
+                    <h1 className="scroll-reveal text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-display leading-[1.1] md:leading-[1] tracking-tight mb-8 text-white drop-shadow-[0_2px_32px_rgba(110,255,160,0.18)]">
                         Expose the{' '}
                         <span className="relative inline-block" style={{ color: '#6effa0' }}>
                             Illusion
@@ -279,7 +279,7 @@ export default function LandingPage() {
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 text-[10px] font-bold uppercase tracking-wider mb-6">
                                 <BrainCircuit size={14} /> The Science of Learning
                             </div>
-                            <h2 className="text-4xl md:text-5xl font-display leading-[1.1] text-[var(--text)] mb-8">
+                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display leading-[1.1] text-white mb-8">
                                 Why standard testing fails you.
                             </h2>
                             <div className="space-y-8">

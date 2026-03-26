@@ -147,10 +147,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const userProfile = await fetchProfileAndUsage(session.user, session.access_token);
                 
                 if (userProfile) {
-                    setUser(userProfile);
-                } else {
-                    
-                    setUser(prev => prev);
+                    setUser((prevUser) => {
+                        if (JSON.stringify(prevUser) !== JSON.stringify(userProfile)) {
+                            return userProfile;
+                        }
+                        return prevUser;
+                    });
                 }
             } else {
                 setUser(null);

@@ -872,3 +872,127 @@ For MCQs, simple acknowledge the result. For SAQs and Scenarios, provide deep di
 
   return object;
 }
+
+export async function generateScheduledRoadmap(
+  goal: string,
+  targetDate: string,
+  vaultContext: {
+    strongConcepts: { name: string }[];
+    shakyConcepts: { name: string }[];
+    revisitConcepts: { name: string }[];
+  },
+  plan: string = 'free'
+): Promise<{
+  title: string;
+  schedule: {
+    dayOffset: number;
+    date: string;
+    focusArea: string;
+    tasks: {
+      type: 'learning' | 'practice' | 'review' | 'assessment';
+      description: string;
+      conceptName?: string;
+      estimatedMinutes: number;
+    }[];
+  }[];
+  milestones: string[];
+}> {
+  const { strongConcepts, shakyConcepts, revisitConcepts } = vaultContext;
+  
+  const today = new Date().toISOString().split('T')[0];
+
+  const prompt = `You are Serify's curriculum architect.
+The user's goal is: "${goal}".
+The strict deadline is: ${targetDate}. Today is ${today}.
+
+USER'S CURRENT KNOWLEDGE (from Concept Vault):
+Strong: ${strongConcepts.map((c) => c.name).join(', ') || 'none'}
+Shaky: ${shakyConcepts.map((c) => c.name).join(', ') || 'none'}
+Revisit: ${revisitConcepts.map((c) => c.name).join(', ') || 'none'}
+
+Create a structured, day-by-day learning roadmap that guarantees the user masters this goal by the deadline.
+Focus heavily on active recall, practice, and repairing "shaky" and "revisit" concepts before introducing new complex material.
+
+Rules:
+- Give the roadmap a catchy title.
+- Distribute tasks sensibly. Don't overload a single day (max 3-4 tasks, total ~45-90 mins per day).
+- Every date from today up to the targetDate should ideally have some activity, or rest days if the timeline is long enough.
+- 'dayOffset' is the number of days from today (0 = today, 1 = tomorrow).
+- Return a few key 'milestones' to track macro progress.`;
+
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      title: z.string(),
+      schedule: z.array(z.object({
+        dayOffset: z.number(),
+        date: z.string().describe('YYYY-MM-DD'),
+        focusArea: z.string().describe('High-level theme for the day'),
+        tasks: z.array(z.object({
+          type: z.enum(['learning', 'practice', 'review', 'assessment']),
+          description: z.string().describe('Actionable task instruction'),
+          conceptName: z.string().optional().describe('The primary concept this task targets, if applicable'),
+          estimatedMinutes: z.number().describe('Realistic time estimate')
+        }))
+      })),
+      milestones: z.array(z.string()).describe('3-5 major checkpoints achieved along this roadmap')
+    }),
+    prompt,
+  });
+
+  return object;
+}
+
+export async function conductInterviewTurn(
+  scenario: string,
+  history: { role: 'ai' | 'user'; content: string }[],
+  userResponse: string,
+  targetConcepts: { name: string; description: string }[],
+  plan: string = 'free'
+): Promise<{
+  status: 'in_progress' | 'passed' | 'failed';
+  aiResponse: string;
+  feedback?: {
+    strengths: string[];
+    weaknesses: string[];
+    overall: string;
+  };
+}> {
+  const historyText = history.map(h => `${h.role === 'ai' ? 'Interviewer' : 'Candidate'}: ${h.content}`).join('\n');
+  const conceptNames = targetConcepts.map(c => c.name).join(', ');
+
+  const prompt = `You are conducting a strict, high-pressure technical interview.
+The overall scenario / role is: ${scenario}
+The core concepts you are testing the candidate on are: ${conceptNames}
+
+CONVERSATION HISTORY:
+${historyText}
+
+CANDIDATE'S LATEST RESPONSE:
+${userResponse}
+
+Your task:
+1. Evaluate the candidate's latest response. Are they dodging the question? Are they showing true mastery or just surface-level recitation?
+2. Decide the state of the interview:
+   - 'in_progress': The interview continues. Ask the next probing question. Push back on weak answers.
+   - 'passed': The candidate has convincingly demonstrated mastery of the target concepts. End the interview.
+   - 'failed': The candidate fundamentally misunderstands the concepts or gave up. End the interview.
+3. If 'in_progress', provide the 'aiResponse' as your next question or statement as the interviewer. Keep it conversational but firm. Do NOT break character.
+4. If 'passed' or 'failed', provide a final 'aiResponse' wrapping up, AND provide the 'feedback' object detailing why they passed/failed.`;
+
+  const { object } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      status: z.enum(['in_progress', 'passed', 'failed']),
+      aiResponse: z.string().describe('What the interviewer says next.').max(1000),
+      feedback: z.object({
+        strengths: z.array(z.string()),
+        weaknesses: z.array(z.string()),
+        overall: z.string()
+      }).optional().describe('Only provide if status is passed or failed.')
+    }),
+    prompt,
+  });
+
+  return object;
+}
