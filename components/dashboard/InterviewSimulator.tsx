@@ -228,7 +228,7 @@ export function InterviewSimulator({ isOpen, onClose, plan }: InterviewSimulator
                     </div>
                     <h3 className="text-xl font-black text-[var(--text)] tracking-tight uppercase italic">PROTOCOL ANALYSIS</h3>
                   </div>
-                  <p className="text-[15px] font-bold text-[var(--muted)]/70 leading-relaxed mb-10 relative z-10 italic">"{feedback.overall}"</p>
+                  <p className="text-[15px] font-bold text-[var(--muted)]/70 leading-relaxed mb-10 relative z-10 italic">&ldquo;{feedback.overall}&rdquo;</p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
                     <div className="space-y-6">

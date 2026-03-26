@@ -60,12 +60,12 @@ export default function MarkdownRenderer({ children, className = '' }: MarkdownR
                         <pre
                             style={{
                                 background: 'var(--surface)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
+                                border: '2px solid var(--border)',
+                                borderRadius: 2,
                                 padding: '12px 16px',
                                 overflowX: 'auto',
-                                fontSize: '0.9em',
-                                fontFamily: 'monospace'
+                                fontSize: '0.875em',
+                                fontFamily: 'IBM Plex Mono, monospace'
                             }}
                             {...props}
                         >
@@ -76,7 +76,7 @@ export default function MarkdownRenderer({ children, className = '' }: MarkdownR
                     blockquote: ({ node, children, ...props }) => (
                         <blockquote
                             style={{
-                                borderLeft: '3px solid var(--accent)',
+                                borderLeft: '4px solid var(--accent)',
                                 paddingLeft: '1em',
                                 margin: '0.5em 0',
                                 color: 'var(--muted)',

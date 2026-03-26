@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Play, ChevronRight, Brain } from 'lucide-react';
+import { Play, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface GapConcept {
     id: string;
@@ -13,63 +13,73 @@ interface NeedsAttentionProps {
     concepts: GapConcept[];
 }
 
+const STATUS_STYLE: Record<string, string> = {
+    shaky: 'washi-shaky',
+    revisit: 'washi-revisit',
+};
+
 const NeedsAttention: React.FC<NeedsAttentionProps> = ({ concepts }) => {
     return (
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[2rem] p-7 space-y-6 flex flex-col h-full hover:shadow-md transition-all duration-300">
-            <div className="flex items-center gap-3 px-1">
-                <div className="w-9 h-9 bg-emerald-500/10 text-emerald-600 rounded-xl flex items-center justify-center">
-                    <Brain size={17} strokeWidth={2} />
+        <div className="paper-card overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b-2 border-[var(--border)] flex items-center gap-3 dot-grid-bg">
+                <div className="w-8 h-8 border-2 border-[var(--border)] flex items-center justify-center text-[var(--warn)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                    <AlertTriangle size={15} strokeWidth={2} />
                 </div>
                 <div>
-                    <h3 className="text-[13px] font-semibold text-[var(--text)]">Needs attention</h3>
-                    <p className="text-[11px] text-[var(--muted)] opacity-50 mt-0.5">knowledge gaps</p>
+                    <h3 className="text-[13px] font-display font-bold text-[var(--text)]">Needs attention</h3>
+                    <p className="text-[10px] font-mono text-[var(--muted)]">{'// knowledge gaps'}</p>
                 </div>
             </div>
-            
-            {concepts.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center py-8 text-center px-4">
-                    <div className="w-11 h-11 rounded-2xl bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-emerald-400/40 mb-4">
-                        <Brain size={22} />
+
+            <div className="flex-1 p-5">
+                {concepts.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <p className="text-[12px] font-mono text-[var(--muted)]">
+                            ✓ all looking solid
+                        </p>
                     </div>
-                    <p className="text-[12px] text-[var(--muted)] opacity-60 leading-relaxed">
-                        All good — everything is looking solid.
-                    </p>
-                </div>
-            ) : (
-                <div className="space-y-4 px-1">
-                    {concepts.map(concept => (
-                        <div key={concept.id} className="group/row">
-                            <div className="flex items-center justify-between gap-4">
-                                <div className="flex items-start gap-3 min-w-0">
-                                    <div className={`w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${concept.status === 'revisit' ? 'bg-red-400' : 'bg-orange-400'}`} />
-                                    <div className="min-w-0">
-                                        <h4 className="text-[13px] font-medium text-[var(--text)] group-hover/row:text-emerald-600 transition-colors truncate">{concept.name}</h4>
-                                        <p className="text-[10px] text-[var(--muted)]/40 mt-0.5">
-                                            {concept.status} · {concept.sessionsCount} sessions
-                                        </p>
+                ) : (
+                    <div className="space-y-3">
+                        {concepts.map(concept => (
+                            <div key={concept.id} className="flex items-center justify-between gap-3 py-2 border-b border-[var(--border-soft)] last:border-0">
+                                <div className="flex items-start gap-3 min-w-0 flex-1">
+                                    {/* Hatch indicator for shaky */}
+                                    <div className={`mt-0.5 shrink-0 w-3 h-3 border border-current ${
+                                        concept.status === 'shaky'
+                                            ? 'text-[var(--warn)] hatch-danger'
+                                            : 'text-[var(--muted)]'
+                                    }`} />
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="text-[12px] font-mono text-[var(--text)] truncate">{concept.name}</h4>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`washi-tape ${STATUS_STYLE[concept.status] || 'washi-revisit'}`}>
+                                                {concept.status}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-[var(--muted)]">{concept.sessionsCount}x</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <Link 
+                                <Link
                                     href={`/learn?q=${encodeURIComponent(concept.name)}`}
-                                    className="px-3 py-1.5 bg-white border border-[var(--border)] rounded-xl text-[10px] font-medium text-[var(--muted)] hover:border-emerald-500/20 hover:bg-emerald-50 hover:text-emerald-600 transition-all flex items-center gap-1.5 shrink-0"
+                                    className="btn-ghost text-[10px] px-3 py-1 shrink-0 flex items-center gap-1"
                                 >
-                                    Fix it <Play size={9} fill="currentColor" strokeWidth={0} />
+                                    fix <Play size={8} fill="currentColor" strokeWidth={0} />
                                 </Link>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+                        ))}
+                    </div>
+                )}
+            </div>
 
-            <Link 
-                href="/vault" 
-                className="mt-auto flex items-center justify-center gap-2 py-4 border-t border-[var(--border)]/50 text-[12px] text-[var(--muted)]/50 hover:text-emerald-600 transition-colors group/footer w-full"
+            <Link
+                href="/vault"
+                className="flex items-center justify-center gap-2 py-3.5 border-t-2 border-[var(--border)] text-[11px] font-mono text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors w-full"
             >
-                Open vault <ChevronRight size={13} strokeWidth={2} className="group-hover/footer:translate-x-0.5 transition-transform" />
+                open vault <ChevronRight size={12} strokeWidth={2} />
             </Link>
         </div>
     );
 };
-
 
 export default NeedsAttention;

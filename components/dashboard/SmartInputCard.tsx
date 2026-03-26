@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Paperclip, X, AlertCircle, Zap, ChevronRight, Brain, Target, MessageSquare, History, FileText, Search, Play } from 'lucide-react';
+import { Paperclip, X, AlertCircle, Zap, ChevronRight, Brain, Target, History, FileText, Play } from 'lucide-react';
 import { useRouter } from 'next/router';
 import DetectionTag, { DetectedType } from './DetectionTag';
 import ModeToggle, { SearchMode } from './ModeToggle';
@@ -7,11 +7,18 @@ import AnalyzeButton from './AnalyzeButton';
 
 interface SmartInputCardProps {
     onAnalyze: (data: { content: string; type: DetectedType; mode: SearchMode; file?: File }) => Promise<void>;
-    percentUsed: number;
+    tokenBalance: number;
     compact?: boolean;
 }
 
-const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed, compact = false }) => {
+const STEPS = [
+    { until: 15, text: '// extracting content...' },
+    { until: 35, text: '// building concept map...' },
+    { until: 65, text: '// generating questions...' },
+    { until: 99, text: '// ready — starting session' },
+];
+
+const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance, compact = false }) => {
     const router = useRouter();
     const [input, setInput] = useState('');
     const [detectedType, setDetectedType] = useState<DetectedType | null>(null);
@@ -20,7 +27,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed,
     const [file, setFile] = useState<File | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [stepText, setStepText] = useState('');
+    const [stepText, setStepText] = useState(STEPS[0].text);
     const [error, setError] = useState<string | null>(null);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -57,27 +64,17 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed,
         if (type) setDetectedType(type);
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-    };
-
-    const handleDragLeave = () => {
-        setIsDragging(false);
-    };
-
+    const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+    const handleDragLeave = () => setIsDragging(false);
     const handleDrop = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile) {
-            handleFileSelect(droppedFile);
-        }
+        if (droppedFile) handleFileSelect(droppedFile);
     };
-
     const handleFileSelect = (selectedFile: File) => {
         setFile(selectedFile);
-        setDetectedType('file'); 
+        setDetectedType('file');
         setInput(selectedFile.name);
     };
 
@@ -85,27 +82,14 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed,
         let interval: NodeJS.Timeout;
         if (isProcessing) {
             setProgress(0);
-            setStepText('Extracting content...');
-            
+            setStepText(STEPS[0].text);
             interval = setInterval(() => {
                 setProgress(prev => {
-                    if (prev < 15) {
-                        setStepText('Extracting content...');
-                        return prev + 1;
-                    }
-                    if (prev < 35) {
-                        setStepText('Building concept map...');
-                        return prev + 1;
-                    }
-                    if (prev < 65) {
-                        setStepText('Generating questions...');
-                        return prev + 1;
-                    }
-                    if (prev < 99) {
-                        setStepText('Ready — starting your session');
-                        return prev + 1;
-                    }
-                    return prev;
+                    if (prev >= 99) return prev;
+                    const next = prev + 1;
+                    const step = STEPS.find(s => next < s.until);
+                    if (step) setStepText(step.text);
+                    return next;
                 });
             }, 100);
         }
@@ -114,15 +98,9 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed,
 
     const handleAnalyze = async () => {
         if (!input.trim() && !file) return;
-        
-        if (percentUsed >= 100) {
-            setError('Usage limit reached');
-            return;
-        }
-
+        if (tokenBalance <= 0) { setError('Usage limit reached'); return; }
         setError(null);
         setIsProcessing(true);
-        
         try {
             await onAnalyze({ content: input, type: detectedType || 'text', mode, file: file || undefined });
         } catch (err: any) {
@@ -133,30 +111,32 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed,
 
     if (isProcessing) {
         return (
-            <div className="bg-[var(--surface)] rounded-[2rem] p-8 shadow-md border border-[var(--border)] animate-fade-in flex flex-col justify-center min-h-[200px]">
-                <div className="flex items-center gap-4 mb-7">
-                    <div className="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center animate-pulse">
-                        <Brain size={22} strokeWidth={2} />
+            <div className="paper-card p-8 flex flex-col justify-center min-h-[180px] animate-fade-in">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="w-10 h-10 border-2 border-[var(--border)] flex items-center justify-center text-[var(--accent)] animate-pulse" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                        <Brain size={18} strokeWidth={2} />
                     </div>
                     <div>
-                        <h3 className="text-[15px] font-semibold text-[var(--text)]">Building your session</h3>
-                        <p className="text-[11px] text-[var(--muted)] opacity-50 mt-0.5">thinking...</p>
+                        <h3 className="text-[14px] font-display font-bold text-[var(--text)]">Building your session</h3>
+                        <p className="text-[11px] font-mono text-[var(--muted)]">{stepText}</p>
                     </div>
                 </div>
-                <div className="w-full bg-[var(--bg)] h-1.5 rounded-full overflow-hidden mb-5 border border-[var(--border)]">
-                    <div 
-                        className="bg-indigo-500 h-full rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${progress}%` }}
-                    />
+                {/* Tally-segment progress */}
+                <div className="flex gap-0.5 mb-4">
+                    {Array.from({length: 20}).map((_, i) => (
+                        <div
+                            key={i}
+                            className="flex-1 h-2 border border-[var(--border-soft)] transition-all duration-300"
+                            style={{
+                                background: i < Math.floor(progress / 5) ? 'var(--accent)' : 'var(--bg)',
+                                boxShadow: i < Math.floor(progress / 5) ? '1px 1px 0px var(--ink)' : 'none',
+                            }}
+                        />
+                    ))}
                 </div>
-                <div className="flex justify-between items-center px-0.5">
-                    <p className="text-[var(--muted)] text-[11px] flex items-center gap-2">
-                        {stepText} <span className="opacity-40 tabular-nums">{progress}%</span>
-                    </p>
-                    <button 
-                        onClick={() => setIsProcessing(false)}
-                        className="text-[11px] text-[var(--muted)]/40 hover:text-red-400 transition-colors"
-                    >
+                <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-mono text-[var(--muted)] tabular-nums">{progress}%</span>
+                    <button onClick={() => setIsProcessing(false)} className="text-[10px] font-mono text-[var(--muted)] hover:text-[var(--warn)] transition-colors">
                         cancel
                     </button>
                 </div>
@@ -164,148 +144,116 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, percentUsed,
         );
     }
 
-
     return (
-        <div 
-            className={`bg-[var(--surface)] rounded-[2.5rem] p-8 transition-all duration-500 border border-[var(--border)] shadow-sm group/card ${
-                isDragging ? 'border-dashed border-indigo-500 bg-indigo-500/[0.03]' : 'hover:shadow-[0_20px_40px_rgba(0,0,0,0.03)]'
-            }`}
+        <div
+            className={`transition-all duration-300 ${isDragging ? 'ring-2 ring-[var(--accent)]' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
-            <div className="relative">
-                {detectedType && (
-                    <div className="absolute -top-12 left-0 animate-fade-in z-10">
-                        <DetectionTag type={detectedType} onDismiss={() => setDetectedType(null)} />
-                    </div>
-                )}
-                <div className={`relative rounded-[1.5rem] border transition-all duration-500 ${
-                    isDragging ? 'border-transparent shadow-none' : 'border-[var(--border)] shadow-sm'
-                } focus-within:border-indigo-500/30 focus-within:ring-8 focus-within:ring-indigo-500/[0.02] bg-[var(--bg)]/50 group-hover/card:bg-white transition-all`}>
-                    {isDragging ? (
-                        <div className="h-[140px] flex flex-col items-center justify-center text-indigo-400 gap-3">
-                            <div className="w-11 h-11 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                                <Paperclip size={20} strokeWidth={2} />
-                            </div>
-                            <p className="text-[12px] text-indigo-400">Drop it here</p>
-                        </div>
-                    ) : (
-                        <>
-                            <textarea
-                                ref={textareaRef}
-                                value={input}
-                                onChange={(e) => setInput(e.target.value)}
-                                onPaste={handlePaste}
-                                placeholder="Paste a link, PDF text, or your notes..."
-                                className="w-full min-h-[140px] bg-transparent border-none focus:ring-0 p-6 pb-16 text-[15px] leading-relaxed resize-none overflow-hidden placeholder:text-[var(--muted)]/30 font-normal"
-                            />
-                            <div className="absolute bottom-4 left-5 right-5 flex items-center justify-between">
-                                <button 
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="px-4 py-2 rounded-xl bg-white border border-[var(--border)] text-[var(--muted)] hover:text-indigo-500 hover:border-indigo-500/20 hover:shadow-sm transition-all flex items-center gap-2.5 group/btn"
-                                    aria-label="Attach file"
-                                >
-                                    <Paperclip size={15} strokeWidth={2} />
-                                    <span className="text-[11px] font-medium">Attach file</span>
-                                </button>
-
-                                <div className="flex items-center gap-3">
-                                    {detectedType && (
-                                        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-xl animate-fade-in border border-indigo-500/10">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                                            <span className="text-[10px] text-indigo-500">ready</span>
-                                        </div>
-                                    )}
-                                    <AnalyzeButton 
-                                        onClick={handleAnalyze} 
-                                        disabled={(!input.trim() && !file) || percentUsed >= 100}
-                                        label="Start session"
-                                    />
-                                </div>
-                            </div>
-                        </>
-                    )}
+            {/* Detection tag */}
+            {detectedType && (
+                <div className="mb-3 animate-fade-in">
+                    <DetectionTag type={detectedType} onDismiss={() => setDetectedType(null)} />
                 </div>
+            )}
 
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-                    accept=".pdf,.txt,.md,.docx,.mp3,.mp4,.wav,.jpg,.png"
-                />
-
-                {!isDragging && (
-                    <div className="mt-8 pt-7 border-t border-[var(--border)]/50 animate-fade-in-up">
-                        <div className="space-y-4">
-                            <h4 className="text-[11px] text-[var(--muted)] px-1 opacity-50">or jump straight to</h4>
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                                <button 
-                                    onClick={() => router.push('/practice/flashcards')}
-                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-orange-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
-                                >
-                                    <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                        <Zap size={15} strokeWidth={2} />
+            {/* Textarea zone */}
+            <div className={`relative border-2 border-[var(--border)] bg-[var(--bg)] transition-all duration-300 focus-within:border-[var(--accent)] ${isDragging ? 'border-[var(--accent)] border-dashed' : ''}`}
+                style={{boxShadow: 'var(--shadow-hard)'}}
+            >
+                {isDragging ? (
+                    <div className="h-[120px] flex flex-col items-center justify-center text-[var(--accent)] gap-2">
+                        <Paperclip size={20} strokeWidth={2} />
+                        <p className="text-[12px] font-mono">{'// drop it here'}</p>
+                    </div>
+                ) : (
+                    <>
+                        <textarea
+                            ref={textareaRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onPaste={handlePaste}
+                            placeholder="Paste a link, PDF text, or your notes..."
+                            className="w-full min-h-[120px] bg-transparent border-none focus:ring-0 p-5 pb-14 text-[14px] leading-relaxed resize-none overflow-hidden font-mono placeholder:text-[var(--muted)]/40 placeholder:font-mono"
+                        />
+                        <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="px-3 py-1.5 border border-[var(--border-soft)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all flex items-center gap-1.5 text-[10px] font-mono bg-[var(--surface)]"
+                                aria-label="Attach file"
+                            >
+                                <Paperclip size={12} strokeWidth={2} />
+                                attach
+                            </button>
+                            <div className="flex items-center gap-2">
+                                {detectedType && (
+                                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 border border-[var(--accent)] bg-[var(--accent-soft)] animate-fade-in">
+                                        <div className="w-1.5 h-1.5 bg-[var(--accent)]" />
+                                        <span className="text-[9px] font-mono text-[var(--accent)]">ready</span>
                                     </div>
-                                    <span className="text-[12px] font-medium text-[var(--text)]">Flashcards</span>
-                                </button>
-                                <button 
-                                    onClick={() => router.push('/practice/test')}
-                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-blue-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
-                                >
-                                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                        <Target size={15} strokeWidth={2} />
-                                    </div>
-                                    <span className="text-[12px] font-medium text-[var(--text)]">Test mode</span>
-                                </button>
-                                <button 
-                                    onClick={() => router.push('/practice/review')}
-                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-purple-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
-                                >
-                                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                        <History size={15} strokeWidth={2} />
-                                    </div>
-                                    <span className="text-[12px] font-medium text-[var(--text)]">Review</span>
-                                </button>
-                                <button 
-                                    onClick={() => router.push('/flow')}
-                                    className="flex items-center gap-3 p-3.5 rounded-2xl bg-[var(--bg)]/60 border border-[var(--border)] hover:border-indigo-500/20 hover:bg-white hover:shadow-sm transition-all group duration-300"
-                                >
-                                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
-                                        <Play size={15} fill="currentColor" strokeWidth={0} />
-                                    </div>
-                                    <span className="text-[12px] font-medium text-[var(--text)]">Flow mode</span>
-                                </button>
+                                )}
+                                <AnalyzeButton
+                                    onClick={handleAnalyze}
+                                    disabled={(!input.trim() && !file) || tokenBalance <= 0}
+                                    label="Start session"
+                                />
                             </div>
                         </div>
-                    </div>
+                    </>
                 )}
-
             </div>
 
-            {error && (
-                <div className="mt-6 p-5 rounded-2xl bg-red-50 border border-red-100 flex items-start gap-3 animate-modal-in">
-                    <div className="w-9 h-9 rounded-xl bg-red-100 text-red-500 flex items-center justify-center shrink-0">
-                        <AlertCircle size={18} strokeWidth={2} />
-                    </div>
-                    <div className="flex-1 min-w-0 pt-1">
-                        <p className="text-[12px] font-medium text-red-600">{error}</p>
-                        {error === 'Usage limit reached' && (
-                            <button 
-                                onClick={() => router.push('/settings/billing')}
-                                className="mt-1.5 flex items-center gap-1.5 text-[11px] text-red-500 hover:text-red-700 underline underline-offset-4 transition-all"
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                accept=".pdf,.txt,.md,.docx,.mp3,.mp4,.wav,.jpg,.png"
+            />
+
+            {/* Quick launch shortcuts */}
+            {!isDragging && !compact && (
+                <div className="mt-6 pt-5 border-t-2 border-[var(--border)] animate-fade-in">
+                    <h4 className="text-[10px] font-mono text-[var(--muted)] mb-3">{'// or jump to'}</h4>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                        {[
+                            { route: '/practice/flashcards', icon: Zap, label: 'Flashcards', color: 'var(--amber)' },
+                            { route: '/practice/test', icon: Target, label: 'Test mode', color: 'var(--sage)' },
+                            { route: '/practice/review', icon: History, label: 'Review', color: 'var(--muted)' },
+                            { route: '/flow', icon: Play, label: 'Flow mode', color: 'var(--accent)' },
+                        ].map(({route, icon: Icon, label, color}) => (
+                            <button
+                                key={route}
+                                onClick={() => router.push(route)}
+                                className="flex items-center gap-2 p-3 border border-[var(--border-soft)] hover:border-[var(--border)] hover:bg-[var(--surface)] transition-all group text-left bg-[var(--bg)]"
                             >
-                                Upgrade your plan <ChevronRight size={11} strokeWidth={2} />
+                                <Icon size={13} strokeWidth={2} style={{color}} />
+                                <span className="text-[11px] font-mono text-[var(--text)] group-hover:text-[var(--text)]">{label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {error && (
+                <div className="mt-4 p-4 border-2 border-[var(--warn)] bg-[var(--warn)]/5 flex items-start gap-3 animate-fade-in" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                    <AlertCircle size={15} strokeWidth={2} className="text-[var(--warn)] shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-mono text-[var(--warn)]">{error}</p>
+                        {error === 'Usage limit reached' && (
+                            <button
+                                onClick={() => router.push('/settings/billing')}
+                                className="mt-1 flex items-center gap-1 text-[10px] font-mono text-[var(--warn)] hover:underline"
+                            >
+                                upgrade plan <ChevronRight size={10} strokeWidth={2} />
                             </button>
                         )}
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
 
 export default SmartInputCard;
-

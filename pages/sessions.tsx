@@ -497,76 +497,54 @@ export default function LibraryPage() {
                     <>
                         <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                             <div>
-                                <h1 className="text-3xl font-display text-[var(--text)]">Sessions</h1>
-                                <p className="text-[var(--muted)] text-sm mt-1">
-                                    All your sessions and saved learning materials, in one place.
-                                </p>
+                                <h1 className="text-3xl font-display font-bold text-[var(--text)]">Sessions</h1>
+                                <p className="text-[11px] font-mono text-[var(--muted)] mt-1">{'// all your sessions and saved learning materials'}</p>
                             </div>
-                            <div className="flex gap-2">
-                                <div className="relative">
-                                    <Search
-                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-                                        size={15}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Search by title…"
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        className="pl-9 pr-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm outline-none focus:border-[var(--accent)] w-full md:w-60 transition-colors"
-                                    />
-                                    {search && (
-                                        <button
-                                            onClick={() => setSearch('')}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)]"
-                                        >
-                                            <X size={13} />
-                                        </button>
-                                    )}
-                                </div>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={13} />
+                                <input
+                                    type="text"
+                                    placeholder="search by title..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="pl-9 pr-8 py-2 input-paper text-[12px] w-full md:w-56"
+                                />
+                                {search && (
+                                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)]">
+                                        <X size={12} />
+                                    </button>
+                                )}
                             </div>
                         </header>
 
-                        <div className="flex flex-wrap items-center gap-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-1 mb-6 w-fit glass">
+                        <div className="flex flex-wrap items-center border-2 border-[var(--border)] mb-6 w-fit" style={{boxShadow: 'var(--shadow-hard-sm)'}}>
                             {(
                                 [
-                                    ['all', 'All', sessions.length],
-                                    ['reflection', 'Analysis', reflectionCount],
-                                    ['flow', 'Learn', flowCount],
-                                    ['in_progress', 'In Progress', inProgressCount],
-                                    ['completed', 'Completed', completedCount]
-
+                                    ['all', 'all', sessions.length],
+                                    ['reflection', 'analysis', reflectionCount],
+                                    ['flow', 'learn', flowCount],
+                                    ['in_progress', 'in progress', inProgressCount],
+                                    ['completed', 'done', completedCount],
                                 ] as [FilterTab, string, number][]
                             ).map(([tab, label, count]) => (
                                 <button
                                     key={tab}
                                     onClick={() => setFilterTab(tab)}
-                                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${filterTab === tab
-                                        ? 'bg-[var(--accent)] text-white shadow-sm'
-                                        : 'text-[var(--muted)] hover:text-[var(--text)]'
-                                        }`}
+                                    className={`px-4 py-2 text-[11px] font-mono transition-colors flex items-center gap-1.5 border-r border-[var(--border)] last:border-r-0 ${
+                                        filterTab === tab
+                                            ? 'bg-[var(--accent)] text-[var(--ink)] font-bold'
+                                            : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]'
+                                    }`}
                                 >
-
-                                    {tab === 'reflection' && <FlaskConical size={12} />}
-                                    {tab === 'flow' && <Zap size={12} />}
-                                    {tab === 'in_progress' && <Clock size={12} />}
-                                    {tab === 'completed' && (
-                                        <CheckCircle2
-                                            size={12}
-                                            className={filterTab === tab ? '' : 'text-emerald-500'}
-                                        />
-                                    )}
                                     {label}
-                                    <span
-                                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${filterTab === tab ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--muted)]'}`}
-                                    >
-                                        {count}
-                                    </span>
+                                    <span className={`text-[9px] font-mono tabular-nums ${
+                                        filterTab === tab ? 'text-[var(--ink)]' : 'text-[var(--muted)]'
+                                    }`}>[{count}]</span>
                                 </button>
                             ))}
                         </div>
 
-                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass relative">
+                        <div className="paper-card overflow-hidden relative">
                             {loading && sessions.length === 0 ? (
                                 <div className="animate-pulse">
                                     <div className="h-12 bg-black/[0.02] border-b border-[var(--border)]"></div>
@@ -587,7 +565,7 @@ export default function LibraryPage() {
                             ) : filtered.length > 0 ? (
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="border-b border-[var(--border)] bg-black/[0.02]">
+                                        <tr className="border-b-2 border-[var(--border)] bg-[var(--bg)]/50 dot-grid-bg">
                                             <th className="py-3 px-6 w-10">
                                                 <input
                                                     type="checkbox"
@@ -793,7 +771,7 @@ export default function LibraryPage() {
             {/* Bulk Action Bar */}
             {selectedSessions.size > 0 && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-modal-in">
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl px-6 py-4 flex items-center gap-6 glass min-w-[300px] border-t-2 border-t-[var(--accent)]">
+                    <div className="paper-card px-6 py-4 flex items-center gap-6 min-w-[300px] border-t-4 border-t-[var(--accent)]">
                         <div className="flex items-center gap-3 pr-6 border-r border-[var(--border)]">
                             <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)] font-bold text-sm">
                                 {selectedSessions.size}

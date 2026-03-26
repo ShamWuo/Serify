@@ -162,239 +162,199 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
     const themeToggleItem = (
         <button
             onClick={toggleTheme}
-            className="flex items-center justify-between w-full px-3 py-2.5 rounded-xl transition-all duration-200 group text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)]"
+            className="flex items-center gap-2 w-full px-3 py-2 transition-all text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] border-2 border-transparent hover:border-[var(--border-soft)] font-mono text-[11px]"
+            style={{borderRadius:'3px'}}
         >
-            <div className="flex items-center gap-3">
-                <div className="group-hover:scale-110 transition-transform">
-                    {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-                </div>
-                <span className="text-sm tracking-wide">
-                    {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-                </span>
-            </div>
+            {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
+            <span>{theme === 'light' ? 'dark mode' : 'light mode'}</span>
         </button>
     );
 
     return (
-        <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-sans relative">
-            {}
-            <div className="fixed top-[-10%] left-[-5%] w-[40vw] h-[40vw] bg-[var(--accent)] rounded-full filter blur-[80px] opacity-[0.03] pointer-events-none z-0" />
-            <div className="fixed bottom-[-10%] right-[-5%] w-[35vw] h-[35vw] bg-[#7c3d9e] rounded-full filter blur-[80px] opacity-[0.03] pointer-events-none z-0" />
+        <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-mono relative">
 
-            <aside className="hidden md:flex flex-col w-[220px] border-r border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur-md h-screen sticky top-0 shrink-0 z-50 shadow-sm">
-                <div className="px-6 pt-8 pb-4">
+            {/* Sidebar — The Architect's Pen */}
+            <aside className="hidden md:flex flex-col w-[230px] border-r-2 border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-50 dot-grid-bg">
+                {/* Logo */}
+                <div className="px-6 pt-8 pb-5 border-b-2 border-[var(--border)]">
                     {backLink ? (
                         <Link
                             href={backLink}
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors mb-4 group"
+                            className="inline-flex items-center gap-2 text-sm font-bold font-display text-[var(--muted)] hover:text-[var(--accent)] transition-colors mb-2 group"
                         >
-                            <div className="w-8 h-8 rounded-full border border-[var(--border)] flex items-center justify-center bg-[var(--surface)] group-hover:bg-[var(--accent)] group-hover:text-white transition-all">
-                                <ChevronRight size={18} className="rotate-180" />
-                            </div>
+                            <ChevronRight size={16} className="rotate-180" />
                             {backLinkText || 'Back'}
                         </Link>
                     ) : (
                         <Link
                             href={router.query.demo === 'true' ? '/?demo=true' : '/'}
-                            className="inline-flex items-center gap-3 group mb-2 text-left"
+                            className="inline-flex items-center gap-3 group text-left"
                         >
                             {!logoError && (
-                                <div className="h-10 w-10 flex items-center justify-center shrink-0">
+                                <div className="h-8 w-8 flex items-center justify-center shrink-0 border-2 border-[var(--border)] p-0.5" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                                     <Image
                                         src="/logo.png"
                                         alt=""
-                                        width={40}
-                                        height={40}
-                                        className="h-full w-full object-contain transition-transform group-hover:scale-110"
+                                        width={32}
+                                        height={32}
+                                        className="h-full w-full object-contain"
                                         onError={() => setLogoError(true)}
                                     />
                                 </div>
                             )}
-                            <div className="flex flex-col">
-                                <div className="text-3xl font-display text-[var(--text)] tracking-tight">
-                                    Serify
-                                </div>
+                            <div className="font-display font-bold text-xl text-[var(--text)] tracking-wide group-hover:text-[var(--accent)] transition-colors">
+                                Serify
                             </div>
                         </Link>
                     )}
                 </div>
 
-                <div className="px-4 mb-6 space-y-4">
+                {/* Search */}
+                <div className="px-4 py-4 border-b-2 border-[var(--border)]">
                     <button
                         onClick={() => setIsCommandPaletteOpen(true)}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)]/50 text-[var(--muted)] hover:text-[var(--text)] hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/[0.02] transition-all group"
+                        className="w-full flex items-center gap-2 px-3 py-2 border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition-all group"
+                        style={{borderRadius:'3px', boxShadow:'var(--shadow-hard-sm)'}}
                     >
-                        <Search size={14} className="group-hover:text-indigo-500 transition-colors" />
-                        <span className="text-[11px] font-bold flex-1 text-left uppercase tracking-wider">Search</span>
-                        <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-[var(--surface)] border border-[var(--border)] rounded text-[9px] font-black opacity-40">
-                            ⌘K
-                        </div>
+                        <Search size={13} />
+                        <span className="text-[11px] font-mono flex-1 text-left">search...</span>
+                        <code className="text-[9px] font-mono bg-[var(--surface)] border border-[var(--border-soft)] px-1 py-0.5">⌘K</code>
                     </button>
-                    <div className="px-1">
-                        <UsageIndicator className="w-full justify-between py-2.5 px-4 rounded-2xl border border-[var(--border)] shadow-sm bg-[var(--surface)] hover:border-indigo-500/30 transition-all cursor-default" />
+                    <div className="mt-3">
+                        <UsageIndicator className="w-full justify-between py-2 px-3 border border-[var(--border-soft)] bg-[var(--bg)] text-xs font-mono cursor-default" />
                     </div>
                 </div>
 
-
-                <nav className="flex-1 px-3 py-4 space-y-8 overflow-y-auto custom-scrollbar">
-                    {}
-                    <div className="space-y-1.5">
-                        <div className="px-4 mb-3 text-[9px] font-black text-[var(--muted)]/40 uppercase tracking-[0.3em]">Main</div>
+                {/* Nav */}
+                <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
+                    <div className="space-y-0.5">
+                        <div className="px-3 mb-2 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// main'}</div>
                         {navItems.map((item: any) => {
                             const isActive = router.pathname === item.href || (item.href !== '/' && router.pathname.startsWith(item.href));
                             return (
                                 <Link
                                     key={item.href}
                                     href={router.query.demo === 'true' ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300 group ${
+                                    className={`flex items-center gap-3 px-3 py-2.5 transition-all duration-150 relative group ${
                                         isActive
-                                            ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 font-bold translate-x-1'
-                                            : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] hover:translate-x-1'
+                                            ? 'bg-[var(--accent)] text-[var(--surface)] border-2 border-[var(--ink)] font-bold'
+                                            : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] border-2 border-transparent'
                                     }`}
+                                    style={isActive ? {boxShadow:'var(--shadow-hard-sm)',borderRadius:'3px'} : {borderRadius:'3px'}}
                                 >
-                                    <div className={`${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform shrink-0`}>
-                                        {item.icon}
-                                    </div>
-                                    <span className={`text-[13px] tracking-tight ${isActive ? 'font-black' : 'font-bold'}`}>
-                                        {item.label}
-                                    </span>
+                                    <div className="shrink-0 opacity-90">{item.icon}</div>
+                                    <span className="text-[12px] font-mono">{item.label}</span>
                                 </Link>
                             );
                         })}
                     </div>
 
-
-                    {}
-                    <div className="space-y-1.5">
-                        <div className="px-4 mb-3 text-[9px] font-black text-[var(--muted)]/40 uppercase tracking-[0.3em]">Library</div>
+                    <div className="space-y-0.5">
+                        <div className="px-3 mb-2 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// library'}</div>
                         {secondaryItems.map((item: any) => {
                             const isActive = router.pathname === item.href;
                             return (
                                 <Link
                                     key={item.href}
                                     href={router.query.demo === 'true' ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
-                                    className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all duration-300 group ${
+                                    className={`flex items-center gap-3 px-3 py-2 transition-all duration-150 border-2 relative group ${
                                         isActive
-                                            ? 'bg-[var(--bg)] text-[var(--text)] font-bold translate-x-1'
-                                            : 'text-[var(--muted)] hover:bg-[var(--bg)] hover:text-[var(--text)] hover:translate-x-1'
+                                            ? 'bg-[var(--bg)] text-[var(--text)] border-[var(--border)] font-bold'
+                                            : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] border-transparent'
                                     }`}
+                                    style={{borderRadius:'3px'}}
                                 >
-                                    <div className={`${isActive ? 'scale-110' : 'group-hover:scale-110'} transition-transform shrink-0`}>
-                                        {item.icon}
-                                    </div>
-                                    <span className={`text-[12px] tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
-                                        {item.label}
-                                    </span>
-
+                                    <div className="shrink-0">{item.icon}</div>
+                                    <span className="text-[11px] font-mono">{item.label}</span>
                                 </Link>
                             );
                         })}
                     </div>
 
-
-                    {}
-                    <div className="pt-2">
+                    <div>
                         {themeToggleItem}
                     </div>
                 </nav>
-                {}
 
-                <div className="p-3 relative border-t border-[var(--border)]" ref={profileRef}>
+                {/* Profile */}
+                <div className="border-t-2 border-[var(--border)] relative" ref={profileRef}>
                     {isProfileOpen && (
-                        <div className="absolute bottom-full mb-4 left-4 right-4 bg-[var(--surface)] border border-[var(--border)] rounded-[1.5rem] shadow-2xl overflow-hidden animate-modal-in z-50">
+                        <div className="absolute bottom-full left-3 right-3 mb-2 bg-[var(--surface)] border-2 border-[var(--border)] overflow-hidden animate-modal-in z-50" style={{boxShadow:'var(--shadow-hard)',borderRadius:'3px'}}>
                             <Link
                                 href="/settings"
                                 onClick={() => setIsProfileOpen(false)}
-                                className="flex items-center gap-3 px-5 py-4 hover:bg-indigo-500/5 transition-colors text-[11px] font-bold uppercase tracking-widest text-[var(--text)]"
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--accent-soft)] transition-colors text-[11px] font-mono text-[var(--text)] border-b border-[var(--border-soft)]"
                             >
-                                <Settings size={14} className="text-[var(--muted)]" /> Settings
+                                <Settings size={13} className="text-[var(--muted)]" /> Settings
                             </Link>
                             <button
                                 onClick={handleLogout}
-                                className="w-full flex items-center gap-3 px-5 py-4 hover:bg-red-500/5 transition-colors text-[11px] font-bold uppercase tracking-widest text-left border-t border-[var(--border)]/50 text-red-500"
+                                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors text-[11px] font-mono text-left text-[var(--warn)]"
                             >
-                                <LogOut size={14} /> Sign Out
+                                <LogOut size={13} /> Sign out
                             </button>
                         </div>
                     )}
 
-
                     {authLoading || !user ? (
-                        <div className="w-full flex items-center gap-3 p-3 rounded-2xl animate-pulse">
-                            <div className="w-10 h-10 rounded-full bg-[var(--border)]" />
-                            <div className="flex-1 space-y-2">
-                                <div className="h-4 bg-[var(--border)] rounded w-3/4" />
-                                <div className="h-3 bg-[var(--border)] rounded w-1/2 opacity-50" />
+                        <div className="flex items-center gap-3 p-4 animate-pulse">
+                            <div className="w-8 h-8 bg-[var(--border-soft)] border border-[var(--border)]" />
+                            <div className="flex-1 space-y-1.5">
+                                <div className="skel-ink w-3/4" />
+                                <div className="skel-ink w-1/2 opacity-50" />
                             </div>
                         </div>
                     ) : (
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-indigo-500/[0.03] transition-all text-left group overflow-hidden"
+                            className="w-full flex items-center gap-3 p-4 hover:bg-[var(--bg)] transition-colors text-left group"
                         >
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-[14px] font-black shrink-0 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+                            <div className="w-8 h-8 bg-[var(--accent)] text-[var(--surface)] flex items-center justify-center text-[12px] font-bold shrink-0 border-2 border-[var(--border)] font-mono" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                                 {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-black text-[var(--text)] truncate tracking-tight">
+                                <p className="text-[12px] font-bold font-mono text-[var(--text)] truncate">
                                     {user?.displayName || 'User'}
                                 </p>
-                                <div className="flex items-center justify-between gap-2">
-                                    <p className="text-[9px] text-[var(--muted)] truncate uppercase font-black tracking-widest opacity-60">
-                                        {user?.subscriptionTier === 'free' ? 'Scholar' : user?.subscriptionTier}
-                                    </p>
-                                </div>
+                                <p className="text-[10px] font-mono text-[var(--muted)] truncate">
+                                    {user?.subscriptionTier === 'free' ? 'free plan' : user?.subscriptionTier}
+                                </p>
                             </div>
                         </button>
                     )}
-
                 </div>
             </aside>
 
-            <div className="md:hidden sticky top-0 z-[60] bg-[var(--surface)] border-b border-[var(--border)] px-4 py-3 flex items-center justify-between">
+            {/* Mobile Header */}
+            <div className="md:hidden sticky top-0 z-[60] bg-[var(--surface)] border-b-2 border-[var(--border)] px-4 py-3 flex items-center justify-between">
                 <Link href={router.query.demo === 'true' ? '/?demo=true' : '/'} className="flex items-center gap-2">
                     {!logoError && (
-                        <Image
-                            src="/logo.png"
-                            alt=""
-                            width={28}
-                            height={28}
-                            className="h-7 w-7 object-contain"
-                            onError={() => setLogoError(true)}
-                        />
+                        <Image src="/logo.png" alt="" width={24} height={24} className="h-6 w-6 object-contain border border-[var(--border-soft)] p-0.5" onError={() => setLogoError(true)} />
                     )}
-                    <span className="text-2xl font-display text-[var(--text)]">Serify</span>
+                    <span className="text-xl font-display font-bold text-[var(--text)]">Serify</span>
                 </Link>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                     <UsageIndicator />
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--text)]"
+                        className="w-9 h-9 bg-[var(--surface)] border-2 border-[var(--border)] flex items-center justify-center text-[var(--text)]" style={{boxShadow:'var(--shadow-hard-sm)',borderRadius:'3px'}}
                     >
-                        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                        {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
                     </button>
                     <div className="relative" ref={mobileProfileRef}>
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--accent)] to-emerald-700 text-white flex items-center justify-center text-xs font-bold cursor-pointer shadow-md overflow-hidden hover:scale-105 transition-transform"
+                            className="w-9 h-9 bg-[var(--accent)] text-[var(--surface)] flex items-center justify-center text-xs font-bold font-mono border-2 border-[var(--border)] cursor-pointer" style={{boxShadow:'var(--shadow-hard-sm)',borderRadius:'3px'}}
                         >
                             {user?.displayName?.charAt(0) || 'U'}
                         </button>
-
                         {isProfileOpen && (
-                            <div className="absolute top-full mt-2 right-0 w-48 glass border border-[var(--border)] rounded-xl shadow-2xl overflow-hidden animate-modal-in z-50">
-                                <Link
-                                    href="/settings"
-                                    onClick={() => setIsProfileOpen(false)}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--accent)]/5 transition-colors text-sm font-semibold"
-                                >
-                                    <Settings size={16} className="text-[var(--muted)]" /> Settings
+                            <div className="absolute top-full mt-1.5 right-0 w-44 bg-[var(--surface)] border-2 border-[var(--border)] overflow-hidden animate-modal-in z-50" style={{boxShadow:'var(--shadow-hard)',borderRadius:'3px'}}>
+                                <Link href="/settings" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--bg)] text-xs font-mono text-[var(--text)] border-b border-[var(--border-soft)]">
+                                    <Settings size={13} className="text-[var(--muted)]" /> Settings
                                 </Link>
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-500/5 transition-colors text-sm font-semibold text-left border-t border-[var(--border)] text-red-500"
-                                >
-                                    <LogOut size={16} /> Sign Out
+                                <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-3 text-xs font-mono text-[var(--warn)] hover:bg-[var(--bg)] text-left">
+                                    <LogOut size={13} /> Sign out
                                 </button>
                             </div>
                         )}
@@ -402,89 +362,40 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
             </div>
 
-            {}
+            {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 z-[70] bg-[var(--bg)] animate-fade-in flex flex-col pt-16">
-                    <div className="absolute top-4 right-4">
-                        <button
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="w-10 h-10 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center"
-                        >
-                            <X size={20} />
+                <div className="md:hidden fixed inset-0 z-[70] bg-[var(--bg)] dot-grid-bg animate-fade-in flex flex-col pt-14">
+                    <div className="absolute top-3 right-3">
+                        <button onClick={() => setIsMobileMenuOpen(false)} className="w-9 h-9 bg-[var(--surface)] border-2 border-[var(--border)] flex items-center justify-center" style={{boxShadow:'var(--shadow-hard-sm)',borderRadius:'3px'}}>
+                            <X size={18} />
                         </button>
                     </div>
-
-                    <div className="flex-1 overflow-y-auto px-6 py-10 space-y-8">
-                        <nav className="space-y-2">
+                    <div className="flex-1 overflow-y-auto px-5 py-8 space-y-6">
+                        <nav className="space-y-1">
                             {navItems.map((item: any) => {
-                                const isActive =
-                                    router.pathname.startsWith(item.href) &&
-                                    (item.href !== '/' || router.pathname === '/');
+                                const isActive = router.pathname.startsWith(item.href) && (item.href !== '/' || router.pathname === '/');
                                 return (
                                     <Link
                                         key={item.href}
-                                        href={router.query.demo === 'true'
-                                            ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true`
-                                            : item.href}
-                                        className={`flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all ${isActive
-                                            ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-bold'
-                                            : 'text-[var(--text)] hover:bg-[var(--surface)]'
-                                            }`}
+                                        href={router.query.demo === 'true' ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
+                                        className={`flex items-center gap-4 px-4 py-3 border-2 transition-all font-mono text-base ${
+                                            isActive ? 'bg-[var(--accent)] text-[var(--surface)] border-[var(--ink)] font-bold' : 'text-[var(--text)] border-transparent hover:bg-[var(--surface)] hover:border-[var(--border-soft)]'
+                                        }`}
+                                        style={{borderRadius:'3px', boxShadow: isActive ? 'var(--shadow-hard-sm)' : 'none'}}
                                     >
-                                        <div className="flex items-center gap-4">
-                                            {item.icon}
-                                            <span className="text-lg">{item.label}</span>
-                                        </div>
-                                        {item.badge !== undefined && (
-                                            <span className="bg-[var(--accent)] text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                                {item.badge}
-                                            </span>
-                                        )}
+                                        {item.icon}
+                                        <span>{item.label}</span>
                                     </Link>
                                 );
                             })}
                             {themeToggleItem}
                         </nav>
-
-                        {sidebarContent && (
-                            <div className="pt-6 border-t border-[var(--border)]">
-                                {sidebarContent}
-                            </div>
-                        )}
-
                         {user && (
-                            <div className="pt-6 border-t border-[var(--border)]">
-                                <div className={`p-5 rounded-2xl border ${user?.plan === 'proplus' ? 'bg-[var(--accent)]/5 border-[var(--accent)]/20' : 'bg-[var(--surface)] border-[var(--border)]'} shadow-sm`}>
-                                    {user?.plan === 'proplus' ? (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-2">
-                                                <Sparkles size={16} className="text-[var(--accent)]" />
-                                                <span className="text-xs font-bold text-[var(--text)] uppercase tracking-wider">Serify Pro Plus</span>
-                                            </div>
-                                            <div className="text-lg font-display font-bold bg-gradient-to-r from-[var(--accent)] to-[#a855f7] bg-clip-text text-transparent">
-                                                Unlimited Access
-                                            </div>
-                                            <Link href="/settings/billing" className="block text-xs font-bold text-[var(--accent)] pt-2">
-                                                Manage Subscription →
-                                            </Link>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <UsageIndicator showAlways={true} className="w-full justify-between" />
-                                            </div>
-                                            <Link href="/settings/billing" className={`block text-center py-2 rounded-xl border font-bold text-xs transition-all ${(user.percentUsed || 0) >= 100 ? 'bg-orange-500/10 border-orange-500/30 text-orange-500' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--accent)]'}`}>
-                                                {(user.percentUsed || 0) >= 100 ? 'Limit reached - Upgrade' : 'Manage Subscription →'}
-                                            </Link>
-                                        </div>
-                                    )}
-                                </div>
-                                <button
-                                    onClick={handleLogout}
-                                    className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-red-500 hover:bg-red-500/5 transition-all mt-4 font-bold border border-red-500/10"
-                                >
-                                    <LogOut size={20} />
-                                    <span className="text-lg">Sign Out</span>
+                            <div className="pt-4 border-t-2 border-[var(--border)]">
+                                <UsageIndicator showAlways={true} className="w-full justify-between py-2 px-3 border border-[var(--border-soft)] bg-[var(--surface)] text-xs font-mono" />
+                                <Link href="/settings/billing" className="btn-secondary w-full mt-3 justify-center">Manage plan</Link>
+                                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 mt-2 border-2 border-[var(--warn)]/40 text-[var(--warn)] hover:bg-[var(--warn-soft)] transition-colors font-mono text-sm" style={{borderRadius:'3px'}}>
+                                    <LogOut size={16} /> Sign out
                                 </button>
                             </div>
                         )}
@@ -504,29 +415,23 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 {children}
             </main>
 
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)]/90 backdrop-blur-xl border-t border-[var(--border)] flex items-center justify-around pb-safe">
+            {/* Mobile Bottom Nav */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] border-t-2 border-[var(--border)] flex items-center justify-around pb-safe">
                 {navItems.slice(0, 5).map((item: any) => {
-                    const isActive =
-                        router.pathname.startsWith(item.href) &&
-                        (item.href !== '/' || router.pathname === '/');
+                    const isActive = router.pathname.startsWith(item.href) && (item.href !== '/' || router.pathname === '/');
                     return (
                         <Link
                             key={item.href}
-                            href={router.query.demo === 'true'
-                                ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true`
-                                : item.href}
-                            className={`flex flex-col items-center justify-center py-2.5 px-1 w-full gap-1 transition-all relative ${isActive
-                                ? 'text-[var(--accent)]'
-                                : 'text-[var(--muted)] hover:text-[var(--text)]'
-                                }`}
+                            href={router.query.demo === 'true' ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
+                            className={`flex flex-col items-center justify-center py-2.5 px-1 w-full gap-1 transition-all relative font-mono ${
+                                isActive ? 'text-[var(--accent)]' : 'text-[var(--muted)] hover:text-[var(--text)]'
+                            }`}
                         >
                             {isActive && (
-                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-b-full bg-[var(--accent)] shadow-[0_0_6px_var(--accent)]" />
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2px] bg-[var(--accent)]" />
                             )}
-                            <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>
-                                {item.icon}
-                            </div>
-                            <span className={`text-[10px] font-medium ${isActive ? 'font-bold' : ''}`}>{item.label}</span>
+                            <div className={`transition-transform duration-200 ${isActive ? 'scale-110' : ''}`}>{item.icon}</div>
+                            <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-normal'}`}>{item.label}</span>
                         </Link>
                     );
                 })}

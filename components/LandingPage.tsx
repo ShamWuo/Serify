@@ -60,30 +60,13 @@ export default function LandingPage() {
         <div ref={revealRef} className="min-h-screen bg-[#030f08] text-[var(--text)] font-sans overflow-x-hidden">
             <SEO />
             {}
-            <nav className="sticky top-0 z-50 backdrop-blur-xl bg-[#030f08]/85 border-b border-[#2A5C45]/30">
+            <nav className="sticky top-0 z-50 bg-[var(--bg)] border-b-2 border-[var(--border)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <Link href="/" className="text-2xl font-display tracking-tight text-white">
-                        Serify
-                    </Link>
+                    <Link href="/" className="text-2xl font-display font-bold text-[var(--text)]">Serify</Link>
                     <div className="flex items-center gap-3">
-                        <Link
-                            href="/login"
-                            className="text-sm font-medium text-white/60 hover:text-white transition-colors"
-                        >
-                            Log in
-                        </Link>
-                        <Link
-                            href="/?demo=true"
-                            className="hidden sm:inline-flex text-sm font-medium px-4 py-2 border border-white/20 text-white/80 rounded-xl hover:bg-white/10 backdrop-blur transition-colors"
-                        >
-                            Try Demo
-                        </Link>
-                        <Link
-                            href="/signup"
-                            className="text-sm font-semibold px-5 py-2 bg-[var(--accent)] text-white rounded-xl hover:bg-[var(--accent)]/90 transition-colors shadow-sm shadow-[var(--accent)]/30"
-                        >
-                            Get Started
-                        </Link>
+                        <Link href="/login" className="text-[12px] font-mono text-[var(--muted)] hover:text-[var(--text)] transition-colors">log in</Link>
+                        <Link href="/?demo=true" className="hidden sm:inline-flex btn-ghost text-[12px] py-1.5 px-3">Try Demo</Link>
+                        <Link href="/signup" className="btn-primary text-[12px] py-1.5 px-4">Get Started</Link>
                     </div>
                 </div>
             </nav>
@@ -390,13 +373,11 @@ export default function LandingPage() {
                         ].map((item, i) => (
                             <div
                                 key={i}
-                                className="scroll-reveal group relative bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-7 hover:border-[var(--accent)]/40 hover:shadow-lg hover:shadow-[var(--accent)]/5 transition-all duration-300"
+                                className="scroll-reveal group relative paper-card p-7 hover:border-[var(--accent)] transition-all duration-300"
                             >
-                                <div className="absolute top-6 right-6 text-5xl font-display text-[var(--border)] group-hover:text-[var(--accent-light)] transition-colors">
-                                    {item.step}
-                                </div>
-                                <div className="w-11 h-11 rounded-xl bg-[var(--accent-light)] flex items-center justify-center mb-5">
-                                    <item.icon size={20} className="text-[var(--accent)]" />
+                                <div className="absolute top-4 right-5 text-4xl font-display text-[var(--border-soft)] group-hover:text-[var(--accent)]/30 transition-colors">{item.step}</div>
+                                <div className="w-10 h-10 border-2 border-[var(--border)] flex items-center justify-center mb-5" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                                    <item.icon size={18} className="text-[var(--accent)]" />
                                 </div>
                                 <h3 className="text-lg font-bold mb-2">{item.title}</h3>
                                 <p className="text-sm text-[var(--muted)] leading-relaxed">{item.desc}</p>
@@ -463,10 +444,10 @@ export default function LandingPage() {
                         ].map((feature, i) => (
                             <div
                                 key={i}
-                                className={`scroll-reveal group bg-gradient-to-br ${feature.accent} border border-[var(--border)]/60 rounded-2xl p-6 hover:border-[var(--accent)]/30 hover:shadow-md transition-all duration-300`}
+                                className={`scroll-reveal group paper-card-sm p-6 hover:border-[var(--accent)] transition-all duration-300`}
                             >
-                                <div className="w-10 h-10 rounded-xl bg-white/80 border border-[var(--border)]/50 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    <feature.icon size={20} className={feature.iconColor} />
+                                <div className="w-9 h-9 border-2 border-[var(--border)] flex items-center justify-center mb-4 group-hover:border-[var(--accent)] transition-colors" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                                    <feature.icon size={16} className={feature.iconColor} />
                                 </div>
                                 <h3 className="font-bold mb-2">{feature.title}</h3>
                                 <p className="text-sm text-[var(--muted)] leading-relaxed">{feature.desc}</p>
@@ -507,10 +488,7 @@ export default function LandingPage() {
                                 stars: 5,
                             },
                         ].map((testimonial, i) => (
-                            <div
-                                key={i}
-                                className="scroll-reveal bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 flex flex-col hover:shadow-lg hover:shadow-black/5 transition-all duration-300"
-                            >
+                            <div key={i} className="scroll-reveal paper-card p-6 flex flex-col">
                                 <div className="flex gap-0.5 mb-4">
                                     {Array.from({ length: testimonial.stars }).map((_, j) => (
                                         <Star key={j} size={14} className="text-amber-400" fill="currentColor" />
@@ -519,8 +497,8 @@ export default function LandingPage() {
                                 <p className="text-sm text-[var(--text)] leading-relaxed flex-1 mb-5">
                                     &ldquo;{testimonial.quote}&rdquo;
                                 </p>
-                                <div className="flex items-center gap-3 pt-4 border-t border-[var(--border)]">
-                                    <div className="w-9 h-9 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-sm font-bold text-[var(--accent)]">
+                                <div className="flex items-center gap-3 pt-4 border-t-2 border-[var(--border-soft)]">
+                                    <div className="w-8 h-8 border-2 border-[var(--border)] flex items-center justify-center text-xs font-bold text-[var(--accent)]" style={{boxShadow:'var(--shadow-hard-sm)', background:'var(--accent-soft)'}}>
                                         {testimonial.name.charAt(0)}
                                     </div>
                                     <div>
@@ -546,7 +524,7 @@ export default function LandingPage() {
 
                     <div className="scroll-reveal grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
                         {}
-                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-7 flex flex-col">
+                        <div className="paper-card p-7 flex flex-col">
                             <h3 className="text-xl font-bold mb-1">Free</h3>
                             <p className="text-[var(--muted)] text-sm mb-4">Try it. Find out what you actually know.</p>
                             <div className="flex items-baseline gap-1 mb-5">
@@ -570,18 +548,16 @@ export default function LandingPage() {
                             </ul>
                             <Link
                                 href="/signup"
-                                className="block text-center px-5 py-2.5 border border-[var(--accent)] text-[var(--accent)] rounded-xl font-semibold text-sm hover:bg-[var(--accent)] hover:text-white transition-colors"
+                                className="btn-ghost text-[var(--accent)] justify-center mt-auto"
                             >
                                 Get Started
                             </Link>
                         </div>
 
                         {}
-                        <div className="relative bg-[var(--bg)] border-2 border-[var(--accent)] rounded-2xl p-7 flex flex-col">
+                        <div className="relative paper-card p-7 flex flex-col border-t-4 border-t-[var(--accent)]">
                             <div className="absolute -top-3 right-6">
-                                <span className="bg-[var(--accent)] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                                    Recommended
-                                </span>
+                                <span className="bg-[var(--accent)] text-[var(--ink)] text-[9px] font-bold uppercase tracking-widest px-3 py-1 font-mono" style={{boxShadow:'var(--shadow-hard-sm)'}}>Recommended</span>
                             </div>
                             <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
                                 Pro <BrainCircuit size={18} className="text-[var(--accent)]" />
@@ -610,7 +586,7 @@ export default function LandingPage() {
                             </ul>
                             <Link
                                 href="/signup?intent=pro"
-                                className="block text-center px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl font-semibold text-sm hover:bg-[var(--accent)]/90 transition-colors shadow-sm shadow-[var(--accent)]/20"
+                                className="btn-primary w-full justify-center"
                             >
                                 Start Pro
                             </Link>
@@ -652,7 +628,7 @@ export default function LandingPage() {
                                 a: "It tracks your performance across Retrieval, Application, and Misconception Probe questions. As you answer correctly over multiple sessions, your mastery level evolves from 'Shaky' to 'Solid' using spaced repetition logic."
                             }
                         ].map((faq, i) => (
-                            <details key={i} className="group bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 [&_summary::-webkit-details-marker]:hidden cursor-pointer hover:border-[var(--accent)]/30 transition-colors">
+                            <details key={i} className="group paper-card-sm p-6 [&_summary::-webkit-details-marker]:hidden cursor-pointer">
                                 <summary className="flex items-center justify-between font-bold text-[var(--text)]">
                                     {faq.q}
                                     <ChevronRight size={18} className="text-[var(--muted)] group-open:rotate-90 transition-transform" />
@@ -668,31 +644,20 @@ export default function LandingPage() {
 
             {}
             <section className="py-24 md:py-32 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)] via-emerald-700 to-teal-800" />
-                <div className="absolute inset-0 opacity-10">
-                    <div className="landing-blob landing-blob-1" style={{ background: 'rgba(255,255,255,0.3)' }} />
-                    <div className="landing-blob landing-blob-2" style={{ background: 'rgba(255,255,255,0.2)' }} />
-                </div>
+                <div className="absolute inset-0 bg-[var(--ink)] dot-grid-bg" />
 
                 <div className="relative z-10 max-w-3xl mx-auto px-6 text-center scroll-reveal">
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-white mb-5 leading-tight">
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-[var(--bg)] mb-5 leading-tight">
                         Stop Guessing.<br />Start Understanding.
                     </h2>
-                    <p className="text-white/70 text-lg max-w-xl mx-auto mb-10">
-                        Join thousands of learners who use Serify to move beyond the illusion of competence and achieve real mastery.
+                    <p className="text-[var(--bg)]/60 max-w-xl mx-auto mb-10 font-mono text-[13px]">
+                        Join thousands of learners using Serify to achieve real mastery.
                     </p>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <Link
-                            href="/signup"
-                            className="group flex items-center gap-2 px-8 py-4 bg-white text-[var(--accent)] rounded-xl font-bold text-base hover:bg-white/90 transition-all shadow-xl shadow-black/20"
-                        >
-                            Create Free Account
-                            <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                        <Link href="/signup" className="flex items-center gap-2 px-8 py-4 bg-[var(--bg)] text-[var(--ink)] font-bold text-base border-2 border-[var(--bg)]" style={{boxShadow:'4px 4px 0px rgba(255,255,255,0.2)'}}>
+                            Create Free Account <ArrowRight size={18} />
                         </Link>
-                        <Link
-                            href="/?demo=true"
-                            className="flex items-center gap-2 px-8 py-4 border border-white/30 text-white rounded-xl font-semibold text-base hover:bg-white/10 transition-all"
-                        >
+                        <Link href="/?demo=true" className="flex items-center gap-2 px-8 py-4 border-2 border-[var(--bg)]/40 text-[var(--bg)] font-semibold text-base hover:border-[var(--bg)] transition-all">
                             Try Demo First
                         </Link>
                     </div>
@@ -700,18 +665,18 @@ export default function LandingPage() {
             </section>
 
             {}
-            <footer className="py-12 border-t border-[var(--border)]">
+            <footer className="py-12 border-t-2 border-[var(--border)]">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-6">
-                            <span className="text-xl font-display text-[var(--text)]">Serify</span>
-                            <div className="flex items-center gap-4 text-sm text-[var(--muted)]">
-                                <Link href="/pricing" className="hover:text-[var(--text)] transition-colors">Pricing</Link>
-                                <Link href="/login" className="hover:text-[var(--text)] transition-colors">Log in</Link>
-                                <Link href="/signup" className="hover:text-[var(--text)] transition-colors">Sign up</Link>
+                            <span className="text-xl font-display font-bold text-[var(--text)]">Serify</span>
+                            <div className="flex items-center gap-4 text-[11px] font-mono text-[var(--muted)]">
+                                <Link href="/pricing" className="hover:text-[var(--text)] transition-colors">pricing</Link>
+                                <Link href="/login" className="hover:text-[var(--text)] transition-colors">log in</Link>
+                                <Link href="/signup" className="hover:text-[var(--text)] transition-colors">sign up</Link>
                             </div>
                         </div>
-                        <p className="text-xs text-[var(--muted)]">
+                        <p className="text-[10px] font-mono text-[var(--muted)]">
                             &copy; {new Date().getFullYear()} Serify. All rights reserved.
                         </p>
                     </div>

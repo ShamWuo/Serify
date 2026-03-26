@@ -11,43 +11,43 @@ const QuickLaunch: React.FC = () => {
     ];
 
     return (
-        <div className="bg-[var(--surface)] rounded-[2rem] border border-[var(--border)] overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="px-8 py-5 border-b border-[var(--border)]/50 flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                <h3 className="text-[13px] font-semibold text-[var(--text)]">Quick access</h3>
+        <div className="paper-card overflow-hidden">
+            <div className="px-5 py-4 border-b-2 border-[var(--border)] flex items-center gap-2 dot-grid-bg">
+                <div className="w-1.5 h-1.5 bg-[var(--accent)]" />
+                <h3 className="text-[12px] font-display font-bold text-[var(--text)]">Quick access</h3>
             </div>
             <div className="flex flex-col">
                 {links.map((link, i) => (
-                    <Link 
+                    <Link
                         key={link.href}
                         href={link.href}
-                        className={`flex items-center justify-between px-8 py-5 hover:bg-white transition-all duration-300 group/row relative ${
-                            i !== links.length - 1 ? 'border-b border-[var(--border)]/40' : ''
+                        className={`flex items-center justify-between px-5 py-4 hover:bg-[var(--accent-soft)] transition-all group/row relative ${
+                            i !== links.length - 1 ? 'border-b border-[var(--border-soft)]' : ''
                         }`}
                     >
-                        <div className="flex items-center gap-5">
-                            <div className="w-10 h-10 rounded-xl bg-[var(--bg)] border border-[var(--border)]/60 flex items-center justify-center text-[var(--muted)] group-hover/row:text-indigo-500 group-hover/row:border-indigo-500/20 group-hover/row:bg-indigo-50/50 transition-all duration-300">
-                                <link.icon size={18} strokeWidth={2} />
+                        {/* Left accent bar on hover */}
+                        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--accent)] scale-y-0 group-hover/row:scale-y-100 transition-transform origin-center" />
+                        <div className="flex items-center gap-4">
+                            <div className="w-8 h-8 border border-[var(--border-soft)] flex items-center justify-center text-[var(--muted)] group-hover/row:text-[var(--accent)] group-hover/row:border-[var(--accent)] transition-all bg-[var(--bg)]">
+                                <link.icon size={15} strokeWidth={2} />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[13px] font-medium text-[var(--text)] group-hover/row:text-indigo-600 transition-colors duration-300">
+                                <span className="text-[12px] font-mono text-[var(--text)] group-hover/row:text-[var(--accent)] transition-colors">
                                     {link.label}
                                 </span>
                                 {link.meta && (
-                                    <span className="text-[11px] text-[var(--muted)]/50 mt-0.5">
+                                    <span className="text-[10px] font-mono text-[var(--muted)] mt-0.5">
                                         {link.meta}
                                     </span>
                                 )}
                             </div>
                         </div>
-                        <ChevronRight size={16} strokeWidth={2} className="text-[var(--muted)]/30 group-hover/row:text-indigo-400 group-hover/row:translate-x-0.5 transition-all duration-300" />
+                        <ChevronRight size={13} strokeWidth={2} className="text-[var(--border-soft)] group-hover/row:text-[var(--accent)] transition-colors" />
                     </Link>
                 ))}
             </div>
         </div>
     );
 };
-
-
 
 export default QuickLaunch;

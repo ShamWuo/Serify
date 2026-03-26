@@ -71,7 +71,7 @@ export function RoadmapModal({ isOpen, onClose, onSuccess, plan }: RoadmapModalP
         </div>
         
         <p className="text-[14px] font-bold text-[var(--muted)]/60 leading-relaxed mb-10 relative z-10 max-w-sm">
-          Set a crucial deadline — whether it's an exam, interview, or a personal milestone — and Serify will forge a high-density, day-by-day learning path.
+          Set a crucial deadline — whether it&apos;s an exam, interview, or a personal milestone — and Serify will forge a high-density, day-by-day learning path.
         </p>
 
         {error && (

@@ -598,7 +598,7 @@ export default function VaultPage() {
     const renderParentNode = ({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
         const pCollapsed = search ? false : collapsedParents.has(parent.id);
         return (
-            <div key={parent.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm h-fit">
+            <div key={parent.id} className="paper-card overflow-hidden h-fit">
                 {}
                 <div
                     onClick={(e) => {
@@ -692,7 +692,7 @@ export default function VaultPage() {
 
                 {}
                 {!pCollapsed && subs.length > 0 && (
-                    <div className="border-t border-[var(--border)] bg-[#fafafa] dark:bg-[#0a0a0a]/30">
+                    <div className="border-t-2 border-[var(--border)] bg-[var(--bg)]/40 dot-grid-bg">
                         {subs.map((sub: KnowledgeNode) => (
                             <div
                                 key={sub.id}
