@@ -20,7 +20,7 @@ const googleProvider = createGoogleGenerativeAI({
   apiKey: geminiApiKey,
 });
 
-export const MODEL_PRO = 'gemini-2.5-flash';
+export const MODEL_PRO = 'gemini-2.5-pro';
 export const MODEL_FLASH = 'gemini-2.5-flash';
 
 export function getGeminiModel(plan: string = 'free', systemInstruction?: string) {
@@ -137,32 +137,28 @@ Refinement Rules:
 
 Focus on breadth for the pillars (high-level themes) and depth for the sub-concepts (specific techniques/facts).`;
 
-  let messages: any;
+  let multimodalMessages: any[] | undefined = undefined;
+  
   if (fileData) {
     const isImage = fileData.mimeType.startsWith('image/');
-    messages = [
+    const data = Buffer.from(fileData.base64, 'base64');
+    
+    multimodalMessages = [
       {
         role: 'user',
         content: [
           { type: 'text', text: prompt },
           isImage 
-            ? { type: 'image', image: fileData.base64, mimeType: fileData.mimeType } 
-            : { type: 'file', data: fileData.base64, mimeType: fileData.mimeType }
+            ? { type: 'image', image: data, mimeType: fileData.mimeType } 
+            : { type: 'file', data: data, mimeType: fileData.mimeType }
         ]
-      }
-    ];
-  } else {
-    messages = [
-      {
-        role: 'user',
-        content: prompt
       }
     ];
   }
 
-  const { object } = await generateObject({
-    model: getAISDKModel(plan),
-    schema: z.array(z.object({
+  try {
+    const model = getAISDKModel(plan);
+    const schema = z.array(z.object({
       id: z.string().describe('Short semantic string like "pillar-1"'),
       name: z.string().describe('Concise noun or technical term. Max 3-4 words.'),
       description: z.string().describe('Broad, comprehensive definition (1-2 sentences)'),
@@ -172,12 +168,30 @@ Focus on breadth for the pillars (high-level themes) and depth for the sub-conce
         name: z.string().describe('Concise sub-concept name. Max 3-4 words.'),
         description: z.string().describe('Concise explanation of how this fits into the pillar')
       }))
-    })),
-    messages,
-    temperature: plan === 'free' ? 0.1 : 0.3,
-  });
+    }));
 
-  return object as Concept[];
+    let result;
+    if (multimodalMessages) {
+      result = await generateObject({
+        model,
+        schema,
+        messages: multimodalMessages,
+        temperature: plan === 'free' ? 0.1 : 0.3,
+      });
+    } else {
+      result = await generateObject({
+        model,
+        schema,
+        prompt,
+        temperature: plan === 'free' ? 0.1 : 0.3,
+      });
+    }
+
+    return result.object as Concept[];
+  } catch (err) {
+    console.error('[Serify AI] generateObject Error:', err);
+    throw err;
+  }
 }
 
 export async function generateSessionTitle(content: string, type: string): Promise<string> {

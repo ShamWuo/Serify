@@ -4,7 +4,7 @@ import { generateText } from 'ai';
 export default async function handler(req: any, res: any) {
   try {
     const { text } = await generateText({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-2.5-flash'),
       prompt: 'Write a short greeting.',
     });
     res.status(200).json({ success: true, text });

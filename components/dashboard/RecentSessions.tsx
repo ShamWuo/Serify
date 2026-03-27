@@ -73,7 +73,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) =>
     return (
         <div className="paper-card overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b-2 border-[var(--border)] flex items-center gap-3 dot-grid-bg">
+            <div className="px-4 py-3 border-b-2 border-[var(--border)] flex items-center gap-3 dot-grid-bg">
                 <div className="w-8 h-8 border-2 border-[var(--border)] flex items-center justify-center text-[var(--muted)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                     <History size={14} strokeWidth={2} />
                 </div>
@@ -88,7 +88,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) =>
                     <Link
                         key={session.id}
                         href={`/session/${session.id}/feedback`}
-                        className={`flex items-center gap-4 px-6 py-4 hover:bg-[var(--accent-soft)] transition-colors group/row relative ${
+                        className={`flex items-center gap-4 px-4 py-3 hover:bg-[var(--accent-soft)] transition-colors group/row relative ${
                             idx !== sessions.length - 1 ? 'border-b border-[var(--border-soft)]' : ''
                         }`}
                     >
@@ -132,7 +132,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) =>
 
             <Link
                 href="/sessions"
-                className="flex items-center justify-center gap-2 py-3.5 border-t-2 border-[var(--border)] text-[11px] font-mono text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors w-full"
+                className="flex items-center justify-center gap-2 py-2 border-t-2 border-[var(--border)] text-[11px] font-mono text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors w-full"
             >
                 see all sessions <ChevronRight size={12} strokeWidth={2} />
             </Link>

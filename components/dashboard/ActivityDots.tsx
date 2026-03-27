@@ -16,7 +16,7 @@ const ActivityDots: React.FC<ActivityDotsProps> = ({ days, sessionsCount, concep
     return (
         <div className="paper-card overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b-2 border-[var(--border)] flex items-center justify-between dot-grid-bg">
+            <div className="px-4 py-3 border-b-2 border-[var(--border)] flex items-center justify-between dot-grid-bg">
                 <div>
                     <h3 className="text-[13px] font-display font-bold text-[var(--text)]">This week</h3>
                     <p className="text-[10px] font-mono text-[var(--muted)]">{'// activity log'}</p>
@@ -29,7 +29,7 @@ const ActivityDots: React.FC<ActivityDotsProps> = ({ days, sessionsCount, concep
                 ) : null}
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
                 {/* Activity dots — styled as a hand-drawn grid */}
                 <div className="grid grid-cols-7 gap-2">
                     {labels.map((label, i) => (
@@ -49,14 +49,14 @@ const ActivityDots: React.FC<ActivityDotsProps> = ({ days, sessionsCount, concep
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="paper-card-sm p-4 space-y-1">
+                    <div className="paper-card-sm p-3 space-y-1">
                         <p className="text-[9px] font-mono text-[var(--muted)] uppercase tracking-wider">Sessions</p>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-2xl font-display font-bold text-[var(--text)]">{sessionsCount}</span>
                             <span className="text-[10px] font-mono text-[var(--muted)]">this wk</span>
                         </div>
                     </div>
-                    <div className="paper-card-sm p-4 space-y-1">
+                    <div className="paper-card-sm p-3 space-y-1">
                         <p className="text-[9px] font-mono text-[var(--muted)] uppercase tracking-wider">Growth</p>
                         <div className="flex items-baseline gap-1.5">
                             <span className="text-2xl font-display font-bold text-[var(--sage)]">{trend || '+0%'}</span>

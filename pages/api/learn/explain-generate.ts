@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             systemInstruction: `You are explaining a concept to a student who struggled with it in a learning assessment.
 
 Tone: clear, direct, intellectually engaging. You may use analogies here — this is the right place for them.

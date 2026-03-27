@@ -45,7 +45,7 @@ export default async function handler(req: Request) {
         }
 
         const result = await streamText({
-            model: google('gemini-1.5-flash'),
+            model: google('gemini-2.5-flash'),
             system: `You are Serify's intelligent intake assistant. Your goal is to figure out exactly what the user wants to learn or analyze, and then trigger the right action.
 
 Serify has two main features:

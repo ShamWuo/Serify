@@ -7,6 +7,14 @@ import { YoutubeTranscript } from 'youtube-transcript';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendError } from '@/lib/api-utils';
 import { z } from 'zod';
+ 
+export const config = {
+    api: {
+        bodyParser: {
+            sizeLimit: '10mb',
+        },
+    },
+};
 
 const extractRequestSchema = z.object({
     contentType: z.enum(['youtube', 'article', 'pdf', 'text', 'file']),

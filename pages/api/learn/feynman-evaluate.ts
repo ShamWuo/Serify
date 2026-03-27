@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             systemInstruction: `You are evaluating a student's Feynman-method explanation of a concept.
 Evaluate this explanation as if you are checking whether a non-expert would understand it.
 

@@ -174,9 +174,9 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
         <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-mono relative">
 
             {/* Sidebar — The Architect's Pen */}
-            <aside className="hidden md:flex flex-col w-[230px] border-r-2 border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-50 dot-grid-bg">
+            <aside className="hidden md:flex flex-col w-[200px] border-r-2 border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-50 dot-grid-bg">
                 {/* Logo */}
-                <div className="px-6 pt-8 pb-5 border-b-2 border-[var(--border)]">
+                <div className="px-4 pt-4 pb-3 border-b-2 border-[var(--border)]">
                     {backLink ? (
                         <Link
                             href={backLink}
@@ -210,7 +210,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
 
                 {/* Search */}
-                <div className="px-4 py-4 border-b-2 border-[var(--border)]">
+                <div className="px-3 py-2 border-b-2 border-[var(--border)]">
                     <button
                         onClick={() => setIsCommandPaletteOpen(true)}
                         className="w-full flex items-center gap-2 px-3 py-2 border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition-all group"
@@ -226,7 +226,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
 
                 {/* Nav */}
-                <nav className="flex-1 px-3 py-5 space-y-6 overflow-y-auto">
+                <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
                     <div className="space-y-0.5">
                         <div className="px-3 mb-2 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// main'}</div>
                         {navItems.map((item: any) => {
@@ -307,7 +307,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     ) : (
                         <button
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
-                            className="w-full flex items-center gap-3 p-4 hover:bg-[var(--bg)] transition-colors text-left group"
+                            className="w-full flex items-center gap-3 p-3 hover:bg-[var(--bg)] transition-colors text-left group"
                         >
                             <div className="w-8 h-8 bg-[var(--accent)] text-[var(--surface)] flex items-center justify-center text-[12px] font-bold shrink-0 border-2 border-[var(--border)] font-mono" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                                 {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}

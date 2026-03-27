@@ -95,7 +95,7 @@ A suite of tools (`test`, `quiz`, `exam`, `scenario`, `flashcards`, `review`) to
 ## 🤖 AI Integration (Gemini)
 - **Model Selection**: 
     - `MODEL_FLASH` (`gemini-2.5-flash`): Used for most tasks (fast, cheap).
-    - `MODEL_PRO` (`gemini-2.5-flash`): Currently mapped to the same model as flash as per developer preference, but can be scaled if needed.
+    - `MODEL_PRO` (`gemini-2.5-pro`): Used for more complex reasoning tasks.
 - **Prompting Strategy**: We use structured JSON prompting. Always ensure the AI returns valid JSON using the `responseMimeType: 'application/json'` config.
 - **Logic Location**: Keep complex AI orchestration in `lib/serify-ai.ts`.
 

@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 .single();
 
             const profileTimeout = new Promise<{ data?: any; error?: any; timeout: boolean }>((resolve) => 
-                setTimeout(() => resolve({ timeout: true }), 5000)
+                setTimeout(() => resolve({ timeout: true }), 15000)
             );
             
             const profileRaceResult = await Promise.race([
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             let profile = null;
             
             if (isTimeout) {
-                console.warn('[AuthContext] Profile fetch timeout (5s), using fallback');
+                console.warn('[AuthContext] Profile fetch timeout (15s), using fallback');
             } else if (hasError) {
                 console.error('[AuthContext] Error fetching profile, using fallback:', profileRaceResult.error);
             } else {
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             Authorization: `Bearer ${jwt}`
                         }
                     });
-                    const usageTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
+                    const usageTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
                     const usageRes = await Promise.race([
                         usageResPromise as any,
                         usageTimeout as any

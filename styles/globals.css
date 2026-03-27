@@ -377,60 +377,29 @@ h1, h2, h3, h4, h5, h6 {
    TEXTURE BACKGROUNDS
    ============================================================ */
 
-/* Dot-grid — Leuchtturm notebook */
+/* Dot-grid removed */
 .dot-grid-bg {
-    background-image: radial-gradient(
-        circle,
-        var(--border-soft) var(--dot-size),
-        transparent var(--dot-size)
-    );
-    background-size: var(--dot-space) var(--dot-space);
+    background-image: none;
 }
 
-/* Finer dot grid for large spaces */
+/* Finer dot grid removed */
 .dot-grid-fine {
-    --dot-size: 1px;
-    --dot-space: 16px;
-    background-image: radial-gradient(
-        circle,
-        var(--border-soft) var(--dot-size),
-        transparent var(--dot-size)
-    );
-    background-size: var(--dot-space) var(--dot-space);
+    background-image: none;
 }
 
-/* Diagonal hatch — architectural shading */
+/* Diagonal hatch removed */
 .hatch-bg {
-    background-image: repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 6px,
-        var(--border-soft) 6px,
-        var(--border-soft) 7px
-    );
-    opacity: 0.35;
+    background-image: none;
 }
 
-/* Red hatch — "Shaky" concept danger pattern */
+/* Red hatch removed */
 .hatch-danger {
-    background-image: repeating-linear-gradient(
-        -45deg,
-        transparent,
-        transparent 4px,
-        rgba(192, 57, 43, 0.18) 4px,
-        rgba(192, 57, 43, 0.18) 5px
-    );
+    background-image: none;
 }
 
-/* Flow Mode — ruled lines texture */
+/* Ruled lines removed */
 .ruled-lines {
-    background-image: repeating-linear-gradient(
-        to bottom,
-        transparent,
-        transparent 27px,
-        var(--border-soft) 27px,
-        var(--border-soft) 28px
-    );
+    background-image: none;
 }
 
 /* ============================================================
@@ -615,13 +584,7 @@ h1, h2, h3, h4, h5, h6 {
     resize: vertical;
     outline: none;
     line-height: 28px;
-    background-image: repeating-linear-gradient(
-        to bottom,
-        transparent,
-        transparent 27px,
-        var(--border-soft) 27px,
-        var(--border-soft) 28px
-    );
+    background-image: none;
     background-attachment: local;
 }
 

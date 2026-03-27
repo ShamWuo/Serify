@@ -39,7 +39,7 @@ export default function DashboardV2({
     const [isInterviewModalOpen, setIsInterviewModalOpen] = React.useState(false);
 
     return (
-        <div className="max-w-[1400px] mx-auto px-6 py-10 md:py-16 space-y-10 animate-fade-in font-mono">
+        <div className="max-w-[1400px] mx-auto px-6 py-4 md:py-6 space-y-6 animate-fade-in font-mono">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                 <div className="space-y-1">
@@ -57,12 +57,10 @@ export default function DashboardV2({
                 )}
             </div>
 
-            <div className="max-w-6xl mx-auto space-y-12">
+            <div className="max-w-7xl mx-auto space-y-6">
                 {/* Hero Input Section */}
                 <section className="paper-card p-0 overflow-hidden">
-                    {/* Dot-grid texture strip */}
-                    <div className="dot-grid-bg h-3 border-b-2 border-[var(--border)] opacity-40" />
-                    <div className="p-8 md:p-12 relative">
+                    <div className="p-6 md:p-8 relative">
                         <div className="max-w-3xl space-y-6">
                             <div className="space-y-2">
                                 <h2 className="text-2xl md:text-3xl font-display font-bold text-[var(--text)] leading-snug">
@@ -110,9 +108,9 @@ export default function DashboardV2({
                 </section>
 
                 {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left Column */}
-                    <div className="lg:col-span-7 space-y-8">
+                    <div className="lg:col-span-7 space-y-6">
                         <RecentSessions sessions={latestSessions.slice(0, 3)} loading={loading} />
                         <ActivityDots
                             days={activityDays}
@@ -129,7 +127,7 @@ export default function DashboardV2({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <button
                                 onClick={() => setIsRoadmapModalOpen(true)}
-                                className="paper-card p-5 text-left space-y-3 group"
+                                className="paper-card p-4 text-left space-y-2 group"
                             >
                                 <div className="w-10 h-10 border-2 border-[var(--border)] flex items-center justify-center text-[var(--accent)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                                     <Target size={18} strokeWidth={2} />
@@ -142,7 +140,7 @@ export default function DashboardV2({
 
                             <button
                                 onClick={() => setIsInterviewModalOpen(true)}
-                                className="paper-card p-5 text-left space-y-3 group"
+                                className="paper-card p-4 text-left space-y-2 group"
                             >
                                 <div className="w-10 h-10 border-2 border-[var(--border)] flex items-center justify-center text-[var(--sage)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                                     <MessageSquare size={18} strokeWidth={2} />

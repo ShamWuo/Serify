@@ -111,7 +111,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
 
     if (isProcessing) {
         return (
-            <div className="paper-card p-8 flex flex-col justify-center min-h-[180px] animate-fade-in">
+            <div className="paper-card p-6 flex flex-col justify-center min-h-[160px] animate-fade-in">
                 <div className="flex items-center gap-4 mb-6">
                     <div className="w-10 h-10 border-2 border-[var(--border)] flex items-center justify-center text-[var(--accent)] animate-pulse" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                         <Brain size={18} strokeWidth={2} />
@@ -175,9 +175,9 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                             onChange={(e) => setInput(e.target.value)}
                             onPaste={handlePaste}
                             placeholder="Paste a link, PDF text, or your notes..."
-                            className="w-full min-h-[120px] bg-transparent border-none focus:ring-0 p-5 pb-14 text-[14px] leading-relaxed resize-none overflow-hidden font-mono placeholder:text-[var(--muted)]/40 placeholder:font-mono"
+                            className="w-full min-h-[100px] bg-transparent border-none focus:ring-0 p-4 pb-12 text-[14px] leading-relaxed resize-none overflow-hidden font-mono placeholder:text-[var(--muted)]/40 placeholder:font-mono"
                         />
-                        <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+                        <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between">
                             <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="px-3 py-1.5 border border-[var(--border-soft)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all flex items-center gap-1.5 text-[10px] font-mono bg-[var(--surface)]"
@@ -214,7 +214,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
 
             {/* Quick launch shortcuts */}
             {!isDragging && !compact && (
-                <div className="mt-6 pt-5 border-t-2 border-[var(--border)] animate-fade-in">
+                <div className="mt-4 pt-3 border-t-2 border-[var(--border)] animate-fade-in">
                     <h4 className="text-[10px] font-mono text-[var(--muted)] mb-3">{'// or jump to'}</h4>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                         {[
@@ -226,7 +226,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({ onAnalyze, tokenBalance
                             <button
                                 key={route}
                                 onClick={() => router.push(route)}
-                                className="flex items-center gap-2 p-3 border border-[var(--border-soft)] hover:border-[var(--border)] hover:bg-[var(--surface)] transition-all group text-left bg-[var(--bg)]"
+                                className="flex items-center gap-2 p-2 border border-[var(--border-soft)] hover:border-[var(--border)] hover:bg-[var(--surface)] transition-all group text-left bg-[var(--bg)]"
                             >
                                 <Icon size={13} strokeWidth={2} style={{color}} />
                                 <span className="text-[11px] font-mono text-[var(--text)] group-hover:text-[var(--text)]">{label}</span>

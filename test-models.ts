@@ -7,7 +7,7 @@ dotenv.config({ path: path.join(process.cwd(), '.env.local') });
 
 async function test() {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const models = ['gemini-2.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'];
+    const models = ['gemini-2.5-flash', 'gemini-2.5-pro'];
     
     for (const m of models) {
         try {

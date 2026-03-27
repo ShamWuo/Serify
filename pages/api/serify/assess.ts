@@ -146,12 +146,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const questions = await generateAssessment(concepts, tracking?.plan || 'free', preferences);
         console.log('Assess API: Generated', questions.length, 'questions');
 
-        const questionRows = questions.map((q) => ({
-            session_id: sessionId,
-            type: q.type,
-            text: q.text,
-            related_concept_ids: q.relatedConcepts || []
-        }));
+        
+        const conceptNameToId = new Map<string, string>();
+        conceptRows.forEach(c => conceptNameToId.set(c.name.toLowerCase(), c.id));
+
+        const questionRows = questions.map((q) => {
+            
+            const relatedIds = (q.relatedConcepts || [])
+                .map(name => {
+                    
+                    if (conceptRows.some(c => c.id === name)) return name;
+                    return conceptNameToId.get(name.toLowerCase());
+                })
+                .filter((id): id is string => !!id);
+
+            return {
+                session_id: sessionId,
+                type: q.type,
+                text: q.text,
+                related_concept_ids: relatedIds
+            };
+        });
 
         const { data: savedQuestions, error: saveError } = await supabaseWithAuth
             .from('assessment_questions')

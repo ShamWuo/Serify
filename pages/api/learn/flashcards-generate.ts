@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             systemInstruction: `You are generating flashcards for a student based on their session results.
 For each concept below, generate:
 1. A retrieval prompt for the front of the card (one clear question)
