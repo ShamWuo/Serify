@@ -22,7 +22,7 @@ const NeedsAttention: React.FC<NeedsAttentionProps> = ({ concepts }) => {
     return (
         <div className="paper-card overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="px-4 py-3 border-b-2 border-[var(--border)] flex items-center gap-3 dot-grid-bg">
+            <div className="px-4 py-2 border-b-2 border-[var(--border)] flex items-center gap-3">
                 <div className="w-8 h-8 border-2 border-[var(--border)] flex items-center justify-center text-[var(--warn)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                     <AlertTriangle size={15} strokeWidth={2} />
                 </div>
@@ -32,7 +32,7 @@ const NeedsAttention: React.FC<NeedsAttentionProps> = ({ concepts }) => {
                 </div>
             </div>
 
-            <div className="flex-1 p-4">
+            <div className="flex-1 p-3">
                 {concepts.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-6 text-center">
                         <p className="text-[12px] font-mono text-[var(--muted)]">

@@ -42,8 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         );
 
         // Pre-validate for DB constraints
+        const safeUserInput = (userInput || '').trim() || 'Untitled Input';
+        // title column is VARCHAR(255) in migration 20260226211850_add_learn_mode.sql
+        const safeTitle = (curriculumData.title || safeUserInput).slice(0, 250); 
+        
         if (!userInput || userInput.trim() === '') {
-            console.error('[SaveCurriculum] user_input is missing even after fallback:', { curriculumData });
+            console.warn('[SaveCurriculum] user_input was missing, using fallback:', safeUserInput);
         }
 
         const idMap = new Map<string, string>();
@@ -81,8 +85,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         console.log('[SaveCurriculum] Attempting insert with:', {
             user_id: userId,
-            user_input: userInput,
-            title: title,
+            user_input: safeUserInput,
+            title: safeTitle,
             unitCount: units.length,
             conceptCount
         });
@@ -91,9 +95,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('curricula')
             .insert({
                 user_id: userId,
-                user_input: userInput,
-                title: title,
-                target_description: curriculumData.target_description || `Learning path for ${title}`,
+                user_input: safeUserInput,
+                title: safeTitle,
+                target_description: curriculumData.target_description || `Learning path for ${safeTitle}`,
                 scope_note: curriculumData.scope_note || null,
                 outcomes: curriculumData.outcomes ?? [],
                 units,
@@ -103,30 +107,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 recommended_start_index: curriculumData.recommended_start_index ?? 0,
                 deadline: curriculumData.deadline || null,
                 schedule: curriculumData.schedule || null,
-                status: 'draft'
+                status: 'draft',
+                input_type: curriculumData.input_type || 'text'
             })
             .select()
             .single();
 
-        if (saveError) {
-            console.error('Save curriculum error:', saveError);
-            throw saveError;
+        if (saveError || !savedCurriculum) {
+            console.error('[SaveCurriculum] Error saving base curriculum:', saveError);
+            return res.status(500).json({ error: 'Failed to save curriculum', details: saveError });
         }
 
-        
+        // Initialize progress rows for concepts
         const progressRows: any[] = [];
         const seenConceptIds = new Set<string>();
         
         units.forEach((unit: any) => {
             (unit.concepts || []).forEach((concept: any) => {
-                if (!seenConceptIds.has(concept.id)) {
-                    seenConceptIds.add(concept.id);
+                const conceptId = concept.id || concept.name?.toLowerCase().replace(/\s+/g, '_');
+                if (conceptId && !seenConceptIds.has(conceptId)) {
+                    seenConceptIds.add(conceptId);
                     progressRows.push({
                         id: uuidv4(),
                         curriculum_id: savedCurriculum.id,
                         user_id: userId,
-                        concept_id: concept.id,
-                        concept_name: concept.name,
+                        concept_id: conceptId,
+                        concept_name: concept.name || 'Unnamed Concept',
                         status: 'not_started'
                     });
                 }
@@ -138,8 +144,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 .from('curriculum_concept_progress')
                 .insert(progressRows);
             if (progressError) {
-                console.error('Error creating progress rows:', progressError);
-                
+                console.error('[SaveCurriculum] Error creating concept progress rows:', progressError);
             }
         }
 

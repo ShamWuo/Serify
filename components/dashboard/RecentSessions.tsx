@@ -1,7 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
-import { Youtube, Link as LinkIcon, FileText, File, ChevronRight, History, Zap, Search, MessageSquare } from 'lucide-react';
+import { Youtube, Link as LinkIcon, FileText, File, ChevronRight, History, Zap, Search, MessageSquare, ArrowRight } from 'lucide-react';
 import MasteryBar from '../shared/MasteryBar';
+import { normalizeTitle } from '@/lib/formatters';
+import { useRouter } from 'next/router';
 
 export interface SessionRow {
     id: string;
@@ -33,10 +35,10 @@ const TYPE_PREFIX: Record<string, string> = {
 const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) => {
     const getIcon = (type: SessionRow['type']) => {
         switch (type) {
-            case 'youtube': return <Youtube size={13} className="text-[var(--warn)]" />;
-            case 'article': return <LinkIcon size={13} className="text-[var(--sage)]" />;
-            case 'pdf': return <File size={13} className="text-[var(--amber)]" />;
-            default: return <FileText size={13} className="text-[var(--accent)]" />;
+            case 'youtube': return <Youtube size={14} className="text-[var(--warn)]" strokeWidth={1.5} />;
+            case 'article': return <LinkIcon size={14} className="text-[var(--sage)]" strokeWidth={1.5} />;
+            case 'pdf': return <File size={14} className="text-[var(--amber)]" strokeWidth={1.5} />;
+            default: return <FileText size={14} className="text-[var(--accent)]" strokeWidth={1.5} />;
         }
     };
 
@@ -62,7 +64,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) =>
 
     if (sessions.length === 0) {
         return (
-            <div className="paper-card p-14 flex flex-col items-center justify-center text-center hatch-bg">
+            <div className="paper-card p-12 flex flex-col items-center justify-center text-center">
                 <History size={28} strokeWidth={1.5} className="text-[var(--muted)] mb-4" />
                 <h3 className="text-[13px] font-display font-bold text-[var(--text)] mb-1">Nothing here yet</h3>
                 <p className="text-[11px] font-mono text-[var(--muted)]">{'// start a session to see history'}</p>
@@ -71,71 +73,80 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) =>
     }
 
     return (
-        <div className="paper-card overflow-hidden">
-            {/* Header */}
-            <div className="px-4 py-3 border-b-2 border-[var(--border)] flex items-center gap-3 dot-grid-bg">
-                <div className="w-8 h-8 border-2 border-[var(--border)] flex items-center justify-center text-[var(--muted)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
-                    <History size={14} strokeWidth={2} />
+        <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                    <History size={14} className="text-[var(--accent)]" strokeWidth={2.5} />
+                    <h3 className="text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--text)]">Recent history</h3>
                 </div>
-                <div>
-                    <h3 className="text-[13px] font-display font-bold text-[var(--text)]">Recent sessions</h3>
-                    <p className="text-[10px] font-mono text-[var(--muted)]">{'// vault synced'}</p>
-                </div>
+                <Link href="/history" className="text-[10px] font-mono text-[var(--muted)] hover:text-[var(--accent)] transition-colors inline-flex items-center gap-1">
+                    view all <ArrowRight size={10} />
+                </Link>
             </div>
 
-            <div className="flex flex-col">
-                {sessions.map((session, idx) => (
+            <div className="grid grid-cols-1 gap-2">
+                {sessions.map((session) => (
                     <Link
                         key={session.id}
                         href={`/session/${session.id}/feedback`}
-                        className={`flex items-center gap-4 px-4 py-3 hover:bg-[var(--accent-soft)] transition-colors group/row relative ${
-                            idx !== sessions.length - 1 ? 'border-b border-[var(--border-soft)]' : ''
-                        }`}
+                        className="group block p-4 bg-white border border-[var(--border-soft)] hover:border-[var(--accent)]/40 hover:shadow-[var(--shadow-hard-sm)] transition-all duration-300 relative overflow-hidden"
                     >
-                        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[var(--accent)] scale-y-0 group-hover/row:scale-y-100 transition-transform origin-center" />
-
-                        {/* Type icon */}
-                        <div className="w-8 h-8 border border-[var(--border-soft)] flex items-center justify-center bg-[var(--bg)] shrink-0">
-                            {getIcon(session.type)}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-4 mb-1.5">
-                                <h4 className="text-[12px] font-mono text-[var(--text)] truncate group-hover/row:text-[var(--accent)] transition-colors">
-                                    <span className="text-[var(--muted)] mr-1">{TYPE_PREFIX[session.type]}</span>
-                                    {session.title}
-                                </h4>
-                                <span className="text-[9px] font-mono text-[var(--muted)] whitespace-nowrap shrink-0">{session.date}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1 max-w-[200px] h-2 border border-[var(--border-soft)] bg-[var(--bg)] overflow-hidden">
-                                    <MasteryBar mastery={session.mastery} height={8} />
+                        {/* Status bar on hover */}
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-[var(--accent)] scale-y-0 group-hover:scale-y-100 transition-transform duration-300" />
+                        
+                        <div className="flex flex-col gap-3">
+                            {/* Top row: Title and Date */}
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="shrink-0 w-8 h-8 border border-[var(--border-soft)] flex items-center justify-center bg-[var(--bg)] group-hover:border-[var(--accent)]/30 group-hover:bg-[var(--accent-soft)] transition-colors">
+                                        {getIcon(session.type)}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h4 className="text-[13px] font-display font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors truncate">
+                                            {normalizeTitle(session.title)}
+                                        </h4>
+                                        <p className="text-[10px] font-mono text-[var(--muted)] uppercase tracking-tight">
+                                            {session.type}
+                                            <span className="mx-1 opacity-50">·</span>
+                                            {session.date}
+                                        </p>
+                                    </div>
                                 </div>
-                                <span className="text-[9px] font-mono text-[var(--muted)]">
-                                    {session.gaps > 0 ? `${session.gaps} gaps` : '✓ complete'}
-                                </span>
-                                {/* Material tags */}
-                                <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                    {session.materials.slice(0, 3).map(mat => (
-                                        <div key={mat} className="w-5 h-5 border border-[var(--border-soft)] flex items-center justify-center text-[var(--muted)] bg-[var(--bg)]">
+                                <div className="shrink-0 flex items-center gap-1">
+                                    <ChevronRight size={12} className="text-[var(--muted)] group-hover:translate-x-0.5 transition-transform" />
+                                </div>
+                            </div>
+
+                            {/* Bottom row: Mastery and Materials */}
+                            <div className="flex items-center justify-between gap-6">
+                                <div className="flex-1 max-w-sm">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-[9px] font-mono text-[var(--muted)] uppercase tracking-tighter">Mastery Depth</span>
+                                        <span className="text-[9px] font-mono text-right text-[var(--text)]">
+                                            {Object.values(session.mastery).reduce((a, b) => a + b, 0)} Concepts
+                                        </span>
+                                    </div>
+                                    <div className="h-1.5 border border-[var(--border-soft)] bg-[var(--bg)] p-[1px] overflow-hidden">
+                                        <MasteryBar mastery={session.mastery} height={4} showLegend={false} />
+                                    </div>
+                                </div>
+
+                                <div className="hidden sm:flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
+                                    {session.materials.slice(0, 4).map((mat, i) => (
+                                        <div 
+                                            key={i} 
+                                            className="w-6 h-6 border border-[var(--border-soft)] bg-[var(--bg)] flex items-center justify-center text-[var(--text)] group-hover:border-[var(--accent)]/20"
+                                            title={mat}
+                                        >
                                             {getMaterialIcon(mat)}
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         </div>
-
-                        <ChevronRight size={12} strokeWidth={2} className="shrink-0 text-[var(--border-soft)] group-hover/row:text-[var(--accent)] transition-colors" />
                     </Link>
                 ))}
             </div>
-
-            <Link
-                href="/sessions"
-                className="flex items-center justify-center gap-2 py-2 border-t-2 border-[var(--border)] text-[11px] font-mono text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--accent-soft)] transition-colors w-full"
-            >
-                see all sessions <ChevronRight size={12} strokeWidth={2} />
-            </Link>
         </div>
     );
 };

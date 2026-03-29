@@ -22,6 +22,7 @@ const extractRequestSchema = z.object({
     url: z.string().optional(),
     title: z.string().optional(),
     difficulty: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+    mode: z.enum(['study', 'learn', 'analyze']).optional(),
     fileData: z.object({
         base64: z.string(),
         mimeType: z.string()
@@ -50,8 +51,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return sendError(res, 'Method not allowed', 405, 'Method Not Allowed');
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-        return sendError(res, 'AI service is not configured', 500, 'Configuration Error');
+    const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    if (!geminiApiKey) {
+        return sendError(res, 'AI service is not configured. Please add GEMINI_API_KEY to your environment.', 500, 'Configuration Error');
     }
 
     const validatedBody = extractRequestSchema.safeParse(req.body);
@@ -69,17 +71,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const token = req.headers.authorization?.split(' ').pop();
 
-    const isDemo = req.headers['x-serify-demo'] === 'true' || req.headers['X-Serify-Demo'] === 'true';
-
-    const supabaseWithAuth = (isDemo || !token) && supabaseAdmin 
-        ? supabaseAdmin 
-        : createClient(supabaseUrl, supabaseAnonKey, {
-            global: {
-                headers: (token && token !== 'undefined') ? {
-                    Authorization: `Bearer ${token}`
-                } : {}
-            }
-        });
+    if (!supabaseAdmin) {
+        return res.status(500).json({ error: 'Supabase admin client not initialized' });
+    }
 
     let { contentType, content, url, title, difficulty, fileData } = validatedBody.data;
 
@@ -130,11 +124,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         
-        if (!title || title === 'New Session' || title === 'pasted notes' || title.length < 5 || title.toLowerCase().includes('no concepts')) {
+        if (!title || title === 'New Session' || title === 'pasted notes' || title.length < 5 || title.length > 70 || title.toLowerCase().includes('no concepts')) {
             try {
                 console.log('Generating session title...');
-                const contentForTitle = processedTranscript || content || url;
-                title = await generateSessionTitle(contentForTitle || '', contentType);
+                const contentForTitle = (processedTranscript || content || url || '').substring(0, 1000);
+                title = await generateSessionTitle(contentForTitle, contentType);
                 console.log('Generated title:', title);
 
                 // If the generated title still looks like an error message, use a fallback
@@ -162,7 +156,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         let cachedConcepts = null;
 
-        const { data: existingSession, error: checkErr } = await (supabaseWithAuth as any)
+        const { data: existingSession, error: checkErr } = await (supabaseAdmin as any)
             .from('reflection_sessions')
             .select('id, status')
             .eq('user_id', userId)
@@ -187,7 +181,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             
             if (['assessment', 'feedback', 'complete'].includes(existingSession.status!)) {
-                const { data: existingConcepts } = await (supabaseWithAuth as any)
+                const { data: existingConcepts } = await (supabaseAdmin as any)
                     .from('concepts')
                     .select('*')
                     .eq('session_id', existingSession.id);
@@ -200,7 +194,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         console.log('Creating session in database...');
-        const { data: session, error: sessionError } = await (supabaseWithAuth as any)
+        const { data: session, error: sessionError } = await (supabaseAdmin as any)
             .from('reflection_sessions')
             .insert({
                 user_id: userId,
@@ -233,14 +227,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         let vaultContextString = '';
         try {
-            const { data: categories } = await supabaseWithAuth
+            const { data: categories } = await supabaseAdmin
                 .from('vault_categories')
                 .select('id, name')
                 .eq('user_id', userId);
             
             if (categories && categories.length > 0) {
                 const categoryIds = categories.map(c => c.id);
-                const { data: nodes } = await supabaseWithAuth
+                const { data: nodes } = await supabaseAdmin
                     .from('knowledge_nodes')
                     .select('display_name, category_id')
                     .eq('user_id', userId)
@@ -257,7 +251,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             console.error('Error fetching vault context:', vErr);
         }
 
-        const { data: tracking } = await (supabaseWithAuth as any)
+        const { data: tracking } = await (supabaseAdmin as any)
             .from('usage_tracking')
             .select('plan')
             .eq('user_id', userId)
@@ -280,7 +274,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }));
 
             console.log('Saving cached concepts...');
-            const { error: conceptError } = await supabaseWithAuth
+            const { error: conceptError } = await supabaseAdmin
                 .from('concepts')
                 .insert(conceptsToSave);
 
@@ -295,7 +289,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             
             if (!extracted || extracted.length === 0) {
                 console.log('Zero concepts extracted. Marking session as failed.');
-                await supabaseWithAuth
+                await supabaseAdmin
                     .from('reflection_sessions')
                     .update({ 
                         status: 'failed',
@@ -343,7 +337,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             });
 
             console.log('Saving concepts to database...');
-            const { error: conceptError } = await supabaseWithAuth
+            const { error: conceptError } = await supabaseAdmin
                 .from('concepts')
                 .insert(flattenedConcepts);
 
@@ -356,7 +350,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         }
 
-        await supabaseWithAuth
+        await supabaseAdmin
             .from('reflection_sessions')
             .update({ status: 'assessment' })
             .eq('id', session.id);

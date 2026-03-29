@@ -17,14 +17,15 @@ const AnalyzeButton: React.FC<AnalyzeButtonProps> = ({
         <button
             onClick={onClick}
             disabled={disabled}
-            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 min-w-[150px] ${
+            className={`btn-primary flex items-center justify-center gap-2 px-6 py-2.5 min-w-[130px] ${
                 disabled
-                    ? 'bg-[var(--bg)] border border-[var(--border)] text-[var(--muted)]/40 cursor-not-allowed'
-                    : 'bg-indigo-500 text-white hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98]'
+                    ? 'opacity-50 grayscale cursor-not-allowed shadow-none'
+                    : ''
             } ${className}`}
+            style={{ borderRadius: '3px' }}
         >
-            <span>{label}</span>
-            <ArrowRight size={15} strokeWidth={2} />
+            <span className="text-[12px] uppercase tracking-wider font-bold">{label}</span>
+            <ArrowRight size={14} strokeWidth={2.5} />
         </button>
     );
 };

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase';
 import { authenticateApiRequest } from '@/lib/usage';
 import { generateConceptSynthesis } from '@/lib/vault';
 
@@ -11,17 +11,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!nodeId || typeof nodeId !== 'string')
         return res.status(400).json({ error: 'Missing nodeId' });
 
-    const token = req.headers.authorization?.split(' ').pop();
-
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { global: { headers: { Authorization: `Bearer ${token}` } } }
-    );
+    if (!supabaseAdmin) {
+        return res.status(500).json({ error: 'Supabase admin client not initialized' });
+    }
 
     if (req.method === 'GET') {
         try {
-            const { data: node, error } = await supabase
+            const { data: node, error } = await supabaseAdmin
                 .from('knowledge_nodes')
                 .select('*')
                 .eq('id', nodeId)
@@ -32,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             let sessions: any[] = [];
             if (node.session_ids && node.session_ids.length > 0) {
-                const { data: sessionRows } = await supabase
+                const { data: sessionRows } = await supabaseAdmin
                     .from('reflection_sessions')
                     .select('id, title, content_type, created_at, status')
                     .in('id', node.session_ids)
@@ -41,12 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
 
             const synthesisStale = !node.synthesis_generated_at;
-            if (synthesisStale && node.session_count >= 2) {
-                const supabaseAdmin = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                );
+            if (synthesisStale && (node.session_count || 0) >= 2) {
                 generateConceptSynthesis(supabaseAdmin, userId, nodeId).catch(console.error);
             }
 
@@ -74,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(400).json({ error: 'No valid fields to update' });
             }
 
-            const { data: updatedNode, error } = await supabase
+            const { data: updatedNode, error } = await supabaseAdmin
                 .from('knowledge_nodes')
                 .update(sanitizedUpdates)
                 .eq('id', nodeId)

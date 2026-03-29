@@ -51,7 +51,7 @@ function createInMemoryLock() {
         
         
         
-        const timeoutMs = Math.max(acquireTimeout || 15000, 5000);
+        const timeoutMs = Math.max(acquireTimeout || 3000, 2000);
         
         let resolveNext!: () => void;
         const next = new Promise<void>((resolve) => { resolveNext = resolve; });

@@ -10,16 +10,26 @@ interface MarkdownRendererProps {
 }
 
 function fixLatexBackslashes(s: string): string {
-    return s
-        .replace(/\u000C/g, '\\f')   
-        .replace(/\u0008/g, '\\b')   
-        .replace(/\t/g, '\\t')       
-        .replace(/\r/g, '\\r');      
+    if (!s) return '';
     
+    return s
+        .replace(/\\n/g, '\n')
+        .replace(/\\t/g, '\t')
+        .replace(/\\r/g, '\r')
+        .replace(/\\"/g, '"')
+        // Fix LaTeX dollar signs that some LLMs incorrectly escape
+        .replace(/\\\$/g, '$')
+        // Standard backslash fix: some AI models double-escape math backslashes as \\frac
+        .replace(/\\\\/g, '\\')
+        // Support common delimiters that some LLMs prefer
+        .replace(/\\\(/g, '$')
+        .replace(/\\\)/g, '$')
+        .replace(/\\\[/g, '$$')
+        .replace(/\\\]/g, '$$');
 }
 
 export default function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
-    const safe = fixLatexBackslashes(children ?? '');
+    const safe = fixLatexBackslashes(children);
     return (
         <div className={`flow-markdown prose-content ${className}`}>
             <ReactMarkdown

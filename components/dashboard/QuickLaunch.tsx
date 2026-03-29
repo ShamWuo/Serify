@@ -7,12 +7,12 @@ const QuickLaunch: React.FC = () => {
         { href: '/flow', icon: BookOpen, label: 'Flow mode', meta: 'AI mentor' },
         { href: '/learn', icon: Sparkles, label: 'Knowledge extraction', meta: 'Auto-distill' },
         { href: '/practice', icon: Target, label: 'Active recall', meta: 'Drills' },
-        { href: '/sessions', icon: History, label: 'Session archive', meta: 'History' },
+        { href: '/history', icon: History, label: 'History', meta: 'All activity' },
     ];
 
     return (
         <div className="paper-card overflow-hidden">
-            <div className="px-4 py-3 border-b-2 border-[var(--border)] flex items-center gap-2 dot-grid-bg">
+            <div className="px-4 py-2 border-b-2 border-[var(--border)] flex items-center gap-2">
                 <div className="w-1.5 h-1.5 bg-[var(--accent)]" />
                 <h3 className="text-[12px] font-display font-bold text-[var(--text)]">Quick access</h3>
             </div>
@@ -21,7 +21,7 @@ const QuickLaunch: React.FC = () => {
                     <Link
                         key={link.href}
                         href={link.href}
-                        className={`flex items-center justify-between px-4 py-3 hover:bg-[var(--accent-soft)] transition-all group/row relative ${
+                        className={`flex items-center justify-between px-4 py-2 hover:bg-[var(--accent-soft)] transition-all group/row relative ${
                             i !== links.length - 1 ? 'border-b border-[var(--border-soft)]' : ''
                         }`}
                     >

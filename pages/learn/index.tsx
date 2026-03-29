@@ -21,9 +21,11 @@ import {
     Loader2,
     Lock,
     Clock,
-    Calendar
+    Calendar,
+    Zap
 } from 'lucide-react';
 import Link from 'next/link';
+import { normalizeTitle } from '@/lib/formatters';
 import { experimental_useObject as useObject } from '@ai-sdk/react';
 import { z } from 'zod';
 
@@ -82,13 +84,14 @@ export default function LearnIndex() {
     const [targetDate, setTargetDate] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
-    const [curricula, setCurricula] = useState<any[]>([]);
-    const [loadingCurricula, setLoadingCurricula] = useState(true);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [loadingSessions, setLoadingSessions] = useState(true);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [curriculumToDelete, setCurriculumToDelete] = useState<any>(null);
+    const [sessionToDelete, setSessionToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'title'>('recent');
     const [isGateOpen, setIsGateOpen] = useState(false);
+    const [isStartingQuick, setIsStartingQuick] = useState(false);
 
     const { usage, loading: usageLoading, refresh: refreshUsage } = useUsage('curricula');
 
@@ -197,7 +200,7 @@ export default function LearnIndex() {
 
     useEffect(() => {
         if (!loading && user) {
-            fetchCurricula();
+            fetchSessions();
         }
     }, [user, loading]);
 
@@ -236,47 +239,60 @@ export default function LearnIndex() {
         }
     }, [router.query, token, submit, usage, refreshUsage, targetDate]);
 
-    const fetchCurricula = async () => {
-        setLoadingCurricula(true);
-        const { data, error } = await supabase
-            .from('curricula')
-            .select('*')
-            .order('last_activity_at', { ascending: false });
-        if (!error && data) {
-            setCurricula(data);
-        }
-        setLoadingCurricula(false);
+    const fetchSessions = async () => {
+        setLoadingSessions(true);
+        
+        const [currRes, quickRes] = await Promise.all([
+            supabase.from('curricula').select('*').order('last_activity_at', { ascending: false }),
+            supabase.from('flow_sessions').select('*').eq('source_type', 'quick').order('created_at', { ascending: false })
+        ]);
+        
+        const c = currRes.data || [];
+        const q = quickRes.data || [];
+        
+        const taggedC = c.map((x: any) => ({ ...x, type: 'curriculum', sortDate: x.last_activity_at }));
+        const taggedQ = q.map((x: any) => ({ ...x, type: 'quick', sortDate: x.created_at || x.updated_at }));
+        
+        setSessions([...taggedC, ...taggedQ]);
+        setLoadingSessions(false);
     };
 
-    const sortedCurricula = [...curricula].sort((a, b) => {
+    const sortedSessions = [...sessions].sort((a, b) => {
         if (sortBy === 'recent') {
-            return new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime();
+            return new Date(b.sortDate || 0).getTime() - new Date(a.sortDate || 0).getTime();
         }
         if (sortBy === 'title') {
-            return a.title.localeCompare(b.title);
+            return (a.title || '').localeCompare(b.title || '');
         }
         if (sortBy === 'progress') {
-            const getProgress = (c: any) => (c.completed_concept_ids?.length || 0) / (c.concept_count || 1);
+            const getProgress = (s: any) => {
+                if (s.type === 'quick') return s.status === 'completed' ? 1 : 0;
+                return (s.completed_concept_ids?.length || 0) / (s.concept_count || 1);
+            };
             return getProgress(b) - getProgress(a);
         }
         return 0;
     });
 
-    const handleDelete = async (curriculum: any) => {
-        setCurriculumToDelete(curriculum);
+    const handleDelete = async (session: any) => {
+        setSessionToDelete(session);
         setDeleteModalOpen(true);
     };
 
     const confirmDelete = async () => {
-        if (!curriculumToDelete) return;
+        if (!sessionToDelete) return;
         setIsDeleting(true);
         try {
-            await supabase.from('curricula').delete().eq('id', curriculumToDelete.id);
-            setCurricula((prev) => prev.filter((c) => c.id !== curriculumToDelete.id));
+            if (sessionToDelete.type === 'curriculum') {
+                await supabase.from('curricula').delete().eq('id', sessionToDelete.id);
+            } else {
+                await supabase.from('flow_sessions').delete().eq('id', sessionToDelete.id);
+            }
+            setSessions((prev) => prev.filter((s) => s.id !== sessionToDelete.id));
             setDeleteModalOpen(false);
-            setCurriculumToDelete(null);
+            setSessionToDelete(null);
         } catch (err) {
-            console.error('Error deleting curriculum:', err);
+            console.error('Error deleting session:', err);
         } finally {
             setIsDeleting(false);
         }
@@ -288,6 +304,44 @@ export default function LearnIndex() {
         if (lower.startsWith('i want to') || lower.includes('understand how') || lower.includes('learn how')) return 'goal';
         if (text.trim().split(' ').length <= 3) return 'concept';
         return 'topic';
+    };
+
+    const handleQuickLearn = async () => {
+        if (!inputValue.trim() || !token) return;
+        if (usage && !usage.allowed) {
+            setIsGateOpen(true);
+            return;
+        }
+
+        setIsStartingQuick(true);
+        setErrorMsg('');
+
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const qRes = await fetch('/api/serify/start-quick-learn', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                    ...(router.query.demo === 'true' ? { 'x-serify-demo': 'true' } : {})
+                },
+                signal: controller.signal,
+                body: JSON.stringify({ content: inputValue, contentType: guessInputType(inputValue) })
+            });
+            clearTimeout(timeoutId);
+
+            if (qRes.ok) {
+                const { flowSessionId } = await qRes.json();
+                router.push(`/learn/quick/flow?session=${flowSessionId}`);
+                return;
+            }
+            const errData = await qRes.json();
+            throw new Error(errData.error || 'Failed to start quick learn');
+        } catch (err: any) {
+            setErrorMsg(err.message || 'Failed to start quick learn session');
+            setIsStartingQuick(false);
+        }
     };
 
     const handleNext = () => {
@@ -322,9 +376,53 @@ export default function LearnIndex() {
         submit(payload);
     };
 
-    const renderCurriculumCard = (curriculum: any) => {
+    const renderSessionCard = (session: any) => {
+        if (session.type === 'quick') {
+            const isCompleted = session.status === 'completed';
+            return (
+                <div
+                    key={session.id}
+                    className="paper-card p-5 relative flex flex-col group"
+                >
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-display font-bold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug" title={normalizeTitle(session?.title)}>
+                            {normalizeTitle(session?.title).replace('Quick Learn: ', '').replace('Quick Learn - ', '')}
+                        </h3>
+                        <div className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 border border-blue-500/30 bg-blue-500/5">
+                            <div className="w-1.5 h-1.5 bg-blue-500" />
+                            <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-blue-600">
+                                QUICK
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-4">
+                        <p className="text-[var(--muted)] text-[11px] font-mono">
+                            {'// focal learning session'}
+                        </p>
+                    </div>
+
+                    <div className="mt-auto flex items-center gap-2 pt-4">
+                        <Link
+                            href={`/learn/quick/flow?sessionId=${session.id}`}
+                            className="flex-1 text-center px-4 py-2 border-2 border-[var(--border)] text-[12px] font-mono font-bold text-[var(--text)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all"
+                        >
+                            {isCompleted ? 'review' : 'resume'} ✦
+                        </Link>
+                        <button
+                            onClick={() => handleDelete(session)}
+                            className="p-2 text-[var(--muted)] hover:text-[var(--warn)] border border-[var(--border)] hover:border-[var(--warn)] transition-colors"
+                            title="Delete"
+                        >
+                            <Trash2 size={15} strokeWidth={2} />
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        const curriculum = session;
         const isCompleted = curriculum.status === 'completed';
-        const isAbandoned = curriculum.status === 'abandoned';
         const conceptsCompleted = curriculum.completed_concept_ids?.length || 0;
         const totalConcepts = curriculum.concept_count || 1;
         const progressPercent = Math.min(100, Math.round((conceptsCompleted / totalConcepts) * 100));
@@ -332,38 +430,32 @@ export default function LearnIndex() {
         return (
             <div
                 key={curriculum.id}
-                className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 relative flex flex-col shadow-sm hover:shadow-md transition-shadow"
+                className="paper-card p-5 relative flex flex-col group"
             >
                 <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug" title={curriculum.title}>
+                    <h3 className="font-display font-bold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug" title={curriculum.title}>
                         {curriculum.title}
                     </h3>
-                    {(isCompleted || isAbandoned) && (
-                        <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-700' : 'bg-[var(--border)] text-[var(--muted)]'}`}>
-                            {isCompleted ? 'Done' : 'Paused'}
+                    <div className={`shrink-0 flex items-center gap-1.5 px-2 py-0.5 border ${isCompleted ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-[var(--border)] bg-[var(--surface)]'}`}>
+                        <div className={`w-1.5 h-1.5 ${isCompleted ? 'bg-emerald-500' : 'bg-[var(--muted)]'}`} />
+                        <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${isCompleted ? 'text-emerald-600' : 'text-[var(--muted)]'}`}>
+                            {isCompleted ? 'DONE' : 'ROADMAP'}
                         </span>
-                    )}
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-2 mb-4">
-                    <p className="text-[var(--muted)] text-[11px] flex items-center gap-1.5">
-                        <span className="font-medium text-[var(--text)]">{conceptsCompleted}/{totalConcepts}</span>
-                        <span>concepts mastered</span>
+                    <p className="text-[var(--muted)] text-[11px] font-mono">
+                        <span className="text-[var(--text)] font-bold">{conceptsCompleted}/{totalConcepts}</span> concepts mastered
                     </p>
-                    {curriculum.deadline && (
-                        <div className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full border border-amber-100 font-medium">
-                            <Clock size={10} />
-                            {new Date(curriculum.deadline).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </div>
-                    )}
                 </div>
 
-                <div className="w-full h-1.5 bg-[var(--border)]/60 rounded-full mb-5 overflow-hidden">
+                <div className="w-full h-1 bg-[var(--border)]/30 rounded-full mb-5 overflow-hidden">
                     <div
-                        className="h-full rounded-full transition-all duration-700 ease-out"
+                        className="h-full transition-all duration-700 ease-out"
                         style={{
                             width: `${progressPercent}%`,
-                            background: isCompleted ? '#10b981' : 'var(--accent)'
+                            background: isCompleted ? 'var(--emerald-500)' : 'var(--accent)'
                         }}
                     />
                 </div>
@@ -371,16 +463,16 @@ export default function LearnIndex() {
                 <div className="mt-auto flex items-center gap-2">
                     <Link
                         href={`/learn/curriculum/${curriculum.id}`}
-                        className="flex-1 text-center px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 transition-colors"
+                        className="flex-1 text-center px-4 py-2 bg-[var(--accent)] border-2 border-[var(--accent)] text-[12px] font-mono font-bold text-white hover:bg-transparent hover:text-[var(--accent)] transition-all"
                     >
-                        {isCompleted ? 'Review' : 'Continue'} →
+                        {isCompleted ? 'review' : 'continue'} ✦
                     </Link>
                     <button
                         onClick={() => handleDelete(curriculum)}
-                        className="p-2 text-[var(--muted)] hover:text-red-500 rounded-xl border border-[var(--border)] hover:border-red-200 hover:bg-red-50 transition-colors"
+                        className="p-2 text-[var(--muted)] hover:text-[var(--warn)] border border-[var(--border)] hover:border-[var(--warn)] transition-colors"
                         title="Delete"
                     >
-                        <Trash2 size={15} />
+                        <Trash2 size={15} strokeWidth={2} />
                     </button>
                 </div>
             </div>
@@ -401,9 +493,11 @@ export default function LearnIndex() {
                         <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6">
                             <AlertTriangle className="text-red-600" size={32} />
                         </div>
-                        <h3 className="text-2xl font-display text-[var(--text)] mb-2">Delete Curriculum?</h3>
+                        <h3 className="text-2xl font-display text-[var(--text)] mb-2">
+                            {sessionToDelete?.type === 'quick' ? 'Delete Session?' : 'Delete Curriculum?'}
+                        </h3>
                         <p className="text-[var(--muted)] mb-8">
-                            Are you sure you want to delete &quot;{curriculumToDelete?.title}&quot;? This will permanently remove all your progress within this learning path. This action cannot be undone.
+                            Are you sure you want to delete &quot;{(sessionToDelete?.title || '').replace('Quick Learn: ', '')}&quot;? This will permanently remove all your progress within this learning path. This action cannot be undone.
                         </p>
                         <div className="flex gap-4">
                             <button
@@ -424,7 +518,7 @@ export default function LearnIndex() {
                                         Deleting...
                                     </>
                                 ) : (
-                                    'Delete Path'
+                                    'Delete'
                                 )}
                             </button>
                         </div>
@@ -439,39 +533,51 @@ export default function LearnIndex() {
                     <p className="text-[var(--muted)] text-sm">Build a tailored curriculum and master it concept by concept.</p>
                 </div>
 
-                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm mb-10 overflow-hidden">
+                <div className="bg-[var(--surface)] border-2 border-[var(--border)] rounded-[4px] shadow-[var(--shadow-hard-sm)] mb-10 overflow-hidden">
 
                     {step === 'input' && (
                         <div className="p-6 md:p-8">
-                            <label className="block text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-3">
-                                What do you want to learn?
+                            <label className="block text-[10px] font-mono font-bold text-[var(--accent)] uppercase tracking-[0.2em] mb-3 opacity-80">
+                                {'// primary objective'}
                             </label>
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-3">
                                 <input
                                     value={inputValue}
                                     onChange={(e) => setInputValue(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleNext()}
                                     type="text"
-                                    placeholder="e.g. Related rates, How neural networks learn, Calculus..."
-                                    className="flex-1 h-12 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-base"
+                                    placeholder="e.g. Related rates, How neural networks learn..."
+                                    className="flex-1 h-12 px-4 rounded-[2px] border-2 border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-all text-sm font-mono"
                                     autoFocus
                                 />
-                                <button
-                                    onClick={handleNext}
-                                    disabled={!inputValue.trim()}
-                                    className="h-12 px-5 rounded-xl font-medium bg-[var(--accent)] text-white flex items-center gap-2 hover:bg-[var(--accent)]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                                >
-                                    Next <ChevronRight size={16} />
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleQuickLearn}
+                                        disabled={!inputValue.trim() || isStartingQuick}
+                                        className="h-12 px-5 rounded-[2px] font-mono font-bold text-[11px] bg-[var(--surface)] text-[var(--text)] border-2 border-[var(--border)] flex items-center gap-2 hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
+                                        style={{boxShadow: 'var(--shadow-hard-sm)'}}
+                                    >
+                                        {isStartingQuick ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />} 
+                                        Quick Learn
+                                    </button>
+                                    <button
+                                        onClick={handleNext}
+                                        disabled={!inputValue.trim() || isStartingQuick}
+                                        className="h-12 px-5 rounded-[2px] font-mono font-bold text-[11px] bg-[var(--accent)] text-white flex items-center gap-2 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all uppercase tracking-wider border-2 border-[var(--ink)]"
+                                        style={{boxShadow: 'var(--shadow-hard-sm)'}}
+                                    >
+                                        Custom Roadmap <ChevronRight size={14} />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="mt-5 flex flex-wrap gap-2">
-                                <span className="text-xs text-[var(--muted)] self-center">Try:</span>
-                                {['Related rates', 'Transformers from scratch', 'Compounding interest', 'How DNS works'].map((sug) => (
+                            <div className="mt-6 flex flex-wrap gap-2 items-center">
+                                <span className="text-[10px] font-mono font-bold text-[var(--muted)] uppercase tracking-widest mr-2">Try:</span>
+                                {['Related rates', 'Neural networks', 'DNS protocols'].map((sug) => (
                                     <button
                                         key={sug}
                                         onClick={() => { setInputValue(sug); }}
-                                        className="text-xs px-3 py-1.5 rounded-full border border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                                        className="text-[10px] font-mono px-3 py-1.5 border-2 border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all uppercase tracking-tight"
                                     >
                                         {sug}
                                     </button>
@@ -482,64 +588,65 @@ export default function LearnIndex() {
 
                     {step === 'context' && (
                         <div className="p-6 md:p-8">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-3 mb-4">
                                 <button
                                     onClick={() => setStep('input')}
-                                    className="text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                                    className="w-8 h-8 flex items-center justify-center border-2 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all"
+                                    style={{borderRadius:'2px', boxShadow:'var(--shadow-hard-sm)'}}
                                 >
-                                    <ChevronLeft size={18} />
+                                    <ChevronLeft size={16} />
                                 </button>
                                 <div>
-                                    <p className="text-xs text-[var(--muted)] font-medium">Learning</p>
-                                    <h2 className="font-bold text-[var(--text)] leading-tight">&quot;{inputValue}&quot;</h2>
+                                    <p className="text-[10px] font-mono font-bold text-[var(--muted)] uppercase tracking-widest opacity-60">{'// tailoring focus'}</p>
+                                    <h2 className="font-display font-black text-xl text-[var(--text)] leading-tight tracking-tight">&quot;{inputValue}&quot;</h2>
                                 </div>
                             </div>
 
-                            <p className="text-sm text-[var(--muted)] mb-6 ml-6">
-                                Help us tailor this curriculum to exactly what you need. All fields are optional.
+                            <p className="text-xs font-mono text-[var(--muted)] mb-8 border-l-2 border-[var(--border)] pl-4 italic">
+                                Refining objectives to maximize retention. Initial parameters identified.
                             </p>
 
                             <div className="space-y-5">
                                 <div>
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
-                                        <Brain size={15} className="text-[var(--accent)]" />
-                                        What do you already know?
+                                    <label className="flex items-center gap-2 text-[10px] font-mono font-bold text-[var(--text)] uppercase tracking-wider mb-2">
+                                        <Brain size={12} className="text-[var(--accent)]" />
+                                        Existing Knowledge Base
                                     </label>
                                     <textarea
                                         value={priorKnowledge}
                                         onChange={(e) => setPriorKnowledge(e.target.value)}
-                                        placeholder="e.g. I know derivatives and limits, but not related rates specifically"
+                                        placeholder="e.g. I know derivatives and limits, but not related rates..."
                                         rows={2}
-                                        className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-sm resize-none"
+                                        className="w-full px-4 py-3 rounded-[2px] border-2 border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-all text-xs font-mono resize-none"
                                     />
-                                    <p className="text-xs text-[var(--muted)] mt-1">
-                                        Topics you already know will be skipped or used only as brief references.
+                                    <p className="text-[9px] font-mono text-[var(--muted)] mt-2 opacity-60 leading-tight">
+                                        Note: Documented concepts will be treated as prerequisites or briefly referenced.
                                     </p>
                                 </div>
 
                                 <div>
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
-                                        <SkipForward size={15} className="text-[var(--accent)]" />
-                                        Anything to skip?
+                                    <label className="flex items-center gap-2 text-[10px] font-mono font-bold text-[var(--text)] uppercase tracking-wider mb-2">
+                                        <SkipForward size={12} className="text-[var(--accent)]" />
+                                        Exclusion Parameters
                                     </label>
                                     <input
                                         value={skipTopics}
                                         onChange={(e) => setSkipTopics(e.target.value)}
                                         placeholder="e.g. history, basic algebra, proofs"
-                                        className="w-full h-11 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-sm"
+                                        className="w-full h-11 px-4 rounded-[2px] border-2 border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-all text-xs font-mono"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text)] mb-1.5">
-                                        <Target size={15} className="text-[var(--accent)]" />
-                                        What&apos;s your specific goal?
+                                    <label className="flex items-center gap-2 text-[10px] font-mono font-bold text-[var(--text)] uppercase tracking-wider mb-2">
+                                        <Target size={12} className="text-[var(--accent)]" />
+                                        Success Metric / Goal
                                     </label>
                                     <input
                                         value={focusGoal}
                                         onChange={(e) => setFocusGoal(e.target.value)}
-                                        placeholder="e.g. Solve optimization word problems on my exam next week"
-                                        className="w-full h-11 px-4 rounded-xl border border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-colors text-sm"
+                                        placeholder="e.g. Solve optimization word problems on my exam..."
+                                        className="w-full h-11 px-4 rounded-[2px] border-2 border-[var(--border)] bg-[var(--bg)] outline-none focus:border-[var(--accent)] transition-all text-xs font-mono"
                                     />
                                 </div>
                                 
@@ -573,30 +680,40 @@ export default function LearnIndex() {
                                 </div>
                             )}
 
-                            <div className="mt-6 flex items-center justify-between">
+                            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                                 <div className="text-xs text-[var(--muted)] flex items-center gap-1">
-                                    New curriculum generation
+                                    Ready to start?
                                 </div>
-                                <button
-                                    onClick={handleBuildCurriculum}
-                                    disabled={usageLoading}
-                                    className={`h-11 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-sm ${usage && !usage.allowed
-                                        ? 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-60'
-                                        : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-[var(--accent)]/20 shadow-lg'
-                                        }`}
-                                >
-                                    {usageLoading ? (
-                                        <Loader2 size={16} className="animate-spin" />
-                                    ) : usage && !usage.allowed ? (
-                                        <>
-                                            <Lock size={16} /> Limit Reached
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Sparkles size={16} /> Build Curriculum <ArrowRight size={16} />
-                                        </>
-                                    )}
-                                </button>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                    <button
+                                        onClick={handleQuickLearn}
+                                        disabled={isStartingQuick}
+                                        className="flex-1 sm:flex-none h-11 px-5 rounded-xl font-medium bg-[var(--surface)] text-[var(--accent)] border border-[var(--border)] flex items-center justify-center gap-2 hover:bg-[var(--bg)] transition-all disabled:opacity-50"
+                                    >
+                                        {isStartingQuick ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                                        Quick Learn
+                                    </button>
+                                    <button
+                                        onClick={handleBuildCurriculum}
+                                        disabled={usageLoading || isStartingQuick}
+                                        className={`flex-1 sm:flex-none h-11 px-6 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-sm ${usage && !usage.allowed
+                                            ? 'bg-[var(--border)] text-[var(--muted)] cursor-not-allowed opacity-60'
+                                            : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-[var(--accent)]/20 shadow-lg'
+                                            }`}
+                                    >
+                                        {usageLoading ? (
+                                            <Loader2 size={16} className="animate-spin" />
+                                        ) : usage && !usage.allowed ? (
+                                            <>
+                                                <Lock size={16} /> Limit Reached
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sparkles size={16} /> Build Roadmap <ArrowRight size={16} />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
 
                             {usage && !usage.allowed && (
@@ -631,21 +748,21 @@ export default function LearnIndex() {
                             </div>
 
                             {curriculumData?.units && curriculumData.units.length > 0 && (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     {curriculumData.units.map((unit: any, i: number) => (
-                                        <div key={i} className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-4">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="bg-[var(--accent)] text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded">
+                                        <div key={i} className="bg-[var(--bg)] border-2 border-[var(--border)] rounded-[2px] p-5 shadow-[var(--shadow-hard-sm)]">
+                                            <div className="flex items-center gap-3 mb-3">
+                                                <span className="bg-[var(--accent)] text-white text-[10px] font-mono font-black w-6 h-6 flex items-center justify-center border border-[var(--ink)]">
                                                     {unit?.unitNumber || i + 1}
                                                 </span>
-                                                <span className="font-semibold text-sm text-[var(--text)]">
+                                                <span className="font-display font-black text-sm text-[var(--text)] uppercase tracking-tight">
                                                     {unit?.unitTitle || 'Drafting...'}
                                                 </span>
                                             </div>
                                             {unit?.concepts && unit.concepts.length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                                <div className="flex flex-wrap gap-2 mt-3">
                                                     {unit.concepts.map((c: any, j: number) => (
-                                                        <span key={j} className="text-xs px-2 py-0.5 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)]">
+                                                        <span key={j} className="text-[10px] font-mono px-2 py-0.5 border border-[var(--border)] bg-[var(--surface)] text-[var(--muted)] opacity-80 uppercase tracking-tighter">
                                                             {c?.name || '...'}
                                                         </span>
                                                     ))}
@@ -702,9 +819,9 @@ export default function LearnIndex() {
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-base font-bold text-[var(--text)] flex items-center gap-2">
                             <BookOpen size={16} className="text-[var(--muted)]" />
-                            Your Curricula
+                            Active Learning
                         </h2>
-                        {curricula.length > 0 && (
+                        {sessions.length > 0 && (
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] uppercase font-bold text-[var(--muted)] tracking-wider">Sort by:</span>
                                 <select
@@ -720,21 +837,21 @@ export default function LearnIndex() {
                         )}
                     </div>
 
-                    {loadingCurricula ? (
+                    {loadingSessions ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {[1, 2, 3].map((i) => (
                                 <div key={i} className="h-40 bg-[var(--surface)] border border-[var(--border)] rounded-2xl animate-pulse" />
                             ))}
                         </div>
-                    ) : curricula.length > 0 ? (
+                    ) : sessions.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {sortedCurricula.map(renderCurriculumCard)}
+                            {sortedSessions.map(renderSessionCard)}
                         </div>
                     ) : (
-                        <div className="text-center py-14 bg-[var(--surface)] border border-dashed border-[var(--border)] rounded-2xl">
-                            <BookOpen size={28} className="mx-auto text-[var(--muted)]/40 mb-3" />
-                            <p className="font-medium text-[var(--text)] text-sm mb-1">No curricula yet</p>
-                            <p className="text-[var(--muted)] text-xs">Build your first one above.</p>
+                        <div className="text-center py-20 bg-[var(--surface)] border-2 border-dashed border-[var(--border)] rounded-[4px]">
+                            <BookOpen size={32} className="mx-auto text-[var(--muted)]/20 mb-4" />
+                            <p className="font-display font-black text-[var(--text)] text-sm mb-2 uppercase tracking-widest">Initial Context Required</p>
+                            <p className="text-[var(--muted)] text-[10px] font-mono italic">Start a Quick Learn or build a Roadmap above to populate this index.</p>
                         </div>
                     )}
                 </div>

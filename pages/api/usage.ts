@@ -47,8 +47,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             });
         }
-    } catch (error) {
-        console.error('Usage API error:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+    } catch (error: any) {
+        console.error('Usage API error:', {
+            message: error.message,
+            stack: error.stack,
+            error: error
+        });
+        return res.status(500).json({ 
+            error: 'Internal server error',
+            details: error.message,
+            stack: error.stack
+        });
     }
 }

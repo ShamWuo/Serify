@@ -8,10 +8,11 @@ import { supabase } from '@/lib/supabase';
 import {
     Zap, Brain, Loader2, ChevronRight, ChevronLeft, CheckCircle2,
     BookOpen, HelpCircle, Target, Route, ShieldAlert, Replace, Send,
-    Layers, Trophy, Lock
+    Layers, Trophy, Lock, AlertTriangle
 } from 'lucide-react';
 import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
-import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
+import { normalizeTitle } from '@/lib/formatters';
+// removed CurriculumSidebar
 import { useUsage } from '@/hooks/useUsage';
 import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 import confetti from 'canvas-confetti';
@@ -287,8 +288,8 @@ function ApplicationStep({ content, stepId, isEvaluated, onEvaluated, readOnly, 
                                 <Zap size={14} className="text-amber-500" />
                                 <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase">Hint</span>
                             </div>
-                            <div className="text-[14px] text-amber-800 dark:text-amber-200 leading-relaxed font-medium">
-                                <MarkdownRenderer className="hint-markdown prose-content">{content.hint}</MarkdownRenderer>
+                            <div className="text-[14px] leading-relaxed font-medium">
+                                <MarkdownRenderer className="hint-markdown text-amber-900 dark:text-amber-200 whitespace-pre-wrap">{content.hint}</MarkdownRenderer>
                             </div>
                         </div>
                     )}
@@ -460,32 +461,103 @@ function ConceptCompleteCard({ conceptName, onNext, onReview, isLast }: {
     );
 }
 
-export default function CurriculumFlowSessionPage() {
+function SessionSidebar({
+    concept, onSkip, onSelect, concepts, currentIdx, conceptStatuses, isStepping, isReadOnly
+}: {
+    concept: any; onSkip: () => void; onSelect: (idx: number) => void;
+    concepts: any[]; currentIdx: number; conceptStatuses: Record<string, string>;
+    isStepping: boolean; isReadOnly: boolean;
+}) {
+    return (
+        <div className="flex flex-col gap-6">
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                    <Target size={14} className="text-[var(--accent)]" />
+                    <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">Mastery Focus</span>
+                </div>
+                <h3 className="text-sm font-bold mb-1 leading-tight">{normalizeTitle(concept?.conceptName) || 'Calculating...'}</h3>
+                <p className="text-[11px] text-[var(--muted)] mb-5 leading-relaxed">
+                    Progressing through the foundational layers of this concept.
+                </p>
+                
+                {!isReadOnly && (
+                    <button
+                        onClick={onSkip}
+                        disabled={isStepping}
+                        className="w-full py-2 px-3 rounded-lg border border-[var(--border)] text-[11px] font-bold text-[var(--muted)] hover:text-amber-600 hover:border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all uppercase tracking-wider disabled:opacity-30"
+                    >
+                        Skip to next part
+                    </button>
+                )}
+            </div>
+
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                    <Route size={14} className="text-[var(--muted)]" />
+                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Learning Path</span>
+                </div>
+                <div className="space-y-2">
+                    {concepts.map((c, i) => {
+                        const status = conceptStatuses[c.conceptId] || 'not_started';
+                        const isActive = i === currentIdx;
+                        const isDone = status === 'completed';
+                        
+                        return (
+                            <button
+                                key={c.conceptId}
+                                onClick={() => onSelect(i)}
+                                disabled={isStepping}
+                                className={`w-full flex items-center gap-3 p-2.5 rounded-xl border transition-all text-left ${
+                                    isActive 
+                                        ? 'bg-[var(--accent)]/5 border-[var(--accent)]/20 shadow-sm' 
+                                        : 'bg-transparent border-transparent hover:bg-[var(--bg)]'
+                                }`}
+                            >
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border-2 ${
+                                    isDone 
+                                        ? 'bg-emerald-500 border-emerald-500' 
+                                        : isActive 
+                                            ? 'border-[var(--accent)]' 
+                                            : 'border-[var(--border)]'
+                                }`}>
+                                    {isDone && <CheckCircle2 size={10} className="text-white" />}
+                                    {!isDone && isActive && <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />}
+                                </div>
+                                <span className={`text-[12px] font-medium truncate ${
+                                    isActive ? 'text-[var(--text)]' : 'text-[var(--muted)]'
+                                }`}>
+                                    {normalizeTitle(c.conceptName)}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+export default function QuickLearnFlowSessionPage() {
     const router = useRouter();
-    const { id: curriculumId } = router.query as { id?: string };
+    const { session: urlSessionId } = router.query as { session?: string };
     const { user, loading: authLoading } = useAuth();
 
     const [flowSessionId, setFlowSessionId] = useState<string | null>(null);
     const [flowSession, setFlowSession] = useState<FlowSession | null>(null);
     const [currentConceptIndex, setCurrentConceptIndex] = useState(0);
-    const [plannedSteps, setPlannedSteps] = useState(0);
+    const [plannedSteps, setPlannedSteps] = useState<number>(0);
 
-    
     const [stepHistory, setStepHistory] = useState<FlowStep[]>([]);
-    
     const [viewingStepIndex, setViewingStepIndex] = useState(-1);
     const [pendingEvaluation, setPendingEvaluation] = useState<any | null>(null);
 
-    
     const [conceptJustCompleted, setConceptJustCompleted] = useState(false);
-
     const [conceptStatuses, setConceptStatuses] = useState<Record<string, 'not_started' | 'in_progress' | 'completed'>>({});
     const [isLimitReached, setIsLimitReached] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [stepping, setStepping] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [displayProgress, setDisplayProgress] = useState(0);
     const [statusMessage, setStatusMessage] = useState('Initializing...');
     const [error, setError] = useState<string | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
@@ -494,53 +566,20 @@ export default function CurriculumFlowSessionPage() {
     const currentConcept = flowSession?.initial_plan?.concepts?.[currentConceptIndex];
     const totalConcepts = flowSession?.initial_plan?.concepts?.length || 0;
 
-    
     const displayStep = viewingStepIndex >= 0 ? stepHistory[viewingStepIndex] : null;
     const isReadOnly = viewingStepIndex >= 0 && viewingStepIndex < stepHistory.length - 1;
-    const currentLiveStep = stepHistory[stepHistory.length - 1] ?? null;
 
-    
-
-    
     useEffect(() => {
-        if (displayProgress < progress) {
-            const timer = setTimeout(() => {
-                setDisplayProgress(prev => Math.min(prev + 1, progress));
-            }, 30);
-            return () => clearTimeout(timer);
-        } else if (displayProgress > progress) {
-            setDisplayProgress(progress);
+        if (!router.isReady) return;
+        if (authLoading || !user) { setLoading(false); return; }
+        if (urlSessionId) {
+            setFlowSessionId(urlSessionId);
+        } else {
+            setError('No session ID provided');
+            setLoading(false);
         }
-    }, [displayProgress, progress]);
+    }, [urlSessionId, user, authLoading, router.isReady]);
 
-    
-    useEffect(() => {
-        if (authLoading || !curriculumId || !user) { setLoading(false); return; }
-
-        (async () => {
-            setLoading(true);
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const res = await fetch('/api/serify/start-curriculum-flow', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-                    body: JSON.stringify({ curriculumId }),
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    if (data.error === 'Curriculum already completed') { setSessionDone(true); setLoading(false); return; }
-                    if (data.error === 'limit_reached') { setIsLimitReached(true); setLoading(false); return; }
-                    throw new Error(data.error || 'Failed to initialize session');
-                }
-                setFlowSessionId(data.flowSessionId);
-            } catch (err: any) {
-                setError(err.message);
-                setLoading(false);
-            }
-        })();
-    }, [curriculumId, user, authLoading]);
-
-    
     useEffect(() => {
         if (!flowSessionId) return;
         (async () => {
@@ -564,27 +603,11 @@ export default function CurriculumFlowSessionPage() {
                 setSessionDone(true);
             }
             setLoading(false);
-
-            
-            const token = (await supabase.auth.getSession()).data.session?.access_token;
-            const allConcepts = data.initial_plan?.concepts || [];
-            const completed: string[] = data.concepts_completed || [];
-            const toPreload = allConcepts
-                .filter((c: any) => !completed.includes(c.conceptId))
-                .slice(0, 3);
-            toPreload.forEach((c: any) => {
-                fetch('/api/flow/orchestrate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                    body: JSON.stringify({ sessionId: data.id, conceptId: c.conceptId }),
-                }).catch(() => {  });
-            });
         })();
     }, [flowSessionId]);
 
-    
-    const fetchNextStep = useCallback(async (retryOrchestrate = true) => {
-        if (!flowSession || !currentConcept || stepping) return;
+    const fetchNextStep = useCallback(async (retryOrchestrate = true, bypassSteppingCheck = false) => {
+        if (!flowSession || !currentConcept?.conceptId || (stepping && !bypassSteppingCheck)) return;
         setStepping(true);
         setPendingEvaluation(null);
         setError(null);
@@ -592,8 +615,6 @@ export default function CurriculumFlowSessionPage() {
 
         try {
             const { data: { session: authSession } } = await supabase.auth.getSession();
-
-            
             const res = await fetch('/api/flow/step', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authSession?.access_token}` },
@@ -601,22 +622,13 @@ export default function CurriculumFlowSessionPage() {
             });
             const data = await res.json();
 
-            
-            if (!res.ok && data.error === 'Orchestrator plan not initialized. Call /api/flow/orchestrate first.' && retryOrchestrate) {
-                console.log('[flow] Plan not initialized, triggering orchestration...');
-                setStatusMessage('Generating learning path...');
-
+            if (data.action === 'initialize' && retryOrchestrate) {
                 const orchRes = await fetch('/api/flow/orchestrate-stream', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authSession?.access_token}` },
                     body: JSON.stringify({ sessionId: flowSession.id, conceptId: currentConcept.conceptId }),
                 });
-
-                if (!orchRes.ok) {
-                    const orchData = await orchRes.json();
-                    throw new Error(orchData.error || 'Orchestration failed');
-                }
-
+                if (!orchRes.ok) throw new Error('Orchestration failed');
                 const reader = orchRes.body?.getReader();
                 const decoder = new TextDecoder();
                 if (reader) {
@@ -629,93 +641,53 @@ export default function CurriculumFlowSessionPage() {
                             if (line.startsWith('data: ')) {
                                 try {
                                     const d = JSON.parse(line.slice(6));
-                                    if (d.error) {
-                                        setError(d.error);
-                                        setStepping(false);
-                                        return; 
-                                    }
                                     if (d.progress) setProgress(d.progress);
                                     if (d.status) setStatusMessage(d.status);
-                                } catch (e) {
-                                    console.error('Failed to parse SSE chunk', e);
-                                }
+                                } catch (e) {}
                             }
                         }
                     }
                 }
-
-                
-                return fetchNextStep(false);
+                // CRITICAL FIX: After stream completes, we MUST call fetchNextStep again to get the actual first step
+                setStepping(false); // Reset stepping so the recursive call isn't blocked
+                return fetchNextStep(false, true); 
             }
 
             if (!res.ok) throw new Error(data.error || 'Step failed');
-
             if (data.stepHistory) {
                 setStepHistory(data.stepHistory);
                 setViewingStepIndex(data.stepHistory.length - 1);
             }
-
-            if (data.plannedSteps) {
-                setPlannedSteps(data.plannedSteps);
-            }
+            if (data.plannedSteps) setPlannedSteps(data.plannedSteps);
 
             if (data.action === 'concept_complete') {
                 const alreadyDone = conceptStatuses[currentConcept.conceptId] === 'completed';
                 const updatedCompleted = [...new Set([...(flowSession.concepts_completed || []), currentConcept.conceptId])];
-
-                if (updatedCompleted.length > (flowSession.concepts_completed?.length || 0)) {
-                    await supabase.from('flow_sessions').update({
-                        concepts_completed: updatedCompleted,
-                        last_activity_at: new Date().toISOString()
-                    }).eq('id', flowSession.id);
-
-                    const { data: curriculum } = await supabase.from('curricula').select('completed_concept_ids, concept_count').eq('id', flowSession.source_session_id).single();
-                    const currCompleted = [...new Set([...(curriculum?.completed_concept_ids || []), currentConcept.conceptId])];
-
-                    await supabase.from('curricula').update({
-                        completed_concept_ids: currCompleted,
-                        current_concept_index: currCompleted.length,
-                        status: (curriculum?.concept_count && currCompleted.length >= curriculum.concept_count) ? 'completed' : 'active',
-                        last_activity_at: new Date().toISOString()
-                    }).eq('id', flowSession.source_session_id);
-
-                    setFlowSession(prev => prev ? { ...prev, concepts_completed: updatedCompleted } : null);
-                    setConceptStatuses((prev) => ({ ...prev, [currentConcept.conceptId]: 'completed' }));
-                }
-
+                await supabase.from('flow_sessions').update({ concepts_completed: updatedCompleted }).eq('id', flowSession.id);
+                setFlowSession(prev => prev ? { ...prev, concepts_completed: updatedCompleted } : null);
+                setConceptStatuses((prev) => ({ ...prev, [currentConcept.conceptId]: 'completed' }));
                 if (!alreadyDone) {
                     setConceptJustCompleted(true);
-                    confetti({
-                        particleCount: 100,
-                        spread: 70,
-                        origin: { y: 0.6 },
-                        colors: ['#3b82f6', '#10b981', '#6366f1']
-                    });
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                 }
             } else {
                 setConceptStatuses((prev) => ({ ...prev, [currentConcept.conceptId]: 'in_progress' }));
             }
         } catch (err: any) {
-            console.error('Flow step error:', err);
-            const msg = err.message || 'An unexpected error occurred';
-            setFetchError(msg);
-            setStatusMessage(`Error: ${msg}`);
+            setFetchError(err.message || 'An unexpected error occurred');
         } finally {
             setStepping(false);
         }
     }, [flowSession, currentConcept, stepping, conceptStatuses]);
 
-    
     useEffect(() => {
         if (flowSession && !stepping && currentConcept && !sessionDone && !conceptJustCompleted && stepHistory.length === 0 && !fetchError) {
             fetchNextStep();
         }
     }, [flowSession, currentConcept, sessionDone, stepping, conceptJustCompleted, stepHistory.length, fetchNextStep, fetchError]);
 
-    
     const handleUserResponse = async (responseType: string) => {
         if (!displayStep || isReadOnly) return;
-
         try {
             const { data: { session: authSession } } = await supabase.auth.getSession();
             await fetch('/api/flow/evaluate', {
@@ -723,18 +695,12 @@ export default function CurriculumFlowSessionPage() {
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authSession?.access_token}` },
                 body: JSON.stringify({ stepId: displayStep.id, userResponse: responseType }),
             });
-        } catch (e) {
-            console.error('Failed to record response', e);
-        }
-
+        } catch (e) {}
         fetchNextStep();
     };
 
-    const handleEvaluated = (_response: string, evaluation: any) => {
-        setPendingEvaluation(evaluation);
-    };
+    const handleEvaluated = (_response: string, evaluation: any) => setPendingEvaluation(evaluation);
 
-    
     const handleAdvanceConcept = () => {
         const nextIdx = currentConceptIndex + 1;
         setConceptJustCompleted(false);
@@ -744,25 +710,6 @@ export default function CurriculumFlowSessionPage() {
             setPlannedSteps(0);
             setViewingStepIndex(-1);
             setPendingEvaluation(null);
-
-            
-            if (flowSession) {
-                const completed = (flowSession.concepts_completed || []).concat(
-                    currentConcept?.conceptId ? [currentConcept.conceptId] : []
-                );
-                const upcoming = (flowSession.initial_plan?.concepts || [])
-                    .filter((c: any) => !completed.includes(c.conceptId))
-                    .slice(1, 4); 
-                supabase.auth.getSession().then(({ data: { session: s } }) => {
-                    upcoming.forEach((c: any) => {
-                        fetch('/api/flow/orchestrate', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s?.access_token}` },
-                            body: JSON.stringify({ sessionId: flowSession.id, conceptId: c.conceptId }),
-                        }).catch(() => { });
-                    });
-                });
-            }
         } else {
             setSessionDone(true);
         }
@@ -771,409 +718,111 @@ export default function CurriculumFlowSessionPage() {
     const handleReviewConcept = () => {
         setConceptJustCompleted(false);
         setFetchError(null);
-        
-        if (stepHistory.length > 0) {
-            setViewingStepIndex(stepHistory.length - 1);
-        }
+        if (stepHistory.length > 0) setViewingStepIndex(stepHistory.length - 1);
     };
 
     const handleConceptSelect = (index: number) => {
         if (index === currentConceptIndex && !conceptJustCompleted) return;
-
-        const targetConcept = flowSession?.initial_plan?.concepts?.[index];
-        if (!targetConcept) return;
-
         setCurrentConceptIndex(index);
         setStepHistory([]);
+        setPlannedSteps(0);
         setViewingStepIndex(-1);
         setPendingEvaluation(null);
         setConceptJustCompleted(false);
-        setError(null);
         setFetchError(null);
     };
 
-    
-    
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
     const handleSkip = async () => {
         if (!flowSession || !currentConcept || stepping) return;
-        if (window.confirm("Are you sure you want to skip this step? You'll move to the next part of the lesson.")) {
+        if (window.confirm("Are you sure you want to skip this step?")) {
             setStepping(true);
-            setPendingEvaluation(null);
             try {
                 const { data: { session: authSession } } = await supabase.auth.getSession();
                 const res = await fetch('/api/flow/step', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authSession?.access_token}` },
-                    body: JSON.stringify({
-                        sessionId: flowSession.id,
-                        conceptId: currentConcept.conceptId,
-                        skipCurrent: true
-                    }),
+                    body: JSON.stringify({ sessionId: flowSession.id, conceptId: currentConcept.conceptId, skipCurrent: true }),
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error);
-
-                if (data.action === 'concept_complete') {
-                    setConceptJustCompleted(true);
-                } else if (data.step) {
+                if (data.action === 'concept_complete') setConceptJustCompleted(true);
+                else if (data.step) {
                     setStepHistory((prev) => {
-                        const existing = prev.findIndex((s) => s.id === data.step.id);
-                        if (existing !== -1) {
-                            const next = [...prev];
-                            next[existing] = data.step;
-                            return next;
-                        }
-                        return [...prev, data.step];
+                        const nextList = [...prev, data.step];
+                        setViewingStepIndex(nextList.length - 1);
+                        return nextList;
                     });
-                    setViewingStepIndex(stepHistory.length);
                 }
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setStepping(false);
-            }
+            } catch (err: any) { setError(err.message); } finally { setStepping(false); }
         }
     };
 
     const renderStep = () => {
         if (!displayStep) return null;
         const { step_type, content, user_response } = displayStep;
-        const savedAnswer = user_response || '';
+        const savedAnswer = user_response ?? undefined;
+        
+        if (step_type === 'teach') return <TeachStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} stepNumber={(viewingStepIndex >= 0 ? viewingStepIndex : stepHistory.length - 1) + 1} totalSteps={Math.max(plannedSteps, stepHistory.length)} savedAnswer={savedAnswer} />;
+        if (step_type === 'application') return <ApplicationStep content={content} stepId={displayStep.id} isEvaluated={!!pendingEvaluation || isReadOnly} onEvaluated={handleEvaluated} readOnly={isReadOnly} savedAnswer={savedAnswer} />;
+        if (step_type === 'check' || step_type === 'confirm') return <CheckQuestionStep content={content} stepId={displayStep.id} isEvaluated={!!pendingEvaluation || isReadOnly} onEvaluated={handleEvaluated} readOnly={isReadOnly} savedAnswer={savedAnswer} />;
+        if (step_type === 'reinforce') return <ReinforceStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} stepNumber={(viewingStepIndex >= 0 ? viewingStepIndex : stepHistory.length - 1) + 1} totalSteps={Math.max(plannedSteps, stepHistory.length)} />;
+        return null;
+    };
 
-        if (step_type === 'teach') {
-            if (!content?.text) return (
-                <div className="flex flex-col items-center justify-center p-8 text-center bg-red-50/50 rounded-xl border border-red-100">
-                    <ShieldAlert className="text-red-400 mb-2" size={24} />
-                    <p className="text-sm font-medium text-red-600">Lesson content missing</p>
-                    <p className="text-xs text-red-500/80 mt-1">Serify failed to generate the lesson text for this step.</p>
-                    <button onClick={() => fetchNextStep()} className="mt-4 text-xs font-bold text-red-700 underline">Try Re-generating</button>
-                </div>
-            );
-            return (() => {
-                                const stepNumber = (viewingStepIndex >= 0 ? viewingStepIndex : stepHistory.length - 1) + 1;
-                                const totalSteps = Math.max(plannedSteps, stepHistory.length);
-                                
-                                if (displayStep?.step_type === 'teach') return <TeachStep content={displayStep.content} stepNumber={stepNumber} totalSteps={totalSteps} savedAnswer={displayStep.user_response || undefined} onNext={handleUserResponse} readOnly={isReadOnly} />;
-                                if (displayStep?.step_type === 'application') return <ApplicationStep stepId={displayStep.id} content={displayStep.content} isEvaluated={!!displayStep.evaluation} onEvaluated={handleEvaluated} readOnly={isReadOnly} savedAnswer={displayStep.user_response || undefined} />;
-                                if (displayStep?.step_type === 'check') return <CheckQuestionStep stepId={displayStep.id} content={displayStep.content} isEvaluated={!!displayStep.evaluation} onEvaluated={handleEvaluated} readOnly={isReadOnly} savedAnswer={displayStep.user_response || undefined} />;
-                                if (displayStep?.step_type === 'reinforce') return <ReinforceStep content={displayStep.content} stepNumber={stepNumber} totalSteps={totalSteps} onNext={() => handleUserResponse('got_it')} readOnly={isReadOnly} />;
-                                if (displayStep?.step_type === 'confirm') return <CheckQuestionStep stepId={displayStep.id} content={displayStep.content} isEvaluated={!!displayStep.evaluation} onEvaluated={handleEvaluated} readOnly={isReadOnly} savedAnswer={displayStep.user_response || undefined} />;
-                                return null;
-                            })();
-        }
-        if (step_type === 'application') {
-            return (
-                <ApplicationStep
-                    content={content}
-                    stepId={displayStep.id}
-                    isEvaluated={!!pendingEvaluation || isReadOnly}
-                    onEvaluated={handleEvaluated}
-                    readOnly={isReadOnly}
-                    savedAnswer={savedAnswer}
-                />
-            );
-        }
-        if (step_type === 'check' || step_type === 'confirm')
-            return (
-                <CheckQuestionStep content={content} stepId={displayStep.id} isEvaluated={!!pendingEvaluation || isReadOnly}
-                    onEvaluated={handleEvaluated} readOnly={isReadOnly} savedAnswer={savedAnswer} />
-            );
-        if (step_type === 'reinforce') return <ReinforceStep content={content} onNext={handleUserResponse} readOnly={isReadOnly} stepNumber={displayStep.step_number} totalSteps={stepHistory.length} />;
+    const renderMainContent = () => {
+        if (isLimitReached) return <div className="flex items-center justify-center min-h-[70vh] p-6"><UsageGate feature='flow_sessions' /></div>;
+        if (loading) return <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 animate-fade-in"><div className="w-20 h-20 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin-slow" /></div>;
+        if (sessionDone) return <div className="max-w-xl mx-auto mt-16 text-center px-4"><h1 className="text-3xl font-bold mb-3">Quick Learn Complete!</h1><ActionButton label="Back to Dashboard" onClick={() => router.push(`/`)} /></div>;
 
+        const concepts = flowSession?.initial_plan?.concepts || [];
         return (
-            <div className="flex flex-col items-center justify-center p-8 text-[var(--muted)]">
-                <Replace size={32} className="opacity-20 mb-3" />
-                <p className="text-sm">Unknown step type: {step_type}</p>
+            <div className="max-w-5xl mx-auto px-4 py-6">
+                <div className="mb-8">
+                    {flowSession && <ProgressBar concepts={concepts.map((c) => ({ ...c, status: conceptStatuses[c.conceptId] || 'not_started' }))} currentConceptId={currentConcept?.conceptId} />}
+                    <div className="flex items-center justify-between mt-3">
+                        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/25 rounded-lg px-3 py-1.5 text-sm font-bold text-[var(--accent)] truncate max-w-xs">
+                            {normalizeTitle(currentConcept?.conceptName) || '—'}
+                        </div>
+                        <span className="text-xs text-[var(--muted)] shrink-0">{currentConceptIndex + 1} / {totalConcepts}</span>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
+                    <div className="min-w-0">
+                        {fetchError ? (
+                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-12 text-center">
+                                <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold mb-2">Something went wrong</h3>
+                                <p className="text-[var(--muted)] mb-6">{fetchError}</p>
+                                <ActionButton label="Retry Step" primary onClick={() => { setFetchError(null); fetchNextStep(); }} />
+                            </div>
+                        ) : stepping ? (
+                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl min-h-[400px] flex items-center justify-center p-8">
+                                <span className="text-lg font-semibold">{statusMessage}</span>
+                            </div>
+                        ) : conceptJustCompleted ? (
+                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 shadow-sm">
+                                <ConceptCompleteCard conceptName={currentConcept?.conceptName?.replace('txt://', '') || ''} onNext={handleAdvanceConcept} onReview={handleReviewConcept} isLast={currentConceptIndex === totalConcepts - 1} />
+                            </div>
+                        ) : (
+                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 md:p-8 min-h-[280px] shadow-sm">
+                                {renderStep()}
+                                {!isReadOnly && pendingEvaluation && <EvaluationBanner evaluation={pendingEvaluation} onContinue={fetchNextStep} />}
+                            </div>
+                        )}
+                    </div>
+                    <div>
+                        <div className="sticky top-24 space-y-4">
+                            <SessionSidebar concept={currentConcept} onSkip={handleSkip} onSelect={handleConceptSelect} concepts={concepts} currentIdx={currentConceptIndex} conceptStatuses={conceptStatuses} isStepping={stepping} isReadOnly={isReadOnly} />
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     };
 
-    
-    
-    
-
-    if (isLimitReached) {
-        return (
-            <DashboardLayout replaceNav={true}>
-                <div className="flex items-center justify-center min-h-[70vh] p-6">
-                    <UsageGate feature='flow_sessions' />
-                </div>
-            </DashboardLayout>
-        );
-    }
-
-    if (loading) {
-        return (
-            <DashboardLayout replaceNav={true}>
-                <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 animate-fade-in">
-                    <div className="relative">
-                        <div className="w-20 h-20 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin-slow" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-10 h-10 rounded-full bg-[var(--accent)]/10 animate-pulse-subtle flex items-center justify-center">
-                                <span className="text-[var(--accent)] font-bold text-lg">S</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex flex-col items-center gap-2 text-center">
-                        <h2 className="text-xl font-semibold text-[var(--text)]">Serify is preparing your lesson</h2>
-                        <p className="text-[var(--muted)] animate-pulse-subtle">
-                            Initializing personalized curriculum orchestration...
-                        </p>
-                    </div>
-                </div>
-            </DashboardLayout>
-        );
-    }
-    if (sessionDone)
-        return (
-            <DashboardLayout replaceNav={true}>
-                <div className="max-w-xl mx-auto mt-16 text-center px-4">
-                    <div className="text-6xl mb-6">🎉</div>
-                    <h1 className="text-3xl font-display font-bold mb-3 text-[var(--text)]">Curriculum Complete!</h1>
-                    <p className="text-[var(--muted)] mb-8">
-                        You&apos;ve successfully mastered {totalConcepts} concept{totalConcepts !== 1 ? 's' : ''} in this curriculum path.
-                    </p>
-                    <div className="flex gap-4 justify-center flex-wrap">
-                        <ActionButton label="Back to Curriculum" onClick={() => router.push(`/learn/curriculum/${curriculumId}`)} />
-                        <ActionButton label="Go to Vault" primary onClick={() => router.push('/vault')} />
-                    </div>
-                </div>
-            </DashboardLayout>
-        );
-
-    const concepts = flowSession?.initial_plan?.concepts || [];
-
     return (
         <>
-            <Head><title>Learn Mode — {currentConcept?.conceptName || 'Loading'}</title></Head>
-            <DashboardLayout
-                replaceNav={true}
-                backLink={`/learn/curriculum/${curriculumId}`}
-                sidebarContent={
-                    <CurriculumSidebar
-                        concepts={concepts}
-                        currentIndex={currentConceptIndex}
-                        conceptStatuses={concepts.reduce((acc: any, c: any) => {
-                            acc[c.conceptId] = conceptStatuses[c.conceptId] || 'not_started';
-                            return acc;
-                        }, {})}
-                        onConceptClick={handleConceptSelect}
-                        title={flowSession?.initial_plan?.overallStrategy?.replace('Curriculum: ', '')}
-                    />
-                }
-            >
-                <div className="max-w-5xl mx-auto px-4 py-6">
-
-                    {}
-                    <div className="mb-5">
-                        {flowSession && (
-                            <ProgressBar
-                                concepts={concepts.map((c) => ({ ...c, status: conceptStatuses[c.conceptId] || 'not_started' }))}
-                                currentConceptId={currentConcept?.conceptId}
-                            />
-                        )}
-                        <div className="flex items-center justify-between mt-3">
-                            <div className="flex items-center gap-2 min-w-0">
-                                <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/25 rounded-lg px-3 py-1.5 text-sm font-bold text-[var(--accent)] truncate max-w-xs">
-                                    {currentConcept?.conceptName || '—'}
-                                </div>
-                                {displayStep && !conceptJustCompleted && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="hidden sm:flex text-[10px] text-[var(--muted)] items-center gap-1 uppercase tracking-widest font-semibold">
-                                            <StepIcon type={displayStep.step_type as FlowStepType} />
-                                            {displayStep.step_type.replace(/_/g, ' ')}
-                                        </span>
-
-                                        {!isReadOnly && displayStep.step_type !== 'completed' && (
-                                            <button
-                                                onClick={handleSkip}
-                                                disabled={stepping}
-                                                className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-[var(--border)] text-[10px] font-bold text-[var(--muted)] hover:text-amber-600 hover:border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all uppercase tracking-wider"
-                                            >
-                                                Skip Step
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                            <span className="text-xs text-[var(--muted)] shrink-0">{currentConceptIndex + 1} / {totalConcepts}</span>
-                        </div>
-                    </div>
-
-                    {}
-                    {fetchError && (
-                        <div className="max-w-2xl mx-auto mb-8 bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-500/20 rounded-2xl p-6 shadow-sm">
-                            <div className="flex items-start gap-4">
-                                <div className="w-12 h-12 rounded-xl bg-rose-500 flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/20">
-                                    <ShieldAlert size={24} className="text-white" />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-rose-700 dark:text-rose-400 mb-1">Navigation Error</h3>
-                                    <p className="text-[14px] text-rose-600/80 dark:text-rose-300/60 leading-relaxed mb-4">
-                                        {fetchError}
-                                    </p>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => { setFetchError(null); fetchNextStep(); }}
-                                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm"
-                                        >
-                                            Retry Request
-                                        </button>
-                                        <button
-                                            onClick={() => window.location.reload()}
-                                            className="px-4 py-2 bg-white dark:bg-[var(--surface)] border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-bold rounded-lg transition-all"
-                                        >
-                                            Reload Page
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 md:p-8 min-h-[280px] shadow-sm">
-                        {stepping ? (
-                            <div className="flex flex-col items-center justify-center min-h-[320px] gap-8 animate-fade-in">
-                                <div className="relative">
-                                    {}
-                                    <div className="w-20 h-20 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin-slow transition-all duration-300 relative z-10"
-                                        style={{
-                                            borderTopColor: 'var(--accent)',
-                                            borderRightColor: progress > 50 ? 'var(--accent)' : 'transparent',
-                                            borderBottomColor: progress > 75 ? 'var(--accent)' : 'transparent'
-                                        }}
-                                    />
-
-                                    {}
-                                    <div className="absolute inset-0 flex items-center justify-center z-20">
-                                        <div className="flex flex-col items-center">
-                                            <span className="text-sm font-black text-[var(--accent)] transition-none">
-                                                {displayProgress}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col items-center gap-4 text-center max-w-sm animate-fade-in-up">
-                                    <div className="space-y-1">
-                                        <span className="text-lg font-semibold text-[var(--text)] block">
-                                            {statusMessage}
-                                        </span>
-                                        <span className="text-xs font-medium text-[var(--accent)] tracking-widest uppercase opacity-70">
-                                            {progress < 40 ? "Phase 1: Knowledge Extraction" :
-                                                progress < 80 ? "Phase 2: Path Architecture" :
-                                                    "Phase 3: Finalizing Steps"}
-                                        </span>
-                                    </div>
-
-                                    <div className="w-56 h-2 bg-[var(--border)] rounded-full overflow-hidden relative shadow-inner">
-                                        <div
-                                            className="h-full bg-[var(--accent)] transition-all duration-300 rounded-full relative overflow-hidden"
-                                            style={{ width: `${progress}%` }}
-                                        >
-                                            {}
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shimmer"
-                                                style={{ animationDuration: '2s' }} />
-                                        </div>
-                                    </div>
-
-                                    <p className="text-xs text-[var(--muted)] leading-relaxed animate-pulse-subtle">
-                                        Tailoring this concept based on your mastery profile...
-                                    </p>
-                                </div>
-                            </div>
-                        ) : conceptJustCompleted ? (
-                            
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 shadow-sm">
-                                <ConceptCompleteCard
-                                    conceptName={currentConcept?.conceptName || ''}
-                                    onNext={handleAdvanceConcept}
-                                    onReview={handleReviewConcept}
-                                    isLast={currentConceptIndex === totalConcepts - 1}
-                                />
-                            </div>
-                        ) : (
-                            <>
-                                {renderStep()}
-                                {!isReadOnly && pendingEvaluation && (
-                                    <EvaluationBanner evaluation={pendingEvaluation} onContinue={fetchNextStep} />
-                                )}
-                            </>
-                        )}
-                    </div>
-
-                    {}
-                    {stepHistory.length > 1 && !conceptJustCompleted && (
-                        <div className="flex items-center justify-between mt-4">
-                            <button
-                                onClick={() => {
-                                    if (viewingStepIndex > 0) {
-                                        setViewingStepIndex((i) => i - 1);
-                                        setPendingEvaluation(null);
-                                    }
-                                }}
-                                disabled={viewingStepIndex <= 0}
-                                className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <ChevronLeft size={16} /> Back
-                            </button>
-
-                            {}
-                            <span className="text-xs text-[var(--muted)]">
-                                Step {viewingStepIndex + 1} of {Math.max(plannedSteps, stepHistory.length)}
-                            </span>
-
-                            <button
-                                onClick={() => {
-                                    if (viewingStepIndex < stepHistory.length - 1) {
-                                        setViewingStepIndex((i) => i + 1);
-                                        setPendingEvaluation(null);
-                                    }
-                                }}
-                                disabled={viewingStepIndex >= stepHistory.length - 1}
-                                className="flex items-center gap-1.5 text-sm font-medium text-[var(--muted)] hover:text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                            >
-                                Forward <ChevronRight size={16} />
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </DashboardLayout >
+            <Head><title>Learn Mode — {normalizeTitle(currentConcept?.conceptName) || normalizeTitle((flowSession as any)?.title) || 'Loading'}</title></Head>
+            <DashboardLayout replaceNav={true} backLink={`/`}>{renderMainContent()}</DashboardLayout>
         </>
     );
 }

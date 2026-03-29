@@ -95,29 +95,32 @@ export default function ExamSetup() {
                  </div>
              </div>
             ) : (
-                <div className="w-full max-w-xl bg-white border border-[var(--border)] rounded-3xl shadow-sm p-8 space-y-8 animate-fade-in-up">
+                <div className="w-full max-w-xl bg-[var(--surface)] border-2 border-[var(--border)] paper-card p-8 space-y-8 animate-fade-in-up">
                     
                     <div className="text-center space-y-4">
-                        <div className="mx-auto w-16 h-16 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center border-4 border-orange-100">
-                            <Clock size={28} />
+                        <div className="mx-auto w-14 h-14 bg-[var(--bg)] text-[var(--ink)] border-2 border-[var(--border)] flex items-center justify-center shadow-hard-sm">
+                            <Clock size={24} />
                         </div>
-                        <h1 className="text-3xl font-display text-[var(--text)] tracking-tight">Configure Exam</h1>
-                        <p className="text-[var(--muted)]">Simulate high-stakes testing conditions for {topic ? `"${topic}"` : 'your selected concepts'}.</p>
+                        <div>
+                            <h1 className="text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-[var(--muted)] mb-1">{'//'} Exam Configuration</h1>
+                            <h2 className="text-3xl font-display font-medium text-[var(--text)] tracking-tight">Setup Simulation</h2>
+                        </div>
+                        <p className="text-[11px] font-mono text-[var(--muted)] uppercase tracking-tight">Simulate high-stakes testing conditions for {topic ? `"${topic}"` : 'your selected concepts'}.</p>
                     </div>
 
                     <div className="space-y-6 pt-4">
                         
                         <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">Length & Time</label>
-                            <div className="grid grid-cols-2 gap-4">
+                            <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--muted)]">Length & Time</label>
+                            <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <span className="text-xs font-semibold text-slate-500">Questions</span>
-                                    <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                    <span className="text-[9px] font-bold font-mono text-[var(--muted)] uppercase">Questions</span>
+                                    <div className="flex bg-[var(--bg)] p-1 border-2 border-[var(--border)]">
                                         {[5, 10, 20].map(val => (
                                             <button 
                                                 key={val}
                                                 onClick={() => setQuestionCount(val)}
-                                                className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${questionCount === val ? 'bg-white shadow-sm text-orange-600 border border-slate-200/50' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                className={`flex-1 py-1.5 text-xs font-mono font-bold transition-all ${questionCount === val ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:bg-[var(--surface)]'}`}
                                             >
                                                 {val}
                                             </button>
@@ -125,13 +128,13 @@ export default function ExamSetup() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <span className="text-xs font-semibold text-slate-500">Time Limit (Min)</span>
-                                    <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                    <span className="text-[9px] font-bold font-mono text-[var(--muted)] uppercase">Time (Min)</span>
+                                    <div className="flex bg-[var(--bg)] p-1 border-2 border-[var(--border)]">
                                         {[10, 15, 30].map(val => (
                                             <button 
                                                 key={val}
                                                 onClick={() => setTimeLimit(val)}
-                                                className={`flex-1 py-2 text-sm font-medium rounded-lg transition ${timeLimit === val ? 'bg-white shadow-sm text-orange-600 border border-slate-200/50' : 'text-slate-500 hover:bg-slate-100'}`}
+                                                className={`flex-1 py-1.5 text-xs font-mono font-bold transition-all ${timeLimit === val ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:bg-[var(--surface)]'}`}
                                             >
                                                 {val}
                                             </button>
@@ -142,13 +145,13 @@ export default function ExamSetup() {
                         </div>
 
                         <div className="space-y-3">
-                            <label className="text-sm font-bold uppercase tracking-widest text-[var(--muted)]">Format Bias</label>
-                            <div className="grid grid-cols-3 gap-2">
+                            <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--muted)]">Format Bias</label>
+                            <div className="grid grid-cols-3 gap-3">
                                 {['standard', 'scenario', 'coding'].map(f => (
                                     <button 
                                         key={f}
                                         onClick={() => setFormat(f)}
-                                        className={`px-4 py-3 rounded-xl border-2 text-sm font-semibold capitalize transition ${format === f ? 'border-orange-500 bg-orange-50 text-orange-800' : 'border-slate-200 text-slate-600 hover:border-orange-200'}`}
+                                        className={`px-4 py-2 border-2 text-[10px] font-bold font-mono uppercase tracking-widest transition-all ${format === f ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--bg)] shadow-hard-sm' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]'}`}
                                     >
                                         {f}
                                     </button>
@@ -158,19 +161,19 @@ export default function ExamSetup() {
 
                     </div>
                     
-                    <div className="pt-6 border-t border-[var(--border)] flex justify-between items-center">
+                    <div className="pt-6 border-t-2 border-[var(--border)] flex justify-between items-center">
                         <button 
                             onClick={() => router.push('/practice')}
-                            className="text-[var(--muted)] hover:text-[var(--text)] font-medium text-sm transition"
+                            className="text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--muted)] hover:text-[var(--text)] transition"
                         >
                             Cancel
                         </button>
                         
                         <button 
                             onClick={handleStart}
-                            className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition hover:-translate-y-0.5 shadow-lg shadow-orange-600/20"
+                            className="bg-[var(--ink)] text-[var(--bg)] px-8 py-3 border-2 border-[var(--ink)] shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 transition-all font-display font-bold text-sm flex items-center gap-2"
                         >
-                            Start Simulation <ArrowRight size={18} />
+                            Start Simulation <ArrowRight size={16} />
                         </button>
                     </div>
 

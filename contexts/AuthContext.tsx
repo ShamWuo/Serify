@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 
@@ -36,36 +36,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const lastSessionIdRef = useRef<string | null>(null);
 
     const fetchProfileAndUsage = useCallback(async (authUser: User, sessionToken?: string): Promise<UserProfile | null> => {
         try {
             
-            const profilePromise = supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', authUser.id)
-                .single();
-
-            const profileTimeout = new Promise<{ data?: any; error?: any; timeout: boolean }>((resolve) => 
-                setTimeout(() => resolve({ timeout: true }), 15000)
-            );
-            
-            const profileRaceResult = await Promise.race([
-                profilePromise.then(res => ({ data: res.data, error: res.error, timeout: false })),
-                profileTimeout
-            ]);
-
-            const isTimeout = profileRaceResult.timeout || false;
-            const hasError = profileRaceResult.error || !profileRaceResult.data;
-
+            const maxRetries = 2;
             let profile = null;
+            let lastError = null;
+
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                const profilePromise = supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', authUser.id)
+                    .single();
+
+                const profileTimeout = new Promise<{ data?: any; error?: any; timeout: boolean }>((resolve) => 
+                    setTimeout(() => resolve({ timeout: true }), 3000)
+                );
+                
+                const profileRaceResult = await Promise.race([
+                    profilePromise.then(res => ({ data: res.data, error: res.error, timeout: false })),
+                    profileTimeout
+                ]);
+
+                if (profileRaceResult.data) {
+                    profile = profileRaceResult.data;
+                    break;
+                } else {
+                    lastError = profileRaceResult.error;
+                    if (attempt < maxRetries - 1) {
+                        // Small delay for the trigger to fire
+                        await new Promise(r => setTimeout(r, 600));
+                    }
+                }
+            }
             
-            if (isTimeout) {
-                console.warn('[AuthContext] Profile fetch timeout (15s), using fallback');
-            } else if (hasError) {
-                console.error('[AuthContext] Error fetching profile, using fallback:', profileRaceResult.error);
-            } else {
-                profile = profileRaceResult.data;
+            if (!profile) {
+                console.warn('[AuthContext] Profile fetch failed after retries, using fallback:', lastError);
             }
 
             let tokensUsed = 0;
@@ -82,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             Authorization: `Bearer ${jwt}`
                         }
                     });
-                    const usageTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 15000));
+                    const usageTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000));
                     const usageRes = await Promise.race([
                         usageResPromise as any,
                         usageTimeout as any
@@ -141,6 +150,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
         try {
             console.log(`[AuthContext] handleAuthChange event: ${event}`);
+            
+            const currentSessionId = session?.access_token || null;
+            if (currentSessionId && currentSessionId === lastSessionIdRef.current) {
+                console.log(`[AuthContext] Skipping redundant session change for event: ${event}`);
+                return;
+            }
+            lastSessionIdRef.current = currentSessionId;
+
             if (session?.user) {
                 setToken(session.access_token);
                 
@@ -173,10 +190,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Safety timeout to prevent infinite loading if Supabase hangs
         const safetyTimeout = setTimeout(() => {
             if (mounted && loading) {
-                console.warn('[AuthContext] Safety timeout triggered after 10s. Forcing loading false as fallback.');
+                console.warn('[AuthContext] Safety timeout triggered after 5s. Forcing loading false as fallback.');
                 setLoading(false);
             }
-        }, 10000);
+        }, 5000);
 
         async function loadInitialSession() {
             try {
@@ -250,10 +267,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     const logout = async (): Promise<void> => {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        setUser(null);
-        setToken(null);
+        console.log('[AuthContext] Starting logout sequence...');
+        try {
+            // Using scope: 'local' and clearing state manually is often more reliable
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.warn('[AuthContext] Supabase signOut returned an error (clearing anyway):', error);
+            }
+        } catch (err) {
+            console.error('[AuthContext] Exception during signOut:', err);
+        } finally {
+            // ALWAYS clear local state regardless of Supabase response
+            setUser(null);
+            setToken(null);
+            
+            // Forcefully clear the storage key to prevent auto-re-auth on reload
+            if (typeof window !== 'undefined') {
+                try {
+                    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+                    const ref = url.includes('supabase.co') ? url.split('.')[0].split('//')[1] : 'local';
+                    const key = `sb-${ref}-auth-token`;
+                    localStorage.removeItem(key);
+                    
+                    // Cleanup any other potential supabase keys
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const k = localStorage.key(i);
+                        if (k && k.startsWith('sb-') && k.endsWith('-auth-token')) {
+                            localStorage.removeItem(k);
+                        }
+                    }
+                } catch (e) {
+                    console.error('[AuthContext] Error manually clearing storage:', e);
+                }
+            }
+            console.log('[AuthContext] Logout sequence complete.');
+        }
     };
 
     const updatePreferences = async (prefs: Partial<UserProfile['preferences']>): Promise<void> => {

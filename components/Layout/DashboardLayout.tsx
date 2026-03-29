@@ -33,12 +33,13 @@ import AssistantPanel from '../assistant/AssistantPanel';
 interface DashboardLayoutProps {
     children: React.ReactNode;
     sidebarContent?: React.ReactNode;
+    replaceNav?: boolean;
     backLink?: string;
     backLinkText?: string;
     hideWidgets?: boolean;
 }
 
-export default function DashboardLayout({ children, sidebarContent, backLink, backLinkText, hideWidgets = false }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, sidebarContent, replaceNav = false, backLink, backLinkText, hideWidgets = false }: DashboardLayoutProps) {
     const { user, logout, token, loading: authLoading } = useAuth();
     const router = useRouter();
     const isDemo = router.query.demo === 'true';
@@ -137,25 +138,33 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
     const handleLogout = async () => {
         setIsProfileOpen(false);
+        setIsMobileMenuOpen(false);
         try {
             await logout();
+            // The AuthContext change will naturally trigger redirects 
+            // via the useEffect in DashboardLayout, but we'll push to home
+            // just to be certain.
+            if (router.pathname !== '/') {
+                await router.push('/');
+            }
         } catch (err) {
-            console.error('Logout error:', err);
+            console.error('Logout error fallback:', err);
+            // Full reload as a last resort if state/router is compromised
+            window.location.href = '/';
         }
-        window.location.href = '/';
     };
 
     const navItems = useMemo(() => [
-        { href: '/', label: 'Workbench', icon: <Home size={20} /> },
+        { href: '/', label: 'Home', icon: <Home size={20} /> },
         { href: '/analyze', label: 'Analyze', icon: <PlusCircle size={20} className="text-blue-500" /> },
-        { href: '/learn', label: 'Curriculum', icon: <LibraryBig size={20} className="text-emerald-500" /> },
+        { href: '/learn', label: 'Learn', icon: <LibraryBig size={20} className="text-emerald-500" /> },
         { href: '/practice', label: 'Study', icon: <Brain size={20} className="text-orange-500" /> },
-        { href: '/flow', label: 'Learn Mode', icon: <Zap size={20} className="text-purple-500" /> },
+
     ], []);
 
     const secondaryItems = useMemo(() => [
         { href: '/vault', label: 'Concept Vault', icon: <Archive size={18} /> },
-        { href: '/sessions', label: 'Journal', icon: <History size={18} /> },
+        { href: '/history', label: 'Sessions', icon: <History size={18} /> },
         { href: '/settings', label: 'Settings', icon: <Settings size={18} /> }
     ], []);
 
@@ -174,7 +183,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
         <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col md:flex-row font-mono relative">
 
             {/* Sidebar — The Architect's Pen */}
-            <aside className="hidden md:flex flex-col w-[200px] border-r-2 border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-50 dot-grid-bg">
+            <aside className={`hidden md:flex flex-col ${replaceNav && sidebarContent ? 'w-[260px]' : 'w-[200px]'} border-r-2 border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-50 transition-all duration-300`}>
                 {/* Logo */}
                 <div className="px-4 pt-4 pb-3 border-b-2 border-[var(--border)]">
                     {backLink ? (
@@ -209,7 +218,9 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                     )}
                 </div>
 
-                {/* Search */}
+                {(!replaceNav || !sidebarContent) ? (
+                    <>
+                        {/* Search */}
                 <div className="px-3 py-2 border-b-2 border-[var(--border)]">
                     <button
                         onClick={() => setIsCommandPaletteOpen(true)}
@@ -227,15 +238,15 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
                 {/* Nav */}
                 <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
-                    <div className="space-y-0.5">
-                        <div className="px-3 mb-2 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// main'}</div>
+                    <div className="space-y-0">
+                        <div className="px-3 mb-1 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// main'}</div>
                         {navItems.map((item: any) => {
                             const isActive = router.pathname === item.href || (item.href !== '/' && router.pathname.startsWith(item.href));
                             return (
                                 <Link
                                     key={item.href}
                                     href={router.query.demo === 'true' ? `${item.href}${item.href.includes('?') ? '&' : '?'}demo=true` : item.href}
-                                    className={`flex items-center gap-3 px-3 py-2.5 transition-all duration-150 relative group ${
+                                    className={`flex items-center gap-3 px-3 py-2 transition-all duration-150 relative group ${
                                         isActive
                                             ? 'bg-[var(--accent)] text-[var(--surface)] border-2 border-[var(--ink)] font-bold'
                                             : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] border-2 border-transparent'
@@ -249,8 +260,8 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                         })}
                     </div>
 
-                    <div className="space-y-0.5">
-                        <div className="px-3 mb-2 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// library'}</div>
+                    <div className="space-y-0">
+                        <div className="px-3 mb-1 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// library'}</div>
                         {secondaryItems.map((item: any) => {
                             const isActive = router.pathname === item.href;
                             return (
@@ -275,6 +286,11 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                         {themeToggleItem}
                     </div>
                 </nav>
+                </>) : (
+                    <div className="flex-1 px-3 py-6">
+                        {sidebarContent}
+                    </div>
+                )}
 
                 {/* Profile */}
                 <div className="border-t-2 border-[var(--border)] relative" ref={profileRef}>
@@ -325,6 +341,12 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
             </aside>
 
+            {(sidebarContent && !replaceNav) && (
+                <aside className="hidden lg:flex flex-col w-[260px] border-r-2 border-[var(--border)] bg-[var(--surface)] h-screen sticky top-0 shrink-0 z-40 p-5">
+                    {sidebarContent}
+                </aside>
+            )}
+
             {/* Mobile Header */}
             <div className="md:hidden sticky top-0 z-[60] bg-[var(--surface)] border-b-2 border-[var(--border)] px-4 py-3 flex items-center justify-between">
                 <Link href={router.query.demo === 'true' ? '/?demo=true' : '/'} className="flex items-center gap-2">
@@ -364,13 +386,21 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
 
             {/* Mobile Menu Overlay */}
             {isMobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 z-[70] bg-[var(--bg)] dot-grid-bg animate-fade-in flex flex-col pt-14">
+                <div className="md:hidden fixed inset-0 z-[70] bg-[var(--bg)] animate-fade-in flex flex-col pt-14">
                     <div className="absolute top-3 right-3">
                         <button onClick={() => setIsMobileMenuOpen(false)} className="w-9 h-9 bg-[var(--surface)] border-2 border-[var(--border)] flex items-center justify-center" style={{boxShadow:'var(--shadow-hard-sm)',borderRadius:'3px'}}>
                             <X size={18} />
                         </button>
                     </div>
                     <div className="flex-1 overflow-y-auto px-5 py-8 space-y-6">
+                        {(!replaceNav || !sidebarContent) ? (
+                            <>
+                                {sidebarContent && (
+                            <div className="mb-8 p-4 bg-[var(--surface)] border-2 border-[var(--border)] rounded-xl">
+                                {sidebarContent}
+                            </div>
+                        )}
+
                         <nav className="space-y-1">
                             {navItems.map((item: any) => {
                                 const isActive = router.pathname.startsWith(item.href) && (item.href !== '/' || router.pathname === '/');
@@ -390,6 +420,15 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                             })}
                             {themeToggleItem}
                         </nav>
+                            </>
+                        ) : (
+                            <div className="space-y-6">
+                                {sidebarContent}
+                                <div className="mt-8">
+                                    {themeToggleItem}
+                                </div>
+                            </div>
+                        )}
                         {user && (
                             <div className="pt-4 border-t-2 border-[var(--border)]">
                                 <UsageIndicator showAlways={true} className="w-full justify-between py-2 px-3 border border-[var(--border-soft)] bg-[var(--surface)] text-xs font-mono" />
@@ -403,7 +442,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 </div>
             )}
 
-            {}
+            
 
             <main className="flex-1 w-full flex flex-col min-h-[calc(100vh-64px)] md:min-h-screen pb-20 md:pb-0">
                 {router.query.demo === 'true' && (
@@ -442,7 +481,7 @@ export default function DashboardLayout({ children, sidebarContent, backLink, ba
                 onClose={() => setIsCommandPaletteOpen(false)}
             />
 
-            {}
+            
             {!hideWidgets && (
                 <>
                     <AssistantFAB />

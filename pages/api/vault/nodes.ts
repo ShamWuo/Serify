@@ -12,15 +12,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const supabaseAdmin = createClient(
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(' ').pop();
+
+    let client = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
+
+    // If we have a token and no service key, use the token for RLS
+    if (token && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        client = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                global: { headers: { Authorization: `Bearer ${token}` } }
+            }
+        );
+    }
 
     const { tab = 'all', sort = 'last_seen', topics: topicsParam } = req.query;
 
     try {
-        let query = supabaseAdmin.from('knowledge_nodes').select('*').eq('user_id', userId).eq('is_archived', false);
+        let query = client.from('knowledge_nodes').select('*').eq('user_id', userId);
 
         if (topicsParam && typeof topicsParam === 'string') {
             const categoryIds = topicsParam.split(',').filter(Boolean);
@@ -41,11 +55,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw error;
         }
 
+        // Filter archived nodes manually if needed or if they were missing from SQL result
+        const filteredNodes = (nodes || []).filter(n => n.is_archived !== true);
+
         console.log(
-            `[vault/nodes] userId=${userId} tab=${tab} sort=${sort} found=${nodes?.length ?? 0}`
+            `[vault/nodes] userId=${userId} tab=${tab} sort=${sort} found=${filteredNodes.length}`
         );
 
-        const sorted = (nodes || []).sort((a, b) => {
+        const sorted = filteredNodes.sort((a, b) => {
             if (sort === 'alpha') {
                 return (a.display_name || '').localeCompare(b.display_name || '');
             } else if (sort === 'session_count') {
@@ -62,14 +79,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             );
         });
 
-        const { data: categories } = await supabaseAdmin
+        const { data: categories } = await client
             .from('vault_categories')
             .select('*')
             .eq('user_id', userId)
             .order('display_order', { ascending: true })
             .order('created_at', { ascending: false });
 
-        const { data: studySets } = await supabaseAdmin
+        const { data: studySets } = await client
             .from('study_sets')
             .select('*')
             .eq('user_id', userId)

@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 supabaseWithAuth
                     .from('flow_sessions')
                     .select(
-                        'id, status, initial_plan, started_at, completed_at, created_at, concepts_completed, source_type, source_session_id'
+                        'id, status, initial_plan, started_at, completed_at, created_at, concepts_completed, source_type, source_session_id, curriculum_id'
                     )
                     .eq('user_id', userId)
                     .order('created_at', { ascending: false })
@@ -77,7 +77,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     id: s.id,
                     type: 'flow' as const,
                     sourceType: s.source_type,
-                    sourceId: s.source_session_id,
+                    sourceId:
+                        s.source_type === 'curriculum' && s.curriculum_id
+                            ? s.curriculum_id
+                            : s.source_session_id,
                     title: conceptNames
                         ? `Flow: ${conceptNames.substring(0, 60)}${conceptNames.length > 60 ? '…' : ''}`
                         : 'Flow Mode Session',

@@ -34,7 +34,7 @@ describe('Serify AI Logic', () => {
 
       expect(generateObject).toHaveBeenCalled();
       const lastCallArgs = (generateObject as any).mock.calls[0][0];
-      expect(lastCallArgs.messages[0].content).toContain('DNS is...');
+      expect(lastCallArgs.prompt).toContain('DNS is...');
       expect(result).toEqual(mockConcepts);
     });
   });

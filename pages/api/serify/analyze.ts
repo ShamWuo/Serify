@@ -194,77 +194,59 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         console.log('Analyze API: Updating Concept Vault...');
         try {
-            
             const allConceptNames = new Set([
                 ...(analysis.strengthMap.strong || []),
                 ...(analysis.strengthMap.weak || []),
                 ...(analysis.strengthMap.missing || [])
             ]);
-
             
-            const pillars = conceptRows.filter(c =>
-                allConceptNames.has(c.name) &&
-                (c.relationships as any)?.isPillar
-            );
+            console.log('Analyze API: Concepts to update:', Array.from(allConceptNames));
 
-            const nodeMap = new Map<string, any>();
-
-            for (const pillar of pillars) {
-                const mastery = analysis.strengthMap.strong?.includes(pillar.name) ? 'solid' :
-                    analysis.strengthMap.weak?.includes(pillar.name) ? 'shaky' : 'revisit';
-
-                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, pillar.name, sessionId, pillar.description || '');
-                if (node) {
-                    nodeMap.set(pillar.name, node);
-                    await updateConceptMastery(supabaseWithAuth, userId, node.id, mastery, 'session', sessionId);
+            // Process every concept extracted in this session
+            for (const concept of conceptRows) {
+                const name = concept.name;
+                const description = concept.description || '';
+                
+                // Determine mastery based on Gemini's analysis of the concept name
+                let mastery: MasteryState = 'revisit';
+                if (analysis.strengthMap.strong?.some(s => s.toLowerCase() === name.toLowerCase())) {
+                    mastery = 'solid';
+                } else if (analysis.strengthMap.weak?.some(w => w.toLowerCase() === name.toLowerCase())) {
+                    mastery = 'shaky';
                 }
-            }
+                
+                console.log(`Analyze API: Updating node "${name}" with mastery "${mastery}"`);
 
-            
-            const subConcepts = conceptRows.filter(c =>
-                allConceptNames.has(c.name) &&
-                (c.relationships as any)?.isSub
-            );
-
-            for (const sub of subConcepts) {
-                const mastery = analysis.strengthMap.strong?.includes(sub.name) ? 'solid' :
-                    analysis.strengthMap.weak?.includes(sub.name) ? 'shaky' : 'revisit';
-
-                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, sub.name, sessionId, sub.description || '');
+                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, name, sessionId, description);
                 if (node) {
-                    const parentName = (sub.relationships as any)?.parentName;
-                    const parentNode = nodeMap.get(parentName);
-
+                    await updateConceptMastery(supabaseWithAuth, userId, node.id, mastery, 'session', sessionId);
                     
-                    if (parentNode && node.parent_concept_id !== parentNode.id) {
-                        await supabaseWithAuth
-                            .from('knowledge_nodes')
-                            .update({
-                                parent_concept_id: parentNode.id,
-                                is_sub_concept: true
-                            })
-                            .eq('id', node.id);
+                    // Handle hierarchy if parent info exists
+                    const parentName = (concept.relationships as any)?.parentName;
+                    if (parentName) {
+                        const parentNode = await findOrCreateConceptNode(supabaseWithAuth, userId, parentName, sessionId, '');
+                        if (parentNode && node.parent_concept_id !== parentNode.id) {
+                            await supabaseWithAuth
+                                .from('knowledge_nodes')
+                                .update({ parent_concept_id: parentNode.id, is_sub_concept: true })
+                                .eq('id', node.id);
+                        }
                     }
-
-                    await updateConceptMastery(supabaseWithAuth, userId, node.id, mastery, 'session', sessionId);
                 }
             }
-
             
-            const processed = new Set([...pillars.map(p => p.name), ...subConcepts.map(s => s.name)]);
-            for (const conceptName of allConceptNames) {
-                if (processed.has(conceptName)) continue;
-
-                const mastery = analysis.strengthMap.strong?.includes(conceptName) ? 'solid' :
-                    analysis.strengthMap.weak?.includes(conceptName) ? 'shaky' : 'revisit';
-                const def = conceptRows.find(c => c.name === conceptName)?.description || '';
-                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, conceptName, sessionId, def);
+            // Also process any names Gemini mentioned that weren't in our original conceptRows (hallucinations/inferences)
+            for (const name of allConceptNames) {
+                if (conceptRows.some(c => c.name.toLowerCase() === name.toLowerCase())) continue;
+                
+                const mastery = analysis.strengthMap.strong?.includes(name) ? 'solid' : 'shaky';
+                console.log(`Analyze API: Updating inferred node "${name}" with mastery "${mastery}"`);
+                const node = await findOrCreateConceptNode(supabaseWithAuth, userId, name, sessionId, '');
                 if (node) {
                     await updateConceptMastery(supabaseWithAuth, userId, node.id, mastery, 'session', sessionId);
                 }
             }
 
-            
             await updateVaultHierarchy(supabaseWithAuth, userId);
         } catch (vaultErr) {
             console.error('Analyze API: Failed to update Vault:', vaultErr);

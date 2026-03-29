@@ -38,7 +38,7 @@ const MASTERY_CONFIG: Record<MasteryState, { label: string; color: string; bg: s
     solid: { label: 'Solid', color: 'text-[#1B4332]', bg: 'bg-[#1B4332]/10', dot: 'bg-[#1B4332]', weight: 3 }, 
     developing: { label: 'Developing', color: 'text-[#0E4F64]', bg: 'bg-[#0E4F64]/10', dot: 'bg-[#0E4F64]', weight: 2 }, 
     shaky: { label: 'Shaky', color: 'text-[#856404]', bg: 'bg-[#FFF3CD]', dot: 'bg-[#856404]', weight: 1 }, 
-    revisit: { label: 'Revisit', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0 } 
+    revisit: { label: 'Action Required', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0 } 
 };
 
 const MASTERY_DESCRIPTIONS: Record<MasteryState, string> = {
@@ -613,7 +613,7 @@ export default function VaultPage() {
                     onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, parent.id); }}
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => { e.stopPropagation(); handleDrop(e, parent.id, 'concept'); }}
-                    className={`flex items-center px-5 py-3.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
+                    className={`flex items-center px-4 py-2.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
                 >
                     <div
                         onClick={(e) => {
@@ -704,7 +704,7 @@ export default function VaultPage() {
                                 draggable
                                 onDragStart={(e) => handleDragStart(e, sub.id)}
                                 onDragEnd={handleDragEnd}
-                                className={`flex items-center pl-12 pr-5 py-2 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(sub.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === sub.id ? 'opacity-40' : ''}`}
+                                className={`flex items-center pl-10 pr-4 py-1.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(sub.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === sub.id ? 'opacity-40' : ''}`}
                             >
                                 <div
                                     onClick={(e) => { e.stopPropagation(); toggleSelection([sub.id], e); }}
@@ -812,14 +812,14 @@ export default function VaultPage() {
 
     return (
         <DashboardLayout>
-            <SEO title="Concept Vault" />
+            <SEO title="Vault" />
 
             <div className="max-w-[1000px] mx-auto px-6 py-8 pb-32">
                 {}
                 <div className="flex items-start justify-between gap-4 mb-8">
                     <div>
                         <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-3xl font-display text-[var(--text)]">Concept Vault</h1>
+                            <h1 className="text-3xl font-display text-[var(--text)]">Vault</h1>
                             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 animate-pulse-subtle">
                                 <Zap size={10} className="text-[var(--accent)]" />
                                 <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-tight">Quick Start</span>
@@ -1025,7 +1025,28 @@ export default function VaultPage() {
                 {}
                 {!loading && hasAnyConcepts && (
                     <div className="space-y-6">
-                        {hierarchyMode === 'hierarchical' ? (
+                        {filteredNodes.length === 0 ? (
+                            <div className="text-center py-24 px-6 border border-dashed border-[var(--border)] rounded-2xl bg-[var(--surface)] glass">
+                                <div className="w-14 h-14 bg-[var(--accent)]/10 text-[var(--accent)] rounded-2xl flex items-center justify-center mx-auto mb-5 ring-1 ring-[var(--accent)]/20 shadow-inner">
+                                    <Archive size={28} />
+                                </div>
+                                <h3 className="text-xl font-bold text-[var(--text)] mb-2">No concepts found</h3>
+                                <p className="text-[var(--muted)] text-[15px] max-w-sm mx-auto leading-relaxed">
+                                    {tab === 'solid' ? "Keep reviewing — your first solid concept is closer than you think." :
+                                     tab === 'needs_work' ? "Great job, all concepts are looking solid." :
+                                     search ? `No results for "${search}".` :
+                                     "Try adjusting your filters to find what you're looking for."}
+                                </p>
+                                {(tab !== 'all' || search !== '') && (
+                                    <button
+                                        onClick={() => { setTab('all'); setSearch(''); }}
+                                        className="mt-6 px-6 py-2.5 bg-[var(--bg)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text)] text-[13px] font-bold rounded-xl transition-all border border-[var(--border)] shadow-sm flex items-center gap-2 mx-auto"
+                                    >
+                                        Clear filters
+                                    </button>
+                                )}
+                            </div>
+                        ) : hierarchyMode === 'hierarchical' ? (
                             <>
                                 {hierarchy.grouped.map(({ category, parentGroups, totalNodes, progress, stats }) => {
                                     const isCollapsed = search ? false : collapsedCategories.has(category.id);
@@ -1056,8 +1077,8 @@ export default function VaultPage() {
                                                     <h2 className="text-lg font-bold text-[var(--text)]">{category.name}</h2>
                                                 </div>
                                                 <div className="flex items-center gap-4">
-                                                    <div className="hidden sm:flex items-center gap-2">
-                                                        <div className="w-24 h-1.5 bg-[var(--border)] rounded-full overflow-hidden flex">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-16 sm:w-24 h-1.5 bg-[var(--border)] rounded-full overflow-hidden flex">
                                                             <div className="h-full bg-[#2A5C45]" style={{ width: `${totalNodes > 0 ? (stats.solid / totalNodes) * 100 : 0}%` }} />
                                                             <div className="h-full bg-[#4A90A4]" style={{ width: `${totalNodes > 0 ? (stats.developing / totalNodes) * 100 : 0}%` }} />
                                                             <div className="h-full bg-[#B8860B]" style={{ width: `${totalNodes > 0 ? (stats.shaky / totalNodes) * 100 : 0}%` }} />

@@ -403,7 +403,9 @@ RULES:
 - CRITICAL NAMING RULE: Concept "name" MUST be a concise noun or short technical term (e.g., "Domains", "DNS", "Derivatives"). 
 - NEVER use questions or descriptive sentences like "How DNS works" or "What is a domain name?".
 - Order concepts foundational to advanced.
-- Max 20 concepts total across all units.
+- Max 8-12 concepts TOTAL across the entire curriculum.
+- Cap the curriculum at 3 to 4 units maximum.
+- Consolidate highly related sub-topics into a single, comprehensive concept rather than splitting them into tiny sequential steps (e.g., combine "Derivative as Slope" and "Instantaneous Rate of Change" into one).
 - estimatedMinutes: simple (5-8), moderate (8-15), complex (12-20).
 `;
 

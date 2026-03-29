@@ -121,6 +121,7 @@ export type FlowStepType =
     | 'orient'
     | 'build_layer'
     | 'anchor'
+    | 'application'
     | 'check'
     | 'reinforce'
     | 'confirm'

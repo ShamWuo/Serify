@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import SEO from '@/components/Layout/SEO';
@@ -55,180 +55,100 @@ function useScrollReveal() {
 
 export default function LandingPage() {
     const revealRef = useScrollReveal();
+    const [isDark, setIsDark] = useState(true);
+    const [mounted, setMounted] = useState(false);
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        if (videoRef.current) {
+            videoRef.current.playbackRate = 0.56;
+        }
+    }, [mounted]);
+
+    useEffect(() => {
+        setMounted(true);
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        setIsDark(mediaQuery.matches);
+        const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+
+        if (mediaQuery.addEventListener) {
+            mediaQuery.addEventListener('change', handler);
+            return () => mediaQuery.removeEventListener('change', handler);
+        } else {
+            mediaQuery.addListener(handler);
+            return () => mediaQuery.removeListener(handler);
+        }
+    }, []);
 
     return (
-        <div ref={revealRef} className="min-h-screen bg-[#030f08] text-[var(--text)] font-sans overflow-x-hidden">
+        <div ref={revealRef} className={`min-h-screen ${mounted && isDark ? 'dark' : ''} bg-[var(--bg)] text-[var(--text)] font-sans overflow-x-hidden transition-colors duration-500`}>
             <SEO />
-            {}
-            <nav className="sticky top-0 z-50 bg-[var(--bg)] border-b-2 border-[var(--border)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
-                <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <Link href="/" className="text-2xl font-display font-bold text-[var(--text)]">Serify</Link>
-                    <div className="flex items-center gap-3">
-                        <Link href="/login" className="text-[12px] font-mono text-[var(--muted)] hover:text-[var(--text)] transition-colors">log in</Link>
-                        <Link href="/?demo=true" className="hidden sm:inline-flex btn-ghost text-[12px] py-1.5 px-3">Try Demo</Link>
-                        <Link href="/signup" className="btn-primary text-[12px] py-1.5 px-4">Get Started</Link>
+            { }
+            <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg)]/80 backdrop-blur-xl border-b-2 border-[var(--border)] w-full transition-all duration-300">
+                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                    <Link href="/" className="text-xl font-display font-bold tracking-tight text-[var(--text)]">Serify</Link>
+                    <div className="flex items-center gap-6">
+                        <Link href="/login" className="text-[11px] font-bold uppercase tracking-widest text-[var(--text)] opacity-80 hover:opacity-100 transition-opacity">log in</Link>
+                        <Link href="/signup" className="px-5 py-2 rounded-full bg-[var(--text)] text-[var(--bg)] text-[11px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Get Started</Link>
                     </div>
                 </div>
             </nav>
 
-            {}
-            <section className="relative pt-20 pb-28 md:pt-32 md:pb-40 overflow-hidden" style={{ minHeight: '100vh' }}>
-                {}
-                <div className="absolute inset-0 z-0 select-none pointer-events-none overflow-hidden bg-[#030f08]">
-                    {}
-                    <Image
-                        src="/landingpage.gif"
-                        alt=""
-                        width={1920}
-                        height={1080}
-                        priority
-                        className="w-full h-[105vh] object-contain object-top opacity-100 mix-blend-screen"
-                        style={{ 
-                            maskImage: 'radial-gradient(circle at top, black 30%, rgba(0,0,0,0.8) 60%, transparent 95%)',
-                            WebkitMaskImage: 'radial-gradient(circle at top, black 30%, rgba(0,0,0,0.8) 60%, transparent 95%)'
-                        }}
-                    />
-
-                    {}
-                    {}
-                    <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-[#030f08] via-[#030f08]/70 to-transparent z-10" />
-                    {}
-                    <div className="absolute bottom-0 inset-x-0 h-80 bg-gradient-to-t from-[#030f08] via-[#030f08]/90 via-[#030f08]/40 to-transparent z-10" />
-                    {}
-                    <div className="absolute inset-y-0 left-0 w-48 md:w-96 bg-gradient-to-r from-[#030f08] via-[#030f08]/50 to-transparent z-10" />
-                    <div className="absolute inset-y-0 right-0 w-48 md:w-96 bg-gradient-to-l from-[#030f08] via-[#030f08]/50 to-transparent z-10" />
-                    {}
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_10%,#030f08_90%)] opacity-[0.85]" />
+            { }
+            <section className="relative pt-16 pb-16 md:pt-20 md:pb-20 overflow-hidden min-h-screen flex items-center bg-[var(--bg)] transition-colors duration-700">
+                {/* Premium Hero Background - High Quality Assets */}
+                <div className="absolute inset-0 z-0 select-none pointer-events-none w-full overflow-hidden">
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className={`w-full h-full object-cover transition-opacity duration-1000 ${mounted && !isDark ? 'opacity-90 grayscale-[5%]' : 'opacity-70'}`}
+                        style={{ maxWidth: '100%', width: '100vw' }}
+                    >
+                        <source src="/LandingHeroDark.mp4" type="video/mp4" />
+                    </video>
+                    {/* Balanced Gradient for Readability */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg)]/10 to-[var(--bg)]" />
                 </div>
 
-                <div className="relative z-10 max-w-5xl mx-auto px-6 text-center" style={{ paddingTop: '2rem' }}>
-
-                    <h1 className="scroll-reveal text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-display leading-[1.1] md:leading-[1] tracking-tight mb-8 text-white drop-shadow-[0_2px_32px_rgba(110,255,160,0.18)]">
-                        Expose the{' '}
-                        <span className="relative inline-block" style={{ color: '#6effa0' }}>
-                            Illusion
-                            <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M2 8C50 3 100 2 150 5C200 8 250 4 298 6" stroke="#6effa0" strokeWidth="3" strokeLinecap="round" opacity="0.55" />
-                            </svg>
-                        </span>{' '}
-                        of Competence.
-                    </h1>
-
-                    <p className="scroll-reveal text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed text-balance" style={{ color: 'rgba(180,255,210,0.75)' }}>
-                        You think you learned it. Serify finds out if you actually did.{' '}
-                        A diagnostic learning engine that maps your conceptual gaps using context-aware AI.
-                    </p>
-
-                    <div className="scroll-reveal flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-                        <Link
-                            href="/signup"
-                            className="group relative flex items-center gap-2 px-8 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold text-lg hover:bg-[var(--accent)]/90 transition-all shadow-xl shadow-[var(--accent)]/20 hover:shadow-2xl hover:shadow-[var(--accent)]/30 hover:-translate-y-0.5 overflow-hidden"
-                        >
-                            <span className="relative z-10 flex items-center gap-2">
-                                Start Free Session
-                                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                            </span>
-                            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                        </Link>
-                        <Link
-                            href="/?demo=true"
-                            className="flex items-center gap-2 px-8 py-4 border border-white/25 backdrop-blur-sm rounded-2xl font-bold text-lg text-white hover:border-[#6effa0]/50 hover:bg-white/5 transition-all hover:-translate-y-0.5"
-                        >
-                            Try Interactive Demo
-                        </Link>
-                    </div>
-
-                    {}
-                    <div className="scroll-reveal relative mx-auto max-w-4xl">
-                        <div className="relative rounded-3xl shadow-2xl shadow-black/50 p-2 md:p-3 overflow-hidden group glass-dark">
-                            <div className="rounded-2xl p-6 md:p-8 overflow-hidden glass-premium-dark">
-                                {}
-                                <div className="flex items-center justify-between mb-8 pb-4" style={{ borderBottom: '1px solid rgba(42,92,69,0.3)' }}>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-[var(--accent)] flex items-center justify-center shadow-lg shadow-[var(--accent)]/30">
-                                            <Brain size={22} className="text-white" />
-                                        </div>
-                                        <div className="text-left">
-                                            <div className="text-xs font-bold uppercase tracking-widest" style={{ color: '#6effa0' }}>Active Session</div>
-                                            <div className="text-sm font-bold text-white">Transformer Architectures</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest" style={{ background: 'rgba(42,92,69,0.35)', color: '#6effa0' }}>
-                                        <Activity size={12} /> Live Analysis
-                                    </div>
-                                </div>
-
-                                <div className="grid md:grid-cols-2 gap-10">
-                                    {}
-                                    <div className="space-y-6">
-                                        <div className="text-left">
-                                            <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-3" style={{ background: 'rgba(120,60,200,0.25)', color: '#c084fc' }}>
-                                                Misconception Probe
-                                            </div>
-                                            <h3 className="text-xl font-display leading-snug text-white mb-4">
-                                                &ldquo;If transformers process all words simultaneously, how do they preserve word order?&rdquo;
-                                            </h3>
-                                            <div className="rounded-xl p-4 text-sm text-left italic" style={{ background: 'rgba(5,28,16,0.7)', border: '1px solid rgba(42,92,69,0.3)', color: 'rgba(180,255,210,0.6)' }}>
-                                                The user answered: &ldquo;They use positional encoding, which I think just adds a number to the word...&rdquo;
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-4 p-4 rounded-xl animate-fade-in-up" style={{ animationDelay: '800ms', background: 'rgba(180,100,0,0.18)', border: '1px solid rgba(251,191,36,0.2)' }}>
-                                            <Shield size={20} className="text-amber-400 shrink-0" />
-                                            <p className="text-xs text-left leading-relaxed" style={{ color: 'rgba(253,230,138,0.9)' }}>
-                                                <strong>Gap Detected:</strong> User understands the name but misses the sinusoidal relationship that preserves relative distance.
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {}
-                                    <div className="rounded-2xl p-6 shadow-sm" style={{ background: 'rgba(3,18,9,0.75)', border: '1px solid rgba(42,92,69,0.3)' }}>
-                                        <div className="flex items-center justify-between mb-6">
-                                            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(110,255,160,0.5)' }}>Strength Map</span>
-                                            <TrendingUp size={16} style={{ color: '#6effa0' }} />
-                                        </div>
-
-                                        <div className="space-y-5">
-                                            {[
-                                                { name: 'Self-Attention', mastery: 'solid', color: 'bg-emerald-500', pct: 88, status: 'Retrieved' },
-                                                { name: 'Positional Encoding', mastery: 'shaky', color: 'bg-amber-500', pct: 34, status: 'Misconception' },
-                                                { name: 'Multi-head Attention', mastery: 'developing', color: 'bg-blue-400', pct: 62, status: 'Applied' },
-                                                { name: 'Feed Forward Nets', mastery: 'solid', color: 'bg-emerald-500', pct: 91, status: 'Retrieved' },
-                                            ].map((c, i) => (
-                                                <div key={i} className="space-y-2 group/node">
-                                                    <div className="flex justify-between items-end">
-                                                        <span className="text-xs font-bold text-white">{c.name}</span>
-                                                        <span className={`text-[10px] font-bold ${c.mastery === 'shaky' ? 'text-amber-400' : 'text-white/40'}`}>{c.status}</span>
-                                                    </div>
-                                                    <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(5,28,16,0.8)', border: '1px solid rgba(42,92,69,0.25)' }}>
-                                                        <div className={`h-full ${c.color} rounded-full transition-all duration-1000 ease-out group-hover/node:brightness-110`} style={{ width: `${c.pct}%`, transitionDelay: `${i * 100 + 1000}ms` }} />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
+                <div className="relative z-10 max-w-7xl mx-auto px-6 w-full text-center">
+                    <div className="max-w-4xl mx-auto space-y-8">
+                        { }
+                        <div className="flex flex-col items-center gap-4 animate-fade-in">
+                            <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[var(--surface-raised)] border-2 border-[var(--border)] text-[var(--text)] text-[10px] font-bold uppercase tracking-widest shadow-[var(--shadow-hard-sm)]">
+                                <span className="text-[var(--accent)] font-black">Serify 2.5</span>
+                                <div className="w-px h-2.5 bg-[var(--border-soft)]" />
+                                <span className="text-[var(--muted)]">The New Standard in AI Learning</span>
                             </div>
 
-                            {}
-                            <div className="absolute -top-12 -right-12 w-32 h-32 bg-[var(--accent)]/10 rounded-full blur-3xl" />
-                            <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl" />
+                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-black leading-[1.05] tracking-tight text-[var(--text)] stagger-item">
+                                Master Any Subject <br />
+                                <span className="text-[var(--accent)]">In Half The Time.</span>
+                            </h1>
                         </div>
 
-                        {}
-                        <div className="absolute -top-4 -right-4 md:-right-8 rounded-2xl px-4 py-2.5 shadow-xl animate-fade-in-up text-xs font-bold flex items-center gap-2 group transition-colors" style={{ animationDelay: '1200ms', background: 'rgba(3,20,10,0.85)', border: '1px solid rgba(110,255,160,0.2)', color: 'white', backdropFilter: 'blur(12px)' }}>
-                            <div className="w-2 h-2 rounded-full bg-emerald-400 group-hover:animate-pulse" />
-                            Metacognitive Analysis Active
+                        <p className="text-lg md:text-xl text-[var(--muted)] leading-relaxed max-w-2xl mx-auto font-medium animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+                            Serify’s diagnostic engine identifies your hidden knowledge gaps and builds a personalized path to absolute mastery. Stop guessing, start understanding.
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                             <Link href="/signup" className="px-10 py-4 bg-[var(--accent)] text-[#faf6ed] rounded-full text-lg font-display font-bold shadow-xl shadow-[var(--accent)]/20 hover:scale-105 active:scale-95 transition-all border-2 border-[var(--ink)]">
+                                Start Free Session
+                            </Link>
+                            <Link href="/?demo=true" className="px-10 py-4 bg-[var(--surface-raised)] border-2 border-[var(--border)] text-[var(--text)] rounded-full text-lg font-display font-bold hover:bg-[var(--bg)] transition-all shadow-[var(--shadow-hard)]">
+                                Try Demo
+                            </Link>
                         </div>
-                        <div className="absolute -bottom-6 left-10 md:-left-4 rounded-2xl px-4 py-2.5 shadow-xl animate-fade-in-up text-xs font-bold flex items-center gap-2 group transition-colors" style={{ animationDelay: '1500ms', background: 'rgba(3,20,10,0.85)', border: '1px solid rgba(110,255,160,0.2)', color: 'white', backdropFilter: 'blur(12px)' }}>
-                            <Sparkles size={14} className="text-amber-400" />
-                            Deep Dive Available
-                        </div>
-                    </div>
+
+                    { }
                 </div>
-            </section>
+            </div>
+        </section>
 
-            {}
+
+            { }
             <section className="py-12 border-y border-[var(--border)]/50 bg-[var(--surface)]/50 relative">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-10">
@@ -236,7 +156,7 @@ export default function LandingPage() {
                             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)] mb-2">Content Agnostic</p>
                             <h2 className="text-xl font-display text-[var(--text)] leading-tight">Learn from any source material.</h2>
                         </div>
-                        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+                        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-80 hover:opacity-100 transition-all duration-500">
                             {[
                                 { icon: Youtube, label: 'YouTube', color: 'text-red-500' },
                                 { icon: FileText, label: 'Articles', color: 'text-blue-500' },
@@ -254,7 +174,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {}
+            { }
             <section className="py-24 md:py-32 overflow-hidden">
                 <div className="max-w-6xl mx-auto px-6">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -262,7 +182,7 @@ export default function LandingPage() {
                             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-purple-50 text-purple-600 text-[10px] font-bold uppercase tracking-wider mb-6">
                                 <BrainCircuit size={14} /> The Science of Learning
                             </div>
-                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display leading-[1.1] text-white mb-8">
+                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-display leading-[1.1] text-[var(--text)] mb-8 transition-colors duration-500">
                                 Why standard testing fails you.
                             </h2>
                             <div className="space-y-8">
@@ -289,7 +209,7 @@ export default function LandingPage() {
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-                                            <p className="text-[var(--muted)] text-sm leading-relaxed">{item.desc}</p>
+                                            <p className="text-[var(--text)] opacity-80 text-sm leading-relaxed">{item.desc}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -297,18 +217,18 @@ export default function LandingPage() {
                         </div>
 
                         <div className="scroll-reveal order-1 lg:order-2 relative">
-                            <div className="relative z-10 border border-[var(--border)] rounded-[32px] p-8 shadow-2xl overflow-hidden glass-dark">
-                                <div className="flex items-center gap-2 mb-8">
-                                    <div className="w-3 h-3 rounded-full bg-red-400" />
-                                    <div className="w-3 h-3 rounded-full bg-amber-400" />
-                                    <div className="w-3 h-3 rounded-full bg-emerald-400" />
+                            <div className="paper-card-raised p-8 relative z-10 transition-colors duration-500">
+                                <div className="flex items-center gap-2 mb-8 border-b-2 border-[var(--border-soft)] pb-4">
+                                    <div className="w-3 h-3 rounded-full bg-red-400 border border-[var(--border)]" />
+                                    <div className="w-3 h-3 rounded-full bg-amber-400 border border-[var(--border)]" />
+                                    <div className="w-3 h-3 rounded-full bg-[var(--sage)] border border-[var(--border)]" />
                                 </div>
 
                                 <div className="space-y-6">
                                     <div className="p-5 rounded-2xl bg-[var(--bg)] border border-[var(--border)] border-l-4 border-l-purple-500">
                                         <div className="text-[10px] font-bold text-purple-600 uppercase tracking-widest mb-2">Misconception Report</div>
                                         <p className="text-sm font-bold text-[var(--text)] mb-1">Concept: &quot;Sinusoidal Encoding&quot;</p>
-                                        <p className="text-xs text-[var(--muted)] italic">&quot;You are treating positional encodings as simple indices. In reality, they are frequency patterns that allow the model to scale to any sequence length...&quot;</p>
+                                        <p className="text-xs text-[var(--text)] opacity-60 italic">&quot;You are treating positional encodings as simple indices. In reality, they are frequency patterns that allow the model to scale to any sequence length...&quot;</p>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
@@ -333,14 +253,14 @@ export default function LandingPage() {
                                     </div>
                                 </div>
                             </div>
-                            {}
+                            { }
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-br from-[var(--accent)]/5 to-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
                         </div>
                     </div>
                 </div>
             </section>
 
-            {}
+            { }
             <section className="py-24 md:py-32">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -376,7 +296,7 @@ export default function LandingPage() {
                                 className="scroll-reveal group relative paper-card p-7 hover:border-[var(--accent)] transition-all duration-300"
                             >
                                 <div className="absolute top-4 right-5 text-4xl font-display text-[var(--border-soft)] group-hover:text-[var(--accent)]/30 transition-colors">{item.step}</div>
-                                <div className="w-10 h-10 border-2 border-[var(--border)] flex items-center justify-center mb-5" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                                <div className="w-10 h-10 border-2 border-[var(--border)] bg-[var(--surface-raised)] flex items-center justify-center mb-5 shadow-[var(--shadow-hard-sm)]">
                                     <item.icon size={18} className="text-[var(--accent)]" />
                                 </div>
                                 <h3 className="text-lg font-bold mb-2">{item.title}</h3>
@@ -387,7 +307,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {}
+            { }
             <section className="py-24 md:py-32 bg-[var(--surface)] border-y border-[var(--border)]/50">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -446,7 +366,7 @@ export default function LandingPage() {
                                 key={i}
                                 className={`scroll-reveal group paper-card-sm p-6 hover:border-[var(--accent)] transition-all duration-300`}
                             >
-                                <div className="w-9 h-9 border-2 border-[var(--border)] flex items-center justify-center mb-4 group-hover:border-[var(--accent)] transition-colors" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                                <div className="w-10 h-10 border-2 border-[var(--border)] bg-[var(--surface-raised)] flex items-center justify-center mb-4 group-hover:border-[var(--accent)] transition-colors shadow-[var(--shadow-hard-sm)]">
                                     <feature.icon size={16} className={feature.iconColor} />
                                 </div>
                                 <h3 className="font-bold mb-2">{feature.title}</h3>
@@ -457,7 +377,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {}
+            { }
             <section className="py-24 md:py-32">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -498,7 +418,7 @@ export default function LandingPage() {
                                     &ldquo;{testimonial.quote}&rdquo;
                                 </p>
                                 <div className="flex items-center gap-3 pt-4 border-t-2 border-[var(--border-soft)]">
-                                    <div className="w-8 h-8 border-2 border-[var(--border)] flex items-center justify-center text-xs font-bold text-[var(--accent)]" style={{boxShadow:'var(--shadow-hard-sm)', background:'var(--accent-soft)'}}>
+                                    <div className="w-8 h-8 border-2 border-[var(--border)] flex items-center justify-center text-xs font-bold text-[var(--accent)]" style={{ boxShadow: 'var(--shadow-hard-sm)', background: 'var(--accent-soft)' }}>
                                         {testimonial.name.charAt(0)}
                                     </div>
                                     <div>
@@ -512,7 +432,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {}
+            { }
             <section className="py-24 md:py-32 bg-[var(--surface)] border-y border-[var(--border)]/50">
                 <div className="max-w-4xl mx-auto px-6">
                     <div className="text-center mb-14 scroll-reveal">
@@ -523,7 +443,7 @@ export default function LandingPage() {
                     </div>
 
                     <div className="scroll-reveal grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-                        {}
+                        { }
                         <div className="paper-card p-7 flex flex-col">
                             <h3 className="text-xl font-bold mb-1">Free</h3>
                             <p className="text-[var(--muted)] text-sm mb-4">Try it. Find out what you actually know.</p>
@@ -541,7 +461,7 @@ export default function LandingPage() {
                                     'Basic feedback report',
                                     'Concept Vault (10 concepts)'
                                 ].map((f, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                                    <li key={i} className="flex items-center gap-2 text-sm text-[var(--text)]">
                                         <Check size={14} className="text-emerald-500 shrink-0" /> {f}
                                     </li>
                                 ))}
@@ -554,10 +474,10 @@ export default function LandingPage() {
                             </Link>
                         </div>
 
-                        {}
+                        { }
                         <div className="relative paper-card p-7 flex flex-col border-t-4 border-t-[var(--accent)]">
                             <div className="absolute -top-3 right-6">
-                                <span className="bg-[var(--accent)] text-[var(--ink)] text-[9px] font-bold uppercase tracking-widest px-3 py-1 font-mono" style={{boxShadow:'var(--shadow-hard-sm)'}}>Recommended</span>
+                                <span className="bg-[var(--accent)] text-[var(--ink)] text-[9px] font-bold uppercase tracking-widest px-3 py-1 font-mono" style={{ boxShadow: 'var(--shadow-hard-sm)' }}>Recommended</span>
                             </div>
                             <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
                                 Pro <BrainCircuit size={18} className="text-[var(--accent)]" />
@@ -579,7 +499,7 @@ export default function LandingPage() {
                                     '20 Deep Dives',
                                     'Concept Vault up to 200'
                                 ].map((f, i) => (
-                                    <li key={i} className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                                    <li key={i} className="flex items-center gap-2 text-sm text-[var(--text)]">
                                         <Check size={14} className="text-[var(--accent)] shrink-0" /> {f}
                                     </li>
                                 ))}
@@ -601,7 +521,7 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {}
+            { }
             <section className="py-24 md:py-32">
                 <div className="max-w-4xl mx-auto px-6">
                     <div className="text-center mb-16 scroll-reveal">
@@ -642,29 +562,29 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {}
-            <section className="py-24 md:py-32 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[var(--ink)] dot-grid-bg" />
+            { }
+             <section className="py-24 md:py-32 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[var(--dark)]" />
 
                 <div className="relative z-10 max-w-3xl mx-auto px-6 text-center scroll-reveal">
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-[var(--bg)] mb-5 leading-tight">
                         Stop Guessing.<br />Start Understanding.
                     </h2>
-                    <p className="text-[var(--bg)]/60 max-w-xl mx-auto mb-10 font-mono text-[13px]">
+                    <p className="text-[var(--bg)]/80 max-w-xl mx-auto mb-10 font-mono text-[13px]">
                         Join thousands of learners using Serify to achieve real mastery.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link href="/signup" className="flex items-center gap-2 px-8 py-4 bg-[var(--bg)] text-[var(--ink)] font-bold text-base border-2 border-[var(--bg)]" style={{boxShadow:'4px 4px 0px rgba(255,255,255,0.2)'}}>
+                        <Link href="/signup" className="flex items-center gap-2 px-8 py-4 bg-[var(--bg)] text-[var(--ink)] font-bold text-base hover:bg-[var(--surface-raised)] transition-all shadow-hard">
                             Create Free Account <ArrowRight size={18} />
                         </Link>
-                        <Link href="/?demo=true" className="flex items-center gap-2 px-8 py-4 border-2 border-[var(--bg)]/40 text-[var(--bg)] font-semibold text-base hover:border-[var(--bg)] transition-all">
+                        <Link href="/?demo=true" className="btn-ghost flex items-center gap-2 px-8 py-4 text-[var(--bg)] font-semibold text-base border-[var(--bg)]/50 hover:bg-[var(--bg)]/10">
                             Try Demo First
                         </Link>
                     </div>
                 </div>
             </section>
 
-            {}
+            { }
             <footer className="py-12 border-t-2 border-[var(--border)]">
                 <div className="max-w-5xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -676,7 +596,7 @@ export default function LandingPage() {
                                 <Link href="/signup" className="hover:text-[var(--text)] transition-colors">sign up</Link>
                             </div>
                         </div>
-                        <p className="text-[10px] font-mono text-[var(--muted)]">
+                         <p className="text-[10px] font-mono text-[var(--text)] opacity-70">
                             &copy; {new Date().getFullYear()} Serify. All rights reserved.
                         </p>
                     </div>

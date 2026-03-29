@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
+import type { GetServerSideProps } from 'next';
+
+export const getServerSideProps: GetServerSideProps = async () => ({
+    props: {},
+});
 
 export default function AuthCallback() {
     const router = useRouter();

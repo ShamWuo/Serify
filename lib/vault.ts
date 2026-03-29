@@ -34,11 +34,15 @@ export function calculateMasteryState(history: MasteryHistoryEntry[]): MasterySt
     }
 
     let calcState: MasteryState = 'revisit';
-    if (weightedScore >= 3.5) calcState = 'mastered';
-    else if (weightedScore >= 2.5) calcState = 'solid';
-    else if (weightedScore >= 1.5) calcState = 'developing';
-    else if (weightedScore >= 0.75) calcState = 'shaky';
+    if (weightedScore >= 3.2) calcState = 'mastered';
+    else if (weightedScore >= 2.2) calcState = 'solid';
+    else if (weightedScore >= 1.2) calcState = 'developing';
+    else if (weightedScore >= 0.5) calcState = 'shaky';
     else calcState = 'revisit';
+
+    // Proactive: If the last performance was solid/mastered, allow it to pull up from revisit faster
+    if (lastEntry.state === 'solid' && calcState === 'revisit') return 'developing';
+    if (lastEntry.state === 'mastered' && calcState === 'revisit') return 'solid';
 
     if (calcState === 'mastered' && history.filter((h) => h.state === 'mastered').length < 2) {
         return 'solid';

@@ -22,16 +22,16 @@ const AssistantFAB: React.FC = () => {
                 
                 {isOpen ? <X size={24} strokeWidth={2.5} /> : <MessageSquare size={24} strokeWidth={2.5} />}
 
-                {}
+                {/* Floating Suggestion Indicator */}
                 {!isOpen && hasUnreadSuggestion && (
                     <>
-                        <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 z-10">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-4 w-4 bg-orange-500 border-2 border-white"></span>
                         </span>
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white px-3 py-1.5 rounded-lg shadow-xl border border-[var(--border)] flex items-center gap-2 animate-bounce whitespace-nowrap transition-all">
-                            <Sparkles size={12} className="text-orange-500" />
-                            <span className="text-[10px] font-black text-[var(--text)] uppercase tracking-widest">New tip</span>
+                        <div className="absolute bottom-[calc(100%+12px)] right-0 bg-white px-3 py-2 rounded-2xl shadow-2xl border-2 border-[var(--border)] flex items-center gap-2 animate-bounce whitespace-nowrap transition-all z-[1000]" style={{boxShadow: 'var(--shadow-hard-sm)'}}>
+                            <Sparkles size={14} className="text-orange-500" />
+                            <span className="text-[11px] font-black text-[var(--text)] uppercase tracking-widest">Assistant tip</span>
                         </div>
                     </>
                 )}

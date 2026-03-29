@@ -15,30 +15,28 @@ function LabTool({ title, description, icon, color, accent, onClick, premium }: 
     return (
         <div 
             onClick={onClick}
-            className="group relative p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] hover:shadow-xl hover:shadow-[var(--accent)]/5 transition-all cursor-pointer flex flex-col h-full overflow-hidden"
+            className="group relative p-4 paper-card-sm bg-[var(--surface)] border-[var(--border)] hover:border-[var(--accent)] transition-all cursor-pointer flex flex-col h-full overflow-hidden"
         >
-            <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${color} opacity-[0.03] group-hover:opacity-[0.08] transition-opacity -mr-8 -mt-8 rounded-full`} />
-            
             <div className="flex items-start justify-between mb-3 relative z-10">
-                <div className={`w-10 h-10 rounded-xl ${color} ${accent} flex items-center justify-center transition-transform group-hover:scale-110 duration-500 shadow-sm`}>
+                <div className={`w-9 h-9 border-2 border-[var(--ink)] ${color} ${accent} flex items-center justify-center transition-transform group-hover:rotate-3 duration-300 shadow-hard-sm`}>
                     {icon}
                 </div>
                 {premium && (
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-100/50 text-amber-600 text-[9px] font-black uppercase tracking-wider">
-                        <Zap size={8} fill="currentColor" /> Pro
+                    <div className="washi-tape washi-developing" style={{fontSize: '7px', padding: '1px 6px'}}>
+                        <Zap size={8} fill="currentColor" /> PRO
                     </div>
                 )}
             </div>
 
-            <h4 className="font-bold text-[var(--text)] text-sm mb-1 relative z-10 group-hover:text-[var(--accent)] transition-colors line-clamp-1">
+            <h4 className="font-display font-bold text-[var(--text)] text-[13px] mb-1 relative z-10 group-hover:text-[var(--accent)] transition-colors line-clamp-1">
                 {title}
             </h4>
-            <p className="text-[11px] text-[var(--muted)] leading-relaxed mb-4 flex-1 relative z-10 font-medium">
+            <p className="font-mono text-[10px] text-[var(--muted)] leading-relaxed mb-4 flex-1 relative z-10">
                 {description}
             </p>
 
-            <div className="flex items-center text-[10px] font-bold text-[var(--accent)] mt-auto relative z-10 translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                Start Activity <ArrowRight size={12} className="ml-1" />
+            <div className="flex items-center text-[9px] font-bold font-mono text-[var(--accent)] mt-auto relative z-10 translate-y-1 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 uppercase tracking-wider">
+                Start Activity <ArrowRight size={10} className="ml-1" />
             </div>
         </div>
     );
@@ -83,14 +81,14 @@ export default function StudyLab({ onToolSelect }: { onToolSelect: (tool: string
     ];
 
     return (
-        <section className="p-6 bg-gradient-to-b from-[var(--bg)] to-[var(--surface)] border-b border-[var(--border)] overflow-hidden">
+        <section className="p-6 bg-[var(--bg)] border-b-2 border-[var(--border)] overflow-hidden">
             <div className="flex items-center justify-between mb-5">
-                <div>
-                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--muted)] flex items-center gap-2">
-                        <Sparkles size={12} className="text-[var(--accent)] shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)]" /> 
-                        AI Study Lab
+                <div className="space-y-1">
+                    <h3 className="text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-[var(--muted)] flex items-center gap-2">
+                        <Sparkles size={12} className="text-[var(--accent)]" /> 
+                        {'//'} AI Study Lab
                     </h3>
-                    <p className="text-[13px] text-[var(--text)] font-semibold mt-0.5">Ready-to-use cognitive tools.</p>
+                    <p className="text-[12px] font-display font-medium text-[var(--text)]">Ready-to-use cognitive tools.</p>
                 </div>
             </div>
 

@@ -197,24 +197,24 @@ export default function FlashcardsPage() {
 
             <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
                 {}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b-2 border-[var(--border)]">
                     <div className="space-y-1">
-                        <div className="flex items-center gap-3 text-teal-600 mb-2">
-                            <div className="p-2 bg-teal-50 rounded-xl">
-                                <Layers size={24} />
+                        <div className="flex items-center gap-3 text-[var(--accent)] mb-2">
+                            <div className="p-2 paper-card-sm bg-[var(--surface)]">
+                                <Layers size={21} />
                             </div>
-                            <span className="text-sm font-bold tracking-wider uppercase">Practice Mode</span>
+                            <span className="text-[10px] font-bold font-mono tracking-widest uppercase text-[var(--muted)]">{'//'} Practice Mode</span>
                         </div>
-                        <h1 className="text-4xl font-display text-[var(--text)]">Flashcard Library</h1>
-                        <p className="text-[var(--muted)] text-lg">Manage your decks and track your mastery progress.</p>
+                        <h1 className="text-4xl font-display font-medium text-[var(--text)]">Flashcard Library</h1>
+                        <p className="text-[var(--muted)] font-mono text-xs opacity-80 uppercase tracking-tight">Manage your decks and track your mastery progress.</p>
                     </div>
 
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={() => router.push('/practice/flashcards/new')}
-                            className="flex items-center gap-2 px-6 py-3 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-semibold hover:opacity-90 transition active:scale-95 shadow-sm"
+                            className="flex items-center gap-2 px-6 py-3 bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 transition-all font-display font-bold text-sm"
                         >
-                            <Plus size={20} />
+                            <Plus size={18} />
                             Create Deck
                         </button>
                     </div>
@@ -223,28 +223,28 @@ export default function FlashcardsPage() {
                 {}
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="relative w-full md:max-w-md group">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] group-focus-within:text-teal-500 transition-colors" />
+                        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] group-focus-within:text-[var(--accent)] transition-colors" />
                         <input 
                             type="text" 
                             placeholder="Search your decks..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-[var(--surface)] border border-[var(--border)] rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm"
+                            className="w-full pl-12 pr-4 py-3 bg-[var(--surface)] border-2 border-[var(--border)] focus:border-[var(--accent)] outline-none transition-all font-mono text-xs"
                         />
                     </div>
 
-                    <div className="flex items-center gap-2 p-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl">
+                    <div className="flex items-center gap-2 p-1 bg-[var(--surface)] border-2 border-[var(--border)]">
                         <button 
                             onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-[var(--bg)] text-teal-600 shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                            className={`p-2 transition-all ${viewMode === 'grid' ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
                         >
-                            <LayoutGrid size={18} />
+                            <LayoutGrid size={16} />
                         </button>
                         <button 
                             onClick={() => setViewMode('list')}
-                            className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-[var(--bg)] text-teal-600 shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                            className={`p-2 transition-all ${viewMode === 'list' ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
                         >
-                            <List size={18} />
+                            <List size={16} />
                         </button>
                     </div>
                 </div>
@@ -262,18 +262,17 @@ export default function FlashcardsPage() {
                             <Link 
                                 href={`/practice/flashcards/${deck.id}`} 
                                 key={deck.id}
-                                className={`group bg-[var(--surface)] border border-[var(--border)] rounded-3xl overflow-hidden hover:border-teal-500/30 transition-all active:scale-[0.98] ${viewMode === 'list' ? 'flex items-center gap-6 p-4' : 'flex flex-col h-full'}`}
+                                className={`group bg-[var(--surface)] border-2 border-[var(--border)] hover:border-[var(--accent)] transition-all active:scale-[0.98] paper-card ${viewMode === 'list' ? 'flex items-center gap-6 p-4' : 'flex flex-col h-full overflow-hidden'}`}
                             >
-                                {}
-                                <div className={`flex items-center justify-center bg-gradient-to-br from-teal-500/10 to-blue-500/10 ${viewMode === 'list' ? 'w-16 h-16 rounded-2xl flex-shrink-0' : 'h-32 p-6'}`}>
-                                    <Layers size={viewMode === 'list' ? 32 : 48} className="text-teal-600/80 group-hover:scale-110 transition-transform" />
+                                <div className={`flex items-center justify-center border-b-2 border-[var(--border)] group-hover:border-[var(--accent)] transition-colors bg-[var(--bg)] ${viewMode === 'list' ? 'w-16 h-16 border-b-0 border-r-2 flex-shrink-0' : 'h-32 p-6'}`}>
+                                    <Layers size={viewMode === 'list' ? 24 : 40} className="text-[var(--ink)] group-hover:scale-110 transition-transform group-hover:rotate-3" />
                                 </div>
 
                                 <div className={`p-6 flex flex-col flex-grow ${viewMode === 'list' ? 'p-0' : ''}`}>
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="space-y-1">
-                                            <h3 className="text-xl font-bold text-[var(--text)] group-hover:text-teal-600 transition-colors line-clamp-1">{deck.title}</h3>
-                                            <p className="text-sm text-[var(--muted)] line-clamp-2">{deck.description || 'No description provided.'}</p>
+                                            <h3 className="text-lg font-display font-medium text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1">{deck.title}</h3>
+                                            <p className="text-[11px] font-mono text-[var(--muted)] line-clamp-2 uppercase tracking-tight">{deck.description || 'No description provided.'}</p>
                                         </div>
                                         <div className="flex items-center gap-1 group/menu">
                                             <button 
@@ -282,61 +281,60 @@ export default function FlashcardsPage() {
                                                     e.preventDefault();
                                                     router.push(`/practice/flashcards/edit/${deck.id}`);
                                                 }}
-                                                className="p-2 text-[var(--muted)] hover:text-teal-500 hover:bg-teal-50 rounded-xl transition-colors"
+                                                className="p-1.5 text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-colors"
                                                 title="Edit Deck"
                                             >
-                                                <Edit3 size={18} />
+                                                <Edit3 size={14} />
                                             </button>
                                             <button 
                                                 onClick={(e) => deleteDeck(deck.id, e)}
-                                                className="p-2 text-[var(--muted)] hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                                className="p-1.5 text-[var(--muted)] hover:text-red-500 hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-colors"
                                                 title="Delete Deck"
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={14} />
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="mt-auto pt-6 flex flex-col gap-4">
-                                        {}
+                                    <div className="mt-auto pt-4 flex flex-col gap-4">
                                         <div className="space-y-1.5">
-                                            <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                                            <div className="flex justify-between text-[9px] font-bold font-mono uppercase tracking-widest text-[var(--muted)]">
                                                 <span>Mastery</span>
-                                                <span className="text-teal-600">
+                                                <span className="text-[var(--accent)]">
                                                     {deck.total_cards > 0 
                                                         ? Math.round((deck.cards_know_it / deck.total_cards) * 100) 
                                                         : 0}%
                                                 </span>
                                             </div>
-                                            <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden flex">
+                                            <div className="h-1 w-full bg-[var(--border)] overflow-hidden flex grayscale scale-y-150 transform hover:grayscale-0 transition-all">
                                                 <div 
-                                                    className="h-full bg-teal-500 transition-all duration-1000" 
+                                                    className="h-full bg-[var(--accent)] transition-all duration-1000" 
                                                     style={{ width: `${(deck.cards_know_it / (deck.total_cards || 1)) * 100}%` }}
                                                 />
                                                 <div 
-                                                    className="h-full bg-orange-400 transition-all duration-1000" 
+                                                    className="h-full bg-orange-400 opacity-50 transition-all duration-1000" 
                                                     style={{ width: `${(deck.cards_still_learning / (deck.total_cards || 1)) * 100}%` }}
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="flex items-center justify-between mt-2">
-                                            <div className="flex items-center gap-4 text-xs font-medium text-[var(--muted)]">
-                                                <span className="flex items-center gap-1.5 bg-[var(--bg)] px-2.5 py-1.5 rounded-lg border border-[var(--border)]">
-                                                    <BookOpen size={14} className="text-teal-500" />
+                                            <div className="flex items-center gap-4 text-[9px] font-bold font-mono text-[var(--muted)] uppercase tracking-tight">
+                                                <span className="flex items-center gap-1.5 opacity-80">
+                                                    <BookOpen size={10} className="text-[var(--accent)]" />
                                                     {deck.total_cards} cards
                                                 </span>
                                                 {deck.last_studied_at && (
-                                                    <span className="flex items-center gap-1.5">
-                                                        <Clock size={14} />
+                                                    <span className="flex items-center gap-1.5 opacity-60">
+                                                        <Clock size={10} />
                                                         {new Date(deck.last_studied_at).toLocaleDateString()}
                                                     </span>
                                                 )}
                                             </div>
                                             
                                             <div className="flex items-center gap-2">
-                                                <div className="p-2.5 bg-teal-50 text-teal-600 rounded-xl opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                                                    <Play size={18} fill="currentColor" />
+                                                <div className="washi-tape washi-mastered text-[8px] py-0.5 px-3 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                                                    STUDY NOW <Play size={8} fill="currentColor" className="ml-1" />
                                                 </div>
                                             </div>
                                         </div>

@@ -33,7 +33,7 @@ export async function authenticateApiRequest(req: NextApiRequest | Request): Pro
 
     const token = authHeader.split(' ').pop();
     if (!token || token === 'undefined' || token === 'null') {
-        console.warn(`[Auth] Malformed or missing token in header: "${token}"`);
+        console.warn(`[Auth] Malformed or missing token in header: "${token}" (Length: ${token?.length || 0})`);
         return null;
     }
 

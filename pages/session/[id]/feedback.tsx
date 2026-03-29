@@ -378,10 +378,10 @@ export default function FeedbackReport() {
                                     <RotateCcw size={18} /> Try Again
                                 </button>
                                 <button
-                                    onClick={() => router.push('/sessions')}
+                                    onClick={() => router.push('/history')}
                                     className="w-full py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] rounded-xl text-sm font-bold hover:bg-[var(--bg)] transition-all"
                                 >
-                                    Return to Sessions
+                                    Return to history
                                 </button>
                             </div>
                         </div>

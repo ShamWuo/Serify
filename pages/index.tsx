@@ -4,18 +4,19 @@ import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
+import { normalizeTitle } from '@/lib/formatters';
 
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import SEO from '@/components/Layout/SEO';
 
 import SmartInputCard from '@/components/dashboard/SmartInputCard';
 import RecentSessions, { SessionRow } from '@/components/dashboard/RecentSessions';
-import NeedsAttention from '@/components/dashboard/NeedsAttention';
+
 import QuickLaunch from '@/components/dashboard/QuickLaunch';
 import ActivityDots from '@/components/dashboard/ActivityDots';
 import DashboardV2 from '@/components/dashboard/DashboardV2';
+import ClarificationDialog from '@/components/dashboard/ClarificationDialog';
 
-import { KnowledgeNode } from '@/types/serify';
 import LandingPage from '@/components/LandingPage';
 import { Brain, Sparkles, Zap } from 'lucide-react';
 import { useUsage } from '@/hooks/useUsage';
@@ -29,7 +30,6 @@ export default function Home() {
     const { isEnabled } = useFeatureFlags();
 
     const [latestSessions, setLatestSessions] = useState<SessionRow[]>([]);
-    const [focusConcepts, setFocusConcepts] = useState<any[]>([]);
     const [vaultCount, setVaultCount] = useState<number>(0);
     const [activityDays, setActivityDays] = useState<boolean[]>([]);
     const [streak, setStreak] = useState(0);
@@ -38,6 +38,15 @@ export default function Home() {
     const [dataLoading, setDataLoading] = useState(true);
 
     const [showSlowLoadingNotice, setShowSlowLoadingNotice] = useState(false);
+    
+    // Clarification states
+    const [clarificationData, setClarificationData] = useState<{
+        isOpen: boolean;
+        question: string;
+        options: string[];
+        originalData?: any;
+    }>({ isOpen: false, question: '', options: [] });
+    const [isPreAnalyzing, setIsPreAnalyzing] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -48,8 +57,14 @@ export default function Home() {
             const timer = setTimeout(() => setShowSlowLoadingNotice(true), 6000);
 
             try {
-                
-                const dashboardPromise = Promise.all([
+                const today = new Date();
+                const currentDay = today.getDay() === 0 ? 7 : today.getDay(); // 1-7 (Mon-Sun)
+                const monday = new Date(today);
+                monday.setDate(today.getDate() - (currentDay - 1));
+                monday.setHours(0, 0, 0, 0);
+
+                // Fetch real sessions and vault stats
+                const [sessionsRes, activityRes, flowRes, vaultRes]: any = await Promise.all([
                     supabase.from('reflection_sessions')
                         .select('id, title, content_type, created_at, depth_score, status')
                         .eq('user_id', user.id)
@@ -62,52 +77,52 @@ export default function Home() {
                     supabase.from('reflection_sessions')
                         .select('created_at')
                         .eq('user_id', user.id)
-                        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+                        .gte('created_at', monday.toISOString()),
+
+                    supabase.from('flow_sessions')
+                        .select('created_at')
+                        .eq('user_id', user.id)
+                        .gte('created_at', monday.toISOString()),
+
+                    supabase.from('knowledge_nodes')
+                        .select('current_mastery, display_name, id')
+                        .eq('user_id', user.id)
                 ]);
 
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Dashboard timeout')), 10000));
-                
-                const [sessionsRes, activityRes]: any = await Promise.race([
-                    dashboardPromise,
-                    timeoutPromise
-                ]);
-
-                
                 if (sessionsRes && sessionsRes.data) {
                     const mapped: SessionRow[] = sessionsRes.data.map((s: any) => ({
                         id: s.id,
-                        title: s.title || `${s.content_type?.charAt(0).toUpperCase()}${s.content_type?.slice(1) || 'Session'} • ${formatDistanceToNow(new Date(s.created_at), { addSuffix: true })}`,
+                        title: normalizeTitle(s.title),
                         type: s.content_type || 'text',
-                        date: formatDistanceToNow(new Date(s.created_at), { addSuffix: true }),
+                        date: s.created_at ? formatDistanceToNow(new Date(s.created_at), { addSuffix: true }) : 'Recent',
+                        // Calculate mastery from depth score or use a default if not available
                         mastery: {
-                            solid: s.depth_score > 80 ? 70 : 40,
+                            solid: (s.depth_score || 0) > 80 ? 70 : 40,
                             developing: 20,
-                            shaky: s.depth_score < 60 ? 30 : 5,
-                            revisit: s.depth_score < 40 ? 10 : 5
+                            shaky: (s.depth_score || 0) < 60 ? 30 : 5,
+                            revisit: (s.depth_score || 0) < 40 ? 10 : 5
                         },
-                        gaps: s.depth_score < 70 ? 2 : 0,
+                        gaps: (s.depth_score || 0) < 70 ? 2 : 0,
                         materials: ['flashcards', 'quiz'] 
                     }));
                     setLatestSessions(mapped);
                 }
 
-                setFocusConcepts([]);
-                setVaultCount(0);
+                if (vaultRes && vaultRes.data) {
+                    setVaultCount(vaultRes.data.length);
+                }
                 
-                
-                const today = new Date();
+                const allActivity = [...(activityRes?.data || []), ...(flowRes?.data || [])];
                 const days = Array.from({ length: 7 }, (_, i) => {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - (6 - i));
+                    const d = new Date(monday);
+                    d.setDate(monday.getDate() + i);
                     const dStr = d.toISOString().split('T')[0];
-                    return (activityRes?.data || []).some((s: any) => s.created_at.startsWith(dStr));
+                    return allActivity.some((s: any) => s.created_at.startsWith(dStr));
                 });
                 setActivityDays(days);
                 
-                
                 const currentStreak = [...days].reverse().findIndex(d => !d);
-                setStreak(currentStreak === -1 ? 7 : currentStreak);
-                
+                setStreak(currentStreak === -1 ? 7 : (currentStreak === 0 ? (days[6] ? 1 : 0) : currentStreak));
                 
                 const activeCount = days.filter(Boolean).length;
                 if (activeCount > 3) setTrend('+24% increase');
@@ -115,7 +130,6 @@ export default function Home() {
                 else setTrend('Start your week');
             } catch (err) {
                 console.warn('Dashboard data fetch taking too long or failed:', err);
-                
             } finally {
                 clearTimeout(timer);
                 setDataLoading(false);
@@ -125,9 +139,51 @@ export default function Home() {
         fetchDashboardData();
     }, [user]);
 
-    const handleAnalyze = async (data: any) => {
+    const handleAnalyze = async (data: any, isClarified = false) => {
         setIsProcessing(true);
         try {
+            // Pre-analysis step
+            if (!isClarified && data.content && data.content.trim().length > 0) {
+                setIsPreAnalyzing(true);
+                try {
+                    const preRes = await fetch('/api/serify/pre-analyze', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        },
+                        body: JSON.stringify({
+                            content: data.content,
+                            contentType: data.type,
+                            mode: data.mode
+                        })
+                    });
+                    
+                    if (preRes.ok) {
+                        const analysis = await preRes.json();
+                        if (analysis.status === 'clarify') {
+                            setClarificationData({
+                                isOpen: true,
+                                question: analysis.question,
+                                options: analysis.suggestedOptions || [],
+                                originalData: data
+                            });
+                            setIsPreAnalyzing(false);
+                            setIsProcessing(false); // Pause processing until clarified
+                            return;
+                        }
+                        // If suggested a specific mode, we could update data.mode here if needed
+                        if (analysis.suggestedMode) {
+                            data.mode = analysis.suggestedMode;
+                        }
+                    }
+                } catch (preErr) {
+                    console.warn('Pre-analysis failed, proceeding normally:', preErr);
+                } finally {
+                    setIsPreAnalyzing(false);
+                }
+            }
+
             let fileData = undefined;
             if (data.file) {
                 const base64 = await new Promise<string>((resolve, reject) => {
@@ -145,6 +201,39 @@ export default function Home() {
                 };
             }
 
+            if (data.mode === 'curriculum') {
+                router.push(`/learn?autoStart=true&q=${encodeURIComponent(data.content || '')}`);
+                setIsProcessing(false);
+                return;
+            }
+
+            if (data.mode === 'learn') {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+                const qRes = await fetch('/api/serify/start-quick-learn', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                        ...(isDemo ? { 'x-serify-demo': 'true' } : {})
+                    },
+                    signal: controller.signal,
+                    body: JSON.stringify({ content: data.content, contentType: data.type, fileData })
+                });
+                clearTimeout(timeoutId);
+
+                if (qRes.ok) {
+                    const { flowSessionId } = await qRes.json();
+                    router.push(`/learn/quick/flow?session=${flowSessionId}`);
+                    return;
+                }
+                const errData = await qRes.json();
+                throw new Error(errData.error || 'Failed to start quick learn');
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
+
             const res = await fetch('/api/serify/extract', {
                 method: 'POST',
                 headers: {
@@ -152,6 +241,7 @@ export default function Home() {
                     ...(token ? { Authorization: `Bearer ${token}` } : {}),
                     ...(isDemo ? { 'x-serify-demo': 'true' } : {})
                 },
+                signal: controller.signal,
                 body: JSON.stringify({
                     content: data.type === 'text' ? data.content : undefined,
                     url: data.type !== 'text' && data.type !== 'pdf' && data.type !== 'file' ? data.content : undefined,
@@ -160,6 +250,7 @@ export default function Home() {
                     fileData
                 })
             });
+            clearTimeout(timeoutId);
             
             if (res.ok) {
                 const { sessionId } = await res.json();
@@ -176,7 +267,9 @@ export default function Home() {
         }
     };
 
-    if (loading || (!!user && dataLoading)) {
+    const isActuallyLoading = isDemo ? (!!user && dataLoading) : (loading || (!!user && dataLoading));
+
+    if (isActuallyLoading) {
         return (
             <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
                 <div className="flex flex-col items-center gap-6">
@@ -212,30 +305,29 @@ export default function Home() {
 
     return (
         <DashboardLayout>
-            <SEO title="Dashboard" description="Your personal learning command center." />
+            <SEO title="Home" description="Your personal learning command center." />
             
             {isEnabled('new_dashboard_v2') ? (
                 <DashboardV2 
                     user={user}
                     latestSessions={latestSessions}
-                    focusConcepts={focusConcepts}
                     activityDays={activityDays}
                     streak={streak}
                     trend={trend}
                     vaultCount={vaultCount}
                     handleAnalyze={handleAnalyze}
                     isDemo={isDemo}
+                    isProcessing={isProcessing || isPreAnalyzing}
                 />
             ) : (
                 <div className="max-w-[1240px] mx-auto px-6 pt-8 pb-12 md:pt-12 md:pb-20 relative z-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 xl:gap-12">
-                        {}
-                        <div className="space-y-12">
-                            {}
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 xl:gap-8">
+                        <div className="space-y-4">
                             <section className="animate-slide-up">
                                 <SmartInputCard 
                                     onAnalyze={handleAnalyze} 
                                     tokenBalance={isDemo ? 1000 : ((user?.monthlyLimit || 0) - (user?.tokensUsed || 0))} 
+                                totalLimit={isDemo ? 1000 : (user?.monthlyLimit || 0)}                                    isProcessing={isProcessing || isPreAnalyzing}
                                 />
                                 {latestSessions.length === 0 && (
                                     <p className="mt-4 text-center text-xs text-[var(--muted)] italic animate-fade-in" style={{ animationDelay: '500ms' }}>
@@ -244,17 +336,14 @@ export default function Home() {
                                 )}
                             </section>
 
-                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '150ms' }}>
                                 <RecentSessions sessions={latestSessions} />
                             </section>
                         </div>
 
-                        {}
                         <div className="space-y-10">
-                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-                                {latestSessions.length === 0 ? (
+                                {latestSessions.length === 0 && (
                                     <div className="bg-white rounded-2xl border border-[var(--border)] p-6 shadow-sm">
                                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-4">You&apos;re all set.</h3>
                                         <div className="flex items-center gap-2 mb-4 text-[var(--accent)] bg-emerald-50 py-2 px-3 rounded-lg w-fit">
@@ -262,22 +351,16 @@ export default function Home() {
                                             <span className="text-xs font-bold">{user?.monthlyLimit || 50} tokens ready</span>
                                         </div>
                                         <p className="text-sm text-[var(--muted)] leading-relaxed">
-                                            Paste anything you&apos;ve been studying. Your gaps, Concept Vault, and history will appear here after your first session.
+                                            Paste anything you&apos;ve been studying. Your concept vault and learning history will appear here after your first session.
                                         </p>
                                     </div>
-                                ) : (
-                                    <NeedsAttention 
-                                        concepts={focusConcepts}
-                                    />
                                 )}
                             </section>
 
-                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '250ms' }}>
                                 <QuickLaunch />
                             </section>
 
-                            {}
                             <section className="animate-slide-up" style={{ animationDelay: '300ms' }}>
                                 <ActivityDots 
                                     days={activityDays} 
@@ -287,8 +370,7 @@ export default function Home() {
                                     trend={trend}
                                 />
                             </section>
-                            
-                            {}
+
                             <div className="p-6 rounded-2xl bg-gradient-to-br from-[var(--bg)] to-[#f8fafc] border border-[var(--border)] shadow-sm group hover:border-[var(--accent)]/30 transition-all">
                                 <div className="w-10 h-10 rounded-xl bg-white border border-[var(--border)] flex items-center justify-center text-[var(--accent)] mb-4 shadow-sm group-hover:scale-110 transition-transform">
                                     <Sparkles size={18} />
@@ -306,6 +388,28 @@ export default function Home() {
                     </div>
                 </div>
             )}
+
+            <ClarificationDialog 
+                isOpen={clarificationData.isOpen}
+                onClose={() => {
+                    setClarificationData(prev => ({ ...prev, isOpen: false }));
+                    if (clarificationData.originalData) {
+                        handleAnalyze(clarificationData.originalData, true);
+                    }
+                }}
+                question={clarificationData.question}
+                options={clarificationData.options}
+                isLoading={isProcessing}
+                onConfirm={(response, updatedMode) => {
+                    setClarificationData(prev => ({ ...prev, isOpen: false }));
+                    const newData = { 
+                        ...clarificationData.originalData, 
+                        content: `${clarificationData.originalData.content} (Context: ${response})` 
+                    };
+                    if (updatedMode) newData.mode = updatedMode;
+                    handleAnalyze(newData, true);
+                }}
+            />
         </DashboardLayout>
     );
 }

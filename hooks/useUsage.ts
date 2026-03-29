@@ -11,7 +11,7 @@ export function useUsage(feature?: FeatureName) {
     const fetchUsage = useCallback(async () => {
         const isDemo = typeof window !== 'undefined' && window.location.search.includes('demo=true');
         if (!user && !isDemo) return;
-        if (!token && !isDemo) return;
+        if ((!token || token === 'null' || token === 'undefined') && !isDemo) return;
         
         setLoading(true);
         try {

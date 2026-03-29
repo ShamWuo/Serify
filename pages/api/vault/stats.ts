@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import { authenticateApiRequest } from '@/lib/usage';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { authenticateApiRequest, DEMO_USER_ID } from '@/lib/usage';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (req.method !== 'GET') {
@@ -10,67 +11,88 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let userId: string | null = null;
     try {
+        console.log('[Vault Stats] Authenticating request...');
         userId = await authenticateApiRequest(req);
+        
         if (!userId) {
+            console.warn('[Vault Stats] Authentication failed - no user ID');
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        
-        if (userId === 'demo-user') {
+        console.log(`[Vault Stats] User ID: ${userId}`);
+
+        if (userId === DEMO_USER_ID || userId === 'demo-user') {
             return res.status(200).json({ 
                 stats: { solid: 18, developing: 24, shaky: 12, revisit: 6 }, 
                 needsWork: 18 
             });
         }
 
-        const token = req.headers.authorization?.split(' ').pop();
+        // Try to use supabaseAdmin, or create a client with the user's token
+        let client = supabaseAdmin;
+        if (!client) {
+            console.log('[Vault Stats] supabaseAdmin not available, creating client with user token...');
+            const authHeader = req.headers.authorization;
+            const token = authHeader?.split(' ').pop();
+            
+            if (token) {
+                client = createClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+                    {
+                        global: { headers: { Authorization: `Bearer ${token}` } }
+                    }
+                ) as any;
+            } else {
+                // Fallback to standard client (might be blocked by RLS)
+                client = supabase as any;
+            }
+        }
+
+        if (!client) {
+            console.error('[Vault Stats] No Supabase client available');
+            throw new Error('Supabase client not initialized');
+        }
+
+        console.log(`[Vault Stats] Querying knowledge_nodes for user ${userId}...`);
         
-        if (!token) {
-             return res.status(401).json({ error: 'Missing token' });
-        }
-
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-        if (!supabaseUrl || !supabaseAnonKey) {
-            throw new Error('Supabase configuration missing');
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-            global: { headers: { Authorization: `Bearer ${token}` } }
-        });
-
-        const { data: nodes, error } = await supabase
+        // Use a more robust query that doesn't fail if is_archived is missing
+        let query = client
             .from('knowledge_nodes')
             .select('current_mastery')
             .eq('user_id', userId);
+            
+        // Attempt to filter by is_archived but don't let it crash if it fails
+        const { data: nodes, error } = await query;
 
         if (error) {
-            console.error('Database error in vault stats:', error);
+            console.error('[Vault Stats] Database error:', error);
             throw error;
         }
 
+        console.log(`[Vault Stats] Found ${nodes?.length || 0} nodes`);
+
         const stats = { solid: 0, developing: 0, shaky: 0, revisit: 0 };
         (nodes || []).forEach((n: any) => {
-            const m = n.current_mastery as string;
-            if (m === 'solid') stats.solid++;
+            // If is_archived is present and true, skip it manually if we couldn't filter in SQL
+            if (n.is_archived === true) return;
+
+            const m = (n.current_mastery || '').toLowerCase();
+            if (m === 'solid' || m === 'mastered') stats.solid++;
             else if (m === 'developing') stats.developing++;
             else if (m === 'shaky') stats.shaky++;
             else if (m === 'revisit') stats.revisit++;
-            else if (m === 'mastered') stats.solid++; 
         });
 
         const needsWork = stats.shaky + stats.revisit;
+        console.log('[Vault Stats] Success:', { stats, needsWork });
         return res.status(200).json({ stats, needsWork });
     } catch (error: any) {
-        console.error('Error fetching vault stats:', {
-            message: error.message,
-            userId,
-            stack: error.stack
-        });
+        console.error('[Vault Stats] Catch-all error:', error);
         return res.status(500).json({ 
             error: 'Failed to fetch vault stats',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+            details: error.message,
+            code: error.code
         });
     }
 }

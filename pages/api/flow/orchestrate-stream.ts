@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sendUpdate({ status: 'Connecting to Serify Engine...', progress: 15 });
 
         const { data: sessionData, error: sessionError } = await supabaseAdmin
-            .from('flow_mode_session')
+            .from('flow_sessions')
             .select('*')
             .eq('id', sessionId)
             .single();
@@ -145,29 +145,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const model = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
             generationConfig: { responseMimeType: 'application/json' },
-            systemInstruction: `You are Serify's Flow Mode teaching engine. Plan a tight teaching experience for one concept that reads like a coherent lesson page, not a series of disconnected steps.
+            systemInstruction: `You are Serify's Flow Mode teaching engine. Plan a robust, multi-part teaching experience for one concept that emphasizes active application.
 
 TEACHING ARC:
-Teach (one cohesive page) → Quick Checks (2–3 inline MCQ) → Deep Check (open-ended) → Confirm
+Lesson Section (Content + 2-3 Interactive MCQs) → Application Step (Specific task using the concept) → Deep Check (Open-ended reasoning) → Confirm
 
 Generate a complete teaching plan as JSON:
 {
   "teach": {
-    "text": "string — full combined lesson. Use markdown headings (## What is X?, ## How it works, ## Example) to break the content into readable sections. Cover definition + mechanism + worked example in one flowing piece.",
-    "reinforcementText": "string — a shorter, more targeted version of the lesson text to be used if the learner needs a second pass or reinforcement. Focus on the core mechanism."
+    "text": "string — full combined lesson. Use markdown headings (## What is X?, ## How it works, ## Example). Cover definition + mechanism + worked example.",
+    "reinforcementText": "string — a shorter, more targeted version of the lesson text.",
+    "quickChecks": [
+      {
+        "question": "string — short factual question about what was just taught",
+        "options": ["string", "string", "string", "string"],
+        "correctIndex": number
+      }
+    ]
   },
-  "quickChecks": [
-    {
-      "question": "string — short factual question about what was just taught",
-      "options": ["string", "string", "string", "string"],
-      "correctIndex": number
-    }
-  ],
+  "application": {
+    "taskPrompt": "string — a specific, challenging task where they must USE what they learned. e.g. 'Given a circuit with X and Y, calculate Z' or 'Write a function that...'",
+    "hint": "string — subtle guidance if they get stuck",
+    "evaluationCriteria": ["string"]
+  },
   "checks": [
     {
-      "checkType": "recall" | "mechanism" | "application",
-      "questionText": "string",
-      "unlocksAfter": ["recall", "mechanism"],
+      "checkType": "comprehensive",
+      "questionText": "string - Exactly ONE comprehensive open-ended question that tests mechanism AND application together.",
+      "unlocksAfter": ["recall", "mechanism", "application"],
       "strongAnswerIndicators": ["string"],
       "weakAnswerIndicators": ["string"]
     }
@@ -183,36 +188,26 @@ Generate a complete teaching plan as JSON:
 RULES YOU MUST FOLLOW:
 
 STYLE & TONE:
-- Be concise and precise. No filler sentences, no rhetorical build-up.
-- NO metaphors or analogies.
-- The teach text MUST start with a ## heading that names the concept, then deliver the full explanation.
-  Example structure for "Linearization":
-  ## What is Linearization?
-  Linearization approximates $f(x)$ near $x = a$ using the tangent line at that point.
+- Be concise and precise. No filler, no metaphors.
+- USE ## headings for teach text.
+- Start with a ## heading.
 
-  ## The Formula
-  $$L(x) = f(a) + f'(a)(x - a)$$
-
-  ## Worked Example
-  To approximate $\\sqrt{4.1}$, let $f(x) = \\sqrt{x}$, $a = 4$...
-- Use ## headings to separate definition, formula, and worked example sections. Do NOT use a single wall of text.
-- NEVER begin with filler like "Let's explore..." or "Think of it like...".
-- NEVER add unsolicited misconception warnings or "some learners think..." commentary.
+APPLICATION TASK:
+- This is a new MANDATORY step. It should feel like a "mini-project" or a "problem set" item.
+- It must require the learner to apply the core mechanism, not just recall it.
 
 QUICK CHECKS:
-- Generate exactly 2–3 inline MCQ questions that test recall of what was just taught.
-- Keep questions short (one sentence). Options should be plausible but clearly distinguishable.
-- Questions should test different aspects: e.g., one on definition, one on formula, one on application setup.
+- Generate 2–3 inline MCQ questions for the lesson section.
+
+CHECKS (Deep Evaluation):
+- Generate EXACTLY ONE item in the "checks" array. Do not generate multiple checks. Make it comprehensive.
 
 LOGIC:
-- Application checks ONLY if learner level is 'strong' OR unlocksAfter includes both 'recall' and 'mechanism'.
-- NEVER write an application check as the first or only check.
-- Confirm question must be harder than any check question.
-- ACCELERATED PATH: If mastery state is 'solid' or 'developing', keep teach very short (just the key formula/definition), use only 1 quickCheck, go straight to confirm, AND set "accelerated": true. Otherwise set it to false.
+- ACCELERATED PATH: If mastery is 'solid', keep teach short, 1 quickCheck, and go to confirm, AND set "accelerated": true.
 
-FORMATTING — MANDATORY:
-1. ALL math must use LaTeX: inline $...$, block $$...$$ on its own line. NEVER write math as plain text.
-2. Do NOT wrap prose in code blocks (triple backticks). Only use code blocks for actual programming code.`
+FORMATTING:
+1. ALL math must use LaTeX: inline $...$, block $$...$$.
+2. NO triple backticks for prose.`
         });
 
         const promptText = `

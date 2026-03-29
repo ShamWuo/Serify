@@ -619,7 +619,7 @@ export default function ActiveSession() {
 
     if (!currentQuestion) {
         return (
-            <DashboardLayout backLink="/">
+            <DashboardLayout replaceNav={true} backLink="/">
                 <div className="flex-1 flex items-center justify-center p-6 min-h-[80vh]">
                     <div className="max-w-md w-full bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 text-center shadow-lg animate-fade-in-up">
                         <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -638,6 +638,7 @@ export default function ActiveSession() {
 
     return (
         <DashboardLayout
+            replaceNav={true}
             backLink="/"
             sidebarContent={
                 <div className="flex flex-col h-full">
@@ -688,6 +689,18 @@ export default function ActiveSession() {
                                 </div>
                             );
                         })}
+                    </div>
+
+                    <div className="mt-auto pt-6 px-4 pb-4">
+                        <button
+                            onClick={() => router.push('/')}
+                            className="flex items-center gap-3 w-full p-2.5 text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] hover:bg-black/5 rounded-xl transition-all group"
+                        >
+                            <div className="shrink-0 flex items-center justify-center w-5 h-5 rounded-md border border-[var(--border)] group-hover:bg-white transition-all">
+                                <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+                            </div>
+                            Exit to Dashboard
+                        </button>
                     </div>
                 </div>
             }

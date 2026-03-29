@@ -113,7 +113,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json(materials);
     } catch (error: any) {
-        console.error('Error fetching session materials:', error);
-        return res.status(500).json({ error: error.message || 'Internal server error' });
+        console.error('Error fetching session materials:', {
+            message: error.message,
+            stack: error.stack,
+            error: error
+        });
+        return res.status(500).json({ 
+            error: 'Internal server error',
+            details: error.message,
+            stack: error.stack
+        });
     }
 }

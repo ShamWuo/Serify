@@ -34,7 +34,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
         { name: 'Dashboard', icon: <Home size={16} />, href: '/' },
         { name: 'New Session', icon: <PlusCircle size={16} />, href: '/analyze' },
         { name: 'Learn Mode', icon: <Sparkles size={16} />, href: '/learn' },
-        { name: 'Session History', icon: <History size={16} />, href: '/sessions' },
+        { name: 'History', icon: <History size={16} />, href: '/history' },
         { name: 'Concept Vault', icon: <Archive size={16} />, href: '/vault' },
         { name: 'Settings', icon: <Settings size={16} />, href: '/settings' },
     ], []);
@@ -120,7 +120,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                     } else if (selected.type === 'concept') {
                         router.push(`/vault?concept=${selected.id}`);
                     } else {
-                        router.push(`/sessions?id=${selected.id}`);
+                        router.push(`/history?id=${selected.id}`);
                     }
                     onClose();
                 }
@@ -203,7 +203,7 @@ export default function CommandPalette({ isOpen, onClose }: CommandPaletteProps)
                                                     }`}
                                                 onClick={() => {
                                                     if (result.type === 'concept') router.push(`/vault?concept=${result.id}`);
-                                                    else router.push(`/sessions?id=${result.id}`);
+                                                    else router.push(`/history?id=${result.id}`);
                                                     onClose();
                                                 }}
                                                 onMouseEnter={() => setSelectedIndex(idx)}

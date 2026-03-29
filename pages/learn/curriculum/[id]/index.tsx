@@ -184,8 +184,7 @@ export default function CurriculumView() {
 
     return (
         <DashboardLayout
-            backLink="/learn"
-            backLinkText="Back to Learning"
+            replaceNav={true}
             sidebarContent={
                 <CurriculumSidebar
                     concepts={allConcepts}
