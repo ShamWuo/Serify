@@ -129,10 +129,26 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
 
         if (!token) return;
 
+        // Simple cache to prevent fetching on every single navigation
+        const cacheKey = `vault_stats_${user?.id}`;
+        const cached = sessionStorage.getItem(cacheKey);
+        const now = Date.now();
+        
+        if (cached) {
+            const { data, timestamp } = JSON.parse(cached);
+            if (now - timestamp < 60000) { // 1 minute cache
+                setVaultNeedsWork(data.needsWork || 0);
+                return;
+            }
+        }
+
         fetch('/api/vault/stats', { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => (r.ok ? r.json() : null))
             .then((d) => {
-                if (d) setVaultNeedsWork(d.needsWork || 0);
+                if (d) {
+                    setVaultNeedsWork(d.needsWork || 0);
+                    sessionStorage.setItem(cacheKey, JSON.stringify({ data: d, timestamp: now }));
+                }
             })
             .catch(() => { });
     }, [user, token, authLoading, router]);

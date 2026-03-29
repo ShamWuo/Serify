@@ -38,35 +38,32 @@ export default function ScheduleHub() {
 
         const fetchData = async () => {
             try {
-                // Fetch Roadmap
-                const { data: rm, error: rmErr } = await supabase
-                    .from('exam_roadmaps')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
+                // Fetch Roadmap, Topics and Sessions in parallel
+                const [roadmapRes, topicsRes, sessionsRes] = await Promise.all([
+                    supabase
+                        .from('exam_roadmaps')
+                        .select('*')
+                        .eq('id', id)
+                        .single(),
+                    supabase
+                        .from('roadmap_topics')
+                        .select('*')
+                        .eq('roadmap_id', id)
+                        .order('position', { ascending: true }),
+                    supabase
+                        .from('roadmap_sessions')
+                        .select('*')
+                        .eq('roadmap_id', id)
+                        .order('scheduled_date', { ascending: true })
+                ]);
 
-                if (rmErr) throw rmErr;
-                setSchedule(rm);
+                if (roadmapRes.error) throw roadmapRes.error;
+                if (topicsRes.error) throw topicsRes.error;
+                if (sessionsRes.error) throw sessionsRes.error;
 
-                // Fetch Topics
-                const { data: tp, error: tpErr } = await supabase
-                    .from('roadmap_topics')
-                    .select('*')
-                    .eq('roadmap_id', id)
-                    .order('position', { ascending: true });
-
-                if (tpErr) throw tpErr;
-                setScheduleTopics(tp || []);
-
-                // Fetch Sessions
-                const { data: ss, error: ssErr } = await supabase
-                    .from('roadmap_sessions')
-                    .select('*')
-                    .eq('roadmap_id', id)
-                    .order('scheduled_date', { ascending: true });
-
-                if (ssErr) throw ssErr;
-                setScheduleSessions(ss || []);
+                setSchedule(roadmapRes.data);
+                setScheduleTopics(topicsRes.data || []);
+                setScheduleSessions(sessionsRes.data || []);
 
             } catch (err: any) {
                 console.error('Error fetching roadmap data:', err);

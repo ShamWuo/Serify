@@ -34,12 +34,12 @@ import {
 
 import { KnowledgeNode, VaultCategory, StudySet, MasteryState } from '@/types/serify';
 
-const MASTERY_CONFIG: Record<MasteryState, { label: string; color: string; bg: string; dot: string; weight: number }> = {
+const MASTERY_CONFIG: Record<MasteryState, { label: string; color: string; bg: string; dot: string; weight: number; glow?: string; border?: string }> = {
     mastered: { label: 'Mastered', color: 'text-[#1A4A38]', bg: 'bg-[#1A4A38]/10', dot: 'bg-[#1A4A38]', weight: 4 },
     solid: { label: 'Solid', color: 'text-[#1B4332]', bg: 'bg-[#1B4332]/10', dot: 'bg-[#1B4332]', weight: 3 }, 
     developing: { label: 'Developing', color: 'text-[#0E4F64]', bg: 'bg-[#0E4F64]/10', dot: 'bg-[#0E4F64]', weight: 2 }, 
-    shaky: { label: 'Shaky', color: 'text-[#856404]', bg: 'bg-[#FFF3CD]', dot: 'bg-[#856404]', weight: 1 }, 
-    revisit: { label: 'Action Required', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0 } 
+    shaky: { label: 'Shaky', color: 'text-[#856404]', bg: 'bg-[#FFF3CD]', dot: 'bg-[#856404]', weight: 1, glow: 'shadow-[0_0_15px_-3px_rgba(255,243,205,0.4)]', border: 'border-yellow-400/50' }, 
+    revisit: { label: 'Action Required', color: 'text-[#721C24]', bg: 'bg-[#F8D7DA]', dot: 'bg-[#721C24]', weight: 0, glow: 'shadow-[0_0_20px_-5px_rgba(248,215,218,0.5)]', border: 'border-red-400/60' } 
 };
 
 const MASTERY_DESCRIPTIONS: Record<MasteryState, string> = {
@@ -358,6 +358,67 @@ export default function VaultPage() {
         }
     };
 
+    const handleBulkAction = async (type: 'delete' | 'archive') => {
+        if (!selectedNodeIds.size) return;
+        const confirmMsg = type === 'delete' 
+            ? `Are you sure you want to permanently delete ${selectedNodeIds.size} concepts?` 
+            : `Archive ${selectedNodeIds.size} concepts?`;
+        
+        if (!window.confirm(confirmMsg)) return;
+
+        setActionLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch('/api/vault/bulk-action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                body: JSON.stringify({ concept_ids: Array.from(selectedNodeIds), action: type })
+            });
+
+            if (res.ok) {
+                setSelectedNodeIds(new Set());
+                await fetchVaultData();
+            } else {
+                const err = await res.json();
+                alert(err.error || `Failed to ${type} concepts`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert(`Failed to ${type} concepts`);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleCreateStudySet = async () => {
+        if (!selectedNodeIds.size) return;
+        const name = window.prompt("Enter a name for this study set:");
+        if (!name) return;
+
+        setActionLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch('/api/vault/study-sets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+                body: JSON.stringify({ name, concept_ids: Array.from(selectedNodeIds) })
+            });
+
+            if (res.ok) {
+                setSelectedNodeIds(new Set());
+                await fetchVaultData();
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Failed to create study set');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to create study set');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     
     useEffect(() => {
         const handleClick = () => setActiveMenuId(null);
@@ -427,6 +488,21 @@ export default function VaultPage() {
     }, [nodes, categories, search, selectedMasteries, selectedSources, showOnlyShaky]);
 
     
+    const vaultStats = useMemo(() => {
+        const total = nodes.length;
+        const needsAttention = nodes.filter(
+            (n) => n.current_mastery === 'shaky' || n.current_mastery === 'revisit'
+        ).length;
+        const strong = nodes.filter(
+            (n) => n.current_mastery === 'mastered' || n.current_mastery === 'solid'
+        ).length;
+        const developing = nodes.filter(n => n.current_mastery === 'developing').length;
+        const shaky = nodes.filter(n => n.current_mastery === 'shaky').length;
+        const revisit = nodes.filter(n => n.current_mastery === 'revisit').length;
+
+        return { total, needsAttention, strong, developing, shaky, revisit };
+    }, [nodes]);
+
     const hierarchy = useMemo(() => {
         const processedIds = new Set<string>();
         const filteredNodeIds = new Set(filteredNodes.map(n => n.id));
@@ -598,143 +674,152 @@ export default function VaultPage() {
 
     const renderParentNode = ({ parent, subs, needsWork, allMasteries, aggregateMastery }: { parent: KnowledgeNode; subs: KnowledgeNode[]; needsWork: number; allMasteries: MasteryState[]; aggregateMastery: MasteryState }) => {
         const pCollapsed = search ? false : collapsedParents.has(parent.id);
+        const mConfig = MASTERY_CONFIG[aggregateMastery] || DEFAULT_MASTERY;
+        const isNeedsWork = aggregateMastery === 'shaky' || aggregateMastery === 'revisit';
+        
+        // Clean display name by removing category prefix if it exists
+        let displayName = parent.display_name;
+        const currentCategory = categories.find(c => c.id === parent.category_id);
+        if (currentCategory && displayName.toLowerCase().startsWith(currentCategory.name.toLowerCase())) {
+            displayName = displayName.substring(currentCategory.name.length).replace(/^[:\s-]+/, '');
+        }
+
         return (
-            <div key={parent.id} className="paper-card overflow-hidden h-fit">
-                {}
+            <div 
+                key={parent.id} 
+                className={`group paper-card overflow-hidden h-fit transition-all duration-300 border-2 ${isNeedsWork ? `${mConfig.glow} ${mConfig.border} ring-1 ring-inset ${mConfig.border}/30` : 'border-[var(--border)]'}`}
+            >
+                {isNeedsWork && <div className="absolute inset-0 hatch-bg opacity-[0.05] pointer-events-none" />}
+                
                 <div
                     onClick={(e) => {
-                        
                         const isAction = (e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.checkbox-area');
                         if (isAction) return;
                         setSelectedNodeForDetail(parent);
                     }}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, parent.id)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, parent.id); }}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => { e.stopPropagation(); handleDrop(e, parent.id, 'concept'); }}
-                    className={`flex items-center px-4 py-2.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
+                    className={`relative flex flex-col p-4 sm:p-5 transition-all cursor-pointer ${selectedNodeIds.has(parent.id) ? 'bg-[var(--accent)]/[0.04]' : 'hover:bg-[var(--bg)]/50'} ${draggedNodeId === parent.id ? 'opacity-40' : ''} ${dropTargetId === parent.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset' : ''}`}
                 >
-                    <div
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            const allIds = [parent.id, ...subs.map((s) => s.id)];
-                            toggleSelection(allIds, e);
-                        }}
-                        className="checkbox-area w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]"
-                    >
-                        {[parent.id, ...subs.map((s) => s.id)].every(id => selectedNodeIds.has(id)) ? (
-                            <div className="w-full h-full bg-[var(--accent)] flex items-center justify-center rounded-[3px]">
-                                <Check size={12} className="text-white" strokeWidth={3} />
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                            <div
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const allIds = [parent.id, ...subs.map((s) => s.id)];
+                                    toggleSelection(allIds, e);
+                                }}
+                                className="checkbox-area mt-0.5 w-4.5 h-4.5 rounded-[2px] border-2 flex items-center justify-center shrink-0 cursor-pointer transition-all border-[var(--border-soft)] bg-[var(--surface-raised)] group-hover:border-[var(--accent)]"
+                            >
+                                {[parent.id, ...subs.map((s) => s.id)].every(id => selectedNodeIds.has(id)) ? (
+                                    <div className="w-full h-full bg-[var(--accent)] flex items-center justify-center">
+                                        <Check size={12} className="text-white" strokeWidth={4} />
+                                    </div>
+                                ) : [parent.id, ...subs.map((s) => s.id)].some(id => selectedNodeIds.has(id)) ? (
+                                    <div className="w-2.5 h-2.5 bg-[var(--accent)] rounded-[1px]" />
+                                ) : null}
                             </div>
-                        ) : [parent.id, ...subs.map((s) => s.id)].some(id => selectedNodeIds.has(id)) ? (
-                            <div className="w-2 h-2 bg-[var(--accent)] rounded-[1px]" />
-                        ) : null}
-                    </div>
-
-                    <div className="flex-1 min-w-0 pr-2">
-                        <div className="flex items-center gap-2">
-                            {subs.length > 0 && (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); toggleParent(parent.id, e); }}
-                                    className="shrink-0 text-[var(--muted)] opacity-50 hover:opacity-100 transition-opacity p-1 -ml-1"
-                                >
-                                    {pCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                                </button>
-                            )}
-                            <span className="font-semibold text-sm text-[var(--text)] truncate">
-                                {parent.display_name}
-                            </span>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 border ${mConfig.bg} ${mConfig.color} border-current`}>
+                                        {mConfig.label}
+                                    </span>
+                                    {isNeedsWork && <AlertCircle size={12} className={`${mConfig.color} animate-pulse`} />}
+                                </div>
+                                <h3 className="font-display font-black text-base text-[var(--text)] leading-tight tracking-tight group-hover:text-[var(--accent)] transition-colors">
+                                    {displayName}
+                                </h3>
+                            </div>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Tooltip content={MASTERY_DESCRIPTIONS[aggregateMastery]}>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${MASTERY_CONFIG[aggregateMastery].bg} ${MASTERY_CONFIG[aggregateMastery].color} border-current cursor-help`}>
-                                {MASTERY_CONFIG[aggregateMastery].label}
-                            </span>
-                        </Tooltip>
-                        <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === parent.id ? null : parent.id); }}
-                                className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-7 h-7 rounded-lg hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-all text-[var(--muted)] hover:text-[var(--text)]"
+                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[var(--bg)] border border-[var(--border)] shadow-[2px_2px_0px_var(--border)] active:translate-y-[1px] active:shadow-none transition-all text-[var(--muted)] hover:text-[var(--text)]"
                             >
-                                <MoreHorizontal size={14} />
+                                <MoreHorizontal size={16} />
                             </button>
                             {activeMenuId === parent.id && (
-                                <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
-                                    <button onClick={() => { setRenamingNode(parent); setNewName(parent.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                <div className="absolute right-0 top-full mt-2 w-52 bg-[var(--surface)] border-2 border-[var(--border)] shadow-[var(--shadow-hard)] z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
+                                    <button onClick={() => { setRenamingNode(parent); setNewName(parent.display_name); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--text)] hover:bg-[var(--bg)] flex items-center gap-2">
                                         <Edit2 size={14} className="text-[var(--muted)]" /> Rename
                                     </button>
-                                    <button onClick={() => { setMovingNode(parent); setSelectedMoveCatId(parent.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
+                                    <button onClick={() => { setMovingNode(parent); setSelectedMoveCatId(parent.category_id || ''); setActiveMenuId(null); }} className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--text)] hover:bg-[var(--bg)] flex items-center gap-2">
                                         <FolderOpen size={14} className="text-[var(--muted)]" /> Move Category
                                     </button>
                                     <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                    <button onClick={() => { setActiveMenuId(null); router.push(`/vault/${parent.id}`); }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--accent)] rounded-lg hover:bg-[var(--accent)]/[0.05] flex items-center gap-2">
-                                        <BookOpen size={14} /> View Detail Page
+                                    <button onClick={() => { setActiveMenuId(null); router.push(`/vault/${parent.id}`); }} className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--accent)] hover:bg-[var(--accent)]/[0.05] flex items-center gap-2">
+                                        <BookOpen size={14} /> Full Record
                                     </button>
                                     <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                    <button onClick={() => { setActiveMenuId(null); router.push(`/practice/exam?concepts=${parent.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                        <Brain size={14} className="text-[var(--accent)]" /> Simulate Exam
+                                    <button onClick={() => { setActiveMenuId(null); router.push(`/practice/exam?concepts=${parent.id}`) }} className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--text)] hover:bg-[var(--bg)] flex items-center gap-2">
+                                        <Brain size={14} className="text-[var(--accent)]" /> Exam Mode
                                     </button>
-                                    <button onClick={() => { setActiveMenuId(null); router.push(`/practice/scenario?concepts=${parent.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                        <Zap size={14} className="text-yellow-500" /> Apply Concept
+                                    <button onClick={() => { setActiveMenuId(null); router.push(`/practice/scenario?concepts=${parent.id}`) }} className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--text)] hover:bg-[var(--bg)] flex items-center gap-2">
+                                        <Zap size={14} className="text-amber-500 fill-amber-500" /> Application
                                     </button>
                                     <div className="h-px bg-[var(--border)] my-1 w-[90%] mx-auto" />
-                                    <button onClick={() => handleUpdateNode(parent.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
+                                    <button onClick={() => handleUpdateNode(parent.id, { is_archived: true })} className="w-full text-left px-3 py-2 text-xs font-bold uppercase tracking-wide text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2">
                                         <Archive size={14} /> Archive
                                     </button>
                                 </div>
                             )}
                         </div>
                     </div>
+
+                    {parent.definition && (
+                        <p className="text-[11px] text-[var(--muted)] line-clamp-2 mb-4 font-mono leading-relaxed">
+                            {parent.definition}
+                        </p>
+                    )}
+
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--border)]/10">
+                        <div className="flex items-center gap-3">
+                            {subs.length > 0 && (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); toggleParent(parent.id, e); }}
+                                    className="flex items-center gap-1.5 py-1 px-2 border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] text-[10px] font-bold uppercase tracking-wider transition-all"
+                                >
+                                    {subs.length} Components
+                                    {pCollapsed ? <ChevronRight size={12} strokeWidth={3}/> : <ChevronDown size={12} strokeWidth={3}/>}
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex gap-1.5 flex-wrap justify-end">
+                             <div className="flex h-1.5 w-16 bg-[var(--bg)] border border-[var(--border)]/20 rounded-full overflow-hidden">
+                                {allMasteries.map((m, idx) => (
+                                    <div 
+                                        key={idx} 
+                                        className={`h-full ${MASTERY_CONFIG[m]?.dot || 'bg-[var(--border-soft)]'}`} 
+                                        style={{ width: `${100 / allMasteries.length}%` }} 
+                                    />
+                                ))}
+                             </div>
+                        </div>
+                    </div>
                 </div>
 
-                {}
                 {!pCollapsed && subs.length > 0 && (
-                    <div className="border-t-2 border-[var(--border)] bg-[var(--bg)]/40 dot-grid-bg">
+                    <div className="border-t border-[var(--border)] bg-[var(--bg)]/40 dot-grid-bg">
                         {subs.map((sub: KnowledgeNode) => (
                             <div
                                 key={sub.id}
                                 onClick={(e) => {
-                                    const isAction = (e.target as HTMLElement).closest('.checkbox-area');
+                                    const isAction = (e.target as HTMLElement).closest('.checkbox-area') || (e.target as HTMLElement).closest('button');
                                     if (isAction) return;
                                     setSelectedNodeForDetail(sub);
                                 }}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, sub.id)}
-                                onDragEnd={handleDragEnd}
-                                className={`flex items-center pl-10 pr-4 py-1.5 hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(sub.id) ? 'bg-[var(--accent)]/[0.03]' : ''} ${draggedNodeId === sub.id ? 'opacity-40' : ''}`}
+                                className={`flex items-center pl-12 pr-4 py-2 hover:bg-[var(--accent)]/[0.04] border-b border-[var(--border)]/5 last:border-0 transition-all cursor-pointer group/sub relative ${selectedNodeIds.has(sub.id) ? 'bg-[var(--accent)]/[0.04]' : ''}`}
                             >
                                 <div
                                     onClick={(e) => { e.stopPropagation(); toggleSelection([sub.id], e); }}
-                                    className="checkbox-area w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]"
+                                    className="checkbox-area w-3.5 h-3.5 rounded-[1px] border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors border-[var(--border-soft)] bg-[var(--surface)] group-hover/sub:border-[var(--accent)]"
                                 >
-                                    {selectedNodeIds.has(sub.id) && <Check size={10} className="text-white" strokeWidth={3} />}
+                                    {selectedNodeIds.has(sub.id) && <Check size={10} className="text-white" strokeWidth={4} />}
                                 </div>
                                 <Tooltip content={MASTERY_DESCRIPTIONS[sub.current_mastery as MasteryState] || 'Not studied yet'}>
-                                    <MasteryDot state={sub.current_mastery} size={8} className="mr-2.5 cursor-help" />
+                                    <MasteryDot state={sub.current_mastery} size={7} className="mr-2.5 cursor-help" />
                                 </Tooltip>
-                                <span className="text-sm text-[var(--text)] truncate flex-1">{sub.display_name}</span>
-                                <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setActiveMenuId(activeMenuId === sub.id ? null : sub.id); }}
-                                        className="opacity-0 group-hover:opacity-100 flex items-center justify-center w-6 h-6 rounded-md hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-all text-[var(--muted)] hover:text-[var(--text)]"
-                                    >
-                                        <MoreHorizontal size={14} />
-                                    </button>
-                                    {activeMenuId === sub.id && (
-                                        <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg z-[100] p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2">
-                                            <button onClick={() => { setActiveMenuId(null); router.push(`/practice/exam?concepts=${sub.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                <Brain size={14} className="text-[var(--accent)]" /> Simulate Exam
-                                            </button>
-                                            <button onClick={() => { setActiveMenuId(null); router.push(`/practice/scenario?concepts=${sub.id}`) }} className="w-full text-left px-3 py-2 text-sm font-medium text-[var(--text)] rounded-lg hover:bg-[var(--bg)] flex items-center gap-2">
-                                                <Zap size={14} className="text-yellow-500" /> Apply Concept
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
+                                <span className="text-xs font-mono text-[var(--muted)] group-hover/sub:text-[var(--text)] truncate flex-1 tracking-tight">
+                                    {sub.display_name.split(':').pop()?.trim()}
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -746,162 +831,135 @@ export default function VaultPage() {
     const hasAnyConcepts = nodes.length > 0;
     const selectedArray = Array.from(selectedNodeIds);
 
-    const vaultStats = useMemo(() => {
-        const total = nodes.length;
-        const needsAttention = nodes.filter(
-            (n) => n.current_mastery === 'shaky' || n.current_mastery === 'revisit'
-        ).length;
-        const strong = nodes.filter(
-            (n) => n.current_mastery === 'mastered' || n.current_mastery === 'solid'
-        ).length;
-        return { total, needsAttention, strong };
-    }, [nodes]);
+    if (!user && !loading) {
+        return (
+            <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-6 relative overflow-hidden font-mono transition-colors duration-500">
+                <div className="absolute inset-0 hatch-bg opacity-[0.03] pointer-events-none" />
+                
+                <div className="max-w-md w-full paper-card p-10 md:p-14 text-center space-y-10 animate-fade-in relative z-10">
+                    <div className="mx-auto w-20 h-20 border-2 border-[var(--ink)] bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center -rotate-[5deg] shadow-[var(--shadow-hard-sm)]">
+                        <FolderTree size={44} />
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <h1 className="text-4xl font-display font-black text-[var(--text)] leading-tight tracking-tight">
+                            Explore Your <br/>
+                            <span className="text-[var(--accent)] italic">Concept Vault</span>
+                        </h1>
+                        <p className="text-[13px] text-[var(--muted)] leading-relaxed italic">
+                            &quot;The Vault catalogs every concept you&apos;ve analyzed, tracking your mastery path across all subjects.&quot;
+                        </p>
+                    </div>
 
-    
-    const handleBulkAction = async (action: 'delete' | 'archive') => {
-        if (selectedNodeIds.size === 0) return;
-        const confirmMsg = action === 'delete' ? 'Are you sure you want to permanently delete these concepts?' : 'Archive these concepts?';
-        if (!window.confirm(confirmMsg)) return;
+                    <div className="grid grid-cols-1 gap-4 py-4 text-left border-y-2 border-[var(--border-soft)] border-dashed">
+                        {[
+                            { icon: Layers, text: 'Hierarchical Knowledge Mapping' },
+                            { icon: GitMerge, text: 'Automated Concept Merging' },
+                            { icon: Archive, text: 'Deep Mastery Analytics' }
+                        ].map((item, idx) => (
+                            <div key={idx} className="flex items-center gap-3">
+                                <item.icon size={16} className="text-[var(--accent)]" />
+                                <span className="text-[11px] font-bold text-[var(--text)] uppercase tracking-wider">{item.text}</span>
+                            </div>
+                        ))}
+                    </div>
 
-        setActionLoading(true);
-        try {
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
-            const res = await fetch('/api/vault/bulk-action', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ action, concept_ids: Array.from(selectedNodeIds) })
-            });
-
-            if (res.ok) {
-                setSelectedNodeIds(new Set());
-                fetchVaultData();
-            } else {
-                alert('Action failed');
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Action failed');
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
-    const handleCreateStudySet = async () => {
-        if (selectedNodeIds.size === 0) return;
-        const name = window.prompt('Enter name for the new Study Set:');
-        if (!name) return;
-
-        setActionLoading(true);
-        try {
-            const session = await supabase.auth.getSession();
-            const token = session.data.session?.access_token;
-            const res = await fetch('/api/vault/study-sets', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`
-                },
-                body: JSON.stringify({ name, concept_ids: Array.from(selectedNodeIds) })
-            });
-
-            if (res.ok) {
-                setSelectedNodeIds(new Set());
-                fetchVaultData();
-            } else {
-                alert('Failed to create Study Set');
-            }
-        } catch (e) {
-            console.error(e);
-            alert('Failed to create Study Set');
-        } finally {
-            setActionLoading(false);
-        }
-    };
+                    <div className="space-y-6">
+                        <Link 
+                            href="/login" 
+                            className="btn-primary w-full py-5 text-xl"
+                        >
+                            Log In to Enter
+                        </Link>
+                        
+                        <Link 
+                            href="/" 
+                            className="block text-[11px] font-black text-[var(--muted)] uppercase tracking-[0.2em] hover:text-[var(--accent)] transition-all"
+                        >
+                            &larr; Back to Base
+                        </Link>
+                    </div>
+                </div>
+                
+                <div className="mt-12 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.5em] opacity-30">
+                    Serify Vault Engine // Ver 2.5
+                </div>
+            </div>
+        );
+    }
 
     return (
         <DashboardLayout>
             <SEO title="Vault" />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-32">
-                <section className="relative mb-6 overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-hard)] md:mb-8 md:p-8">
+                {/* Header & Stats Section */}
+                <section className="relative mb-8 overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-hard)] md:p-10">
+                    <div className="absolute top-0 right-0 w-32 h-32 opacity-[0.03] rotate-12 pointer-events-none">
+                        <Box size={128} />
+                    </div>
+                    
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-10">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.3em] text-[var(--accent)]">
+                                <span className="w-8 h-px bg-[var(--accent)]" />
+                                Knowledge Catalog
+                            </div>
+                            <h1 className="text-4xl md:text-5xl font-display font-black text-[var(--text)] tracking-tight">
+                                Concept <span className="text-[var(--accent)]">Vault</span>
+                            </h1>
+                            <p className="max-w-xl text-[13px] text-[var(--muted)] font-medium leading-relaxed italic">
+                                &quot;A living repository of your mastered concepts, structural pillars, and unexplored territories.&quot;
+                            </p>
+                        </div>
 
-                        <div className="flex w-full flex-col gap-3 sm:max-w-md sm:flex-row lg:w-auto lg:flex-col xl:flex-row">
-                            <button
-                                type="button"
-                                onClick={() => setIsAddingConcept(true)}
-                                className="btn-primary flex h-11 shrink-0 items-center justify-center gap-2 px-5 font-bold"
-                                style={{ borderRadius: '3px' }}
-                            >
-                                <Plus size={18} strokeWidth={2.5} />
-                                Add concept
-                            </button>
-                            <div className="relative min-w-0 flex-1">
+                        <div className="flex flex-col sm:flex-row items-stretch gap-3">
+                            <div className="relative min-w-[280px]">
                                 <Search
                                     size={16}
-                                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]"
-                                    strokeWidth={2}
+                                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+                                    strokeWidth={3}
                                 />
                                 <input
                                     type="search"
-                                    placeholder="Search concepts, pillars…"
+                                    placeholder="Search architecture..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="h-11 w-full border border-[var(--border)] bg-[var(--surface-raised)] pl-11 pr-4 font-mono text-sm text-[var(--text)] outline-none transition-colors placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
-                                    style={{ borderRadius: '3px' }}
+                                    className="h-12 w-full border-2 border-[var(--border)] bg-[var(--surface-raised)] pl-12 pr-4 font-mono text-sm text-[var(--text)] outline-none transition-all placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--surface)] shadow-inner"
                                     autoComplete="off"
                                 />
                             </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingConcept(true)}
+                                className="btn-primary h-12 px-6 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-sm shadow-[var(--shadow-hard-sm)] hover:shadow-[var(--shadow-hard)] hover:-translate-y-0.5 active:translate-y-0 transition-all"
+                            >
+                                <Plus size={18} strokeWidth={3} />
+                                New Concept
+                            </button>
                         </div>
-
+                    </div>
 
                     {hasAnyConcepts && (
-                        <div className="relative mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                             {[
-                                {
-                                    label: 'Total concepts',
-                                    value: vaultStats.total,
-                                    hint: 'In your vault',
-                                    icon: Layers,
-                                },
-                                {
-                                    label: 'Strong',
-                                    value: vaultStats.strong,
-                                    hint: 'Mastered + solid',
-                                    icon: Check,
-                                },
-                                {
-                                    label: 'Needs attention',
-                                    value: vaultStats.needsAttention,
-                                    hint: 'Shaky or revisit',
-                                    icon: AlertCircle,
-                                },
-                                {
-                                    label: 'Pillars',
-                                    value: categories.length,
-                                    hint: 'Top-level groups',
-                                    icon: FolderTree,
-                                },
+                                { label: 'Total Nodes', value: vaultStats.total, icon: Layers, color: 'text-[var(--text)]' },
+                                { label: 'Stronghold', value: vaultStats.strong, icon: Check, color: 'text-emerald-600' },
+                                { label: 'Needs Revisit', value: vaultStats.needsAttention, icon: AlertCircle, color: 'text-rose-600' },
+                                { label: 'Pillars', value: categories.length, icon: FolderTree, color: 'text-[var(--accent)]' },
                             ].map((s) => (
                                 <div
                                     key={s.label}
-                                    className="flex gap-3 border border-[var(--border)] bg-[var(--bg)] p-4"
-                                    style={{ boxShadow: 'var(--shadow-hard-sm)' }}
+                                    className="group flex flex-col p-4 border-2 border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--surface-raised)] transition-colors shadow-[4px_4px_0px_var(--border)]"
                                 >
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[var(--border)] bg-[var(--surface)] text-[var(--accent)]">
-                                        <s.icon size={18} strokeWidth={2} />
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className={`p-2 border border-[var(--border)] bg-[var(--surface)] ${s.color} shadow-[2px_2px_0] group-hover:rotate-3 transition-transform`}>
+                                            <s.icon size={18} strokeWidth={2.5} />
+                                        </div>
+                                        <div className="font-display text-2xl font-black tabular-nums">{s.value}</div>
                                     </div>
-                                    <div className="min-w-0">
-                                        <div className="font-mono text-[9px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                                            {s.label}
-                                        </div>
-                                        <div className="font-display text-2xl font-bold tabular-nums text-[var(--text)]">
-                                            {s.value}
-                                        </div>
-                                        <div className="truncate font-mono text-[10px] text-[var(--muted)]">{s.hint}</div>
+                                    <div className="font-mono text-[9px] font-black uppercase tracking-widest text-[var(--muted)] mt-auto">
+                                        {s.label}
                                     </div>
                                 </div>
                             ))}
@@ -909,158 +967,75 @@ export default function VaultPage() {
                     )}
                 </section>
 
-                <div className="paper-card-sm mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 font-mono text-[10px] text-[var(--muted)] md:px-5">
-                    <span className="font-black uppercase tracking-[0.15em] text-[var(--text)]/70">Mastery</span>
-                    <span className="hidden h-4 w-px bg-[var(--border)] sm:block" aria-hidden />
-                    {Object.entries(MASTERY_CONFIG).map(([key, config]) => (
-                        <div
-                            key={key}
-                            className="flex items-center gap-1.5 transition-opacity hover:opacity-100"
-                            title={MASTERY_DESCRIPTIONS[key as MasteryState]}
-                        >
-                            <span className={`h-2 w-2 rounded-full ${config.dot}`} />
-                            <span className="text-[var(--text)]">{config.label}</span>
-                        </div>
-                    ))}
-                    <div className="flex items-center gap-1.5 border-l border-[var(--border)] pl-4">
-                        <span className={`h-2 w-2 rounded-full ${DEFAULT_MASTERY.dot}`} />
-                        <span className="text-[var(--text)]">{DEFAULT_MASTERY.label}</span>
-                    </div>
-                </div>
-
-                {}
-                {hasAnyConcepts && (
-                    <div className="paper-card-sm mb-8 flex flex-col gap-4 p-3 sm:p-4">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="flex w-full max-w-md items-center gap-0.5 border border-[var(--border)] bg-[var(--bg)] p-1 font-mono">
-                                {['all', 'needs_work', 'solid'].map((t) => {
-                                    const count = t === 'all'
-                                        ? nodes.length
-                                        : nodes.filter(n => t === 'needs_work'
-                                            ? ['shaky', 'revisit'].includes(n.current_mastery || '')
-                                            : n.current_mastery === 'solid'
-                                        ).length;
-
-                                    return (
-                                        <button
-                                            key={t}
-                                            type="button"
-                                            onClick={() => setTab(t as Tab)}
-                                            className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors sm:text-[13px] ${tab === t ? 'bg-[var(--accent)] text-[var(--surface)] shadow-[var(--shadow-hard-sm)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
-                                            style={{ borderRadius: '2px' }}
-                                        >
-                                            <span>{t === 'all' ? 'All' : t === 'needs_work' ? 'Needs work' : 'Solid'}</span>
-                                            <span className={`min-w-[1.25rem] px-1.5 py-0.5 text-center font-mono text-[10px] tabular-nums ${tab === t ? 'bg-black/10 text-[var(--surface)]' : 'bg-[var(--surface)] text-[var(--muted)]'}`}>
-                                                {count}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <div className="relative flex flex-wrap items-center gap-2">
+                {/* Controls & Filters Area */}
+                <div className="sticky top-0 z-[60] py-4 bg-[var(--bg)]/80 backdrop-blur-md mb-8 border-b-2 border-dashed border-[var(--border)]">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-center p-1 border-2 border-[var(--border)] bg-[var(--surface-raised)] shadow-[2px_2px_0px_var(--border)]">
+                            {['all', 'needs_work', 'solid'].map((t) => (
                                 <button
-                                    type="button"
-                                    onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                    className={`flex h-10 items-center gap-2 border-2 px-3 font-mono text-xs font-bold uppercase tracking-wide transition-colors ${hasActiveFilters || isFilterOpen
-                                        ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
-                                        : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:border-[var(--accent)]'
-                                        }`}
-                                    style={{ borderRadius: '3px' }}
+                                    key={t}
+                                    onClick={() => setTab(t as Tab)}
+                                    className={`px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${tab === t ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)]'}`}
                                 >
-                                    <Filter size={14} strokeWidth={2} />
-                                    Filter {hasActiveFilters && <span className="flex h-5 min-w-[1.25rem] items-center justify-center bg-[var(--accent)] px-1 font-mono text-[10px] text-white">{selectedMasteries.length + selectedSources.length}</span>}
+                                    {t.replace('_', ' ')}
                                 </button>
-
-                                {isFilterOpen && (
-                                    <div className="absolute top-full right-0 mt-2 w-64 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-xl z-50 p-4">
-                                        <div className="mb-4">
-                                            <h4 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-2">Mastery</h4>
-                                            <div className="space-y-1">
-                                                {(['solid', 'developing', 'shaky', 'revisit'] as MasteryState[]).map(m => (
-                                                    <label key={m} className="flex items-center gap-2 text-sm text-[var(--text)] cursor-pointer hover:bg-[var(--bg)] p-1.5 rounded">
-                                                        <input type="checkbox" checked={selectedMasteries.includes(m)} onChange={() => toggleMasteryFilter(m)} className="accent-[var(--accent)] rounded" />
-                                                        <span className="capitalize">{m}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h4 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-2">Source</h4>
-                                            <div className="space-y-1">
-                                                {['session', 'flashcard_generation', 'quiz', 'feynman', 'tutor'].map(s => (
-                                                    <label key={s} className="flex items-center gap-2 text-sm text-[var(--text)] cursor-pointer hover:bg-[var(--bg)] p-1.5 rounded">
-                                                        <input type="checkbox" checked={selectedSources.includes(s)} onChange={() => toggleSourceFilter(s)} className="accent-[var(--accent)] rounded" />
-                                                        <span className="capitalize">{s}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        {hasActiveFilters && (
-                                            <button onClick={clearFilters} className="w-full mt-4 py-1.5 text-sm text-[var(--muted)] hover:text-[var(--text)] border border-[var(--border)] rounded-lg transition-colors">
-                                                Clear Filters
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-
-                                <select
-                                    value={sort}
-                                    onChange={(e) => setSort(e.target.value as SortOption)}
-                                    className="h-10 border-2 border-[var(--border)] bg-[var(--surface)] px-3 font-mono text-xs text-[var(--text)] outline-none transition-colors focus:border-[var(--accent)]"
-                                    style={{ borderRadius: '3px' }}
-                                >
-                                    <option value="last_seen">Recently seen</option>
-                                    <option value="alpha">Alphabetical</option>
-                                    <option value="mastery">By mastery</option>
-                                </select>
-                                <div className="flex border-2 border-[var(--border)]" style={{ borderRadius: '3px' }}>
-                                    <button
-                                        type="button"
-                                        title="Grouped by pillar"
-                                        onClick={() => setHierarchyMode('hierarchical')}
-                                        className={`flex h-10 w-10 items-center justify-center transition-colors ${hierarchyMode === 'hierarchical' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'}`}
-                                    >
-                                        <FolderTree size={16} strokeWidth={2} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        title="Flat list"
-                                        onClick={() => setHierarchyMode('flat')}
-                                        className={`flex h-10 w-10 items-center justify-center border-l-2 border-[var(--border)] transition-colors ${hierarchyMode === 'flat' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'}`}
-                                    >
-                                        <LayoutList size={16} strokeWidth={2} />
-                                    </button>
-                                </div>
-                            </div>
+                            ))}
                         </div>
 
-                        {}
-                        {hasActiveFilters && (
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-medium text-[var(--muted)]">Active Filters:</span>
-                                {selectedMasteries.map(m => (
-                                    <span key={m} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] dark:text-[var(--accent-light)] border border-[var(--accent)]/20 text-xs font-medium capitalize">
-                                        {m}
-                                        <button onClick={() => toggleMasteryFilter(m)} className="hover:text-red-500 transition-colors">
-                                            <X size={12} />
-                                        </button>
-                                    </span>
-                                ))}
-                                {selectedSources.map(s => (
-                                    <span key={s} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] dark:text-[var(--accent-light)] border border-[var(--accent)]/20 text-xs font-medium capitalize">
-                                        Source: {s}
-                                        <button onClick={() => toggleSourceFilter(s)} className="hover:text-red-500 transition-colors">
-                                            <X size={12} />
-                                        </button>
-                                    </span>
-                                ))}
-                                <button onClick={clearFilters} className="text-xs text-[var(--muted)] hover:text-[var(--text)] underline ml-2">
-                                    Clear all
+                        <div className="flex items-center gap-3">
+                             <button
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className={`flex items-center gap-2 px-4 h-10 border-2 font-mono text-[10px] font-black uppercase tracking-widest transition-all ${hasActiveFilters || isFilterOpen ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg)]'}`}
+                            >
+                                <Filter size={14} />
+                                Filters {hasActiveFilters && <span className="ml-1 bg-white text-[var(--accent)] px-1">{selectedMasteries.length + selectedSources.length}</span>}
+                            </button>
+
+                            <div className="flex border-2 border-[var(--border)] bg-[var(--surface-raised)] p-0.5">
+                                <button
+                                    onClick={() => setHierarchyMode('hierarchical')}
+                                    className={`p-1.5 ${hierarchyMode === 'hierarchical' ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                >
+                                    <FolderTree size={16} />
+                                </button>
+                                <button
+                                    onClick={() => setHierarchyMode('flat')}
+                                    className={`p-1.5 ${hierarchyMode === 'flat' ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                >
+                                    <LayoutList size={16} />
                                 </button>
                             </div>
-                        )}
+
+                            <select
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value as SortOption)}
+                                className="h-10 border-2 border-[var(--border)] bg-[var(--surface)] px-4 font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                            >
+                                <option value="last_seen">Chronology</option>
+                                <option value="alpha">Lexical</option>
+                                <option value="mastery">Authority</option>
+                            </select>
+                        </div>
                     </div>
-                )}
+                    
+                    {/* Active Filters Bar */}
+                    {hasActiveFilters && (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                             <span className="font-mono text-[9px] font-black uppercase tracking-widest text-[var(--muted)] mr-2">Active Spec:</span>
+                             {selectedMasteries.map(m => (
+                                <button key={m} onClick={() => toggleMasteryFilter(m)} className="flex items-center gap-2 px-3 py-1 bg-[var(--accent)]/[0.08] border border-[var(--accent)]/30 text-[var(--accent)] text-[9px] font-black uppercase tracking-widest rounded-full hover:bg-[var(--accent)]/20">
+                                    {m} <X size={10} />
+                                </button>
+                             ))}
+                             {selectedSources.map(s => (
+                                <button key={s} onClick={() => toggleSourceFilter(s)} className="flex items-center gap-2 px-3 py-1 bg-[var(--accent)]/[0.08] border border-[var(--accent)]/30 text-[var(--accent)] text-[9px] font-black uppercase tracking-widest rounded-full hover:bg-[var(--accent)]/20">
+                                    Source: {s} <X size={10} />
+                                </button>
+                             ))}
+                             <button onClick={clearFilters} className="text-[9px] font-black text-[var(--muted)] uppercase hover:text-red-600 transition-colors ml-2">Clear Selection</button>
+                        </div>
+                    )}
+                </div>
 
                 {}
                 {studySets.length > 0 && !search && tab === 'all' && hierarchyMode === 'hierarchical' && (
@@ -1094,93 +1069,93 @@ export default function VaultPage() {
                     </div>
                 )}
 
-                {}
+                {/* --- Results Section --- */}
                 {!loading && hasAnyConcepts && (
-                    <div className="space-y-6">
+                    <div className="space-y-12 min-h-[400px]">
                         {filteredNodes.length === 0 ? (
-                            <div className="border-2 border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-20 text-center">
-                                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard-sm)]">
-                                    <Archive size={28} strokeWidth={2} />
+                            <div className="border-4 border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-24 text-center shadow-[var(--shadow-hard-sm)]">
+                                <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center border-4 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard)] hover:rotate-6 transition-transform">
+                                    <Search size={40} strokeWidth={3} />
                                 </div>
-                                <h3 className="font-display text-xl font-bold text-[var(--text)] mb-2">No concepts match</h3>
-                                <p className="mx-auto max-w-sm font-mono text-sm leading-relaxed text-[var(--muted)]">
-                                    {tab === 'solid' ? "Keep reviewing — your first solid concept is closer than you think." :
-                                     tab === 'needs_work' ? "Great job, all concepts are looking solid." :
-                                     search ? `No results for "${search}".` :
-                                     "Try adjusting your filters to find what you're looking for."}
+                                <h3 className="font-display text-2xl font-black text-[var(--text)] mb-3">No matching specs found</h3>
+                                <p className="mx-auto max-w-sm font-mono text-xs leading-relaxed text-[var(--muted)] uppercase tracking-widest font-black">
+                                    Try adjusting your architectural filters or search query to find specific nodes in your catalog.
                                 </p>
-                                {(tab !== 'all' || search !== '') && (
-                                    <button
-                                        type="button"
-                                        onClick={() => { setTab('all'); setSearch(''); }}
-                                        className="btn-secondary mx-auto mt-6"
-                                    >
-                                        Clear filters
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => { setTab('all'); setSearch(''); clearFilters(); }}
+                                    className="mt-10 px-8 py-3 bg-[var(--border)] text-[var(--bg)] font-black uppercase tracking-[0.2em] text-[10px] hover:bg-[var(--accent)] hover:text-white transition-all shadow-[var(--shadow-hard-sm)]"
+                                >
+                                    Reset Schema
+                                </button>
                             </div>
                         ) : hierarchyMode === 'hierarchical' ? (
-                            <>
-                                {hierarchy.grouped.map(({ category, parentGroups, totalNodes, progress, stats }) => {
+                            <div className="space-y-10">
+                                {/* Grouped by Category/Pillar */}
+                                {hierarchy?.grouped.map(({ category, parentGroups, totalNodes, progress, stats }) => {
                                     const isCollapsed = search ? false : collapsedCategories.has(category.id);
+                                    const hasNeedsWork = stats.shaky > 0 || stats.revisit > 0;
+
                                     return (
-                                        <div key={category.id} className="overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard)]">
+                                        <div
+                                            key={category.id}
+                                            className={`group overflow-hidden border-2 bg-[var(--surface)] shadow-[var(--shadow-hard)] transition-all duration-300 ${hasNeedsWork ? 'border-[var(--accent)]/40' : 'border-[var(--border)]'}`}
+                                        >
                                             {/* Category Header */}
                                             <div
                                                 onClick={() => toggleCategory(category.id)}
                                                 onDragOver={(e) => handleDragOver(e, category.id)}
                                                 onDragLeave={handleDragLeave}
                                                 onDrop={(e) => handleDrop(e, category.id, 'category')}
-                                                className={`group flex cursor-pointer items-center justify-between border-b-2 border-[var(--border)] px-5 py-4 transition-colors hover:bg-[var(--bg)] ${dropTargetId === category.id ? 'bg-[var(--accent-soft)] ring-2 ring-inset ring-[var(--accent)]' : ''}`}
+                                                className={`flex cursor-pointer items-center justify-between border-b-2 border-[var(--border)] px-5 py-5 transition-colors hover:bg-[var(--bg)] ${dropTargetId === category.id ? 'bg-[var(--accent-soft)]' : ''}`}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <div
-                                                        onClick={(e) => {
-                                                            const categoryNodes = parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]);
-                                                            toggleSelection(categoryNodes, e);
-                                                        }}
-                                                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).length > 0 && parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).every((id: string) => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`}
-                                                    >
-                                                        {parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).length > 0 && parentGroups.flatMap((g: any) => [g.parent.id, ...g.subs.map((s: any) => s.id)]).every((id: string) => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
-                                                    </div>
-                                                    {isCollapsed ? <ChevronRight size={18} className="text-[var(--muted)] group-hover:text-[var(--text)] transition-colors" /> : <ChevronDown size={18} className="text-[var(--muted)] group-hover:text-[var(--text)] transition-colors" />}
-                                                    <div className="w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:border-[var(--accent)] transition-colors">
-                                                        <Folder size={14} />
-                                                    </div>
-                                                    <h2 className="font-display text-lg font-bold tracking-tight text-[var(--text)]">{category.name}</h2>
-                                                </div>
                                                 <div className="flex items-center gap-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-16 sm:w-24 h-1.5 bg-[var(--border)] rounded-full overflow-hidden flex">
-                                                            <div className="h-full bg-[#2A5C45]" style={{ width: `${totalNodes > 0 ? (stats.solid / totalNodes) * 100 : 0}%` }} />
-                                                            <div className="h-full bg-[#4A90A4]" style={{ width: `${totalNodes > 0 ? (stats.developing / totalNodes) * 100 : 0}%` }} />
-                                                            <div className="h-full bg-[#B8860B]" style={{ width: `${totalNodes > 0 ? (stats.shaky / totalNodes) * 100 : 0}%` }} />
-                                                            <div className="h-full bg-[#C4541A]" style={{ width: `${totalNodes > 0 ? (stats.revisit / totalNodes) * 100 : 0}%` }} />
-                                                        </div>
-                                                        <span className="text-xs font-medium text-[var(--muted)]">{Math.round(progress)}% Solid</span>
-                                                    </div>
-                                                    <span className="text-sm font-medium text-[var(--muted)] bg-[var(--bg)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
-                                                        {totalNodes} concepts
-                                                    </span>
-                                                    <Link
-                                                        href={`/vault/drill?category=${category.id}`}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="hidden sm:flex h-8 px-3 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] text-xs font-bold items-center gap-1.5 hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors shadow-sm group-hover:bg-[var(--bg)]"
+                                                    <div 
+                                                        className={`hidden sm:flex w-10 h-10 border-2 items-center justify-center transition-all -rotate-3 group-hover:rotate-0 ${hasNeedsWork ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--muted)]'}`}
                                                     >
-                                                        <Brain size={14} />
-                                                        Study
-                                                    </Link>
+                                                        <FolderTree size={18} strokeWidth={2.5} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <h2 className="font-display text-xl font-bold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">{category.name}</h2>
+                                                            {hasNeedsWork && <div className="flex h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse" />}
+                                                        </div>
+                                                        <div className="flex items-center gap-3 font-mono text-[9px] font-black uppercase tracking-widest text-[var(--muted)]">
+                                                            <span>{totalNodes} CONCEPTS</span>
+                                                            <span className="w-1 h-1 rounded-full bg-[var(--border)] opacity-30" />
+                                                            <span className="text-[var(--accent)]">{Math.round(progress)}% Mastery</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-4">
+                                                    <div className="hidden lg:flex flex-col items-end gap-1 min-w-[120px]">
+                                                        <div className="w-full h-1.5 bg-[var(--border)] rounded-full overflow-hidden flex shadow-inner">
+                                                            <div className="h-full bg-[var(--accent)]" style={{ width: `${totalNodes > 0 ? (stats.solid / totalNodes) * 100 : 0}%` }} />
+                                                            <div className="h-full bg-[#3b82f6]" style={{ width: `${totalNodes > 0 ? (stats.developing / totalNodes) * 100 : 0}%` }} />
+                                                            <div className="h-full bg-[#f59e0b]" style={{ width: `${totalNodes > 0 ? (stats.shaky / totalNodes) * 100 : 0}%` }} />
+                                                            <div className="h-full bg-[#ef4444]" style={{ width: `${totalNodes > 0 ? (stats.revisit / totalNodes) * 100 : 0}%` }} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Link
+                                                            href={`/vault/drill?category=${category.id}`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="hidden sm:flex h-9 px-4 items-center gap-2 bg-[var(--surface-raised)] border-2 border-[var(--border)] text-[10px] font-black uppercase tracking-widest text-[var(--text)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] shadow-[var(--shadow-hard-sm)] hover:-translate-y-0.5 transition-all"
+                                                        >
+                                                            <Zap size={14} />
+                                                            Drill
+                                                        </Link>
+                                                        <div className="p-1 text-[var(--muted)] group-hover:text-[var(--text)] transition-colors border-2 border-transparent group-hover:border-[var(--border)]">
+                                                            {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {/* Sub-node List (Hierarchical) */}
+                                            {/* Nested Nodes List */}
                                             {!isCollapsed && (
-                                                <div
-                                                    onDragOver={(e) => handleDragOver(e, category.id)}
-                                                    onDragLeave={handleDragLeave}
-                                                    onDrop={(e) => handleDrop(e, category.id, 'category')}
-                                                    className={`dot-grid-bg min-h-[40px] border-t-2 border-[var(--border)] bg-[var(--bg)] p-4 transition-colors ${dropTargetId === category.id ? 'bg-[var(--accent-soft)]' : ''}`}
-                                                >
+                                                <div className="p-6 bg-[var(--bg)] dot-grid-bg">
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                                         {parentGroups.map((group: any) => renderParentNode(group))}
                                                     </div>
@@ -1190,71 +1165,37 @@ export default function VaultPage() {
                                     );
                                 })}
 
-
-                                {}
-                                {(hierarchy?.uncategorizedGroups.length > 0 || hierarchy?.orphans.length > 0 || (hierarchy?.subjectGroups && hierarchy.subjectGroups.length > 0)) && (
-                                    <div className="overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard)]">
-                                        <div
-                                            onDragOver={(e) => handleDragOver(e, 'other')}
-                                            onDragLeave={handleDragLeave}
-                                            onDrop={(e) => handleDrop(e, 'other', 'category')}
-                                            className={`flex items-center justify-between border-b-2 border-[var(--border)] bg-[var(--bg)] px-5 py-4 transition-colors ${dropTargetId === 'other' ? 'bg-[var(--accent-soft)] ring-2 ring-inset ring-[var(--accent)]' : ''}`}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div
-                                                    onClick={(e) => { e.stopPropagation(); toggleSelection([...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)], e); }}
-                                                    className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mr-1 cursor-pointer transition-colors ${[...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].length > 0 && [...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].every(id => selectedNodeIds.has(id)) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]'}`}
-                                                >
-                                                    {[...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].length > 0 && [...(hierarchy?.uncategorizedGroups || []).flatMap(g => [g.parent.id, ...g.subs.map(s => s.id)]), ...(hierarchy?.orphans || []).map(o => o.id)].every(id => selectedNodeIds.has(id)) && <Check size={12} className="text-white" strokeWidth={3} />}
-                                                </div>
-                                                <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
-                                                    <Layers size={14} />
-                                                </div>
-
+                                {/* Standalones & Orphans Area */}
+                                {(hierarchy?.uncategorizedGroups.length > 0 || hierarchy?.orphans.length > 0) && (
+                                    <div className="border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard-sm)]">
+                                        <div className="flex items-center gap-3 px-6 py-5 border-b-2 border-[var(--border)] bg-[var(--bg)]">
+                                            <div className="p-2 border-2 border-[var(--border)] bg-[var(--surface)] text-[var(--muted)]">
+                                                <Box size={16} />
                                             </div>
+                                            <h2 className="font-display text-lg font-black tracking-tight text-[var(--text)] uppercase">Uncategorized Nodes</h2>
+                                            <span className="font-mono text-[9px] font-black uppercase tracking-widest text-[var(--muted)] ml-auto">
+                                                {hierarchy.uncategorizedGroups.length + hierarchy.orphans.length} STANDALONE
+                                            </span>
                                         </div>
-                                        <div className="p-4 space-y-8">
-                                            {hierarchy?.subjectGroups && hierarchy.subjectGroups.map(subject => (
-                                                <div key={subject.name} className="space-y-4">
-                                                    <div className="flex items-center justify-between px-1">
-                                                        <h3 className="text-sm font-medium text-[var(--muted)]">{subject.name}</h3>
-                                                        <span className="text-[10px] font-bold text-[var(--muted)]/50 uppercase tracking-widest">{subject.totalNodes} concepts</span>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                        {subject.items.map((group: any) => renderParentNode(group))}
-                                                    </div>
-                                                </div>
-                                            ))}
-
-                                            {hierarchy?.uncategorizedGroups.length > 0 && (
-                                                <div className="space-y-4">
-                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                        {hierarchy.uncategorizedGroups.map((group: any) => renderParentNode(group))}
-                                                    </div>
+                                        <div className="p-6 space-y-8 bg-[var(--bg)] dot-grid-bg">
+                                            {hierarchy.uncategorizedGroups.length > 0 && (
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                    {hierarchy.uncategorizedGroups.map((group: any) => renderParentNode(group))}
                                                 </div>
                                             )}
-
-                                            {hierarchy?.orphans.length > 0 && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {hierarchy.orphans.length > 0 && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                                     {hierarchy.orphans.map(node => (
                                                         <div
                                                             key={node.id}
                                                             onClick={(e) => toggleSelection([node.id], e)}
-                                                            draggable
-                                                            onDragStart={(e) => handleDragStart(e, node.id)}
-                                                            onDragEnd={handleDragEnd}
-                                                            onDragOver={(e) => { e.stopPropagation(); handleDragOver(e, node.id); }}
-                                                            onDragLeave={handleDragLeave}
-                                                            onDrop={(e) => { e.stopPropagation(); handleDrop(e, node.id, 'concept'); }}
-                                                            className={`flex items-center px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--accent)]/[0.03] transition-all cursor-pointer group relative ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)]/[0.03] border-[var(--accent)]/30' : ''} ${draggedNodeId === node.id ? 'opacity-40' : ''} ${dropTargetId === node.id ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset z-10' : ''}`}
+                                                            className={`group flex items-center gap-3 px-4 py-3 border-2 transition-all cursor-pointer ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent-soft)] border-[var(--accent)] shadow-[var(--shadow-hard-sm)] scale-[1.02]' : 'bg-[var(--surface)] border-[var(--border)] hover:border-[var(--muted)] hover:shadow-[var(--shadow-hard-sm)]'}`}
                                                         >
-                                                            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 mr-3 cursor-pointer transition-colors ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--bg)] group-hover:border-[var(--accent)]'}`} onClick={(e) => toggleSelection([node.id], e)}>
+                                                            <div className={`w-4 h-4 border-2 flex items-center justify-center transition-colors ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] group-hover:border-[var(--accent)]'}`}>
                                                                 {selectedNodeIds.has(node.id) && <Check size={10} className="text-white" strokeWidth={3} />}
                                                             </div>
-                                                            <Tooltip content={MASTERY_DESCRIPTIONS[node.current_mastery as MasteryState] || 'Not studied yet'}>
-                                                                <MasteryDot state={node.current_mastery} size={8} className="mr-2.5 cursor-help" />
-                                                            </Tooltip>
-                                                            <span className="text-sm font-medium text-[var(--text)] truncate flex-1">{node.display_name}</span>
+                                                            <MasteryDot state={node.current_mastery} size={8} />
+                                                            <span className="text-[13px] font-bold text-[var(--text)] truncate flex-1">{node.display_name}</span>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -1262,25 +1203,32 @@ export default function VaultPage() {
                                         </div>
                                     </div>
                                 )}
-                            </>
+                            </div>
                         ) : (
-                            <div className="divide-y-2 divide-[var(--border)] overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard)] stagger-children">
+                            /* Flat Grid View */
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {filteredNodes.map((node) => (
                                     <div
                                         key={node.id}
                                         onClick={(e) => toggleSelection([node.id], e)}
-                                        className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-black/[0.02] transition-colors cursor-pointer group card-hover text-left"
+                                        className={`group relative flex flex-col p-5 border-2 transition-all cursor-pointer ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent-soft)] border-[var(--accent)] shadow-[var(--shadow-hard-sm)] translate-x-1 translate-y-1' : 'bg-[var(--surface)] border-[var(--border)] hover:bg-[var(--bg)] hover:shadow-[var(--shadow-hard-sm)]'}`}
                                     >
-                                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] bg-[var(--surface)] group-hover:border-[var(--accent)]'}`} onClick={(e) => toggleSelection([node.id], e)}>
-                                            {selectedNodeIds.has(node.id) && <Check size={12} className="text-white" strokeWidth={3} />}
+                                        <div className="flex items-center justify-between mb-6">
+                                            <div className={`p-1.5 border-2 ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] text-[var(--muted)]'}`}>
+                                                <Layers size={14} />
+                                            </div>
+                                            <div className={`w-5 h-5 border-2 flex items-center justify-center transition-colors ${selectedNodeIds.has(node.id) ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--border)] group-hover:border-[var(--accent)]'}`}>
+                                                {selectedNodeIds.has(node.id) && <Check size={12} className="text-white" strokeWidth={4} />}
+                                            </div>
                                         </div>
-                                        <MasteryDot state={node.current_mastery} size={9} />
-                                        <span className="flex-1 min-w-0">
-                                            <span className="text-[15px] font-medium text-[var(--text)] truncate block">
-                                                {node.display_name}
-                                            </span>
-                                            {node.is_sub_concept && <span className="text-[11px] text-[var(--muted)]">Sub-concept</span>}
-                                        </span>
+                                        <h3 className="text-base font-black text-[var(--text)] leading-tight mb-2 tracking-tight group-hover:text-[var(--accent)] transition-colors">{node.display_name}</h3>
+                                        <div className="mt-auto pt-4 flex items-center justify-between border-t border-dashed border-[var(--border)]">
+                                            <div className="flex items-center gap-2">
+                                                <MasteryDot state={node.current_mastery} size={7} />
+                                                <span className="font-mono text-[8px] font-black uppercase tracking-widest text-[var(--muted)]">{(node.current_mastery || 'NEW')}</span>
+                                            </div>
+                                            <ChevronRight size={14} className="text-[var(--border)] group-hover:text-[var(--accent)] transition-all group-hover:translate-x-1" />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1288,26 +1236,23 @@ export default function VaultPage() {
                     </div>
                 )}
 
-                {}
+                {/* Empty State Fallback */}
                 {!loading && !hasAnyConcepts && (
-                    <div className="border-2 border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center shadow-[var(--shadow-hard-sm)]">
-                        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard)]">
-                            <Brain size={36} strokeWidth={1.75} />
+                    <div className="border-4 border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-24 text-center shadow-[var(--shadow-hard)]">
+                        <div className="mx-auto mb-10 flex h-28 w-28 items-center justify-center border-4 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard-lg)] animate-bounce-slow">
+                            <Brain size={48} strokeWidth={1.5} />
                         </div>
-                        <p className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">Concept vault</p>
-
-                        <p className="mx-auto mt-3 max-w-md font-mono text-sm leading-relaxed text-[var(--muted)]">
-                            Run a reflection session or paste a link on the dashboard. Concepts you extract will land here, with mastery tracked over time.
+                        <h2 className="font-display text-4xl font-black text-[var(--text)] mb-4 tracking-tight">Vault Initialized but <span className="text-[var(--accent)]">Vacant</span></h2>
+                        <p className="mx-auto max-w-lg font-mono text-sm leading-relaxed text-[var(--muted)] italic mb-10">
+                            &quot;The catalog is ready to record your conceptual breakthroughs. Process your first session to populate the vault.&quot;
                         </p>
-                        <Link href="/" className="btn-primary mt-8 inline-flex gap-2">
-                            <Zap size={18} strokeWidth={2.5} />
-                            Start learning
+                        <Link href="/" className="btn-primary inline-flex h-14 px-10 items-center gap-3 font-black uppercase tracking-[0.2em] text-sm shadow-[var(--shadow-hard)] hover:shadow-[var(--shadow-hard-lg)] hover:-translate-y-1 active:translate-y-0 transition-all">
+                            <Zap size={20} strokeWidth={2.5} />
+                            Deploy First Analysis
                         </Link>
                     </div>
                 )}
             </div>
-
-            {}
             <div
                 className={`fixed bottom-0 left-0 right-0 md:left-64 bg-[var(--surface)] border-t border-[var(--border)] shadow-[var(--shadow-premium)] p-4 flex items-center justify-between transition-transform duration-300 z-50 glass sm:px-8
                 ${selectedNodeIds.size > 0 ? 'translate-y-0' : 'translate-y-full'}`}

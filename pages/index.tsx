@@ -135,8 +135,12 @@ export default function Home() {
 
                 // Map flow sessions
                 const flowMapped: any[] = (flowHistoryRes?.data || []).map((s: any) => {
+                    const planConcepts = (s.initial_plan as any)?.concepts || [];
+                    const totalCount = Math.max(1, planConcepts.length || 5);
                     const completedCount = s.concepts_completed?.length || 0;
-                    const totalCount = (s.initial_plan as any)?.concepts?.length || 5;
+                    const inProgressCount = (s as any).concepts_in_progress?.length || 0;
+                    const remaining = Math.max(0, totalCount - completedCount - inProgressCount);
+
                     const title = s.curriculum?.title || s.reflection_session?.title || 'Continuous Flow';
                     
                     return {
@@ -145,12 +149,12 @@ export default function Home() {
                         type: 'flow',
                         date: s.created_at ? formatDistanceToNow(new Date(s.created_at), { addSuffix: true }) : 'Recent',
                         mastery: {
-                            solid: Math.round((completedCount / (totalCount || 1)) * 100),
-                            developing: 0,
+                            solid: Math.round((completedCount / totalCount) * 100),
+                            developing: Math.round((inProgressCount / totalCount) * 100),
                             shaky: 0,
-                            revisit: 0
+                            revisit: Math.round((remaining / totalCount) * 100)
                         },
-                        gaps: 0,
+                        gaps: remaining,
                         materials: ['tutor'],
                         rawDate: new Date(s.created_at || 0),
                         sourceType: s.source_type,

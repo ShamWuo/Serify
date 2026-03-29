@@ -88,9 +88,15 @@ export default function LandingPage() {
             { }
             <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg)]/80 backdrop-blur-xl border-b-2 border-[var(--border)] w-full transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <Link href="/" className="text-xl font-display font-bold tracking-tight text-[var(--text)] group flex items-center gap-2">
-                        <div className="w-8 h-8 bg-[var(--accent)] flex items-center justify-center rounded-sm rotate-3 group-hover:rotate-0 transition-transform">
-                            <span className="text-[var(--bg)] text-lg">S</span>
+                    <Link href="/" className="text-xl font-display font-bold tracking-tight text-[var(--text)] group flex items-center gap-2.5">
+                        <div className="w-9 h-9 bg-[var(--surface-raised)] flex items-center justify-center border-2 border-[var(--border)] rotate-3 group-hover:rotate-0 transition-all duration-300 p-1.5" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                            <Image 
+                                src="/logo.png" 
+                                alt="Serify Logo" 
+                                width={36}
+                                height={36}
+                                className="w-full h-full object-contain"
+                            />
                         </div>
                         <span className="group-hover:translate-x-1 transition-transform">Serify</span>
                     </Link>
@@ -122,30 +128,34 @@ export default function LandingPage() {
                 {/* Premium Hero Background - High Quality Assets */}
                 <div className="absolute inset-0 z-0 select-none pointer-events-none w-full overflow-hidden">
                     {/* Dark Mode Video */}
-                    <video
-                        ref={darkVideoRef}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${mounted && isDark ? 'opacity-70' : 'opacity-0'}`}
-                        style={{ maxWidth: '100%', width: '100vw' }}
-                    >
-                        <source src="/LandingHeroDark.mp4" type="video/mp4" />
-                    </video>
+                    {mounted && isDark && (
+                        <video
+                            ref={darkVideoRef}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover opacity-70 transition-opacity duration-1000"
+                            style={{ maxWidth: '100%', width: '100vw' }}
+                        >
+                            <source src="/LandingHeroDark.mp4" type="video/mp4" />
+                        </video>
+                    )}
                     
                     {/* Light Mode Video */}
-                    <video
-                        ref={lightVideoRef}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${mounted && !isDark ? 'opacity-90 grayscale-[5%]' : 'opacity-0'}`}
-                        style={{ maxWidth: '100%', width: '100vw' }}
-                    >
-                        <source src="/LandingHeroLight.mp4" type="video/mp4" />
-                    </video>
+                    {mounted && !isDark && (
+                        <video
+                            ref={lightVideoRef}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            className="absolute inset-0 w-full h-full object-cover opacity-90 grayscale-[5%] transition-opacity duration-1000"
+                            style={{ maxWidth: '100%', width: '100vw' }}
+                        >
+                            <source src="/LandingHeroLight.mp4" type="video/mp4" />
+                        </video>
+                    )}
 
                     {/* Premium Organic Overlays */}
                     <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)]/40 via-transparent to-[var(--bg)]" />
@@ -156,17 +166,17 @@ export default function LandingPage() {
                     <div className="max-w-4xl mx-auto space-y-8">
                         { }
                         <div className="flex flex-col items-center gap-6 animate-fade-in">
-                            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-display font-black leading-[0.9] tracking-tight text-[var(--text)] stagger-item">
-                                Master Any <br />
+                            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-display font-black leading-[0.9] tracking-tight text-[var(--text)] shadow-sm">
+                                Master Any<br />
                                 <span className="text-[var(--accent)] italic">Subject.</span>
                             </h1>
                         </div>
 
-                        <div className="max-w-3xl mx-auto px-6 py-4 bg-[var(--bg)]/40 backdrop-blur-sm border-y border-[var(--border)]/10 animate-fade-in" style={{ animationDelay: '200ms' }}>
-                            <p className="text-xl sm:text-2xl md:text-3xl text-[var(--text)] font-mono tracking-tight leading-relaxed">
+                        <div className="max-w-3xl mx-auto px-8 py-6 bg-[var(--bg)]/60 backdrop-blur-md border border-[var(--border)]/20 shadow-xl animate-fade-in" style={{ animationDelay: '200ms', borderRadius: '4px' }}>
+                            <p className="text-xl sm:text-2xl md:text-3xl text-[var(--text)] font-display font-bold tracking-tight leading-relaxed">
                                 Serify targets the{' '}
                                 <span className="relative inline-block group">
-                                    <span className="relative z-10 text-[var(--accent)] font-bold italic underline border-b-2 border-dashed border-[var(--accent)] underline-offset-4">illusion of competence</span>
+                                    <span className="relative z-10 text-[var(--accent)] italic underline decoration-dashed decoration-2 underline-offset-8">illusion of competence</span>
                                 </span>{' '}
                                 using AI-driven cognitive analysis.
                             </p>
@@ -176,8 +186,8 @@ export default function LandingPage() {
                              <Link href="/signup" className="group relative px-12 py-5 bg-[var(--text)] text-[var(--bg)] rounded-sm text-xl font-display font-black hover:translate-x-[-4px] hover:translate-y-[-4px] transition-all duration-200 shadow-[var(--shadow-hard-sm)] hover:shadow-[var(--shadow-hard)]">
                                 Start Mastery Session
                             </Link>
-                            <Link href="/?demo=true" className="px-10 py-4 bg-[var(--bg)]/90 backdrop-blur-md border-2 border-[var(--border)] text-[var(--text)] rounded-sm text-lg font-display font-bold hover:bg-[var(--surface-raised)] transition-all flex items-center gap-2 group shadow-[var(--shadow-hard-sm)]">
-                                Watch Flow Demo <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                            <Link href="/?demo=true" className="px-10 py-5 bg-[var(--surface)] border-2 border-[var(--border)] text-[var(--text)] rounded-sm text-xl font-display font-bold hover:bg-[var(--surface-raised)] transition-all flex items-center gap-2 group shadow-[var(--shadow-hard-sm)] hover:border-[var(--accent)]">
+                                Watch Flow Demo <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform text-[var(--accent)]" />
                             </Link>
                         </div>
 
@@ -621,7 +631,7 @@ export default function LandingPage() {
                             </h2>
                             
                             <p className="text-lg md:text-xl text-[var(--muted)] max-w-lg mb-12 font-mono italic leading-relaxed">
-                                &quot;Serify targets the illusion of competence, moving you from passive reading to cognitive mastery.&quot;
+                                Join thousands of learners using Serify to achieve real mastery.
                             </p>
 
                             <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full sm:w-auto">

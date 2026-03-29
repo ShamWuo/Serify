@@ -225,60 +225,56 @@ export default function PracticeDashboard() {
 
     if (!user && !isLoading) {
         return (
-            <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-                {}
-                <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-                    <div className="absolute top-1/4 -left-20 w-80 h-80 bg-teal-500/10 blur-[100px] rounded-full animate-pulse" />
-                    <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-blue-500/10 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
-                </div>
-
-                <div className="max-w-md w-full bg-white/70 backdrop-blur-xl border border-white/50 rounded-[40px] p-10 md:p-12 shadow-2xl shadow-teal-500/5 text-center space-y-8 animate-fade-in-up relative z-10">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-teal-600 text-white shadow-xl shadow-teal-600/20 rotate-3">
-                        <Brain size={40} />
+            <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-6 relative overflow-hidden font-mono transition-colors duration-500">
+                <div className="absolute inset-0 hatch-bg opacity-[0.03] pointer-events-none" />
+                
+                <div className="max-w-md w-full paper-card p-10 md:p-14 text-center space-y-10 animate-fade-in relative z-10">
+                    <div className="mx-auto w-20 h-20 border-2 border-[var(--ink)] bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center rotate-[8deg] shadow-[var(--shadow-hard-sm)]">
+                        <Brain size={44} />
                     </div>
                     
-                    <div className="space-y-3">
-                        <h1 className="text-3xl font-display text-[var(--text)] tracking-tight">
-                            Master Your <span className="text-teal-600">Knowledge</span>
+                    <div className="space-y-4">
+                        <h1 className="text-4xl font-display font-black text-[var(--text)] leading-tight tracking-tight">
+                            Master Your <br/>
+                            <span className="text-[var(--accent)] italic">Knowledge Base</span>
                         </h1>
-                        <p className="text-[var(--muted)] leading-relaxed">
-                            Practice mode uses Active Recall and AI to turn what you&apos;ve learned into permanent memory.
+                        <p className="text-[13px] text-[var(--muted)] leading-relaxed italic">
+                            &quot;Practice mode uses Active Recall and AI to turn what you&apos;ve learned into permanent memory.&quot;
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 py-4 text-left">
+                    <div className="grid grid-cols-1 gap-4 py-4 text-left border-y-2 border-[var(--border-soft)] border-dashed">
                         {[
                             { icon: Target, text: 'Custom Scenario Practice' },
                             { icon: Sparkles, text: 'AI-Generated Flashcards' },
                             { icon: Activity, text: 'Adaptive Spaced Review' }
                         ].map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/50 border border-white/80">
-                                <item.icon size={18} className="text-teal-600" />
-                                <span className="text-sm font-medium text-[var(--text)]">{item.text}</span>
+                            <div key={idx} className="flex items-center gap-3">
+                                <item.icon size={16} className="text-[var(--accent)]" />
+                                <span className="text-[11px] font-bold text-[var(--text)] uppercase tracking-wider">{item.text}</span>
                             </div>
                         ))}
                     </div>
 
-                    <div className="space-y-4 pt-2">
+                    <div className="space-y-6">
                         <Link 
                             href="/login" 
-                            className="w-full py-4 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-2xl shadow-lg shadow-teal-600/20 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group"
+                            className="btn-primary w-full py-5 text-xl"
                         >
-                            Sign In to Start <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                            Sign In to Start
                         </Link>
                         
                         <Link 
                             href="/" 
-                            className="block text-sm font-medium text-[var(--muted)] hover:text-teal-600 transition-colors"
+                            className="block text-[11px] font-black text-[var(--muted)] uppercase tracking-[0.2em] hover:text-[var(--accent)] transition-all"
                         >
-                            Maybe later, take me back
+                            &larr; Return to Base
                         </Link>
                     </div>
                 </div>
                 
-                {/* Branding Footer */}
-                <div className="mt-8 text-xs font-bold text-teal-600/40 tracking-widest uppercase animate-fade-in" style={{ animationDelay: '500ms' }}>
-                    Serify Practice Engine
+                <div className="mt-12 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.5em] opacity-30">
+                    Serify Practice Engine // Ver 2.5
                 </div>
             </div>
         );

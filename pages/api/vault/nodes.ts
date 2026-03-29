@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin } from '@/lib/supabase';
 import { authenticateApiRequest } from '@/lib/usage';
 
 const MASTERY_ORDER: Record<string, number> = { revisit: 0, shaky: 1, developing: 2, solid: 3, mastered: 4 };
@@ -12,29 +12,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userId = await authenticateApiRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ').pop();
-
-    let client = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
-    // If we have a token and no service key, use the token for RLS
-    if (token && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        client = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                global: { headers: { Authorization: `Bearer ${token}` } }
-            }
-        );
+    if (!supabaseAdmin) {
+        return res.status(500).json({ error: 'Supabase admin client not initialized' });
     }
 
     const { tab = 'all', sort = 'last_seen', topics: topicsParam } = req.query;
 
     try {
-        let query = client.from('knowledge_nodes').select('*').eq('user_id', userId);
+        let query = supabaseAdmin.from('knowledge_nodes').select('*').eq('user_id', userId);
 
         if (topicsParam && typeof topicsParam === 'string') {
             const categoryIds = topicsParam.split(',').filter(Boolean);
@@ -55,76 +40,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             throw error;
         }
 
-        // Filter archived nodes manually if needed or if they were missing from SQL result
         let filteredNodes = (nodes || []).filter(n => n.is_archived !== true);
 
-        // DEMO MOCK DATA: If it's the demo user and vault is empty, provide some quality samples
+        // DEMO MOCK DATA
         if (userId === 'd85252ae-32c2-4a82-a630-46812ed7f5ec' && filteredNodes.length === 0) {
             filteredNodes = [
-                {
-                    id: 'demo-1',
-                    display_name: 'Backpropagation',
-                    current_mastery: 'solid',
-                    last_seen_at: new Date().toISOString(),
-                    session_count: 4,
-                    definition: 'The primary algorithm used for training artificial neural networks by calculating the gradient of the loss function with respect to the weights.'
-                },
-                {
-                    id: 'demo-2',
-                    display_name: 'Stochastic Gradient Descent',
-                    current_mastery: 'developing',
-                    last_seen_at: new Date(Date.now() - 86400000).toISOString(),
-                    session_count: 2,
-                    definition: 'An iterative method for optimizing an objective function with suitable smoothness properties.'
-                },
-                {
-                    id: 'demo-3',
-                    display_name: 'Transformer Architecture',
-                    current_mastery: 'shaky',
-                    last_seen_at: new Date(Date.now() - 172800000).toISOString(),
-                    session_count: 1,
-                    definition: 'A deep learning model that utilizes the mechanism of self-attention, weighing the significance of each part of the input data differently.'
-                },
-                {
-                    id: 'demo-4',
-                    display_name: 'Attention Mechanism',
-                    current_mastery: 'mastered',
-                    last_seen_at: new Date(Date.now() - 432000000).toISOString(),
-                    session_count: 8,
-                    definition: 'A technique that mimics cognitive attention, allowing models to focus on specific parts of the input sequence when generating output.'
-                }
+                { id: 'demo-1', display_name: 'Backpropagation', current_mastery: 'solid', last_seen_at: new Date().toISOString(), session_count: 4, definition: 'Primary algorithm for training NNs.' },
+                { id: 'demo-2', display_name: 'Stochastic Gradient Descent', current_mastery: 'developing', last_seen_at: new Date(Date.now() - 86400000).toISOString(), session_count: 2, definition: 'Iterative optimization method.' },
+                { id: 'demo-3', display_name: 'Transformer Architecture', current_mastery: 'shaky', last_seen_at: new Date(Date.now() - 172800000).toISOString(), session_count: 1, definition: 'Self-attention based model.' },
+                { id: 'demo-4', display_name: 'Attention Mechanism', current_mastery: 'mastered', last_seen_at: new Date(Date.now() - 432000000).toISOString(), session_count: 8, definition: 'Weighting significance of inputs.' }
             ] as any[];
         }
 
-        console.log(
-            `[vault/nodes] userId=${userId} tab=${tab} sort=${sort} found=${filteredNodes.length}`
-        );
-
         const sorted = filteredNodes.sort((a, b) => {
-            if (sort === 'alpha') {
-                return (a.display_name || '').localeCompare(b.display_name || '');
-            } else if (sort === 'session_count') {
-                return (b.session_count || 0) - (a.session_count || 0);
-            } else if (sort === 'mastery') {
-                return (
-                    (MASTERY_ORDER[a.current_mastery] || 0) -
-                    (MASTERY_ORDER[b.current_mastery] || 0)
-                );
-            }
-
-            return (
-                new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime()
-            );
+            if (sort === 'alpha') return (a.display_name || '').localeCompare(b.display_name || '');
+            if (sort === 'session_count') return (b.session_count || 0) - (a.session_count || 0);
+            if (sort === 'mastery') return (MASTERY_ORDER[a.current_mastery] || 0) - (MASTERY_ORDER[b.current_mastery] || 0);
+            return new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime();
         });
 
-        const { data: categories } = await client
+        const { data: categories } = await supabaseAdmin
             .from('vault_categories')
             .select('*')
             .eq('user_id', userId)
-            .order('display_order', { ascending: true })
-            .order('created_at', { ascending: false });
+            .order('display_order', { ascending: true });
 
-        const { data: studySets } = await client
+        const { data: studySets } = await supabaseAdmin
             .from('study_sets')
             .select('*')
             .eq('user_id', userId)
@@ -133,10 +74,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({
             nodes: sorted,
             categories: categories || [],
-            studySets: studySets || []
+            studySets: studySets || [],
+            debug: { rawNodes: nodes?.length || 0, filtered: filteredNodes.length, userId }
         });
     } catch (error: any) {
         console.error('Error fetching vault nodes:', error);
         return res.status(500).json({ error: error.message || 'Internal server error' });
     }
 }
+

@@ -3,16 +3,35 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FeatureName, UsageCheckResult, incrementUsage } from '@/lib/usage';
 
 export function useUsage(feature?: FeatureName) {
-    const { token, user } = useAuth();
-    const [loading, setLoading] = useState(true);
+    const { token, user, refreshUsage: refreshGlobalUsage } = useAuth();
+    const [loading, setLoading] = useState(!user);
     const [usage, setUsage] = useState<UsageCheckResult | null>(null);
-    const [allUsage, setAllUsage] = useState<any>(null);
+    const [allUsage, setAllUsage] = useState<any>(user ? {
+        tokensUsed: user.tokensUsed,
+        monthlyLimit: user.monthlyLimit,
+        percentUsed: user.percentUsed,
+        plan: user.plan
+    } : null);
 
     const fetchUsage = useCallback(async () => {
         const isDemo = typeof window !== 'undefined' && window.location.search.includes('demo=true');
         if (!user && !isDemo) return;
-        if ((!token || token === 'null' || token === 'undefined') && !isDemo) return;
+        if ((!token || token === 'null' || token === 'undefined') && !isDemo) {
+            if (!isDemo) return;
+        }
         
+        // If we just want global usage and already have it in user context, skip fetch
+        if (!feature && user && !isDemo) {
+            setAllUsage({
+                tokensUsed: user.tokensUsed,
+                monthlyLimit: user.monthlyLimit,
+                percentUsed: user.percentUsed,
+                plan: user.plan
+            });
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             const headers: Record<string, string> = {};
@@ -38,11 +57,27 @@ export function useUsage(feature?: FeatureName) {
         fetchUsage();
     }, [fetchUsage]);
 
+    // Update allUsage if user context changes
+    useEffect(() => {
+        if (!feature && user) {
+            setAllUsage({
+                tokensUsed: user.tokensUsed,
+                monthlyLimit: user.monthlyLimit,
+                percentUsed: user.percentUsed,
+                plan: user.plan
+            });
+        }
+    }, [user, feature]);
+
     const increment = useCallback(async (amount: number = 1) => {
         if (!user || !feature) return;
         await incrementUsage(user.id, feature, amount);
-        await fetchUsage();
-    }, [user, feature, fetchUsage]);
+        // Refresh both local and global
+        await Promise.all([
+            fetchUsage(),
+            refreshGlobalUsage()
+        ]);
+    }, [user, feature, fetchUsage, refreshGlobalUsage]);
 
     return {
         usage,

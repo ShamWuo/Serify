@@ -37,44 +37,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const lastSessionIdRef = useRef<string | null>(null);
+    const initializationStartedRef = useRef(false);
 
     const fetchProfileAndUsage = useCallback(async (authUser: User, sessionToken?: string): Promise<UserProfile | null> => {
         try {
-            
-            const maxRetries = 2;
+            // Fetch profile with exponential backoff or simple retries
+            const maxRetries = 3;
             let profile = null;
             let lastError = null;
 
             for (let attempt = 0; attempt < maxRetries; attempt++) {
-                const profilePromise = supabase
+                const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', authUser.id)
-                    .single();
+                    .maybeSingle();
 
-                const profileTimeout = new Promise<{ data?: any; error?: any; timeout: boolean }>((resolve) => 
-                    setTimeout(() => resolve({ timeout: true }), 3000)
-                );
-                
-                const profileRaceResult = await Promise.race([
-                    profilePromise.then(res => ({ data: res.data, error: res.error, timeout: false })),
-                    profileTimeout
-                ]);
-
-                if (profileRaceResult.data) {
-                    profile = profileRaceResult.data;
+                if (data) {
+                    profile = data;
                     break;
                 } else {
-                    lastError = profileRaceResult.error;
-                    if (attempt < maxRetries - 1) {
-                        // Small delay for the trigger to fire
-                        await new Promise(r => setTimeout(r, 600));
-                    }
+                    lastError = error;
+                    // If it's a new user, the trigger might still be running
+                    await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
                 }
             }
             
             if (!profile) {
-                console.warn('[AuthContext] Profile fetch failed after retries, using fallback:', lastError);
+                console.warn('[AuthContext] Profile not found after retries, using auth metadata:', lastError);
             }
 
             let tokensUsed = 0;
@@ -86,16 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 const jwt = sessionToken || (await supabase.auth.getSession()).data.session?.access_token;
                 
                 if (jwt) {
-                    const usageResPromise = fetch('/api/usage', {
-                        headers: {
-                            Authorization: `Bearer ${jwt}`
-                        }
-                    });
-                    const usageTimeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000));
-                    const usageRes = await Promise.race([
-                        usageResPromise as any,
-                        usageTimeout as any
-                    ]);
+                    const usageRes = await fetch('/api/usage', {
+                        headers: { Authorization: `Bearer ${jwt}` },
+                        // Short timeout for usage fetch to not block auth
+                        signal: AbortSignal.timeout(2500)
+                    }).catch(() => null);
 
                     if (usageRes && usageRes.ok) {
                         const usageData = await usageRes.json();
@@ -106,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     }
                 }
             } catch (usageError) {
-                console.warn('Could not fetch usage info:', usageError);
+                console.warn('[AuthContext] Could not fetch usage info:', usageError);
             }
 
             const parsedPreferences = profile?.preferences 
@@ -116,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return {
                 id: authUser.id,
                 email: authUser.email || '',
-                displayName: profile?.display_name || authUser.user_metadata?.display_name || 'User',
+                displayName: profile?.display_name || authUser.user_metadata?.display_name || authUser.user_metadata?.full_name || 'User',
                 createdAt: profile?.created_at || authUser.created_at || new Date().toISOString(),
                 subscriptionTier: profile?.subscription_tier || 'free',
                 plan: plan,
@@ -128,106 +113,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 percentUsed,
             };
         } catch (error) {
-            console.error('Error in fetchProfileAndUsage, returning fallback profile:', error);
-            
-            return {
-                id: authUser.id,
-                email: authUser.email || '',
-                displayName: authUser.user_metadata?.display_name || 'User',
-                createdAt: authUser.created_at || new Date().toISOString(),
-                subscriptionTier: 'free',
-                plan: 'free',
-                preferences: { tone: 'encouraging', questionCount: 5 },
-                onboardingCompleted: true,
-                userType: 'user',
-                tokensUsed: 0,
-                monthlyLimit: 10,
-                percentUsed: 0,
-            };
+            console.error('[AuthContext] Error in fetchProfileAndUsage:', error);
+            return null;
         }
     }, []);
 
     const handleAuthChange = useCallback(async (event: string, session: Session | null) => {
-        try {
-            console.log(`[AuthContext] handleAuthChange event: ${event}`);
-            
-            const currentSessionId = session?.access_token || null;
-            if (currentSessionId && currentSessionId === lastSessionIdRef.current) {
-                console.log(`[AuthContext] Skipping redundant session change for event: ${event}`);
-                return;
-            }
-            lastSessionIdRef.current = currentSessionId;
-
-            if (session?.user) {
-                setToken(session.access_token);
-                
-                const userProfile = await fetchProfileAndUsage(session.user, session.access_token);
-                
-                if (userProfile) {
-                    setUser((prevUser) => {
-                        if (JSON.stringify(prevUser) !== JSON.stringify(userProfile)) {
-                            return userProfile;
-                        }
-                        return prevUser;
-                    });
-                }
-            } else {
-                setUser(null);
-                setToken(null);
-            }
-        } finally {
-            
-            setLoading(false);
+        const sessionId = session?.access_token || 'none';
+        
+        // Prevent redundant processing of the same session
+        if (sessionId !== 'none' && sessionId === lastSessionIdRef.current && event !== 'TOKEN_REFRESHED') {
+            console.log(`[AuthContext] Skipping redundant auth event: ${event}`);
+            return;
         }
+        
+        console.log(`[AuthContext] Processing auth event: ${event}`);
+        lastSessionIdRef.current = sessionId === 'none' ? null : sessionId;
+
+        if (session?.user) {
+            setToken(session.access_token);
+            const userProfile = await fetchProfileAndUsage(session.user, session.access_token);
+            if (userProfile) {
+                setUser(userProfile);
+            }
+        } else {
+            setUser(null);
+            setToken(null);
+        }
+        
+        setLoading(false);
     }, [fetchProfileAndUsage]);
 
     useEffect(() => {
-        let mounted = true;
-        
-        // Logging to track initialization flow
-        console.log('[AuthContext] Provider mounted, initializing auth flow...');
+        if (initializationStartedRef.current) return;
+        initializationStartedRef.current = true;
 
-        // Safety timeout to prevent infinite loading if Supabase hangs
-        const safetyTimeout = setTimeout(() => {
-            if (mounted && loading) {
-                console.warn('[AuthContext] Safety timeout triggered after 5s. Forcing loading false as fallback.');
+        console.log('[AuthContext] Initializing auth flow...');
+
+        // 1. Set up the listener first so we don't miss the initial event if getSession is slow
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            handleAuthChange(event, session);
+        });
+
+        // 2. Then get the current session to ensure we have it immediately
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                handleAuthChange('INITIAL_SESSION', session);
+            } else {
                 setLoading(false);
             }
-        }, 5000);
-
-        async function loadInitialSession() {
-            try {
-                console.log('[AuthContext] loadInitialSession starting...');
-                const sessionRes = await supabase.auth.getSession();
-                const session = sessionRes.data.session;
-                const error = sessionRes.error;
-
-                console.log('[AuthContext] getSession result:', session ? 'Session found' : 'No session', error || '');
-                if (error) throw error;
-                if (mounted) {
-                    await handleAuthChange('INITIAL_SESSION', session);
-                }
-            } catch (err) {
-                console.error('[AuthContext] loadInitialSession error:', err);
-                if (mounted) setLoading(false);
-            } finally {
-                if (mounted) {
-                    console.log('[AuthContext] loadInitialSession completed.');
-                }
-                clearTimeout(safetyTimeout);
-            }
-        }
-        
-        loadInitialSession();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+        });
 
         return () => {
-            mounted = false;
             subscription.unsubscribe();
-            clearTimeout(safetyTimeout);
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [handleAuthChange]);
 
     const login = async (email: string, password: string): Promise<UserProfile> => {
