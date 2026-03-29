@@ -2064,6 +2064,254 @@ export type Database = {
           },
         ]
       }
+      exam_roadmaps: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          exam_type: string | null
+          exam_name: string | null
+          exam_date: string
+          status: string | null
+          study_days_per_week: number | null
+          session_length_minutes: number | null
+          preferred_time: string | null
+          buffer_days: number | null
+          total_topics: number | null
+          completed_topics: number | null
+          total_sessions: number | null
+          completed_sessions: number | null
+          sessions_missed: number | null
+          total_study_minutes: number | null
+          current_streak: number | null
+          longest_streak: number | null
+          exam_outcome: string | null
+          exam_notes: string | null
+          created_at: string | null
+          last_activity_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          exam_type?: string | null
+          exam_name?: string | null
+          exam_date: string
+          status?: string | null
+          study_days_per_week?: number | null
+          session_length_minutes?: number | null
+          preferred_time?: string | null
+          buffer_days?: number | null
+          total_topics?: number | null
+          completed_topics?: number | null
+          total_sessions?: number | null
+          completed_sessions?: number | null
+          sessions_missed?: number | null
+          total_study_minutes?: number | null
+          current_streak?: number | null
+          longest_streak?: number | null
+          exam_outcome?: string | null
+          exam_notes?: string | null
+          created_at?: string | null
+          last_activity_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          exam_type?: string | null
+          exam_name?: string | null
+          exam_date?: string
+          status?: string | null
+          study_days_per_week?: number | null
+          session_length_minutes?: number | null
+          preferred_time?: string | null
+          buffer_days?: number | null
+          total_topics?: number | null
+          completed_topics?: number | null
+          total_sessions?: number | null
+          completed_sessions?: number | null
+          sessions_missed?: number | null
+          total_study_minutes?: number | null
+          current_streak?: number | null
+          longest_streak?: number | null
+          exam_outcome?: string | null
+          exam_notes?: string | null
+          created_at?: string | null
+          last_activity_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_roadmaps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roadmap_topics: {
+        Row: {
+          id: string
+          roadmap_id: string | null
+          user_id: string | null
+          concept_id: string | null
+          title: string
+          unit: string | null
+          position: number | null
+          weight: number | null
+          is_stretch_goal: boolean | null
+          status: string | null
+          mastery_at_completion: string | null
+          sessions_allocated: number | null
+          sessions_completed: number | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          roadmap_id?: string | null
+          user_id?: string | null
+          concept_id?: string | null
+          title: string
+          unit?: string | null
+          position?: number | null
+          weight?: number | null
+          is_stretch_goal?: boolean | null
+          status?: string | null
+          mastery_at_completion?: string | null
+          sessions_allocated?: number | null
+          sessions_completed?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          roadmap_id?: string | null
+          user_id?: string | null
+          concept_id?: string | null
+          title?: string
+          unit?: string | null
+          position?: number | null
+          weight?: number | null
+          is_stretch_goal?: boolean | null
+          status?: string | null
+          mastery_at_completion?: string | null
+          sessions_allocated?: number | null
+          sessions_completed?: number | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_topics_concept_id_fkey"
+            columns: ["concept_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_topics_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "exam_roadmaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_topics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roadmap_sessions: {
+        Row: {
+          id: string
+          roadmap_id: string | null
+          topic_id: string | null
+          user_id: string | null
+          session_type: string | null
+          scheduled_date: string
+          scheduled_length_minutes: number | null
+          status: string | null
+          completed_at: string | null
+          actual_length_minutes: number | null
+          reflection_session_id: string | null
+          mastery_after: string | null
+          rescheduled_from: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          roadmap_id?: string | null
+          topic_id?: string | null
+          user_id?: string | null
+          session_type?: string | null
+          scheduled_date: string
+          scheduled_length_minutes?: number | null
+          status?: string | null
+          completed_at?: string | null
+          actual_length_minutes?: number | null
+          reflection_session_id?: string | null
+          mastery_after?: string | null
+          rescheduled_from?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          roadmap_id?: string | null
+          topic_id?: string | null
+          user_id?: string | null
+          session_type?: string | null
+          scheduled_date?: string
+          scheduled_length_minutes?: number | null
+          status?: string | null
+          completed_at?: string | null
+          actual_length_minutes?: number | null
+          reflection_session_id?: string | null
+          mastery_after?: string | null
+          rescheduled_from?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roadmap_sessions_roadmap_id_fkey"
+            columns: ["roadmap_id"]
+            isOneToOne: false
+            referencedRelation: "exam_roadmaps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_sessions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "roadmap_topics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roadmap_sessions_reflection_session_id_fkey"
+            columns: ["reflection_session_id"]
+            isOneToOne: false
+            referencedRelation: "reflection_sessions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       roadmaps: {
         Row: {
           id: string

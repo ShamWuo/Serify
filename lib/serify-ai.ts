@@ -1012,3 +1012,122 @@ Your task:
 
   return object;
 }
+
+/**
+ * Generates a high-yield topic list for an exam roadmap using AI.
+ */
+export async function generateRoadmapTopics(
+  userInput: string,
+  examType: 'standardized' | 'certification' | 'custom' = 'custom',
+  examName?: string,
+  plan: string = 'free'
+): Promise<{
+  title: string;
+  target_description: string;
+  topics: {
+    title: string;
+    unit: string;
+    importance: 'high' | 'medium' | 'low';
+    estimatedSessions: number;
+    whyIncluded: string;
+  }[];
+}> {
+  const prompt = `You are an expert exam preparation coach. Your goal is to reverse-engineer a high-yield study topic list for an upcoming exam.
+
+EXAM GOAL: ${userInput}
+EXAM TYPE: ${examType}
+${examName ? `EXAM NAME: ${examName}` : ''}
+
+RULES:
+- Generate 8-15 distinct topics covering the most critical areas for this exam.
+- Group topics into logical "Units" (e.g., "Foundations", "Advanced Theory", "Case Studies", "Practicals").
+- title: Concise technical name for the topic.
+- unit: Logical grouping for the topic.
+- importance: 
+  - 'high': Core concepts that appear frequently or have heavy weight.
+  - 'medium': Standard concepts that are necessary but less central.
+  - 'low': Minor details, edge cases, or elective topics.
+- estimatedSessions: Number of study sessions (approx 1 hour each) to dedicate to this specific topic based on its complexity and high-yield nature. Range: 1 to 4.
+- whyIncluded: A 1-sentence explanation of why this topic is essential for passing the exam or achieving mastery.
+- The list should be ordered from foundational to advanced/applied.
+
+Return a JSON object with title, target_description, and the list of topics.`;
+
+  const { object: roadmapData } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      title: z.string(),
+      target_description: z.string(),
+      topics: z.array(z.object({
+        title: z.string(),
+        unit: z.string(),
+        importance: z.enum(['high', 'medium', 'low']),
+        estimatedSessions: z.number().min(1).max(5),
+        whyIncluded: z.string()
+      }))
+    }),
+    prompt,
+  });
+
+  return roadmapData as any;
+}
+/**
+ * Refines an existing topic list based on conversational instructions.
+ */
+export async function refineRoadmapTopics(
+  goal: string,
+  currentTopics: { title: string; unit: string; importance: string; whyIncluded?: string }[],
+  instruction: string,
+  plan: string = 'free'
+): Promise<{
+  title: string;
+  target_description: string;
+  topics: {
+    title: string;
+    unit: string;
+    importance: 'high' | 'medium' | 'low';
+    estimatedSessions: number;
+    whyIncluded: string;
+  }[];
+}> {
+  const currentTopicsText = currentTopics.map((t, i) => 
+    `${i+1}. [${t.unit}] ${t.title} (Importance: ${t.importance})`
+  ).join('\n');
+
+  const prompt = `You are a precision curriculum architect. You are refining an existing study roadmap.
+  
+EXAM GOAL: ${goal}
+
+CURRENT TOPIC BLUEPRINT:
+${currentTopicsText}
+
+USER INSTRUCTION: "${instruction}"
+
+YOUR TASK:
+- Modify the current topics based on the user's specific feedback or instructions.
+- You can ADD new topics, REMOVE existing ones, or EDIT titles and units as needed.
+- Ensure the total number of topics stays between 8 and 18.
+- Maintain a logical progression from foundational to advanced.
+- Ensure 'estimatedSessions' (1 to 5) reflects the complexity.
+- 'importance' must be 'high', 'medium', or 'low'.
+
+Return a JSON object with title, target_description, and the refined list of topics.`;
+
+  const { object: roadmapData } = await generateObject({
+    model: getAISDKModel(plan),
+    schema: z.object({
+      title: z.string(),
+      target_description: z.string(),
+      topics: z.array(z.object({
+        title: z.string(),
+        unit: z.string(),
+        importance: z.enum(['high', 'medium', 'low']),
+        estimatedSessions: z.number().min(1).max(5),
+        whyIncluded: z.string()
+      }))
+    }),
+    prompt,
+  });
+
+  return roadmapData as any;
+}

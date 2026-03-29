@@ -6,7 +6,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
-import { CheckCircle2, AlertTriangle, ArrowRight, Brain, Check } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, ArrowRight, Brain, Check, Search, BookOpen, Target, Sparkles, Loader2, Send } from 'lucide-react';
 import { useUsage } from '@/hooks/useUsage';
 import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 import GeneratingAnimation from '@/components/GeneratingAnimation';
@@ -194,15 +194,25 @@ export default function DeepDiveMode() {
 
     if (loading || generating) {
         return (
-            <div className="flex flex-col justify-center min-h-screen bg-[var(--background)] px-6 py-16">
-                <div className="w-full max-w-2xl mx-auto">
-                    <h3 className="text-2xl font-display text-[var(--text)] mb-2">
-                        Synthesizing Deep Dive
-                    </h3>
-                    <p className="text-[var(--muted)] text-sm mb-8">
-                        Building a customized guide for <strong>{targetConcept?.name}</strong>...
-                    </p>
-                    <GeneratingAnimation type="text" />
+            <div className="flex flex-col justify-center min-h-screen bg-[var(--bg)] px-6 py-16">
+                <div className="w-full max-w-2xl mx-auto space-y-8">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 border border-rose-100 animate-pulse">
+                                <Search size={22} />
+                            </div>
+                            <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em]">Deep Dive Engine</h3>
+                        </div>
+                        <h3 className="text-3xl font-display text-[var(--text)]">
+                            Synthesizing Analysis
+                        </h3>
+                        <p className="text-[var(--muted)] text-lg max-w-lg">
+                            Constructing a personalized cognitive guide for <strong>{targetConcept?.name}</strong> based on your specific gaps.
+                        </p>
+                    </div>
+                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-12 flex flex-col items-center justify-center gap-6 shadow-sm">
+                        <GeneratingAnimation type="text" />
+                    </div>
                 </div>
             </div>
         );
@@ -210,32 +220,46 @@ export default function DeepDiveMode() {
 
     if (!hasStarted && targetConcept) {
         return (
-            <div className="flex flex-col items-center pt-32 min-h-screen bg-[var(--background)] px-6">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center mb-6 text-3xl shadow-lg">
-                    <Brain size={40} />
+            <div className="flex flex-col items-center pt-24 min-h-screen bg-[var(--bg)] px-6">
+                <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-rose-500 to-indigo-600 text-white flex items-center justify-center mb-8 shadow-2xl shadow-indigo-500/20 rotate-3">
+                    <Search size={40} strokeWidth={2.5} />
                 </div>
-                <h2 className="text-3xl font-display mb-4 text-center text-[var(--text)]">
-                    Deep Dive: {targetConcept.name}
-                </h2>
-                <p className="text-[var(--muted)] text-center mb-8 text-lg max-w-[500px]">
-                    Let&apos;s break down this concept and fix the exact areas you struggled with.
-                </p>
+                
+                <div className="max-w-xl text-center space-y-6">
+                    <div className="space-y-2">
+                        <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.25em]">Cognitive Intervention</h3>
+                        <h2 className="text-4xl md:text-5xl font-display text-[var(--text)] tracking-tight">
+                            {targetConcept.name}
+                        </h2>
+                    </div>
+                    
+                    <p className="text-[var(--muted)] text-lg leading-relaxed">
+                        We noticed a conceptual gap here. Let&apos;s deconstruct this idea and build a stronger mental model from the ground up.
+                    </p>
 
-                <div className="flex flex-col items-center gap-6 w-full max-w-sm">
-                    <UsageGate feature='deep_dive'>
-                        <button
-                            onClick={() => {
-                                setHasStarted(true);
-                                generateDeepDive(targetConcept);
-                            }}
-                            className="w-full px-8 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10 flex items-center justify-center gap-2"
+                    <div className="pt-6 flex flex-col items-center gap-4 w-full">
+                        <UsageGate feature='deep_dive'>
+                            <button
+                                onClick={() => {
+                                    setHasStarted(true);
+                                    generateDeepDive(targetConcept);
+                                }}
+                                className="w-full py-5 bg-rose-600 text-white rounded-[2rem] font-black text-lg hover:bg-rose-700 hover:shadow-xl hover:shadow-rose-600/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 active:scale-95"
+                            >
+                                <Sparkles size={20} />
+                                Generate Deep Dive
+                                <ArrowRight size={20} />
+                            </button>
+                        </UsageGate>
+                        <UsageWarning feature='deep_dive' />
+                        
+                        <Link 
+                            href={`/session/${id}/feedback`}
+                            className="text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] uppercase tracking-widest transition-colors"
                         >
-                            Generate Deep Dive
-                            <ArrowRight size={20} />
-                        </button>
-                    </UsageGate>
-
-                    <UsageWarning feature='deep_dive' />
+                            Return to Report
+                        </Link>
+                    </div>
                 </div>
             </div>
         );
@@ -243,16 +267,18 @@ export default function DeepDiveMode() {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-[var(--background)] text-[var(--text)] flex flex-col pt-12">
-                <div className="max-w-[600px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24 text-center">
-                    <div className="w-20 h-20 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-6 text-3xl">
+            <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col pt-12">
+                <div className="max-w-[600px] mx-auto w-full px-6 flex-1 flex flex-col items-center pt-24 text-center space-y-6">
+                    <div className="w-20 h-20 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shadow-inner">
                         <AlertTriangle size={40} />
                     </div>
-                    <h2 className="text-3xl font-display mb-4">Generation Failed</h2>
-                    <p className="text-[var(--muted)] mb-8 text-lg">{error}</p>
+                    <div className="space-y-2">
+                        <h2 className="text-3xl font-display">Generation Failed</h2>
+                        <p className="text-[var(--muted)] text-lg">{error}</p>
+                    </div>
                     <Link
                         href={`/session/${id}/feedback`}
-                        className="px-6 py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl font-medium hover:bg-black/5 transition-colors"
+                        className="px-8 py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-xl font-bold hover:bg-black/5 transition-all"
                     >
                         Return to Report
                     </Link>
@@ -263,111 +289,152 @@ export default function DeepDiveMode() {
 
     if (!deepDive) return null;
 
+    const sidebar = (
+        <div className="space-y-8">
+            <div className="space-y-4">
+                <div className="px-3 flex items-center gap-2">
+                    <Target size={14} className="text-rose-600" />
+                    <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-widest">
+                        Focus Target
+                    </h3>
+                </div>
+                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 shadow-sm">
+                    <p className="text-sm font-bold leading-tight mb-1">{targetConcept?.name}</p>
+                    <p className="text-[11px] text-[var(--muted)] leading-relaxed">Addressing recorded misconceptions.</p>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                <div className="px-3 flex items-center gap-2">
+                    <BookOpen size={14} className="text-[var(--muted)]" />
+                    <h3 className="text-[10px] font-black text-[var(--muted)] uppercase tracking-widest">
+                        Learning Path
+                    </h3>
+                </div>
+                <div className="space-y-2">
+                    {weakConcepts.map((c: any, idx: number) => {
+                        const isCurrent = targetConcept?.id === c.id;
+                        return (
+                            <div
+                                key={c.id}
+                                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${isCurrent
+                                    ? 'bg-rose-600/5 text-rose-600 font-bold border border-rose-600/10'
+                                    : 'text-[var(--muted)] hover:bg-[var(--bg)]'
+                                    }`}
+                            >
+                                <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 border-2 transition-all ${isCurrent
+                                    ? 'border-rose-600 bg-rose-600 text-white'
+                                    : 'border-[var(--border)] bg-transparent'
+                                    }`}>
+                                    <span className="text-[9px] font-black">{idx + 1}</span>
+                                </div>
+                                <span className="text-[13px] truncate font-medium">{c.name}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+
     return (
         <DashboardLayout
             backLink={`/session/${id}/feedback`}
-            sidebarContent={
-                <div className="space-y-4">
-                    <div className="px-3 mb-2">
-                        <h3 className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
-                            Deep Dive Progress
-                        </h3>
-                    </div>
-                    <div className="space-y-1">
-                        {weakConcepts.map((c: any, idx: number) => {
-                            const isCurrent = targetConcept?.id === c.id;
-                            return (
-                                <div
-                                    key={c.id}
-                                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-default ${isCurrent
-                                        ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold border border-[var(--accent)]/20'
-                                        : 'text-[var(--muted)]'
-                                        }`}
-                                >
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 border ${isCurrent
-                                        ? 'border-[var(--accent)] text-[var(--accent)]'
-                                        : 'border-[var(--border)]'
-                                        }`}>
-                                        <span className="text-[10px]">{idx + 1}</span>
-                                    </div>
-                                    <span className="text-sm truncate">{c.name}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            }
+            sidebarContent={sidebar}
+            replaceNav={true}
         >
-            <SEO title="Deep Dive" />
+            <SEO title={`Deep Dive: ${deepDive.title}`} />
 
-            <main className="max-w-[800px] mx-auto p-6 md:p-8 pb-32">
-
-                <div className="mb-12 border-b-2 border-[var(--text)] pb-8">
-                    <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-widest rounded-full mb-6 relative">
-                        Deep Dive Guide
+            <main className="max-w-3xl mx-auto px-6 py-12 md:py-16 pb-32">
+                {}
+                <header className="mb-16 space-y-6 border-b border-[var(--border)] pb-12">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-700 text-[10px] font-black uppercase tracking-[0.2em] rounded-lg border border-rose-100">
+                        <Sparkles size={12} fill="currentColor" /> Concept Deep Dive
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-display font-bold leading-tight tracking-tight text-[var(--text)]">
+                    <h1 className="text-4xl md:text-5xl font-display font-black leading-[1.1] tracking-tight text-[var(--text)]">
                         {deepDive.title}
                     </h1>
-                </div>
+                </header>
 
-                <div className="space-y-12">
+                {}
+                <div className="space-y-16">
                     {deepDive.sections?.map((section: any, idx: number) => (
-                        <section key={idx} className="relative">
-                            <h2 className="text-2xl font-display font-medium text-[var(--text)] mb-6 flex items-center gap-4">
-                                <span className="text-indigo-400 font-serif italic text-3xl">
-                                    {(idx + 1).toString().padStart(2, '0')}
-                                </span>
-                                {section.heading}
-                            </h2>
-                            <div className="prose prose-lg prose-indigo prose-a:text-indigo-600 prose-p:leading-relaxed text-[var(--text)] max-w-none bg-white/50 p-6 rounded-2xl border border-[var(--border)] shadow-sm">
+                        <section key={idx} className="relative scroll-reveal">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-10 h-10 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center font-display text-lg font-bold text-rose-600 shadow-sm">
+                                    {idx + 1}
+                                </div>
+                                <h2 className="text-xl md:text-2xl font-display font-bold text-[var(--text)] tracking-tight">
+                                    {section.heading}
+                                </h2>
+                            </div>
+                            <div className="prose prose-lg prose-rose prose-p:leading-relaxed text-[var(--text)] max-w-none bg-[var(--surface)] p-8 rounded-[2rem] border border-[var(--border)] shadow-sm hover:shadow-md transition-shadow">
                                 <MarkdownRenderer>{section.content}</MarkdownRenderer>
                             </div>
                         </section>
                     ))}
                 </div>
 
+                {}
                 <div className="mt-24 pt-16 border-t border-[var(--border)]">
-                    <div className="max-w-2xl mx-auto bg-white border border-[var(--border)] rounded-3xl p-8 md:p-12 shadow-xl shadow-black/5 relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                    <div className="max-w-2xl mx-auto bg-[var(--surface)] border-2 border-[var(--border)] rounded-[2.5rem] p-8 md:p-12 shadow-xl shadow-black/5 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-500 via-indigo-500 to-purple-600"></div>
 
-                        <h3 className="text-xl font-bold uppercase tracking-wider text-[var(--muted)] mb-4 flex items-center gap-2 text-sm">
-                            <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Check Your
-                            Understanding
-                        </h3>
-                        <div className="text-2xl font-display text-[var(--text)] leading-snug mb-8">
+                        <div className="flex items-center gap-2 mb-6">
+                            <div className="w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center text-rose-600 border border-rose-100">
+                                <Target size={16} />
+                            </div>
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-600">
+                                Comprehension Check
+                            </h3>
+                        </div>
+
+                        <div className="text-2xl font-display text-[var(--text)] leading-tight mb-10 font-medium">
                             <MarkdownRenderer className="inline-markdown">{deepDive.confirmatoryQuestion}</MarkdownRenderer>
                         </div>
 
                         {!isComplete ? (
                             <div className="space-y-6">
-                                <textarea
-                                    value={answer}
-                                    onChange={(e) => setAnswer(e.target.value)}
-                                    placeholder="Type your answer here..."
-                                    className="w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 min-h-[120px] focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none text-lg resize-y transition-shadow"
-                                    disabled={evaluating}
-                                />
+                                <div className="relative group">
+                                    <textarea
+                                        value={answer}
+                                        onChange={(e) => setAnswer(e.target.value)}
+                                        placeholder="Type your explanation here..."
+                                        className="w-full bg-[var(--bg)] border-2 border-[var(--border)] rounded-2xl p-6 min-h-[160px] focus:ring-4 focus:ring-rose-500/5 focus:border-rose-500 outline-none text-lg resize-none transition-all placeholder:text-[var(--muted)]/40 leading-relaxed"
+                                        disabled={evaluating}
+                                    />
+                                    <div className="absolute top-4 right-6 text-[9px] font-black text-rose-600/30 uppercase tracking-widest">
+                                        Evaluation Active
+                                    </div>
+                                </div>
 
-                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                                    <span className="text-[13px] text-[var(--muted)] font-medium">
-                                        Be specific based on what you just read.
-                                    </span>
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-2">
+                                    <div className="flex items-center gap-2 text-[13px] text-[var(--muted)] font-medium italic">
+                                        <BookOpen size={14} />
+                                        Focus on the core mechanics described above.
+                                    </div>
                                     <button
                                         onClick={handleSubmitAnswer}
                                         disabled={!answer.trim() || evaluating}
-                                        className="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 text-white font-medium rounded-xl hover:-translate-y-0.5 transition-all shadow-sm disabled:opacity-50 min-w-[140px]"
+                                        className="w-full sm:w-auto px-10 py-4 bg-rose-600 text-white font-black rounded-2xl hover:bg-rose-700 hover:-translate-y-1 transition-all shadow-lg shadow-rose-600/20 disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
                                     >
-                                        {evaluating ? 'Checking...' : 'Check Answer'}
+                                        {evaluating ? (
+                                            <><Loader2 size={18} className="animate-spin" /> Evaluating...</>
+                                        ) : (
+                                            <><Send size={18} /> Submit Answer</>
+                                        )}
                                     </button>
                                 </div>
 
                                 {feedback && !feedback.isCorrect && (
-                                    <div className="mt-6 p-5 bg-rose-50 border border-rose-200 rounded-xl animate-fade-in">
-                                        <h4 className="font-bold text-rose-700 mb-2">
-                                            Not quite right...
-                                        </h4>
-                                        <div className="text-rose-900 leading-relaxed text-[15px]">
+                                    <div className="mt-8 p-6 bg-rose-50 border border-rose-200 rounded-2xl animate-fade-in-up border-l-8 border-l-rose-500">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <AlertTriangle size={18} className="text-rose-600" />
+                                            <h4 className="font-black text-rose-700 text-xs uppercase tracking-widest">
+                                                Cognitive Gap Detected
+                                            </h4>
+                                        </div>
+                                        <div className="text-rose-950 leading-relaxed text-[15px] font-medium">
                                             <MarkdownRenderer className="inline-markdown">{feedback.feedback}</MarkdownRenderer>
                                         </div>
                                     </div>
@@ -375,20 +442,22 @@ export default function DeepDiveMode() {
                             </div>
                         ) : (
                             <div className="animate-fade-in text-center py-6">
-                                <div className="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center text-4xl mb-6 shadow-inner">
-                                    <Check size={40} />
+                                <div className="w-20 h-20 rounded-[2rem] bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center text-4xl mb-8 border-2 border-emerald-100 shadow-sm rotate-6">
+                                    <CheckCircle2 size={44} strokeWidth={2.5} />
                                 </div>
-                                <h4 className="font-display text-3xl mb-4 text-[var(--text)]">
-                                    Nailed it.
-                                </h4>
-                                <div className="text-[var(--text)] leading-relaxed mb-10 text-lg opacity-80">
-                                    <MarkdownRenderer className="inline-markdown">{feedback?.feedback}</MarkdownRenderer>
+                                <div className="space-y-3 mb-10">
+                                    <h4 className="font-display text-4xl font-black text-[var(--text)] tracking-tight">
+                                        Mastery Attained.
+                                    </h4>
+                                    <div className="text-[var(--text)] leading-relaxed text-lg font-medium max-w-md mx-auto opacity-80">
+                                        <MarkdownRenderer className="inline-markdown">{feedback?.feedback}</MarkdownRenderer>
+                                    </div>
                                 </div>
                                 <Link
                                     href={`/session/${id}/feedback`}
-                                    className="inline-block px-10 py-4 bg-[var(--text)] text-[var(--background)] rounded-xl font-bold hover:bg-black/80 dark:hover:bg-white/90 transition-all text-lg shadow-xl shadow-black/10"
+                                    className="inline-flex items-center justify-center gap-3 px-12 py-5 bg-slate-900 text-white rounded-[2rem] font-black hover:bg-black hover:shadow-2xl transition-all text-lg active:scale-95 group"
                                 >
-                                    Return to Report &rarr;
+                                    Finish & Return <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" />
                                 </Link>
                             </div>
                         )}

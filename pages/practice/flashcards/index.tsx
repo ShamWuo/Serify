@@ -67,8 +67,9 @@ export default function FlashcardsPage() {
 
             if (fetchError) throw fetchError;
             setDecks(data || []);
-        } catch (err: any) {
-            console.error('Error fetching decks:', err);
+        } catch (err) {
+            const error = err as Error;
+            console.error('Error fetching decks:', error);
             toast.error('Failed to load your decks');
         } finally {
             setIsLoading(false);
@@ -77,7 +78,7 @@ export default function FlashcardsPage() {
 
     const generateFlashcards = async (topic?: string, concepts?: string) => {
         try {
-            const payload: any = {};
+            const payload: { topic?: string; conceptIds?: string[] } = {};
             if (topic) {
                 payload.topic = topic;
             } else if (concepts) {
@@ -108,8 +109,9 @@ export default function FlashcardsPage() {
             
             router.replace(`/practice/flashcards/${data.sessionId}`);
 
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err) {
+            const error = err as Error;
+            setError(error.message);
             setIsGenerating(false);
         }
     };
@@ -164,24 +166,27 @@ export default function FlashcardsPage() {
                     <title>Generating Flashcards | Serify</title>
                 </Head>
 
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-teal-500/5 rounded-full blur-[100px] -z-10" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[var(--accent)]/5 rounded-full blur-[120px] -z-10" />
 
-                <div className="text-center space-y-8 animate-fade-in-up">
-                    <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-teal-50 border border-teal-100 shadow-sm">
-                        <Layers size={40} className="text-teal-600 relative z-10" />
-                        <Sparkles size={20} className="text-teal-400 absolute -top-2 -right-2 animate-pulse" />
+                <div className="text-center space-y-10 max-w-lg w-full">
+                    <div className="relative inline-flex items-center justify-center w-28 h-28 bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard rounded-2xl rotate-3">
+                        <Layers size={48} className="text-[var(--ink)]" />
+                        <div className="absolute -top-4 -right-4 w-12 h-12 bg-[var(--accent)] border-2 border-[var(--ink)] shadow-hard flex items-center justify-center rounded-xl -rotate-12">
+                            <Sparkles size={20} className="text-[var(--bg)]" />
+                        </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <h1 className="text-3xl font-display text-[var(--text)] tracking-tight">
-                            Building study session...
+                    <div className="space-y-4">
+                        <h1 className="text-4xl font-display font-bold text-[var(--text)] tracking-tight">
+                            Ink meets Paper...
                         </h1>
-                        <p className="text-[var(--muted)] text-lg">
-                            Distilling knowledge into bite-sized flashcards.
+                        <p className="text-[var(--muted)] font-mono text-sm uppercase tracking-widest leading-relaxed">
+                            Distilling complex knowledge into <br/> bite-sized active recall units.
                         </p>
                     </div>
 
-                    <div className="pt-4 w-full max-w-sm mx-auto">
+                    <div className="pt-6 w-full max-w-sm mx-auto p-8 paper-card bg-[var(--surface)] relative">
+                        <div className="absolute inset-0 bg-[var(--accent)]/5 pointer-events-none" />
                         <GeneratingAnimation type="cards" />
                     </div>
                 </div>
@@ -195,147 +200,161 @@ export default function FlashcardsPage() {
                 <title>Flashcard Library | Serify</title>
             </Head>
 
-            <div className="max-w-7xl mx-auto space-y-8 p-4 md:p-8">
-                {}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b-2 border-[var(--border)]">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-3 text-[var(--accent)] mb-2">
-                            <div className="p-2 paper-card-sm bg-[var(--surface)]">
-                                <Layers size={21} />
+            <div className="max-w-7xl mx-auto space-y-10 p-4 md:p-8">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-8 border-b-4 border-[var(--ink)] relative">
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-[var(--accent)] text-[var(--bg)] px-3 py-1 border-2 border-[var(--ink)] shadow-[4px_4px_0px_var(--ink)] -rotate-1">
+                                <span className="text-[10px] font-bold font-mono tracking-widest uppercase italic">PRACTICE SYSTEM v2.0</span>
                             </div>
-                            <span className="text-[10px] font-bold font-mono tracking-widest uppercase text-[var(--muted)]">{'//'} Practice Mode</span>
                         </div>
-                        <h1 className="text-4xl font-display font-medium text-[var(--text)]">Flashcard Library</h1>
-                        <p className="text-[var(--muted)] font-mono text-xs opacity-80 uppercase tracking-tight">Manage your decks and track your mastery progress.</p>
+                        <h1 className="text-5xl md:text-6xl font-display font-bold text-[var(--text)] tracking-tight leading-none">Flashcard Library</h1>
+                        <p className="text-[var(--muted)] font-mono text-sm italic max-w-xl">A curated archive of your conceptual mastery. Revisit, revise, and solidify.</p>
                     </div>
 
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={() => router.push('/practice/flashcards/new')}
-                            className="flex items-center gap-2 px-6 py-3 bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 transition-all font-display font-bold text-sm"
+                            className="group flex items-center gap-3 px-8 py-4 bg-[var(--text)] text-[var(--bg)] border-4 border-[var(--ink)] shadow-hard hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_var(--ink)] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all font-display font-bold text-lg"
                         >
-                            <Plus size={18} />
-                            Create Deck
+                            <Plus size={24} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                            Draft New Deck
                         </button>
                     </div>
                 </div>
 
-                {}
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                {/* Filters Row */}
+                <div className="flex flex-col md:flex-row gap-6 items-center justify-between">
                     <div className="relative w-full md:max-w-md group">
-                        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] group-focus-within:text-[var(--accent)] transition-colors" />
+                        <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--muted)] group-focus-within:text-[var(--accent)] transition-colors" />
                         <input 
                             type="text" 
-                            placeholder="Search your decks..." 
+                            placeholder="LO-FI SEARCH..." 
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-12 pr-4 py-3 bg-[var(--surface)] border-2 border-[var(--border)] focus:border-[var(--accent)] outline-none transition-all font-mono text-xs"
+                            className="w-full pl-14 pr-6 py-4 bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard focus:border-[var(--accent)] outline-none transition-all font-mono font-bold text-sm uppercase placeholder:text-[var(--muted)]/50 focus:translate-x-[2px] focus:translate-y-[2px] focus:shadow-[4px_4px_0px_var(--ink)]"
                         />
                     </div>
 
-                    <div className="flex items-center gap-2 p-1 bg-[var(--surface)] border-2 border-[var(--border)]">
+                    <div className="flex items-center gap-2 p-1.5 bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard">
                         <button 
                             onClick={() => setViewMode('grid')}
-                            className={`p-2 transition-all ${viewMode === 'grid' ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                            className={`p-3 transition-all ${viewMode === 'grid' ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                            title="Grid View"
                         >
-                            <LayoutGrid size={16} />
+                            <LayoutGrid size={20} strokeWidth={2.5} />
                         </button>
+                        <div className="w-1 h-8 bg-[var(--ink)]/10 mx-1" />
                         <button 
                             onClick={() => setViewMode('list')}
-                            className={`p-2 transition-all ${viewMode === 'list' ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                            className={`p-3 transition-all ${viewMode === 'list' ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                            title="List View"
                         >
-                            <List size={16} />
+                            <List size={20} strokeWidth={2.5} />
                         </button>
                     </div>
                 </div>
 
                 {}
                 {isLoading ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-64 bg-[var(--surface)] rounded-3xl border border-[var(--border)] animate-pulse" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                            <div key={i} className="h-72 bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard animate-pulse opacity-50" />
                         ))}
                     </div>
                 ) : filteredDecks.length > 0 ? (
-                    <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+                    <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10" : "space-y-6"}>
                         {filteredDecks.map((deck) => (
                             <Link 
                                 href={`/practice/flashcards/${deck.id}`} 
                                 key={deck.id}
-                                className={`group bg-[var(--surface)] border-2 border-[var(--border)] hover:border-[var(--accent)] transition-all active:scale-[0.98] paper-card ${viewMode === 'list' ? 'flex items-center gap-6 p-4' : 'flex flex-col h-full overflow-hidden'}`}
+                                className={`group bg-[var(--surface)] border-4 border-[var(--ink)] hover:border-[var(--accent)] shadow-hard hover:shadow-[12px_12px_0px_var(--ink)] transition-all active:translate-x-[4px] active:translate-y-[4px] active:shadow-none paper-card ${viewMode === 'list' ? 'flex items-center gap-8 p-6' : 'flex flex-col h-full overflow-hidden'}`}
                             >
-                                <div className={`flex items-center justify-center border-b-2 border-[var(--border)] group-hover:border-[var(--accent)] transition-colors bg-[var(--bg)] ${viewMode === 'list' ? 'w-16 h-16 border-b-0 border-r-2 flex-shrink-0' : 'h-32 p-6'}`}>
-                                    <Layers size={viewMode === 'list' ? 24 : 40} className="text-[var(--ink)] group-hover:scale-110 transition-transform group-hover:rotate-3" />
+                                <div className={`flex items-center justify-center border-b-4 border-[var(--ink)] group-hover:border-[var(--accent)] transition-colors bg-[var(--bg)] relative overflow-hidden ${viewMode === 'list' ? 'w-24 h-24 border-b-0 border-r-4 flex-shrink-0' : 'h-40 p-8'}`}>
+                                    <div className="absolute inset-0 bg-grid-pattern opacity-5" />
+                                    <Layers size={viewMode === 'list' ? 32 : 56} className="text-[var(--ink)] group-hover:scale-110 transition-transform group-hover:rotate-6 relative z-10" />
+                                    
+                                    {/* Action overlay - Desktop only */}
+                                    <div className="absolute inset-0 bg-[var(--ink)]/0 group-hover:bg-[var(--ink)]/5 flex items-center justify-center transition-all">
+                                        <div className="bg-[var(--accent)] text-[var(--bg)] px-4 py-2 border-2 border-[var(--ink)] shadow-[4px_4px_0px_var(--ink)] font-display font-bold text-xs uppercase opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                                            Study Now
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className={`p-6 flex flex-col flex-grow ${viewMode === 'list' ? 'p-0' : ''}`}>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="space-y-1">
-                                            <h3 className="text-lg font-display font-medium text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1">{deck.title}</h3>
-                                            <p className="text-[11px] font-mono text-[var(--muted)] line-clamp-2 uppercase tracking-tight">{deck.description || 'No description provided.'}</p>
+                                <div className={`p-8 flex flex-col flex-grow ${viewMode === 'list' ? 'p-0 h-full' : ''}`}>
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-2xl font-display font-bold text-[var(--text)] group-hover:text-[var(--accent)] transition-colors line-clamp-1 leading-tight">{deck.title}</h3>
+                                            </div>
+                                            <p className="text-xs font-mono text-[var(--muted)] line-clamp-2 uppercase tracking-tight font-bold italic opacity-80">
+                                                {deck.description || 'No descriptive technical notes provided.'}
+                                            </p>
                                         </div>
-                                        <div className="flex items-center gap-1 group/menu">
+                                        <div className="flex items-center gap-2">
                                             <button 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     e.preventDefault();
                                                     router.push(`/practice/flashcards/edit/${deck.id}`);
                                                 }}
-                                                className="p-1.5 text-[var(--muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-colors"
-                                                title="Edit Deck"
+                                                className="p-2 text-[var(--ink)] hover:text-[var(--bg)] hover:bg-[var(--ink)] border-2 border-[var(--ink)] shadow-[2px_2px_0px_var(--ink)] hover:shadow-none transition-all active:translate-x-[2px] active:translate-y-[2px]"
+                                                title="Edit Metadata"
                                             >
-                                                <Edit3 size={14} />
+                                                <Edit3 size={16} strokeWidth={2.5} />
                                             </button>
                                             <button 
                                                 onClick={(e) => deleteDeck(deck.id, e)}
-                                                className="p-1.5 text-[var(--muted)] hover:text-red-500 hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] transition-colors"
-                                                title="Delete Deck"
+                                                className="p-2 text-red-600 hover:text-[var(--bg)] hover:bg-red-600 border-2 border-red-600 shadow-[2px_2px_0px_var(--ink)] hover:shadow-none transition-all active:translate-x-[2px] active:translate-y-[2px]"
+                                                title="Purge Deck"
                                             >
-                                                <Trash2 size={14} />
+                                                <Trash2 size={16} strokeWidth={2.5} />
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="mt-auto pt-4 flex flex-col gap-4">
-                                        <div className="space-y-1.5">
-                                            <div className="flex justify-between text-[9px] font-bold font-mono uppercase tracking-widest text-[var(--muted)]">
-                                                <span>Mastery</span>
-                                                <span className="text-[var(--accent)]">
+                                    <div className="mt-auto space-y-6">
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between text-[11px] font-black font-mono uppercase tracking-[0.2em] text-[var(--muted)]">
+                                                <span className="bg-[var(--bg)] px-2 -ml-2 border border-[var(--ink)]/10">STABILITY INDEX</span>
+                                                <span className="text-[var(--accent)] font-bold">
                                                     {deck.total_cards > 0 
                                                         ? Math.round((deck.cards_know_it / deck.total_cards) * 100) 
                                                         : 0}%
                                                 </span>
                                             </div>
-                                            <div className="h-1 w-full bg-[var(--border)] overflow-hidden flex grayscale scale-y-150 transform hover:grayscale-0 transition-all">
-                                                <div 
-                                                    className="h-full bg-[var(--accent)] transition-all duration-1000" 
-                                                    style={{ width: `${(deck.cards_know_it / (deck.total_cards || 1)) * 100}%` }}
-                                                />
-                                                <div 
-                                                    className="h-full bg-orange-400 opacity-50 transition-all duration-1000" 
-                                                    style={{ width: `${(deck.cards_still_learning / (deck.total_cards || 1)) * 100}%` }}
-                                                />
+                                            <div className="h-4 w-full bg-[var(--bg)] border-2 border-[var(--ink)] p-0.5 shadow-inner">
+                                                <div className="h-full flex gap-0.5">
+                                                    <div 
+                                                        className="h-full bg-[var(--accent)] transition-all duration-1000 border-r border-[var(--ink)]/20" 
+                                                        style={{ width: `${(deck.cards_know_it / (deck.total_cards || 1)) * 100}%` }}
+                                                    />
+                                                    <div 
+                                                        className="h-full bg-orange-400 opacity-60 transition-all duration-1000 border-r border-[var(--ink)]/20" 
+                                                        style={{ width: `${(deck.cards_still_learning / (deck.total_cards || 1)) * 100}%` }}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between mt-2">
-                                            <div className="flex items-center gap-4 text-[9px] font-bold font-mono text-[var(--muted)] uppercase tracking-tight">
-                                                <span className="flex items-center gap-1.5 opacity-80">
-                                                    <BookOpen size={10} className="text-[var(--accent)]" />
-                                                    {deck.total_cards} cards
+                                        <div className="flex items-center justify-between pt-4 border-t-2 border-[var(--ink)] border-dashed">
+                                            <div className="flex items-center gap-5 text-[10px] font-black font-mono text-[var(--muted)] uppercase tracking-wider">
+                                                <span className="flex items-center gap-2">
+                                                    <BookOpen size={14} strokeWidth={3} className="text-[var(--accent)]" />
+                                                    {deck.total_cards} UNITS
                                                 </span>
                                                 {deck.last_studied_at && (
-                                                    <span className="flex items-center gap-1.5 opacity-60">
-                                                        <Clock size={10} />
-                                                        {new Date(deck.last_studied_at).toLocaleDateString()}
+                                                    <span className="flex items-center gap-2 opacity-60">
+                                                        <Clock size={14} strokeWidth={2.5} />
+                                                        {new Date(deck.last_studied_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
                                                     </span>
                                                 )}
                                             </div>
                                             
-                                            <div className="flex items-center gap-2">
-                                                <div className="washi-tape washi-mastered text-[8px] py-0.5 px-3 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
-                                                    STUDY NOW <Play size={8} fill="currentColor" className="ml-1" />
-                                                </div>
+                                            <div className="flex items-center">
+                                                <Play size={16} fill="currentColor" className="text-[var(--accent)] group-hover:translate-x-1 transition-transform" />
                                             </div>
                                         </div>
                                     </div>
@@ -344,28 +363,28 @@ export default function FlashcardsPage() {
                         ))}
                     </div>
                 ) : (
-                    <div className="flex flex-col items-center justify-center py-20 px-6 text-center space-y-6 bg-[var(--surface)] border border-[var(--border)] rounded-[40px] dashed border-dashed">
-                        <div className="w-24 h-24 bg-teal-50 rounded-[32px] flex items-center justify-center text-teal-600 mb-2">
-                            <Layers size={48} />
+                    <div className="flex flex-col items-center justify-center py-24 px-8 text-center space-y-10 paper-card bg-[var(--surface)] border-4 border-[var(--ink)] border-dashed shadow-hard max-w-2xl mx-auto rotate-1">
+                        <div className="w-32 h-32 bg-[var(--bg)] border-4 border-[var(--ink)] shadow-hard flex items-center justify-center text-[var(--ink)] rotate-3">
+                            <Layers size={64} strokeWidth={1.5} />
                         </div>
-                        <div className="space-y-2 max-w-sm">
-                            <h2 className="text-2xl font-bold text-[var(--text)]">Your library is empty</h2>
-                            <p className="text-[var(--muted)]">Start by generating flashcards from a topic, or create your first custom deck manually.</p>
+                        <div className="space-y-4 max-w-sm">
+                            <h2 className="text-4xl font-display font-bold text-[var(--text)] leading-tight">Your Archive is Barren</h2>
+                            <p className="text-[var(--muted)] font-mono text-xs uppercase tracking-widest italic font-bold">The conceptual vault awaits its first entry. Silence is the enemy of mastery.</p>
                         </div>
-                        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+                        <div className="flex flex-wrap items-center justify-center gap-6 pt-6">
                             <button 
                                 onClick={() => router.push('/practice/flashcards/new')}
-                                className="flex items-center gap-2 px-8 py-3 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-semibold hover:opacity-90 transition active:scale-95 shadow-sm"
+                                className="flex items-center gap-3 px-8 py-4 bg-[var(--text)] text-[var(--bg)] border-4 border-[var(--ink)] shadow-hard hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_var(--ink)] active:translate-x-[4px] active:translate-y-[4px] transition-all font-display font-bold text-lg"
                             >
-                                <Plus size={20} />
-                                Create Manual Deck
+                                <Plus size={24} />
+                                Manual Craft
                             </button>
                             <button 
                                 onClick={() => router.push('/practice')}
-                                className="flex items-center gap-2 px-8 py-3 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-2xl font-semibold hover:bg-[var(--bg)] transition active:scale-95 shadow-sm"
+                                className="flex items-center gap-3 px-8 py-4 bg-[var(--accent)] text-[var(--bg)] border-4 border-[var(--ink)] shadow-hard hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_var(--ink)] active:translate-x-[4px] active:translate-y-[4px] transition-all font-display font-bold text-lg"
                             >
-                                <Sparkles size={20} className="text-teal-500" />
-                                AI Generate
+                                <Sparkles size={24} />
+                                AI Synthesis
                             </button>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Lock, X, AlertTriangle, Zap } from 'lucide-react';
+import { ArrowRight, Lock, X, AlertTriangle, BookOpen } from 'lucide-react';
 import { useUsage } from '@/hooks/useUsage';
 import { FeatureName, UsageCheckResult } from '@/lib/usage';
 
@@ -61,7 +61,7 @@ export function UsageGate({ feature, children, forceShow, onClose }: UsageGatePr
                         </Link>
 
                         <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 text-xs font-bold">
-                            <Zap size={14} />
+                            <BookOpen size={14} />
                             Maximize your learning potential with Pro
                         </div>
                     </div>

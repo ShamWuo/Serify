@@ -56,10 +56,6 @@ export default function Settings() {
             </Head>
 
             <div className="max-w-4xl mx-auto w-full px-6 md:px-10 py-6 space-y-8 pb-24 animate-fade-in-up">
-                <header>
-                    <h1 className="text-3xl font-display text-[var(--text)] font-semibold tracking-tight">Settings</h1>
-                    <p className="text-sm text-[var(--muted)] mt-1">Manage your account, preferences, and billing.</p>
-                </header>
 
                 <section className="space-y-3">
                     <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] flex items-center gap-2">

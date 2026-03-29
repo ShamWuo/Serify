@@ -1,706 +1,488 @@
-# Serify — Practice Page Spec
-> This spec replaces the Practice Mode spec and the Verify Mode spec entirely. Practice is one unified page with multiple tools. Feed this alongside all other Serify spec files.
+# Serify — Exam Roadmap & Study Scheduling Spec
+
+Students don't just study randomly — they study toward something. An exam, a certification, a deadline. This spec covers the Exam Roadmap feature: a structured study plan built backward from a target date, with daily scheduling, progress tracking, and adaptive rescheduling when life gets in the way.
 
 ---
 
 ## Overview
 
-Practice is where you apply and test knowledge. One page, six tools, all working the same way — type a topic or pick from your Vault, get something useful immediately.
+The Exam Roadmap is a reverse-engineered study plan. The user tells Serify what they're preparing for and when the exam is. Serify calculates how many study days are available, divides the material into manageable daily sessions, and builds a calendar the user can follow. Every day has a specific task. Progress is tracked. When the user falls behind, the plan adapts.
 
-No guided chains. No prerequisites. No steps to unlock. Every tool works on day one for a brand new user who has never done a session in Serify. Every tool also works with Vault concepts for users who have history.
-
-The design philosophy: land on Practice, pick a tool, start in under 10 seconds.
+This is not a generic to-do list. It's an intelligent schedule that knows what the user has and hasn't mastered, adjusts based on their actual performance, and ensures the most important material gets the most time.
 
 ---
 
-## The Six Tools
+## Entry Points
 
-| Tool | What It Does | Best For |
-|---|---|---|
-| **Practice Test** | Open-ended questions on any topic, graded | Testing existing knowledge fast |
-| **Quick Quiz** | Short focused questions on specific concepts | Rapid retention check |
-| **Timed Exam** | Full exam simulation with a countdown timer | Exam prep under pressure |
-| **Real Scenario** | Apply knowledge to a realistic situation | Testing application not just recall |
-| **Flashcards** | Generated card deck for a topic or concept set | Building familiarity with weak areas |
-| **Spaced Review** | Review due concepts from your Vault | Maintaining long-term retention |
+- Sidebar nav — **Roadmap** (new top-level item)
+- Homepage dashboard — "Preparing for an exam? Build a study roadmap →"
+- Concept Vault — "Turn this subject into an exam roadmap →"
+- After a session — "Building toward an exam? Add this to your roadmap →"
 
 ---
 
-## The Page
+## Roadmap Creation Flow
 
-### Layout
+### Step 1 — What are you preparing for?
 
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│  Practice                                                          │
-│  Apply and test what you know.                                     │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  Due for Review                          [Start Review →]   │   │
-│  │  5 concepts due today  ·  ~8 minutes                        │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│  (only shown when concepts are due)                                │
-│                                                                    │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
-│  │  📝               │  │  ⚡               │  │  ⏱               │  │
-│  │  Practice Test   │  │  Quick Quiz      │  │  Timed Exam      │  │
-│  │                  │  │                  │  │                  │  │
-│  │  Test what you   │  │  Rapid check on  │  │  Full exam under │  │
-│  │  think you know  │  │  a concept       │  │  time pressure   │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘  │
-│                                                                    │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
-│  │  🌍               │  │  🃏               │  │  🔄               │  │
-│  │  Real Scenario   │  │  Flashcards      │  │  Spaced Review   │  │
-│  │                  │  │                  │  │                  │  │
-│  │  Apply to real   │  │  Build famili-   │  │  Review due      │  │
-│  │  situations      │  │  arity fast      │  │  Vault concepts  │  │
-│  └──────────────────┘  └──────────────────┘  └──────────────────┘  │
-│                                                                    │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  Recent Practice                                    See all →      │
-│                                                                    │
-│  Practice Test · Spanish Conjugations    Nov 14  Strong    [↩]    │
-│  Timed Exam · Calculus Derivatives       Nov 12  Mixed     [↩]    │
-│  Scenario · Machine Learning             Nov 10  Solid     [↩]    │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
+What exam or goal are you preparing for?
+
+[ AP Calculus BC, MCAT, CFA Level 1, Bar Exam...     ]
+
+Or describe it: [ I want to master calculus derivatives ]
 ```
 
-### Due for Review Banner
+Free text. Serify normalizes the input and identifies:
+- The subject domain
+- The likely scope of material (broad exam vs single topic)
+- Whether it's a standardized test (SAT, MCAT, LSAT, AP, GRE, CFA, Bar, etc.)
 
-Only shows when the user has Vault concepts due for spaced review. Sits above the tool grid. One line description, one button. If nothing is due the banner is completely hidden — no empty state, no placeholder.
-
-### Tool Cards
-
-Six cards in a 3×2 grid. Each card:
-- Icon (large, centered top)
-- Tool name (Instrument Serif, 16px)
-- One-line description (DM Sans muted, 13px)
-- Hover state: subtle green border, card lifts slightly
-- Click: opens the tool input inline below the grid
-
-On mobile: 2×3 grid (two columns, three rows).
-
-### Recent Practice
-
-Last 3 practice sessions. Each row shows tool type, topic, date, performance state, and a replay button that re-runs the same tool on the same topic.
+For recognized standardized tests, Serify has predefined topic lists it can use as a starting scaffold. For custom topics, it generates the topic list from the description.
 
 ---
 
-## How Every Tool Starts — The Input Pattern
-
-Every tool uses the same input pattern when clicked. The tool cards fade slightly and an input panel slides in below the grid:
+### Step 2 — When is your exam?
 
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│  📝 Practice Test                                          [×]     │
-│                                                                    │
-│  What topic do you want to be tested on?                           │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │  e.g. "Spanish present tense", "derivatives", "WWI causes"  │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│  Or choose from your Vault:                                        │
-│  [Positional Encoding]  [Backpropagation]  [View all →]           │
-│  (only shown if user has Vault concepts)                           │
-│                                                                    │
-│  Difficulty:  [Auto ▾]                                             │
-│                                                                    │
-│                              [Generate →  ⚡ 5 tokens]             │
-└────────────────────────────────────────────────────────────────────┘
+Exam date
+[ Select date — calendar picker ]
+
+How many days per week can you study?
+○  3 days    ○  4 days    ○  5 days    ○  6 days    ○  Every day
+
+How long per session?
+○  30 min    ○  45 min    ○  1 hour    ○  1.5 hours    ○  2 hours
 ```
 
-**Free text input:** Always primary. Works for any topic. No session history required.
+Serify calculates:
+- Total days until exam
+- Total available study sessions
+- Total study hours
 
-**Vault selector:** Secondary. Shows up to 5 recent Vault concepts as chips. "View all →" opens a searchable Vault picker. Only visible if the user has Vault concepts.
+Shows a summary: **"You have 34 study sessions and 51 hours before your exam."**
 
-**Difficulty selector:** Auto (default — inferred from Vault mastery if available, otherwise medium), Easy, Medium, Hard. Only shown for tools where difficulty is meaningful (Practice Test, Quick Quiz, Timed Exam). Hidden for Flashcards and Scenario.
-
-**Token cost:** Shown on the Generate button. Different per tool (see token costs section).
-
-**[×] button:** Closes the input panel and returns to the tool grid.
+If the timeline is too short for the scope: **"This is a tight timeline for AP Calculus BC. I'll prioritize the highest-weight topics and mark others as stretch goals."**
 
 ---
 
-## Tool 1 — Practice Test
-
-### What It Is
-
-An open-ended test on any topic. The core Verify experience — "I think I know this. Let's find out." No timer. No prerequisites. Works on anything.
-
-**Token cost:** 8 tokens
-
-### Generation
-
-```typescript
-const practiceTestPrompt = `
-Generate a practice test for Serify.
-
-Topic: ${topic}
-Difficulty: ${difficulty}
-User's Vault mastery on related concepts (if any): ${vaultContext}
-
-Generate 6-8 open-ended questions that:
-- Cover the breadth of the topic, not just one aspect
-- Require explanation in the user's own words — not yes/no or fill-in-the-blank
-- Progress from foundational to applied
-- Are answerable in 3-6 sentences each by someone with solid knowledge
-- Are appropriate for the difficulty level selected
-
-Return JSON:
-{
-  "test_title": string,
-  "topic_normalized": string,
-  "estimated_minutes": number,
-  "questions": [
-    {
-      "id": string,
-      "text": string,
-      "target_concept": string,
-      "question_type": "definition" | "mechanism" | "application" | "synthesis",
-      "difficulty": 1 | 2 | 3
-    }
-  ]
-}
-`;
-```
-
-### Interface
-
-One question at a time. Progress dots at the top. No timer. User can navigate back and revise.
+### Step 3 — What do you already know?
 
 ```
-┌────────────────────────────────────────────────────────────────────┐
-│  Practice Test · Spanish Present Tense          ● ● ○ ○ ○ ○       │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  Question 2 of 6                                                   │
-│                                                                    │
-│  Explain the difference between regular -AR, -ER, and -IR          │
-│  verb conjugations. Give one example of each.                      │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                                                              │  │
-│  │                                                              │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│  [← Back]                                     [Next →]            │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
+What's your current level with this material?
+
+○  Starting from scratch
+○  I've studied some of it
+○  I know most of it, just need review
+
+Do you have existing Vault concepts for this subject?
+[Yes — use my Vault data]    [No — start fresh]
 ```
 
-After final question: "Submit Test →" button.
-
-### Results
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  Practice Test Results                                             │
-│  Spanish Present Tense · 6 questions                               │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  Overall: Mixed — 3 strong, 2 developing, 1 gap                   │
-│                                                                    │
-│  By concept:                                                       │
-│  ⬤  Regular verb endings          Solid                           │
-│  ⬤  Irregular verbs               Shaky    → [Practice this →]    │
-│  ⬤  Stem-changing verbs           Missing  → [Practice this →]    │
-│  ⬤  Reflexive verbs               Developing                      │
-│                                                                    │
-│  Question breakdown:                                               │
-│  Q1 ✓  Clear explanation of -AR endings...                        │
-│  Q2 ✓  Good examples, minor gaps in...                            │
-│  Q3 ✗  Irregular verbs — you listed haber but missed...           │
-│                                                                    │
-│  [Practice weak concepts →]    [Try again →]    [Done]            │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-**"Practice weak concepts →"** launches the Quick Quiz tool pre-loaded with the gap concepts from this test. Natural bridge from testing to practicing.
-
-**"Try again →"** generates a new test on the same topic with different questions.
-
-Vault updated with concept mastery states from this test.
+If the user has Vault concepts for the subject, Serify reads their mastery states and skips or compresses already-Solid concepts. This means a user who has done 10 sessions on calculus gets a roadmap that reflects what they actually know — not a generic plan that starts from zero.
 
 ---
 
-## Tool 2 — Quick Quiz
+### Step 4 — Review and confirm the topic list
 
-### What It Is
+Serify generates a full topic breakdown before building the schedule. The user can review and edit:
 
-A short, focused quiz on a specific concept or small topic. 5 questions. Fast. For rapid retention checks between sessions.
+```
+Your AP Calculus BC Roadmap — 22 topics
 
-**Token cost:** 3 tokens
+Unit 1 — Limits and Continuity          4 topics
+  ✓  Definition of a Limit              Solid — will review briefly
+  ○  Continuity and Discontinuity       Not studied — full session
+  ○  Limits at Infinity                 Not studied — full session
+  ○  L'Hôpital's Rule                   Not studied — full session
 
-### Generation
+Unit 2 — Derivatives                    6 topics
+  ○  Definition of the Derivative       Not studied — full session
+  ...
 
-Same pattern as Practice Test but shorter and more focused. 5 questions, all targeting one concept or a tight cluster of related concepts.
+[Remove topic]  [Add topic]  [Reorder]
 
-### Interface
+                              [Build My Schedule →]
+```
 
-Same as Practice Test but with a cleaner, more compact feel. Progress shown as "3 / 5" not dots.
-
-### Results
-
-Simpler than Practice Test — just a pass/fail per question with one-line feedback on each. No full concept breakdown. Total time under 2 minutes.
+Topics the Vault shows as Solid get abbreviated treatment (review session, not full session). Topics marked Revisit get double sessions automatically.
 
 ---
 
-## Tool 3 — Timed Exam
+## The Schedule
 
-### What It Is
-
-A full exam under time pressure. The pressure is the point — knowledge that holds up in a timed exam is knowledge you actually have.
-
-**Token cost:** 10 tokens
-
-### Setup
-
-Before starting, user picks:
+After confirmation, Serify builds a day-by-day calendar. Every study day has one primary topic and one optional secondary task.
 
 ```
-Timed Exam Setup
+AP Calculus BC Roadmap
+34 sessions  ·  Exam: May 15  ·  47 days away
 
-Topic: [already filled from input]
+This week
 
-Format:
-○  Standard       Mixed questions            45 min
-○  Problem Set    Stepped difficulty         30 min
-○  Essay          Long-form prompts          60 min
-○  Case Study     Scenario-based             45 min
-○  Technical      Problem-solving + explain  45 min
+  Mon Apr 7     Continuity and Discontinuity      [Start →]
+                Optional: Review Limit definition
 
-Questions: [8 ▾]   (5 / 8 / 10 / 12 / 15)
+  Wed Apr 9     Limits at Infinity                [Locked]
 
-[Start Exam →]
+  Fri Apr 11    L'Hôpital's Rule                  [Locked]
+
+Next week
+  Mon Apr 14    Definition of the Derivative      [Locked]
+  ...
+
+Final week (exam week)
+  Mon May 12    Full review — weakest concepts    [Locked]
+  Wed May 14    Light review — confidence pass    [Locked]
+  Thu May 15    EXAM DAY                          ⭐
 ```
 
-### Interface
+**Locked sessions** unlock as the user completes previous sessions. Can't skip ahead.
 
-Full screen. No sidebar. No nav. Locked once started.
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  Calculus Derivatives — Standard Exam          ⏱  38:42           │
-│  ● ● ● ○ ○ ○ ○ ○                                                   │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  Question 3 of 8                                                   │
-│                                                                    │
-│  A particle's position is described by s(t) = 3t³ - 2t² + t.     │
-│  Find the velocity and acceleration at t = 2, and determine        │
-│  whether the particle is speeding up or slowing down.             │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                                                              │  │
-│  │                                                              │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│  [← Previous]                              [Next Question →]       │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-Timer turns amber at 5 minutes remaining. Red at 1 minute. Auto-submits at zero.
-
-### Results
-
-Full exam report — overall performance, per-concept breakdown, per-question feedback, regressions flagged if concepts exist in Vault.
+**Exam week** is always reserved:
+- 3 days before: full review of weakest concepts
+- 1 day before: light confidence pass — only Solid concepts, nothing new
+- Exam day: marked, no study session assigned
 
 ---
 
-## Tool 4 — Real Scenario
+## Daily Session Flow
 
-### What It Is
+When the user clicks [Start →] on today's session:
 
-A realistic situation where the user must apply their knowledge. Not "explain X" — "here's a problem in the real world, solve it using X."
+**1. Warm-up (5 min)** — a quick 2-question review of yesterday's topic. Keeps previous material fresh. If they struggle, yesterday's topic gets scheduled for a brief revisit.
 
-**Token cost:** 5 tokens
+**2. Main session (bulk of the time)** — a full Serify session on today's topic. Content ingestion if they have a source to paste, or Serify generates questions from its knowledge of the topic directly.
 
-### Generation
+**3. Practice (remaining time)** — based on today's performance, Serify suggests flashcards, a quick quiz, or a scenario. The user can do it now or skip to their spaced review queue.
 
-Domain-appropriate scenarios based on topic. The AI infers the domain from the topic and generates a scenario in the right style.
+**4. Session close** — mastery state updated, tomorrow's session confirmed, streak updated.
 
-| Domain Detected | Scenario Style |
+---
+
+## Adaptive Rescheduling
+
+Life happens. The roadmap adapts.
+
+### Missed session
+
+If a study day passes without the user completing the session, Serify doesn't penalize them or silently fall behind. The next time they open the app:
+
+```
+You missed Wednesday's session on Limits at Infinity.
+
+Your roadmap has been adjusted. Here's what changed:
+- Limits at Infinity moved to today
+- L'Hôpital's Rule moved to Saturday
+- You're still on track for your May 15 exam.
+
+[Start today's session →]    [View updated schedule]
+```
+
+Serify redistributes missed sessions across available future days. If there's no room, it flags which topics will be compressed or skipped and asks the user to confirm.
+
+### Struggling with a topic
+
+If a session ends with a Shaky or Revisit mastery state, Serify automatically schedules a follow-up:
+
+```
+You struggled with L'Hôpital's Rule today.
+I've added a 20-minute review session on Thursday before
+you move on to the next topic.
+```
+
+The follow-up is shorter than a full session — targeted review on the specific gaps, not a full reteach.
+
+### Ahead of schedule
+
+If the user completes sessions early or performs exceptionally well:
+
+```
+You're 3 sessions ahead of schedule.
+
+Options:
+○  Keep the extra time as buffer before your exam
+○  Add a stretch topic — Integration by Parts
+○  Use the time for deeper practice on weak areas
+```
+
+---
+
+## Progress Tracking
+
+### Roadmap overview card (on dashboard homepage)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  AP Calculus BC                      47 days to exam     │
+│                                                          │
+│  ████████░░░░░░░░░░░░  8 of 22 topics complete           │
+│                                                          │
+│  Today: Limits at Infinity          [Start →]            │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Full roadmap page stats
+
+```
+Overall Progress
+  Topics complete      8 / 22    36%
+  Sessions complete   12 / 34    35%
+  Days remaining      47
+  Sessions remaining  22
+  Study time logged   9h 20min
+
+Mastery Distribution
+  ██████░░░░  Solid          6 topics
+  ████░░░░░░  Developing     4 topics
+  ██░░░░░░░░  Shaky          2 topics
+  ░░░░░░░░░░  Not started   10 topics
+
+Streak
+  Current streak      4 days
+  Longest streak      7 days
+  Sessions this week  3 / 3 planned
+```
+
+### Topic completion map
+
+A visual grid of all topics — color coded by mastery state. At a glance the user sees what's done, what's in progress, and what hasn't been touched.
+
+---
+
+## Exam Day Mode
+
+The day before the exam, Serify switches into Exam Day Mode:
+
+```
+Your AP Calculus BC exam is tomorrow.
+
+Tonight's plan:
+1.  Review your 4 weakest concepts (20 min)
+2.  One confidence pass through your flashcards (15 min)
+3.  Sleep — seriously. Don't study past 10pm.
+
+You've put in 9 hours and 20 minutes. You're ready.
+```
+
+No new material. No full sessions. Just a targeted review of the weakest areas and a confidence-building flashcard pass. Serify explicitly tells the user to stop studying — overlearning the night before an exam is counterproductive and Serify knows this.
+
+---
+
+## Post-Exam
+
+After the exam date passes, Serify shows a post-exam card:
+
+```
+How did AP Calculus BC go?
+
+○  Passed / Did well
+○  Okay — could have been better
+○  Didn't go well
+
+Optional: [ Share your score or any notes... ]
+
+[Submit]
+```
+
+This data feeds into improving future roadmap recommendations — if users who spent more time on a specific topic did better, future roadmaps weight that topic higher.
+
+---
+
+## Multiple Roadmaps
+
+Users can have multiple active roadmaps simultaneously — for example, AP Chemistry and AP English Literature at the same time.
+
+When multiple roadmaps are active, the scheduler intelligently interleaves sessions so subjects don't conflict. If two sessions are scheduled on the same day, Serify separates them by subject and suggests a morning/evening split.
+
+```
+Tuesday has two sessions scheduled:
+  Morning  AP Chemistry — Equilibrium
+  Evening  AP English — Rhetorical Analysis
+
+Estimated total: 1h 40min
+```
+
+Maximum 3 active roadmaps simultaneously. More than that becomes unmanageable and the product should say so.
+
+---
+
+## Notifications and Reminders
+
+**Daily study reminder** — push notification or email at the user's preferred time:
+> "Today: Limits at Infinity — 45 min. Your exam is in 47 days. [Start now →]"
+
+**Streak at risk** — if the user hasn't studied by 8pm on a scheduled day:
+> "Your 4-day streak is at risk. Today's session takes 45 minutes. [Start →]"
+
+**Exam approaching** — at 7 days, 3 days, and 1 day before the exam:
+> "7 days until AP Calculus BC. You have 3 sessions left. Here's what still needs work: [topic list]"
+
+**Behind schedule alert** — if the user is 2+ sessions behind:
+> "You're 2 sessions behind on your AP Calculus BC roadmap. Your schedule has been adjusted. [View changes →]"
+
+---
+
+## Study Scheduling Settings
+
+The user can customize their schedule at any time:
+
+```
+Schedule Settings
+
+Study days
+[✓] Monday   [✓] Wednesday   [✓] Friday
+[ ] Tuesday  [ ] Thursday    [ ] Saturday   [ ] Sunday
+
+Session length
+[○ 30 min] [● 45 min] [○ 1 hour] [○ 1.5 hours]
+
+Preferred study time
+[ ] Morning (6am–12pm)
+[●] Afternoon (12pm–6pm)
+[ ] Evening (6pm–11pm)
+
+Reminder time
+[8:00 PM ▾]
+
+Buffer before exam
+[○ 1 day] [● 3 days] [○ 1 week]
+(Time reserved at the end for review — no new topics)
+
+[Save Settings]
+```
+
+Changes to schedule settings trigger an automatic roadmap recalculation.
+
+---
+
+## Recognized Standardized Exams
+
+For these exams, Serify has predefined topic lists and weights sessions by how heavily each topic appears on the real exam:
+
+**US Academic**
+SAT (Math, Reading/Writing), ACT, AP exams (all 38 subjects), PSAT
+
+**Graduate Admissions**
+GRE (Verbal, Quantitative, Analytical Writing), GMAT, LSAT, MCAT
+
+**Professional Certifications**
+CFA (Level 1, 2, 3), CPA (all 4 sections), Bar Exam, PMP, AWS certifications, Google Cloud certifications, CompTIA (A+, Security+, Network+)
+
+**Language**
+TOEFL, IELTS, DELF, JLPT
+
+**Custom**
+Any subject or topic the user describes — Serify generates the topic list from scratch.
+
+---
+
+## Token Costs
+
+| Action | Tokens |
 |---|---|
-| Programming / CS | Debugging, system design, code review |
-| Medicine / Biology | Patient case, lab interpretation |
-| Math / Physics | Applied problem, failure analysis |
-| Economics / Business | Case analysis, strategic decision |
-| History / Humanities | Source analysis, argument construction |
-| Language | Real conversation or writing task |
-| Law | Case analysis, legal reasoning |
-| General | "You are [role]. [Situation]. What do you do?" |
-
-### Interface
-
-Single scenario, single text response. No multiple parts. Clean.
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  Real Scenario · Machine Learning                                  │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  You're a data scientist at a fintech startup. Your fraud          │
-│  detection model has 99.2% accuracy but your head of risk          │
-│  is unhappy — she says it's missing too many actual fraud          │
-│  cases. Using your knowledge of precision, recall, and             │
-│  classification thresholds, explain what's happening and           │
-│  how you'd address it.                                             │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                                                              │  │
-│  │                                                              │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│                                         [Submit Response →]        │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-### Evaluation
-
-Four dimensions, specific feedback:
-
-1. **Concept identification** — did they identify the right concepts as relevant?
-2. **Mechanism accuracy** — did they explain the mechanism correctly?
-3. **Application quality** — did they apply it to this specific situation?
-4. **Solution viability** — are their proposed solutions workable?
-
----
-
-## Tool 5 — Flashcards
-
-### What It Is
-
-An AI-generated flashcard deck for any topic or set of concepts. Built for building familiarity, not testing it. Use before a Practice Test or Quiz.
-
-**Token cost:** 2 tokens
-
-### Generation
-
-Generates 10-20 cards depending on topic breadth. Cards target the key concepts of the topic — not trivia, not edge cases. The things you actually need to know.
-
-Card types:
-- **Definition** — what is this concept?
-- **Mechanism** — how does this work?
-- **Example** — what does this look like in practice?
-- **Distinction** — how is this different from X?
-
-### Interface
-
-Flip cards. Front shows prompt. Tap to reveal. Mark correct or needs review. Cards marked needs review cycle back.
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  Flashcards · Spanish Present Tense        12 / 18                 │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│                                                                    │
-│              What is the stem-changing pattern                     │
-│              for verbs like "poder" (o→ue)?                        │
-│                                                                    │
-│                                                                    │
-│                        [Reveal →]                                  │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-After all cards seen once: show a summary of which cards were marked needs review, option to run through just those cards again.
-
-After completion: "Ready to test yourself? [Take a Quick Quiz →]" — natural bridge to Quiz.
-
----
-
-## Tool 6 — Spaced Review
-
-### What It Is
-
-Reviews due Vault concepts at the optimal moment for long-term retention. Written explanation required — not card flipping.
-
-**Token cost:** 0 tokens (always free)
-
-### Behavior
-
-Only shows concepts that are due based on the review schedule. If no concepts are due, the tool card shows:
-
-```
-🔄 Spaced Review
-Nothing due right now.
-Next review: in 3 days
-```
-
-Still clickable — opens the tool input where user can manually select concepts to review early.
-
-### Interface
-
-One concept at a time. Explanation prompt rotates angles each review.
-
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  Spaced Review  ·  3 of 5 concepts                                 │
-│  Last reviewed 7 days ago                                          │
-├────────────────────────────────────────────────────────────────────┤
-│                                                                    │
-│  Positional Encoding                                               │
-│                                                                    │
-│  Explain this concept as if you're teaching it to someone          │
-│  who understands basic neural networks but has never               │
-│  seen transformers.                                                │
-│                                                                    │
-│  ┌──────────────────────────────────────────────────────────────┐  │
-│  │                                                              │  │
-│  └──────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-│                                              [Submit →]            │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
-```
-
-Strong response → schedule advanced. Weak response → rescheduled to tomorrow. Three consecutive strong responses → concept graduates to Mastered.
-
----
-
-## Natural Tool Bridges
-
-After each tool completes, Serify suggests the logical next tool. These are not forced — always dismissible — but they create a natural pull through the toolkit.
-
-```
-Practice Test → "Practice weak concepts?" → Quick Quiz (on gaps)
-Quick Quiz → "Ready to apply this?" → Real Scenario
-Real Scenario → "Lock this in?" → Spaced Review scheduled
-Flashcards → "Test your retention?" → Quick Quiz
-Timed Exam → "Work on weak areas?" → Flashcards (on gaps)
-Spaced Review → "Test broader understanding?" → Practice Test
-```
-
-The bridge appears as a single card at the bottom of the results screen — never a popup, never a redirect. The user chooses to follow it or not.
-
----
-
-## PDF Export
-
-Any Practice Test or Timed Exam can be exported as a clean printable PDF. Questions only, no answers. Always free — 0 tokens.
-
-Export button appears on the results screen:
-
-```
-[Export as PDF →]  Free
-```
-
-PDF format:
-- Clean professional layout
-- Topic and date at top
-- Numbered questions with blank answer space
-- Time limit printed if from Timed Exam
-- Serify wordmark small in footer
-
----
-
-## Adaptive Difficulty
-
-All tools (except Flashcards and Spaced Review) use adaptive difficulty. Invisible to the user.
-
-**Starting level:**
-- Auto (default): If Vault data exists for the topic, start at the mastery state of the weakest related concept. If no Vault data, start at Medium.
-- Easy / Medium / Hard: User-selected override.
-
-**Within-session adaptation:**
-After every 2 responses, the AI adjusts the next question's difficulty:
-- 2 consecutive strong → next question harder
-- 2 consecutive weak → next question easier
-- Mixed → stay at current level
-
-**Difficulty levels:**
-1. Define and describe
-2. Explain the mechanism
-3. Apply to a scenario
-4. Synthesize across concepts
-5. Edge cases and limitations
-
----
-
-## Mastered State
-
-Mastered is achievable through Spaced Review only. Three consecutive successful spaced reviews on a concept → Mastered.
-
-Mastered concepts:
-- Show a ⭐ in the Vault
-- Still appear in Spaced Review but at very long intervals (90 days)
-- Never shown in "Focus on these" gap suggestions on the dashboard
-- Counted in the user's total mastery stats
-
----
-
-## Printable Test Without Completing In-App
-
-User can generate a printable practice test without answering it in Serify. Use case: printing for a study group or a tutor to grade manually.
-
-From the Practice page, a small link below the tool grid:
-
-```
-Just want a printable test? Generate one without completing it in Serify →
-```
-
-Opens the same topic input, generates questions, exports directly to PDF. No session created, no tokens deducted until they actually generate (same cost as Practice Test).
-
----
-
-## Routes
-
-```
-/practice                    → Practice page (tool grid + recent)
-/practice/test/:id           → Practice Test session
-/practice/quiz/:id           → Quick Quiz session
-/practice/exam/:id           → Timed Exam session
-/practice/scenario/:id       → Real Scenario session
-/practice/flashcards/:id     → Flashcard session
-/practice/review             → Spaced Review session
-/practice/results/:id        → Any session results page
-```
-
----
-
-## Token Costs Summary
-
-| Tool | Tokens | Notes |
-|---|---|---|
-| Practice Test | 8 | Generation + evaluation |
-| Quick Quiz | 3 | Generation + evaluation |
-| Timed Exam | 10 | Generation + evaluation |
-| Real Scenario | 5 | Generation + evaluation |
-| Flashcards | 2 | Generation only |
-| Spaced Review | 0 | Always free |
-| PDF Export | 0 | Always free |
+| Create roadmap (custom topic list generation) | 5 tokens |
+| Create roadmap (recognized exam — uses preset list) | 2 tokens |
+| Daily warm-up questions | 2 tokens |
+| Main session | 13 tokens (same as regular session) |
+| Adaptive rescheduling | 0 tokens (rule-based, no AI) |
+| Post-exam analysis | 0 tokens |
 
 ---
 
 ## Database Schema
 
 ```sql
--- Unified practice sessions table
-CREATE TABLE practice_sessions (
+CREATE TABLE exam_roadmaps (
   id UUID PRIMARY KEY,
   user_id UUID REFERENCES users(id),
+  title VARCHAR(255) NOT NULL,
+  exam_type VARCHAR(50),
+  -- 'standardized' | 'certification' | 'custom'
+  exam_name VARCHAR(255),
+  exam_date DATE NOT NULL,
+  status VARCHAR(20) DEFAULT 'active',
+  -- 'active' | 'completed' | 'abandoned'
 
-  tool VARCHAR(20) NOT NULL,
-  -- 'test' | 'quiz' | 'exam' | 'scenario' | 'flashcards' | 'review'
+  -- Schedule config
+  study_days_per_week INTEGER,
+  session_length_minutes INTEGER,
+  preferred_time VARCHAR(20),
+  -- 'morning' | 'afternoon' | 'evening'
+  buffer_days INTEGER DEFAULT 3,
 
-  -- Input
-  topic VARCHAR(255),
-  topic_normalized VARCHAR(255),
-  source VARCHAR(20) DEFAULT 'free_text',
-  -- 'free_text' | 'vault' | 'session'
-  source_concept_ids UUID[],
-  source_session_id UUID,
+  -- Progress
+  total_topics INTEGER,
+  completed_topics INTEGER DEFAULT 0,
+  total_sessions INTEGER,
+  completed_sessions INTEGER DEFAULT 0,
+  sessions_missed INTEGER DEFAULT 0,
+  total_study_minutes INTEGER DEFAULT 0,
+  current_streak INTEGER DEFAULT 0,
+  longest_streak INTEGER DEFAULT 0,
 
-  -- Config
-  difficulty VARCHAR(10) DEFAULT 'auto',
-  -- 'auto' | 'easy' | 'medium' | 'hard'
-  exam_format VARCHAR(20),
-  -- for Timed Exam only
-  time_limit_minutes INTEGER,
-  -- for Timed Exam only
-  question_count INTEGER,
+  -- Post-exam
+  exam_outcome VARCHAR(20),
+  -- 'passed' | 'okay' | 'failed' | null
+  exam_notes TEXT,
 
-  -- Content
-  generated_content JSONB,
-  -- questions array, cards array, scenario text etc.
-
-  -- Results
-  status VARCHAR(20) DEFAULT 'in_progress',
-  -- 'in_progress' | 'completed' | 'timed_out' | 'abandoned'
-  overall_performance VARCHAR(20),
-  -- 'strong' | 'mixed' | 'developing' | 'weak'
-  results JSONB,
-  -- per-concept and per-question breakdown
-
-  -- Tokens
-  tokens_consumed INTEGER DEFAULT 0,
-
-  -- Timing
-  started_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP,
-  time_spent_seconds INTEGER,
-
-  -- Vault
-  concept_ids_updated UUID[]
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_activity_at TIMESTAMP
 );
 
--- Individual responses (questions and scenario)
-CREATE TABLE practice_responses (
+CREATE TABLE roadmap_topics (
   id UUID PRIMARY KEY,
-  practice_session_id UUID REFERENCES practice_sessions(id),
-  user_id UUID REFERENCES users(id),
-
-  question_id VARCHAR(50),
-  question_text TEXT,
-  target_concept VARCHAR(255),
-  question_type VARCHAR(20),
-  difficulty_level INTEGER,
-
-  user_response TEXT,
-  response_quality VARCHAR(20),
-  -- 'strong' | 'developing' | 'weak' | 'blank'
-  ai_feedback TEXT,
-  evaluation_dimensions JSONB,
-  -- for scenario: {identification, mechanism, application, solution}
-
-  question_number INTEGER,
-  time_spent_seconds INTEGER,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Flashcard sessions
-CREATE TABLE flashcard_sessions (
-  id UUID PRIMARY KEY,
-  practice_session_id UUID REFERENCES practice_sessions(id),
-  user_id UUID REFERENCES users(id),
-
-  cards JSONB NOT NULL,
-  total_cards INTEGER,
-  cards_correct INTEGER DEFAULT 0,
-  cards_needs_review INTEGER DEFAULT 0,
-
-  completed_at TIMESTAMP,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Spaced review schedule
-CREATE TABLE review_schedule (
-  id UUID PRIMARY KEY,
+  roadmap_id UUID REFERENCES exam_roadmaps(id),
   user_id UUID REFERENCES users(id),
   concept_id UUID REFERENCES knowledge_nodes(id),
 
-  next_review_date DATE NOT NULL,
-  review_interval_days INTEGER NOT NULL,
-  consecutive_successful_reviews INTEGER DEFAULT 0,
-  total_reviews INTEGER DEFAULT 0,
+  title VARCHAR(255) NOT NULL,
+  unit VARCHAR(255),
+  position INTEGER,
+  weight FLOAT DEFAULT 1.0,
+  -- higher weight = more sessions allocated
+  is_stretch_goal BOOLEAN DEFAULT FALSE,
 
-  last_reviewed_at TIMESTAMP,
-  last_response_quality VARCHAR(20),
+  status VARCHAR(20) DEFAULT 'not_started',
+  -- 'not_started' | 'in_progress' | 'complete' | 'skipped'
+  mastery_at_completion VARCHAR(20),
+  sessions_allocated INTEGER DEFAULT 1,
+  sessions_completed INTEGER DEFAULT 0,
 
-  is_mastered BOOLEAN DEFAULT FALSE,
-  mastered_at TIMESTAMP,
-
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-
-  UNIQUE(user_id, concept_id)
+  created_at TIMESTAMP DEFAULT NOW()
 );
 
--- PDF exports
-CREATE TABLE practice_exports (
+CREATE TABLE roadmap_sessions (
   id UUID PRIMARY KEY,
+  roadmap_id UUID REFERENCES exam_roadmaps(id),
+  topic_id UUID REFERENCES roadmap_topics(id),
   user_id UUID REFERENCES users(id),
-  practice_session_id UUID REFERENCES practice_sessions(id),
-  export_type VARCHAR(20),
-  file_url TEXT,
+
+  session_type VARCHAR(20),
+  -- 'main' | 'warmup' | 'followup' | 'review' | 'exam_day'
+  scheduled_date DATE NOT NULL,
+  scheduled_length_minutes INTEGER,
+
+  status VARCHAR(20) DEFAULT 'scheduled',
+  -- 'scheduled' | 'completed' | 'missed' | 'rescheduled'
+  completed_at TIMESTAMP,
+  actual_length_minutes INTEGER,
+
+  reflection_session_id UUID,
+  mastery_after VARCHAR(20),
+  rescheduled_from DATE,
+
   created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE roadmap_notifications (
+  id UUID PRIMARY KEY,
+  roadmap_id UUID REFERENCES exam_roadmaps(id),
+  user_id UUID REFERENCES users(id),
+  type VARCHAR(30),
+  -- 'daily_reminder' | 'streak_risk' | 'exam_approaching' | 'behind_schedule'
+  scheduled_for TIMESTAMP,
+  sent_at TIMESTAMP,
+  dismissed_at TIMESTAMP
 );
 ```
 
@@ -712,114 +494,86 @@ CREATE TABLE practice_exports (
 Home
 New Session
 ✦ Learn
-Practice          ← one item, goes to /practice
+Practice
+Roadmap          ← NEW
 Sessions
 Concept Vault
 Settings
 ```
 
-Practice replaces the separate Verify and Practice Mode items. One destination, all tools inside.
+When a roadmap is active, the nav item shows a small indicator:
+
+```
+Roadmap    ● Today
+```
 
 ---
 
-## Launch Checklist — Practice Page
+## Launch Checklist
 
-**Page and Tool Grid**
-- [ ] Tool grid renders correctly 3×2 on desktop, 2×3 on mobile
-- [ ] Due for review banner shows when concepts are due, hidden when not
-- [ ] Clicking a tool card opens the input panel below the grid
-- [ ] Input panel shows free text input and optional Vault chips
-- [ ] Vault chips only show if user has Vault concepts
-- [ ] Difficulty selector shows for Test, Quiz, Exam — hidden for Flashcards, Scenario, Review
-- [ ] Token cost shows correctly on Generate button per tool
-- [ ] [×] closes input panel and returns to grid
-- [ ] Recent practice shows last 3 sessions with replay button
+**Creation Flow**
+- [ ] Free text exam input normalizes correctly for standardized exams
+- [ ] Topic list generated correctly for recognized exams with preset weights
+- [ ] Topic list generated from scratch for custom exams
+- [ ] Vault mastery read correctly — Solid concepts abbreviated, Revisit concepts doubled
+- [ ] Date picker works, available sessions calculated correctly
+- [ ] Study days and session length saved correctly
+- [ ] Topic review screen shows correct mastery states from Vault
+- [ ] User can remove, add, and reorder topics before confirming
+- [ ] Schedule generates correctly with locked sessions
+- [ ] Exam week reserved correctly — 3-day buffer + 1-day light review + exam day marker
 
-**Practice Test**
-- [ ] Generates 6-8 open-ended questions covering topic breadth
-- [ ] One question at a time with progress dots
-- [ ] User can navigate back and revise answers
-- [ ] Results show overall performance and per-concept breakdown
-- [ ] "Practice weak concepts →" pre-loads Quick Quiz with gap concepts
-- [ ] "Try again →" generates new questions on same topic
-- [ ] Vault updated with mastery states from test results
-- [ ] 8 tokens deducted on generation + evaluation
+**Daily Sessions**
+- [ ] Warm-up shows 2 questions on yesterday's topic
+- [ ] Warm-up struggle triggers follow-up scheduling for yesterday's topic
+- [ ] Main session works end to end — session, feedback, mastery update
+- [ ] Session close confirms tomorrow's session and updates streak
+- [ ] Locked sessions cannot be started out of order
 
-**Quick Quiz**
-- [ ] Generates 5 focused questions on topic
-- [ ] Results show pass/fail per question with one-line feedback
-- [ ] Natural bridge to Real Scenario shown after completion
-- [ ] 3 tokens deducted
+**Adaptive Rescheduling**
+- [ ] Missed session detected correctly on next login after scheduled date
+- [ ] Missed session redistributed correctly across future available days
+- [ ] No available slots triggers compression/skip confirmation dialog
+- [ ] Shaky/Revisit mastery after session auto-schedules shorter follow-up
+- [ ] Ahead of schedule shows three options correctly
+- [ ] Rescheduled sessions update `rescheduled_from` field in DB
 
-**Timed Exam**
-- [ ] Setup screen shows format and question count options
-- [ ] Full screen mode on start — no sidebar, no nav
-- [ ] Timer counts down, amber at 5 min, red at 1 min
-- [ ] Auto-submits at zero
-- [ ] Full exam report with regressions flagged
-- [ ] Vault states updated after exam
-- [ ] 10 tokens deducted
+**Progress Tracking**
+- [ ] Dashboard roadmap card shows when roadmap active
+- [ ] Progress bar updates after each session
+- [ ] Full stats page shows all metrics correctly
+- [ ] Mastery distribution updates in real time
+- [ ] Streak increments on session completion, resets on missed study day
+- [ ] Topic completion map renders all topics with correct mastery colors
 
-**Real Scenario**
-- [ ] Domain correctly inferred from topic
-- [ ] Domain-appropriate scenario style used
-- [ ] Evaluation covers all four dimensions
-- [ ] Feedback specific to what the user wrote
-- [ ] Natural bridge to Spaced Review shown after completion
-- [ ] 5 tokens deducted
+**Multiple Roadmaps**
+- [ ] Multiple roadmaps can be created simultaneously
+- [ ] Interleaved schedule separates subjects correctly on same-day conflicts
+- [ ] Maximum 3 roadmaps enforced with clear messaging
 
-**Flashcards**
-- [ ] Generates 10-20 cards appropriate to topic breadth
-- [ ] Four card types generated (definition, mechanism, example, distinction)
-- [ ] Flip animation works
-- [ ] "Needs review" cards cycle back
-- [ ] Summary shows which cards were marked needs review
-- [ ] Natural bridge to Quick Quiz shown after completion
-- [ ] 2 tokens deducted
+**Exam Day Mode**
+- [ ] Activates automatically the day before exam date
+- [ ] Shows only weakest concepts and flashcard confidence pass
+- [ ] Explicitly tells user to stop studying — no new sessions assignable
+- [ ] Post-exam survey appears after exam date passes
+- [ ] Post-exam outcome saved to roadmap record
 
-**Spaced Review**
-- [ ] Only due concepts shown (based on review_schedule table)
-- [ ] Explanation prompt rotates — never same angle twice for same concept
-- [ ] Strong response advances schedule correctly
-- [ ] Weak response resets interval to 1 day
-- [ ] Two consecutive weak responses suggests Flow Mode for that concept
-- [ ] Three consecutive strong responses → Mastered state
-- [ ] 0 tokens always — never gated
+**Notifications**
+- [ ] Daily reminder sends at user's preferred time
+- [ ] Streak at risk fires at 8pm if session not completed
+- [ ] Exam approaching fires at 7 days, 3 days, 1 day
+- [ ] Behind schedule alert fires when 2+ sessions missed
+- [ ] All notifications link directly to the relevant session or schedule view
 
-**PDF Export**
-- [ ] Export button on Practice Test and Timed Exam results
-- [ ] Questions-only PDF with blank answer space
-- [ ] Clean professional layout with topic and date
-- [ ] Time limit printed on Timed Exam exports
-- [ ] 0 tokens always
-- [ ] "Generate printable test without completing" link works
+**Settings**
+- [ ] Study days selection works and triggers schedule recalculation
+- [ ] Session length change triggers schedule recalculation
+- [ ] Reminder time saved and respected
+- [ ] Buffer days setting changes exam week reservation correctly
 
-**Adaptive Difficulty**
-- [ ] Auto difficulty uses Vault mastery when available
-- [ ] Auto difficulty defaults to medium when no Vault data
-- [ ] Two consecutive strong → harder next question
-- [ ] Two consecutive weak → easier next question
-- [ ] Difficulty ceiling at level 5, floor at level 1
-
-**Tool Bridges**
-- [ ] Bridge card shows at bottom of results — never a popup
-- [ ] Correct bridge shown for each tool completion
-- [ ] Bridge is dismissible
-- [ ] Following bridge pre-loads target tool with correct topic/gaps
-
-**Mastered State**
-- [ ] Three consecutive successful reviews → Mastered
-- [ ] Mastered flag written to review_schedule and knowledge_nodes
-- [ ] ⭐ shown on Mastered concepts in Vault
-- [ ] Mastered concepts not shown in dashboard gap suggestions
-
-**Vault Integration**
-- [ ] All tools that evaluate responses update Vault mastery states
-- [ ] Concepts created in Vault if topic matches existing concepts
-- [ ] New concepts added to Vault when topic introduces new ones
-- [ ] Source tagged correctly: 'practice_test' | 'quiz' | 'exam' | 'scenario' | 'review'
-
-**Routes**
-- [ ] All six tool routes work correctly
-- [ ] Results page accessible from recent practice history
-- [ ] Replay button re-runs same tool on same topic
+**Token Costs**
+- [ ] Roadmap creation deducts correct tokens (5 custom, 2 recognized)
+- [ ] Warm-up deducts 2 tokens
+- [ ] Main session deducts 13 tokens
+- [ ] Adaptive rescheduling deducts 0 tokens
+- [ ] Token gate shows before session start if insufficient tokens

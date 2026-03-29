@@ -56,7 +56,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // Filter archived nodes manually if needed or if they were missing from SQL result
-        const filteredNodes = (nodes || []).filter(n => n.is_archived !== true);
+        let filteredNodes = (nodes || []).filter(n => n.is_archived !== true);
+
+        // DEMO MOCK DATA: If it's the demo user and vault is empty, provide some quality samples
+        if (userId === 'd85252ae-32c2-4a82-a630-46812ed7f5ec' && filteredNodes.length === 0) {
+            filteredNodes = [
+                {
+                    id: 'demo-1',
+                    display_name: 'Backpropagation',
+                    current_mastery: 'solid',
+                    last_seen_at: new Date().toISOString(),
+                    session_count: 4,
+                    definition: 'The primary algorithm used for training artificial neural networks by calculating the gradient of the loss function with respect to the weights.'
+                },
+                {
+                    id: 'demo-2',
+                    display_name: 'Stochastic Gradient Descent',
+                    current_mastery: 'developing',
+                    last_seen_at: new Date(Date.now() - 86400000).toISOString(),
+                    session_count: 2,
+                    definition: 'An iterative method for optimizing an objective function with suitable smoothness properties.'
+                },
+                {
+                    id: 'demo-3',
+                    display_name: 'Transformer Architecture',
+                    current_mastery: 'shaky',
+                    last_seen_at: new Date(Date.now() - 172800000).toISOString(),
+                    session_count: 1,
+                    definition: 'A deep learning model that utilizes the mechanism of self-attention, weighing the significance of each part of the input data differently.'
+                },
+                {
+                    id: 'demo-4',
+                    display_name: 'Attention Mechanism',
+                    current_mastery: 'mastered',
+                    last_seen_at: new Date(Date.now() - 432000000).toISOString(),
+                    session_count: 8,
+                    definition: 'A technique that mimics cognitive attention, allowing models to focus on specific parts of the input sequence when generating output.'
+                }
+            ] as any[];
+        }
 
         console.log(
             `[vault/nodes] userId=${userId} tab=${tab} sort=${sort} found=${filteredNodes.length}`

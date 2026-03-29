@@ -207,12 +207,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const name = concept.name;
                 const description = concept.description || '';
                 
-                // Determine mastery based on Gemini's analysis of the concept name
+                // Fuzzy match: Gemini's strengthMap names often differ slightly from extracted concept names
+                const nameLower = name.toLowerCase();
                 let mastery: MasteryState = 'revisit';
-                if (analysis.strengthMap.strong?.some(s => s.toLowerCase() === name.toLowerCase())) {
+                const isStrong = analysis.strengthMap.strong?.some(
+                    (s: string) => nameLower.includes(s.toLowerCase()) || s.toLowerCase().includes(nameLower)
+                );
+                const isWeak = analysis.strengthMap.weak?.some(
+                    (w: string) => nameLower.includes(w.toLowerCase()) || w.toLowerCase().includes(nameLower)
+                );
+                if (isStrong) {
                     mastery = 'solid';
-                } else if (analysis.strengthMap.weak?.some(w => w.toLowerCase() === name.toLowerCase())) {
+                } else if (isWeak) {
                     mastery = 'shaky';
+                } else {
+                    // Concept was seen but not evaluated — treat as developing rather than revisit
+                    mastery = 'developing';
                 }
                 
                 console.log(`Analyze API: Updating node "${name}" with mastery "${mastery}"`);

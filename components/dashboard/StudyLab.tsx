@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Brain, ClipboardCheck, GraduationCap, ArrowRight, Zap, Target } from 'lucide-react';
+import { Sparkles, Brain, ClipboardCheck, GraduationCap, ArrowRight, BookOpen, Target } from 'lucide-react';
 
 interface LabToolProps {
     title: string;
@@ -23,7 +23,7 @@ function LabTool({ title, description, icon, color, accent, onClick, premium }: 
                 </div>
                 {premium && (
                     <div className="washi-tape washi-developing" style={{fontSize: '7px', padding: '1px 6px'}}>
-                        <Zap size={8} fill="currentColor" /> PRO
+                        <BookOpen size={8} fill="currentColor" /> PRO
                     </div>
                 )}
             </div>

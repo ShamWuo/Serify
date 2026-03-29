@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { data: deck, error } = await supabase
             .from('flashcard_decks')
             .select('*')
-            .eq('session_id', sessionId)
+            .eq('source_session_id', sessionId)
             .single();
 
         if (error || !deck) {
@@ -71,7 +71,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 cards,
                 progress
             })
-            .eq('session_id', sessionId);
+            .eq('source_session_id', sessionId);
 
         if (updateError) throw updateError;
 

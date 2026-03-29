@@ -29,7 +29,9 @@ export function calculateMasteryState(history: MasteryHistoryEntry[]): MasterySt
 
     const lastEntry = history[history.length - 1];
 
-    if (lastEntry.sourceType === 'session' && lastEntry.state === 'revisit') {
+    // Only force 'revisit' on brand-new concepts (single entry).
+    // Once there's a learning history, let the weighted score decide.
+    if (history.length === 1 && lastEntry.sourceType === 'session' && lastEntry.state === 'revisit') {
         return 'revisit';
     }
 

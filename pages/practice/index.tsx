@@ -291,18 +291,6 @@ export default function PracticeDashboard() {
             <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-8 relative z-10 pb-32">
                 <div className="max-w-5xl mx-auto space-y-10">
                     
-                    {/* Header */}
-                    <header className="space-y-4 animate-fade-in-up">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)] rounded-sm text-[10px] font-bold font-mono">
-                            <Sparkles size={12} /> knowledge application
-                        </div>
-                        <h1 className="text-4xl md:text-5xl font-display text-[var(--text)] tracking-tight leading-tight">
-                            Practice & <span className="text-[var(--accent)]">Verify</span>
-                        </h1>
-                        <p className="text-sm md:text-md font-mono text-[var(--muted)] max-w-2xl leading-relaxed">
-                            Select a tool to test your understanding, find your blind spots, and embed knowledge into long-term memory.
-                        </p>
-                    </header>
 
                     {/* Due Review Banner */}
                     {dueReviews.length > 0 && (

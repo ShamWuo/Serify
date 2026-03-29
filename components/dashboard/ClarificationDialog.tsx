@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, X, ArrowRight, MessageSquare, Zap, BookOpen } from 'lucide-react';
+import { Sparkles, X, ArrowRight, MessageSquare, BookOpen } from 'lucide-react';
 
 interface ClarificationDialogProps {
   isOpen: boolean;
@@ -82,7 +82,7 @@ const ClarificationDialog: React.FC<ClarificationDialogProps> = ({
                       className="group flex items-center justify-between p-4 bg-[var(--surface)] border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/5 transition-all text-left"
                     >
                       <div className="flex items-center gap-3">
-                        {isQuick && <Zap size={14} className="text-[var(--accent)]" />}
+                        {isQuick && <BookOpen size={14} className="text-[var(--accent)]" />}
                         {isRoadmap && <BookOpen size={14} className="text-[var(--accent)]" />}
                         <span className="text-xs font-mono font-bold text-[var(--text)] group-hover:text-[var(--accent)]">
                           {option}

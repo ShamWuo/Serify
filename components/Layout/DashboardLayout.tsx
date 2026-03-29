@@ -8,7 +8,7 @@ import {
     History,
     Archive,
     Settings,
-    LibraryBig,
+    BookOpen,
     LogOut,
     ChevronRight,
     CheckCircle2,
@@ -19,10 +19,12 @@ import {
     Brain,
     Users,
     MessageSquarePlus,
-    Zap,
     Image as ImageIcon,
     Moon,
     Sun,
+    ChevronLeft,
+    Map,
+    Calendar,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import CommandPalette from '@/components/Layout/CommandPalette';
@@ -36,10 +38,11 @@ interface DashboardLayoutProps {
     replaceNav?: boolean;
     backLink?: string;
     backLinkText?: string;
+    subTitle?: string;
     hideWidgets?: boolean;
 }
 
-export default function DashboardLayout({ children, sidebarContent, replaceNav = false, backLink, backLinkText, hideWidgets = false }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, sidebarContent, replaceNav = false, backLink, backLinkText, subTitle, hideWidgets = false }: DashboardLayoutProps) {
     const { user, logout, token, loading: authLoading } = useAuth();
     const router = useRouter();
     const isDemo = router.query.demo === 'true';
@@ -94,18 +97,16 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-                setIsProfileOpen(false);
-            }
-            if (mobileProfileRef.current && !mobileProfileRef.current.contains(event.target as Node)) {
-                
-                
+            const isInsideDesktop = profileRef.current?.contains(event.target as Node);
+            const isInsideMobile = mobileProfileRef.current?.contains(event.target as Node);
+            
+            if (!isInsideDesktop && !isInsideMobile) {
                 setIsProfileOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [isProfileOpen]);
 
     useEffect(() => {
         if (!authLoading && !user && !token) {
@@ -157,7 +158,8 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
     const navItems = useMemo(() => [
         { href: '/', label: 'Home', icon: <Home size={20} /> },
         { href: '/analyze', label: 'Analyze', icon: <PlusCircle size={20} className="text-blue-500" /> },
-        { href: '/learn', label: 'Learn', icon: <LibraryBig size={20} className="text-emerald-500" /> },
+        { href: '/learn', label: 'Learn', icon: <BookOpen size={20} className="text-emerald-500" /> },
+        { href: '/schedule', label: 'Schedule', icon: <Calendar size={20} className="text-purple-500" /> },
         { href: '/practice', label: 'Study', icon: <Brain size={20} className="text-orange-500" /> },
 
     ], []);
@@ -218,28 +220,30 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
                     )}
                 </div>
 
-                {(!replaceNav || !sidebarContent) ? (
-                    <>
-                        {/* Search */}
-                <div className="px-3 py-2 border-b-2 border-[var(--border)]">
-                    <button
-                        onClick={() => setIsCommandPaletteOpen(true)}
-                        className="w-full flex items-center gap-2 px-3 py-2 border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition-all group"
-                        style={{borderRadius:'3px', boxShadow:'var(--shadow-hard-sm)'}}
-                    >
-                        <Search size={13} />
-                        <span className="text-[11px] font-mono flex-1 text-left">search...</span>
-                        <code className="text-[9px] font-mono bg-[var(--surface)] border border-[var(--border-soft)] px-1 py-0.5">⌘K</code>
-                    </button>
-                    <div className="mt-3">
-                        <UsageIndicator className="w-full justify-between py-2 px-3 border border-[var(--border-soft)] bg-[var(--bg)] text-xs font-mono cursor-default" />
-                    </div>
-                </div>
+                        {/* Search & Usage */}
+                        <div className="px-3 py-2 border-b-2 border-[var(--border)]">
+                            <button
+                                onClick={() => setIsCommandPaletteOpen(true)}
+                                className="w-full flex items-center gap-2 px-3 py-2 border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--accent)] transition-all group"
+                                style={{ borderRadius: '3px', boxShadow: 'var(--shadow-hard-sm)' }}
+                            >
+                                <Search size={13} />
+                                <span className="text-[11px] font-mono flex-1 text-left">search...</span>
+                                <code className="text-[9px] font-mono bg-[var(--surface)] border border-[var(--border-soft)] px-1 py-0.5">⌘K</code>
+                            </button>
+                            <div className="mt-3">
+                                <UsageIndicator className="w-full" />
+                            </div>
+                        </div>
+
+                        {(!replaceNav || !sidebarContent) ? (
+                            <>
+                                {/* Nav */}
 
                 {/* Nav */}
                 <nav className="flex-1 px-2 py-3 space-y-4 overflow-y-auto">
                     <div className="space-y-0">
-                        <div className="px-3 mb-1 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// main'}</div>
+                        <div className="px-3 mb-1 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em]">{'// main'}</div>
                         {navItems.map((item: any) => {
                             const isActive = router.pathname === item.href || (item.href !== '/' && router.pathname.startsWith(item.href));
                             return (
@@ -261,7 +265,7 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
                     </div>
 
                     <div className="space-y-0">
-                        <div className="px-3 mb-1 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em] opacity-60">{'// library'}</div>
+                        <div className="px-3 mb-1 text-[9px] font-mono font-bold text-[var(--muted)] uppercase tracking-[0.25em]">{'// library'}</div>
                         {secondaryItems.map((item: any) => {
                             const isActive = router.pathname === item.href;
                             return (
@@ -298,7 +302,6 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
                         <div className="absolute bottom-full left-3 right-3 mb-2 bg-[var(--surface)] border-2 border-[var(--border)] overflow-hidden animate-modal-in z-50" style={{boxShadow:'var(--shadow-hard)',borderRadius:'3px'}}>
                             <Link
                                 href="/settings"
-                                onClick={() => setIsProfileOpen(false)}
                                 className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--accent-soft)] transition-colors text-[11px] font-mono text-[var(--text)] border-b border-[var(--border-soft)]"
                             >
                                 <Settings size={13} className="text-[var(--muted)]" /> Settings
@@ -333,7 +336,7 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
                                     {user?.displayName || 'User'}
                                 </p>
                                 <p className="text-[10px] font-mono text-[var(--muted)] truncate">
-                                    {user?.subscriptionTier === 'free' ? 'free plan' : user?.subscriptionTier}
+                                    {(user?.plan || user?.subscriptionTier || 'free') === 'free' ? 'free plan' : (user?.plan || user?.subscriptionTier)}
                                 </p>
                             </div>
                         </button>
@@ -372,7 +375,7 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
                         </button>
                         {isProfileOpen && (
                             <div className="absolute top-full mt-1.5 right-0 w-44 bg-[var(--surface)] border-2 border-[var(--border)] overflow-hidden animate-modal-in z-50" style={{boxShadow:'var(--shadow-hard)',borderRadius:'3px'}}>
-                                <Link href="/settings" onClick={() => setIsProfileOpen(false)} className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--bg)] text-xs font-mono text-[var(--text)] border-b border-[var(--border-soft)]">
+                                <Link href="/settings" className="flex items-center gap-2 px-4 py-3 hover:bg-[var(--bg)] text-xs font-mono text-[var(--text)] border-b border-[var(--border-soft)]">
                                     <Settings size={13} className="text-[var(--muted)]" /> Settings
                                 </Link>
                                 <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-3 text-xs font-mono text-[var(--warn)] hover:bg-[var(--bg)] text-left">
@@ -445,6 +448,7 @@ export default function DashboardLayout({ children, sidebarContent, replaceNav =
             
 
             <main className="flex-1 w-full flex flex-col min-h-[calc(100vh-64px)] md:min-h-screen pb-20 md:pb-0">
+
                 {router.query.demo === 'true' && (
                     <div className="bg-amber-50 border-b border-amber-200 text-amber-700 px-6 py-2.5 text-sm font-medium flex items-center justify-center gap-2 shadow-sm animate-fade-in shrink-0">
                         <Sparkles size={14} fill="currentColor" />

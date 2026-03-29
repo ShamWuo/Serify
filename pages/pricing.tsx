@@ -144,13 +144,7 @@ export default function PricingPage() {
             />
 
             <div className="mx-auto max-w-6xl py-12 px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-16">
-                    <h1 className="text-4xl md:text-5xl font-bold text-text mb-6">
-                        Unlock Your Cognitive Potential
-                    </h1>
-                    <p className="text-xl text-text/70 max-w-2xl mx-auto mb-10">
-                        Move beyond simple testing with AI-powered diagnostic learning.
-                    </p>
+                <div className="flex justify-center mb-12">
 
                     <div className="inline-flex items-center gap-1 bg-surface border border-border rounded-full p-1">
                         <button

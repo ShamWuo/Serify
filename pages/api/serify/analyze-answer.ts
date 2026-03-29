@@ -1,11 +1,11 @@
-import { streamObject } from 'ai';
+import { generateObject } from 'ai';
 import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 import { authenticateApiRequest, incrementUsage } from '@/lib/usage';
 import { updateConceptMastery, findOrCreateConceptNode } from '@/lib/vault';
 import { MasteryState } from '@/types/serify';
-import { createClient } from '@supabase/supabase-js';
 import { createErrorResponse } from '@/lib/api-utils';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 export const config = {
     runtime: 'edge'
@@ -24,27 +24,36 @@ export default async function handler(req: Request) {
             return createErrorResponse('Missing required fields', 400, 'Bad Request');
         }
 
-        if (skipped) {
-            return new Response(
-                JSON.stringify({
-                    assessment: {
-                        analysis_text:
-                            "You couldn't retrieve this during the session — this is one of your clearest gaps.",
-                        mastery_state: 'revisit' as MasteryState,
-                        misconception: null,
-                        overconfident: false
-                    }
-                }),
-                {
-                    status: 200,
-                    headers: { 'Content-Type': 'application/json' }
-                }
-            );
-        }
-
         const userId = await authenticateApiRequest(req);
         if (!userId) {
             return createErrorResponse('Unauthorized', 401, 'Unauthorized');
+        }
+
+        if (skipped) {
+            const assessment = {
+                feedbackText: "You couldn't retrieve this during the session — this is one of your clearest gaps.",
+                masteryState: 'revisit',
+                depthScore: 0,
+                strengths: [],
+                gaps: ["No retrieval attempted"],
+                overconfident: false
+            };
+
+            // Vault update
+            try {
+                const db = supabaseAdmin || (supabase as any);
+                const node = await findOrCreateConceptNode(db, userId, concept.name, question.session_id || 'manual', concept.definition);
+                if (node) {
+                    await updateConceptMastery(db, userId, node.id, 'revisit', 'session', question.session_id || 'manual');
+                }
+            } catch (e) {
+                console.error('Vault update failed:', e);
+            }
+
+            return new Response(JSON.stringify({ assessment }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
         }
 
         const usage = await incrementUsage(userId, 'session_standard');
@@ -63,42 +72,50 @@ export default async function handler(req: Request) {
       (1 = Wild Guess, 5 = Very Confident)
 
     Assess factual accuracy, conceptual depth, misconception detection, and confidence calibration.
-    If the student reports absolute high confidence (4 or 5) but their answer is fundamentally flawed or shallow, flag this as "overconfident" (an illusion of competence) and address it directly in the analysis text.
+    If the student reports absolute high confidence (4 or 5) but their answer is fundamentally flawed or shallow, flag this as "overconfident" (an illusion of competence).
     `;
 
-        const result = await streamObject({
-            model: google('gemini-2.5-flash'),
+        const { object } = await generateObject({
+            model: google('gemini-2.0-flash'),
             temperature: 0.1,
-            // @ts-ignore
-            maxTokens: 1024,
             prompt,
             schema: z.object({
                 assessment: z.object({
-                    analysis_text: z
+                    feedbackText: z
                         .string()
                         .describe(
-                            '1-2 sentences of specific feedback pointing out what was strong or missing. Do not grade it, just analyze it.'
+                            '1-3 sentences of specific feedback pointing out what was strong or missing. Direct, encouraging but precise.'
                         ),
-                    mastery_state: z.enum(['solid', 'developing', 'shaky', 'revisit']),
-                    misconception: z
-                        .string()
-                        .nullable()
-                        .describe(
-                            'if a fundamental error is made, explain it concisely here. Else null.'
-                        ),
+                    masteryState: z.enum(['solid', 'developing', 'shaky', 'revisit']),
+                    depthScore: z.number().min(0).max(100).describe('A percentage representing overall conceptual depth.'),
+                    strengths: z.array(z.string()).describe('List of 1-3 specific correct points or techniques used.'),
+                    gaps: z.array(z.string()).describe('List of 1-3 specific missing points or misconceptions.'),
                     overconfident: z
                         .boolean()
                         .describe(
                             'true if student answered at length with certainty but was fundamentally wrong.'
                         )
                 })
-            }),
-            onFinish: async ({ object }) => {
-                // Vault updates moved to analyze.ts (batch) to prevent race conditions during streaming
-            }
+            })
         });
 
-        return result.toTextStreamResponse();
+        const assessment = object.assessment;
+
+        // Vault update
+        try {
+            const db = supabaseAdmin || (supabase as any);
+            const node = await findOrCreateConceptNode(db, userId, concept.name, question.session_id || 'manual', concept.definition);
+            if (node) {
+                await updateConceptMastery(db, userId, node.id, assessment.masteryState as MasteryState, 'session', question.session_id || 'manual');
+            }
+        } catch (e) {
+            console.error('Vault update failed:', e);
+        }
+
+        return new Response(JSON.stringify({ assessment }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
     } catch (error: any) {
         console.error('Error analyzing answer:', error);
         return createErrorResponse(error.message || 'Failed to analyze answer', 500, 'Internal Server Error');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Paperclip, X, AlertCircle, Zap, ChevronRight, Brain, Target, History, FileText, Play } from 'lucide-react';
+import { Paperclip, X, AlertCircle, BookOpen, ChevronRight, Brain, Target, History, FileText, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/router';
 import DetectionTag, { DetectedType } from './DetectionTag';
 import ModeToggle, { SearchMode } from './ModeToggle';
@@ -7,6 +7,7 @@ import AnalyzeButton from './AnalyzeButton';
 
 interface SmartInputCardProps {
     onAnalyze: (data: { content: string; type: DetectedType; mode: SearchMode; file?: File }) => Promise<void>;
+    onCancel?: () => void;
     tokenBalance: number;
     totalLimit?: number;
     compact?: boolean;
@@ -23,6 +24,7 @@ const STEPS = [
 
 const SmartInputCard: React.FC<SmartInputCardProps> = ({ 
     onAnalyze, 
+    onCancel,
     tokenBalance, 
     totalLimit = 1,
     compact = false, 
@@ -98,7 +100,9 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({
             interval = setInterval(() => {
                 setProgress(prev => {
                     if (prev >= 99) return prev;
-                    const next = prev + 1;
+                    // Slow down significantly as we reach 99
+                    const increment = prev > 90 ? 0.05 : 1;
+                    const next = Math.min(99, prev + increment);
                     const step = STEPS.find(s => next < s.until);
                     if (step) setStepText(step.text);
                     return next;
@@ -117,6 +121,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({
             await onAnalyze({ content: input, type: detectedType || 'text', mode: (actionOverride as any) || mode, file: file || undefined });
         } catch (err: any) {
             setError(err.message || 'Analysis failed');
+        } finally {
             setInternalProcessing(false);
         }
     };
@@ -147,8 +152,14 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({
                     ))}
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-mono text-[var(--muted)] tabular-nums">{progress}%</span>
-                    <button onClick={() => setInternalProcessing(false)} className="text-[10px] font-mono text-[var(--muted)] hover:text-[var(--warn)] transition-colors">
+                    <span className="text-[10px] font-mono text-[var(--muted)] tabular-nums">{Math.floor(progress)}%</span>
+                    <button 
+                        onClick={() => {
+                            setInternalProcessing(false);
+                            if (onCancel) onCancel();
+                        }} 
+                        className="text-[10px] font-mono text-[var(--muted)] hover:text-[var(--warn)] transition-colors"
+                    >
                         cancel
                     </button>
                 </div>
@@ -198,7 +209,7 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({
                             onChange={(e) => setInput(e.target.value)}
                             onPaste={handlePaste}
                             placeholder="Paste a link, PDF text, or your notes..."
-                            className="w-full min-h-[100px] bg-transparent border-none focus:ring-0 p-3 pb-10 text-[14px] leading-relaxed resize-none overflow-hidden font-mono placeholder:text-[var(--muted)]/40 placeholder:font-mono"
+                            className="w-full min-h-[100px] bg-transparent border-none focus:ring-0 p-3 pb-10 text-sm leading-relaxed resize-none overflow-hidden font-mono placeholder:text-[var(--muted)]/60 placeholder:font-mono"
                         />
                         <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between">
                             <button
@@ -246,20 +257,13 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({
                 )}
             </div>
 
-            {/* Usage Display below search bar */}
-            {!isProcessing && totalLimit > 0 && (
-                <div className="mt-2 flex items-center justify-between px-1">
-                    <div className="flex items-center gap-2 flex-1 max-w-[200px]">
-                        <div className="flex-1 h-1 bg-[var(--border-soft)]/20 relative rounded-full overflow-hidden">
-                            <div 
-                                className="absolute top-0 left-0 h-full bg-[var(--accent)] transition-all duration-1000"
-                                style={{ width: `${Math.min(100, Math.max(0, (1 - (tokenBalance / totalLimit)) * 100))}%` }}
-                            />
-                        </div>
-                    </div>
-                    <div className="text-[9px] font-mono text-[var(--muted)] uppercase tracking-wider">
-                        usage <span className="text-[var(--text)] font-bold">{Math.round((1 - (tokenBalance / totalLimit)) * 100)}%</span>
-                    </div>
+            {/* Exhausted Warning */}
+
+        
+            {!isProcessing && tokenBalance <= 0 && (
+                <div className="mt-2 flex items-center gap-2 px-1 text-[var(--warn)] font-mono animate-pulse">
+                    <AlertTriangle size={12} />
+                    <span className="text-[10px] uppercase tracking-wider">Usage exhausted for today.</span>
                 </div>
             )}
 
@@ -277,10 +281,10 @@ const SmartInputCard: React.FC<SmartInputCardProps> = ({
                     <h4 className="text-[10px] font-mono text-[var(--muted)] mb-2">{'// or jump to'}</h4>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                         {[
-                            { route: '/practice/flashcards', icon: Zap, label: 'Flashcards', color: 'var(--amber)' },
+                            { route: '/practice/flashcards', icon: BookOpen, label: 'Flashcards', color: 'var(--amber)' },
                             { route: '/practice/test', icon: Target, label: 'Test mode', color: 'var(--sage)' },
                             { route: '/practice/review', icon: History, label: 'Review', color: 'var(--muted)' },
-                            { route: '/flow', icon: Play, label: 'Flow mode', color: 'var(--accent)' },
+                            { route: '/learn', icon: BookOpen, label: 'Learn', color: 'var(--accent)' },
                         ].map(({route, icon: Icon, label, color}) => (
                             <button
                                 key={route}

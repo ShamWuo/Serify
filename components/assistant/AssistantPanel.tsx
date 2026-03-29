@@ -1,71 +1,107 @@
 import React from 'react';
+import { MessageSquare, Minus, X } from 'lucide-react';
 import { useAssistant } from '../../contexts/AssistantContext';
 import AssistantChat from './AssistantChat';
-import { Minus, X, Maximize2 } from 'lucide-react';
 
+/** Anchored bottom-right — same footprint as the FAB; expanded / minimized states replace the FAB. */
 const AssistantPanel: React.FC = () => {
     const { isOpen, setIsOpen, isMinimized, setIsMinimized } = useAssistant();
 
     if (!isOpen) return null;
 
+    const shell =
+        'fixed bottom-5 right-5 md:bottom-6 md:right-6 z-[999] flex flex-col border-2 border-[var(--border)] bg-[var(--surface)] overflow-hidden font-mono';
+    const shellShadow = { boxShadow: 'var(--shadow-hard)', borderRadius: '3px' } as const;
+
     if (isMinimized) {
         return (
-            <div 
-                className="fixed bottom-24 right-6 w-72 bg-[var(--surface)] rounded-2xl shadow-2xl border border-[var(--border)] p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--bg)] transition-all animate-slide-up z-[998]"
+            <div
+                className={`${shell} w-[min(100vw-2.5rem,400px)] h-14 flex-row items-center justify-between px-3 py-2 cursor-pointer hover:bg-[var(--bg)] transition-colors`}
+                style={shellShadow}
                 onClick={() => setIsMinimized(false)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setIsMinimized(false);
+                    }
+                }}
+                aria-label="Expand assistant"
             >
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--accent)] flex items-center justify-center text-white">
-                        <Minus size={16} />
+                <div className="flex items-center gap-2 min-w-0">
+                    <div
+                        className="shrink-0 flex h-9 w-9 items-center justify-center border-2 border-[var(--border)] bg-[var(--accent)] text-[var(--surface)]"
+                        style={{ borderRadius: '3px', boxShadow: 'var(--shadow-hard-sm)' }}
+                    >
+                        <MessageSquare size={18} strokeWidth={2.5} />
                     </div>
-                    <span className="text-sm font-bold text-[var(--text)]">Assistant Minimized</span>
+                    <span className="text-[11px] font-bold text-[var(--text)] truncate uppercase tracking-wider">
+                        Assistant
+                    </span>
                 </div>
-                <button onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} className="text-[var(--muted)] hover:text-red-500">
-                    <X size={16} />
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                    }}
+                    className="shrink-0 p-2 text-[var(--muted)] hover:text-[var(--warn)] transition-colors"
+                    aria-label="Close assistant"
+                >
+                    <X size={18} strokeWidth={2} />
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="fixed bottom-0 right-0 md:bottom-24 md:right-6 w-full h-full md:w-[400px] md:h-[600px] md:max-h-[calc(100vh-120px)] bg-[var(--surface)] md:rounded-3xl shadow-2xl border-t md:border border-[var(--border)] flex flex-col overflow-hidden animate-slide-up z-[998]">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg)]/50">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--accent)] flex items-center justify-center text-white shadow-md shadow-[var(--accent)]/10">
-                        <Sparkles size={16} />
+        <div
+            className={`${shell} w-[min(100vw-2.5rem,400px)] h-[min(560px,calc(100dvh-5.5rem)] max-h-[calc(100dvh-5.5rem)]`}
+            style={shellShadow}
+        >
+            <header className="shrink-0 flex items-center justify-between gap-2 border-b-2 border-[var(--border)] bg-[var(--bg)] px-3 py-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                    <div
+                        className="shrink-0 flex h-9 w-9 items-center justify-center border-2 border-[var(--border)] bg-[var(--accent)] text-[var(--surface)]"
+                        style={{ borderRadius: '3px', boxShadow: 'var(--shadow-hard-sm)' }}
+                    >
+                        <MessageSquare size={18} strokeWidth={2.5} />
                     </div>
-                    <div>
-                        <h3 className="text-sm font-bold text-[var(--text)]">Assistant</h3>
-                        <p className="text-[10px] font-medium text-[var(--accent)] uppercase tracking-widest">Active session</p>
+                    <div className="min-w-0">
+                        <h3 className="text-[12px] font-bold text-[var(--text)] leading-tight truncate">Assistant</h3>
+                        <p className="text-[9px] font-mono text-[var(--muted)] truncate">{'// learning companion'}</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button 
+                <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                        type="button"
                         onClick={() => setIsMinimized(true)}
-                        className="p-2 text-[var(--muted)] hover:text-[var(--text)] hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface)] border-2 border-transparent hover:border-[var(--border-soft)] transition-colors"
+                        style={{ borderRadius: '3px' }}
                         title="Minimize"
+                        aria-label="Minimize assistant"
                     >
-                        <Minus size={16} />
+                        <Minus size={16} strokeWidth={2.5} />
                     </button>
-                    <button 
+                    <button
+                        type="button"
                         onClick={() => setIsOpen(false)}
-                        className="p-2 text-[var(--muted)] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-[var(--muted)] hover:text-[var(--warn)] hover:bg-[var(--warn-soft)] border-2 border-transparent transition-colors"
+                        style={{ borderRadius: '3px' }}
                         title="Close"
+                        aria-label="Close assistant"
                     >
-                        <X size={16} />
+                        <X size={16} strokeWidth={2.5} />
                     </button>
                 </div>
-            </div>
+            </header>
 
-            {}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-[var(--bg)]">
                 <AssistantChat />
             </div>
         </div>
     );
 };
-
-import { Sparkles } from 'lucide-react';
 
 export default AssistantPanel;

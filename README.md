@@ -1,117 +1,96 @@
-# Serify
+# Serify — The Architect's Pen for Genuine Mastery
 
-Serify is a context-aware learning reflection engine that analyzes content you've consumed — YouTube videos, articles, PDFs, or personal notes — and generates intelligent, scenario-based questions designed not just to test you, but to diagnose how well you actually understand the material.
+Serify is an AI-powered deep learning assistant designed to bridge the gap between passive consumption and active mastery. Using a "lofi-chill" design system and state-of-the-art diagnostic reasoning, Serify helps you architect your own knowledge vault, track your mastery over complex topics, and navigate personalized study roadmaps.
 
-Unlike typical quiz tools, Serify evaluates both the source content and the quality of your answers to map what you've retained, where understanding is shallow, and where confidence exceeds actual knowledge. The output is a personalized cognitive feedback report that trains active recall and metacognition, directly targeting the illusion of competence (when passive exposure feels like learning).
+---
 
-Serify also supports deliberate learning approaches such as the Feynman method and practice-quiz loops to help users build durable conceptual understanding and transferable skills.
+## 🧠 Core Pillars
 
-## Core Features
+### 1. The Concept Vault
+The heart of your learning journey. Every session, quiz, and roadmap contributes to your **Concept Vault**—a structured repository of your evolving knowledge.
+- **Mastery Mapping**: Visualize your strength across fundamental pillars and niche sub-concepts.
+- **Mastery States**: Dynamically tracked as `mastered`, `solid`, `developing`, `shaky`, or `revisit`.
+- **Knowledge Persistence**: Your progress is retained across all learning modes.
 
-- Content ingestion from URL (YouTube/article) or raw notes
-- AI concept extraction with concept graph metadata
-- Open-ended diagnostic assessment generation
-- Confidence-aware answer submission and analysis
-- Feedback report with depth score, insights, and focus suggestions
-- Supabase auth/profile/preferences integration
+### 2. Roadmap Architect (Conversational Refinement)
+Transform daunting goals into strategic study journeys with our AI-assisted **Blueprint Architect**.
+- **Blueprint Architecting**: Refine your study plan in a dedicated two-column conversational interface. Edit topics inline or chat with the AI to optimize complexity, depth, and duration.
+- **Intelligent Planning**: AI-generated curricula tailored to your target date and goal.
+- **Adaptive Rescheduling**: Timeline shifts? Missed a day? The engine recalibrates your schedule to keep you on track.
+- **High-Yield Focus**: Prioritizes topics based on importance and your current mastery.
 
-## Tech Stack
+### 3. Interactive Learning Flow
+Step away from static videos and PDFs. Engage in an **Interactive Flow** that adapts to your responses.
+- **Contextual Guidance**: The AI "Orients" you into the topic, "Builds Layers" of understanding, and "Anchors" concepts with retrieval practice.
+- **Diagnostic Probing**: Specifically targets the "illusion of competence" with misconception-detecting questions.
+- **Rich Media Support**: Integrated KaTeX for math and beautiful Markdown for technical clarity.
 
-- Frontend: Next.js (Pages Router), React, TypeScript, Tailwind CSS
-- Backend: Next.js API routes (`/api/serify/*`)
-- AI: Google Gemini 2.5 Flash
-- Data/Auth: Supabase (Auth + Postgres)
+### 4. Ingest Station
+Bring your own material from anywhere.
+- **YouTube Support**: Instant distillation of video lectures into study-ready concepts.
+- **PDF & Web Processing**: Turn long-form articles and textbooks into interactive assessments.
+- **Raw Reflection**: Quickly jot down notes or copy-paste text for immediate diagnostic feedback.
 
-## Environment Variables
+---
 
-Create `.env.local`:
+## 🎨 Design System: The Architect's Pen (Minimalist Overhaul)
+Serify features a bespoke, distraction-free design language focused on deep work:
+- **Header-less Interface**: Removed all redundant page headers and decorative titles to maximize focus on your learning tasks.
+- **Action-Oriented Layouts**: Navigation and context are integrated directly into functional components.
+- **Lofi-Chill Aesthetic**: Clean, high-contrast patterns designed for absolute focus and zero distractions.
+- **Paper-Grid Primitives**: UI that feels like a precision blueprint for your mind.
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-GEMINI_API_KEY=...
-```
+---
 
-## Supabase Google Auth Setup
+## 🛠 Tech Stack
 
-1. In Supabase Dashboard, open **Authentication → Providers → Google** and enable Google.
-2. Set Google OAuth credentials (Client ID + Client Secret).
-3. In **Authentication → URL Configuration**, add allowed redirect URLs:
-    - `http://localhost:3000/dashboard`
-    - `https://your-production-domain/dashboard`
-4. Ensure `NEXT_PUBLIC_SITE_URL` matches the app domain for the current environment.
+- **Framework**: Next.js 15 (Pages Router)
+- **Language**: TypeScript (Strict)
+- **Styling**: Tailwind CSS + Custom Design Tokens
+- **AI Engine**: Google Gemini 2.0 Flash & Pro
+- **Database**: Supabase (PostgreSQL + RLS)
+- **Auth**: Supabase Auth (PKCE Flow)
+- **Billing**: Stripe (Subscription Management)
+- **Visuals**: Lucide React + Framer Motion
 
-## Run
+---
 
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Supabase Project
+- Google Gemini API Key
+
+### Installation
 ```bash
+# Clone the repository
+git clone https://github.com/ShamWuo/Serify.git
+cd Serify
+
+# Install dependencies
 npm install
+
+# Setup environment
+cp env.example .env.local
+
+# Run development server
 npm run dev
 ```
 
-## Clean Architecture Diagram
+### Environment Variables
+Configure your `.env.local` with the following:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GEMINI_API_KEY`
+- `STRIPE_SECRET_KEY` (Optional, for billing)
 
-```mermaid
-flowchart LR
-    U[User] --> P[Next.js Pages]
-    P --> A[AuthContext]
-    A --> SAuth[(Supabase Auth)]
+---
 
-    P --> NR[new-reflection]
-    P --> ASSESS[assessment/[id]]
-    P --> FB[feedback/[id]]
-    P --> DASH[dashboard/profile/history]
+## 🏁 Deployment
+Serify is optimized for deployment on **Vercel**. Ensure all environment variables are mirrored in your Vercel project settings.
 
-    NR --> EX[/api/serify/extract]
-    ASSESS --> AQ[/api/serify/assess]
-    ASSESS --> AN[/api/serify/analyze]
+---
 
-    EX --> GEM[Gemini via lib/serify-ai]
-    AQ --> GEM
-    AN --> GEM
-
-    EX --> DB[(Supabase DB)]
-    AQ --> DB
-    AN --> DB
-    FB --> DB
-    DASH --> DB
-```
-
-## Request Flow Map
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant UI as pages/new-reflection.tsx
-    participant Extract as /api/serify/extract
-    participant Assess as /api/serify/assess
-    participant Analyze as /api/serify/analyze
-    participant AI as lib/serify-ai (Gemini)
-    participant DB as Supabase
-
-    User->>UI: Submit source (url/notes)
-    UI->>Extract: POST contentType,title,content/url
-    Extract->>DB: Insert reflection_session(status=processing)
-    Extract->>AI: extractConcepts()
-    AI-->>Extract: concepts[]
-    Extract->>DB: Insert concepts + status=assessment
-    Extract-->>UI: sessionId
-
-    UI->>Assess: GET sessionId
-    Assess->>DB: Read session/concepts/profile prefs
-    Assess->>AI: generateAssessment(concepts,prefs)
-    AI-->>Assess: questions[]
-    Assess->>DB: Persist assessment_questions
-    Assess-->>UI: questions[]
-
-    User->>UI: Submit answers + confidence
-    UI->>Analyze: POST sessionId,answers[]
-    Analyze->>DB: Upsert user_answers + load context
-    Analyze->>AI: analyzeAnswers(reflectionSession)
-    AI-->>Analyze: depthScore + analysis
-    Analyze->>DB: Upsert analyses + session status=feedback
-    Analyze-->>UI: success
-
-    UI->>DB: Load analyses for feedback page
-    DB-->>UI: report payload
-```
+## ⚖️ License
+Serify is a proprietary educational platform. All rights reserved.

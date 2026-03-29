@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             { data: tutorConversation },
             { data: feynmanAttempts }
         ] = await Promise.all([
-            supabase.from('flashcard_decks').select('*').eq('session_id', sessionId).maybeSingle(),
+            supabase.from('flashcard_decks').select('*').eq('source_session_id', sessionId).maybeSingle(),
             supabase.from('practice_quizzes').select('*').eq('session_id', sessionId).maybeSingle(),
             supabase
                 .from('deep_dive_lessons')

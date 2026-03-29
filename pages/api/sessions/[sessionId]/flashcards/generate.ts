@@ -2,7 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { authenticateApiRequest, incrementUsage } from '@/lib/usage';
 import { createClient } from '@supabase/supabase-js';
-import { parseJSON } from '@/lib/serify-ai';
+import { parseJSON, MODEL_FLASH } from '@/lib/serify-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const model = genAI.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: MODEL_FLASH,
             generationConfig: {
                 responseMimeType: 'application/json',
                 maxOutputTokens: 2000
@@ -98,7 +98,7 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
         const { data: existingDeck } = await supabase
             .from('flashcard_decks')
             .select('*')
-            .eq('session_id', sessionId)
+            .eq('source_session_id', sessionId)
             .maybeSingle();
 
         let finalDeck;
@@ -121,7 +121,7 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
                         attemptCount: (existingDeck.progress?.attemptCount || 0) + 1
                     }
                 })
-                .eq('session_id', sessionId)
+                .eq('source_session_id', sessionId)
                 .select()
                 .single();
 
@@ -131,7 +131,7 @@ ${weakConcepts.map((c: any) => `- ${c.name} (ID: ${c.id}): ${c.masteryState} —
             const { data, error } = await supabase
                 .from('flashcard_decks')
                 .insert({
-                    session_id: sessionId,
+                    source_session_id: sessionId,
                     user_id: userId,
                     card_count: generatedCards.length,
                     cards: generatedCards,

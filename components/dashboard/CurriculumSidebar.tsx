@@ -1,10 +1,5 @@
-import { useRouter } from 'next/router';
-import {
-    CheckCircle2,
-    Lock,
-    ChevronRight,
-    Library
-} from 'lucide-react';
+import { BookOpen } from 'lucide-react';
+import { normalizeTitle } from '@/lib/formatters';
 
 interface Concept {
     conceptId: string;
@@ -13,8 +8,15 @@ interface Concept {
     name?: string;
 }
 
+interface Unit {
+    unitNumber: number;
+    unitTitle: string;
+    concepts: Concept[];
+}
+
 interface CurriculumSidebarProps {
     concepts: Concept[];
+    units?: Unit[];
     currentIndex: number;
     conceptStatuses: Record<string, 'not_started' | 'in_progress' | 'completed'>;
     onConceptClick?: (index: number) => void;
@@ -23,88 +25,70 @@ interface CurriculumSidebarProps {
 
 export default function CurriculumSidebar({
     concepts,
+    units,
     currentIndex,
     conceptStatuses,
     onConceptClick,
     title
 }: CurriculumSidebarProps) {
-    const router = useRouter();
+    
+    // Fallback if no units provided, treat all concepts as one group
+    const displayUnits = units || (concepts.length > 0 ? [{
+        unitNumber: 1,
+        unitTitle: 'Course Pathway',
+        concepts: concepts
+    }] : []);
 
     return (
-        <div className="flex flex-col h-full">
-            {title && (
-                <div className="px-3 mb-6">
-                    <div className="flex items-center gap-2 text-[var(--accent)] mb-1">
-                        <Library size={16} />
-                        <span className="text-[10px] uppercase font-bold tracking-widest">
-                            Learning
-                        </span>
+        <div className="flex flex-col h-full font-sans py-4 px-2">
+            {/* Unit Based List */}
+            <div className="flex-1 overflow-y-auto space-y-6 custom-scrollbar pb-10">
+                {displayUnits.map((unit, uIdx) => (
+                    <div key={uIdx} className="space-y-1">
+                        <div className="px-2 mb-2">
+                             <span className="text-[10px] font-mono font-bold text-emerald-600/60 uppercase tracking-[0.2em] opacity-80">
+                                UNIT {unit.unitNumber || uIdx + 1}: {unit.unitTitle}
+                            </span>
+                        </div>
+                        
+                        <div className="space-y-0.5">
+                            {unit.concepts.map((concept, cIdx) => {
+                                // Find global index for the click handler
+                                const globalIdx = concepts.findIndex(c => (c.conceptId || c.id) === (concept.conceptId || concept.id));
+                                const conceptId = concept.conceptId || concept.id || '';
+                                const conceptName = concept.conceptName || concept.name || '';
+                                const status = conceptStatuses[conceptId] || 'not_started';
+                                const isCurrent = globalIdx === currentIndex;
+                                const isCompleted = status === 'completed';
+                                const isClickable = (isCompleted || isCurrent) && onConceptClick;
+
+                                return (
+                                    <button
+                                        key={conceptId || cIdx}
+                                        disabled={!isClickable}
+                                        onClick={() => isClickable && onConceptClick && onConceptClick(globalIdx)}
+                                        className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md transition-all text-left group ${
+                                            isCurrent 
+                                                ? 'text-emerald-700 font-bold bg-emerald-500/5' 
+                                                : isCompleted 
+                                                    ? 'text-emerald-700/60 hover:text-emerald-700 hover:bg-emerald-50/50' 
+                                                    : 'text-[var(--muted)] opacity-30 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <div className={`w-1.5 h-1.5 rounded-full shrink-0 transition-all ${
+                                            isCurrent ? 'bg-emerald-500 ring-2 ring-emerald-500/20' : isCompleted ? 'bg-emerald-300' : 'bg-[var(--border)]'
+                                        }`} />
+                                        <span className={`text-[12px] leading-tight truncate uppercase tracking-tight ${
+                                            isCurrent ? 'opacity-100' : 'opacity-80'
+                                        }`}>
+                                            {normalizeTitle(conceptName)}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                    <h3 className="text-sm font-semibold text-[var(--text)] truncate">
-                        {title}
-                    </h3>
-                </div>
-            )}
-
-            <div className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
-                {concepts.map((concept, i) => {
-                    
-
-                    const conceptId = concept.conceptId || concept.id || '';
-                    const conceptName = concept.conceptName || concept.name || '';
-                    const status = conceptStatuses[conceptId] || 'not_started';
-                    const isCurrent = i === currentIndex;
-                    const isCompleted = status === 'completed';
-                    const isInProgress = status === 'in_progress';
-                    const isClickable = (isCompleted || isInProgress) && onConceptClick;
-
-                    return (
-                        <button
-                            key={conceptId || i}
-                            disabled={!isClickable && !isCurrent}
-                            onClick={() => isClickable && onConceptClick(i)}
-                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl transition-all duration-200 group relative text-left ${isCurrent
-                                ? 'bg-[var(--accent)]/10 text-[var(--accent)] font-semibold'
-                                : isCompleted
-                                    ? 'text-emerald-600 hover:bg-emerald-50'
-                                    : 'text-[var(--muted)] opacity-60'
-                                } ${isClickable || isCurrent ? 'cursor-pointer' : 'cursor-not-allowed'}`}
-                        >
-                            <div className="flex items-center gap-3 min-w-0">
-                                <div className="shrink-0">
-                                    {isCompleted ? (
-                                        <CheckCircle2 size={16} className="text-emerald-500" />
-                                    ) : isCurrent || isInProgress ? (
-                                        <div className="w-4 h-4 rounded-full border-2 border-[var(--accent)] flex items-center justify-center">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-                                        </div>
-                                    ) : (
-                                        <div className="w-4 h-4 rounded-full border border-[var(--border)]" />
-                                    )}
-                                </div>
-                                <span className="text-xs tracking-wide truncate">
-                                    {conceptName}
-                                </span>
-                            </div>
-
-                            {isCurrent && (
-                                <ChevronRight size={14} className="text-[var(--accent)] shrink-0" />
-                            )}
-                        </button>
-                    );
-                })}
-            </div>
-            
-            <div className="mt-auto pt-6 px-3">
-                <button
-                    onClick={() => router.push('/learn')}
-                    className="flex items-center gap-3 w-full p-2.5 text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] rounded-xl transition-all group border-2 border-transparent hover:border-[var(--border-soft)]"
-                >
-                    <div className="shrink-0 flex items-center justify-center w-5 h-5 rounded-md border border-[var(--border)] group-hover:bg-[var(--surface)] transition-all">
-                        <ChevronRight size={14} className="rotate-180 group-hover:-translate-x-0.5 transition-transform" />
-                    </div>
-                    Back to Library
-                </button>
+                ))}
             </div>
         </div>
     );

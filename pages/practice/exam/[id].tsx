@@ -273,31 +273,31 @@ export default function ExamSession() {
                 />
             </div>
 
-            <main className="flex-1 pt-24 pb-32 overflow-y-auto px-4">
-                <div className="max-w-4xl mx-auto space-y-8">
+            <main className="flex-1 pt-20 pb-24 overflow-y-auto px-4 md:px-8">
+                <div className="max-w-4xl mx-auto space-y-6">
                     
                     {isCompleted ? (
                         <div className="space-y-10 animate-fade-in-up">
                             {currentIndex === 0 && (
-                                <div className="bg-white border text-center p-8 rounded-2xl shadow-sm border-[var(--border)] space-y-6">
-                                    <div className="w-20 h-20 rounded-full bg-orange-50 text-orange-600 mx-auto flex items-center justify-center border-4 border-orange-100">
-                                        <Award size={36} />
+                                <div className="bg-white border text-center p-8 rounded-3xl shadow-sm border-[var(--border)] space-y-6">
+                                    <div className="w-16 h-16 rounded-full bg-orange-50 text-orange-600 mx-auto flex items-center justify-center border-4 border-orange-100">
+                                        <Award size={28} />
                                     </div>
                                     <div>
-                                        <h2 className="text-3xl font-display text-[var(--text)] tracking-tight">
+                                        <h2 className="text-2xl font-display text-[var(--text)] tracking-tight">
                                             Exam Completed
                                         </h2>
-                                        <p className="text-[var(--muted)] mt-2">
+                                        <p className="text-[var(--muted)] mt-1">
                                             Final Score: <span className="font-bold text-xl text-[var(--text)]">{results?.score}/100</span>
                                         </p>
                                     </div>
                                     
                                     {results?.ai_summary?.overallPerformance && (
-                                        <div className="text-left bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6">
-                                            <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
-                                                <Zap size={18} className="text-orange-500" /> AI Executive Summary
+                                        <div className="text-left bg-slate-50 p-6 rounded-2xl border border-slate-200 mt-6">
+                                            <h4 className="font-bold text-slate-400 text-[10px] uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                                                <Zap size={14} className="text-orange-500" /> Executive Analysis
                                             </h4>
-                                            <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
+                                            <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap font-medium">
                                                 {results.ai_summary.overallPerformance}
                                             </p>
                                         </div>
@@ -329,13 +329,13 @@ export default function ExamSession() {
                                                     toast.error("Failed to generate export");
                                                 }
                                             }}
-                                            className="px-6 py-2 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition flex items-center gap-2"
+                                            className="px-6 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition flex items-center gap-2"
                                         >
-                                            <FileText size={16} /> Export Report PDF
+                                            <FileText size={16} /> PDF Report
                                         </button>
                                         <button 
                                             onClick={() => router.push('/practice')}
-                                            className="px-6 py-2 bg-orange-600 text-white rounded-xl font-medium hover:bg-orange-700 transition"
+                                            className="px-6 py-2 bg-orange-600 text-white rounded-xl font-bold text-sm hover:bg-orange-700 transition shadow-lg shadow-orange-600/20"
                                         >
                                             Return to Dashboard
                                         </button>
@@ -346,12 +346,12 @@ export default function ExamSession() {
                              {}
                              <div className="space-y-6">
                                 <div className="flex items-center justify-between pb-4 border-b border-[var(--border)]">
-                                    <h3 className="font-display text-xl text-[var(--text)]">
-                                        Question Review ({currentIndex + 1}/{questions.length})
+                                    <h3 className="font-display text-lg text-[var(--text)]">
+                                        Reviewing: {currentIndex + 1}/{questions.length}
                                     </h3>
                                     <div className="flex items-center gap-2">
-                                         <button onClick={handlePrev} disabled={currentIndex === 0} className="p-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50"><ArrowLeft size={16}/></button>
-                                         <button onClick={() => setCurrentIndex(prev => Math.min(prev + 1, questions.length - 1))} disabled={currentIndex === questions.length - 1} className="p-2 border rounded-lg disabled:opacity-50 hover:bg-slate-50"><ArrowRight size={16}/></button>
+                                         <button onClick={handlePrev} disabled={currentIndex === 0} className="p-2 border rounded-lg disabled:opacity-30 hover:bg-slate-50 transition-all"><ArrowLeft size={16}/></button>
+                                         <button onClick={() => setCurrentIndex(prev => Math.min(prev + 1, questions.length - 1))} disabled={currentIndex === questions.length - 1} className="p-2 border rounded-lg disabled:opacity-30 hover:bg-slate-50 transition-all"><ArrowRight size={16}/></button>
                                     </div>
                                 </div>
 
@@ -359,20 +359,20 @@ export default function ExamSession() {
                                     {currentQuestion.question_text}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-3">
-                                        <h4 className="font-bold text-slate-500 uppercase tracking-widest text-xs">Your Answer</h4>
-                                        <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl text-[var(--text)] whitespace-pre-wrap text-sm leading-relaxed min-h-[120px]">
-                                            {currentQuestion.user_response || <span className="italic text-slate-400">Blank</span>}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <h4 className="font-black text-slate-400 uppercase tracking-[0.2em] text-[9px]">Your Submission</h4>
+                                        <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl text-[var(--text)] whitespace-pre-wrap text-sm leading-relaxed min-h-[100px]">
+                                            {currentQuestion.user_response || <span className="italic text-slate-400 opacity-50">No response provided</span>}
                                         </div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <h4 className="font-bold text-emerald-700 uppercase tracking-widest text-xs flex justify-between items-center">
+                                    <div className="space-y-2">
+                                        <h4 className="font-black text-orange-600 uppercase tracking-[0.2em] text-[9px] flex justify-between items-center">
                                             <span>AI Feedback</span>
-                                            <span className="bg-white px-2 py-0.5 rounded border text-slate-600">Rating: <span className="capitalize font-bold">{currentQuestion.response_quality || 'blank'}</span></span>
+                                            <span className="bg-white px-2 py-0.5 rounded border border-orange-100 text-orange-700">Level: <span className="capitalize font-black">{currentQuestion.response_quality || 'N/A'}</span></span>
                                         </h4>
-                                        <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-900 leading-relaxed whitespace-pre-wrap text-sm min-h-[120px]">
-                                            {currentQuestion.ai_feedback || "No feedback."}
+                                        <div className="p-5 bg-orange-50/50 border border-orange-100 rounded-2xl text-orange-950 leading-relaxed whitespace-pre-wrap text-sm min-h-[100px] font-medium">
+                                            {currentQuestion.ai_feedback || "No feedback generated."}
                                         </div>
                                     </div>
                                 </div>
@@ -380,31 +380,34 @@ export default function ExamSession() {
 
                         </div>
                     ) : (
-                        <div className="space-y-8 animate-fade-in-up">
+                        <div className="space-y-6 animate-fade-in-up">
                             
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-bold uppercase tracking-widest border border-slate-200">
-                                Question {currentIndex + 1}
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-700 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] border border-orange-100">
+                                Simulation Item {currentIndex + 1}
                             </div>
 
-                            <h2 className="text-xl md:text-2xl font-serif text-[var(--text)] leading-relaxed">
+                            <h2 className="text-xl md:text-2xl font-serif text-[var(--text)] leading-relaxed max-w-3xl">
                                 {currentQuestion.question_text}
                             </h2>
 
-                            <div className="pt-4">
+                            <div className="pt-2">
                                 {currentQuestion.question_type === 'multiple_choice' && currentQuestion.options ? (
-                                    <div className="space-y-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {(currentQuestion.options as string[]).map((option, idx) => {
                                             const isSelected = answers[currentQuestion.id] === option;
                                             return (
                                                 <button
                                                     key={idx}
                                                     onClick={() => handleMcqSelect(option)}
-                                                    className={`w-full text-left p-5 rounded-xl border-2 transition-all ${isSelected ? 'border-orange-500 bg-orange-50' : 'border-[var(--border)] bg-gray-50/50 hover:bg-white hover:border-orange-300'}`}
+                                                    className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center gap-3 group relative overflow-hidden ${isSelected ? 'border-orange-500 bg-orange-50/50 shadow-md ring-4 ring-orange-500/5' : 'border-[var(--border)] bg-[var(--surface)] hover:border-orange-300 hover:-translate-y-0.5'}`}
                                                 >
-                                                    <div className="flex gap-4 items-start">
-                                                        <div className={`w-5 h-5 rounded-full border flex-shrink-0 mt-0.5 ${isSelected ? 'border-orange-500 bg-orange-500 border-4' : 'border-slate-300'}`} />
-                                                        <span className="text-base text-[var(--text)]">{option}</span>
+                                                    <div className={`w-8 h-8 rounded-xl border-2 shrink-0 flex items-center justify-center text-[11px] font-black transition-all ${isSelected ? 'border-orange-500 bg-orange-500 text-white' : 'border-slate-200 text-slate-400 group-hover:border-orange-400 group-hover:text-orange-600'}`}>
+                                                        {String.fromCharCode(65 + idx)}
                                                     </div>
+                                                    <span className={`text-[15px] font-medium leading-tight flex-1 ${isSelected ? 'text-orange-900' : 'text-[var(--text)]'}`}>{option}</span>
+                                                    {isSelected && (
+                                                        <CheckCircle size={18} className="text-orange-600 shrink-0" />
+                                                    )}
                                                 </button>
                                             )
                                         })}
@@ -416,37 +419,37 @@ export default function ExamSession() {
                                             value={answers[currentQuestion.id] || ''}
                                             onChange={handleAnswerChange}
                                             placeholder="Compose your final answer..."
-                                            className="w-full min-h-[280px] p-6 bg-white border border-[var(--border)] rounded-xl resize-none
-                                                    text-base leading-relaxed text-[var(--text)] placeholder-[var(--muted)]
-                                                    focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all shadow-sm font-serif"
+                                            className="w-full min-h-[220px] p-6 bg-white border-2 border-[var(--border)] rounded-2xl resize-none
+                                                    text-base leading-relaxed text-[var(--text)] placeholder-[var(--muted)]/40
+                                                    focus:outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/5 transition-all shadow-sm font-serif"
                                         />
-                                        <div className="absolute bottom-4 right-4 text-xs font-medium text-[var(--muted)]">
-                                            {answers[currentQuestion.id]?.length || 0} characters
+                                        <div className="absolute bottom-4 right-6 text-[10px] font-black text-[var(--muted)]/50 uppercase tracking-widest">
+                                            {answers[currentQuestion.id]?.length || 0} CHRS
                                         </div>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex justify-between items-center pt-8 border-t border-[var(--border)]">
+                            <div className="flex justify-between items-center pt-6 border-t border-[var(--border)]">
                                 <button
                                     onClick={handlePrev}
                                     disabled={currentIndex === 0}
-                                    className="px-5 py-3 flex flex-row-reverse items-center justify-center gap-2 rounded-xl text-[var(--text)] font-medium hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                    className="px-5 py-2.5 flex items-center gap-2 rounded-xl text-[var(--muted)] font-bold text-sm hover:text-[var(--text)] hover:bg-[var(--surface)] transition-all disabled:opacity-0"
                                 >
-                                    Prev
+                                    <ArrowLeft size={16} /> Previous
                                 </button>
 
                                 <button
                                     onClick={handleNext}
                                     disabled={isSubmitting}
-                                    className="px-8 py-3 flex items-center justify-center gap-2 rounded-xl text-white font-bold tracking-wide bg-slate-900 hover:bg-black shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-wait transition-all"
+                                    className="px-8 py-2.5 flex items-center justify-center gap-2 rounded-xl text-white font-bold text-sm bg-slate-900 hover:bg-black shadow-lg shadow-slate-900/10 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-wait transition-all"
                                 >
                                     {isSubmitting ? (
-                                        <><Loader2 size={18} className="animate-spin" /> Processing...</>
+                                        <><Loader2 size={18} className="animate-spin" /> Finalizing...</>
                                     ) : currentIndex === questions.length - 1 ? (
                                         <><CheckCircle size={18} /> Submit Exam</>
                                     ) : (
-                                        <>Next Question</>
+                                        <>Next Question <ArrowRight size={18} /></>
                                     )}
                                 </button>
                             </div>

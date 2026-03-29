@@ -28,7 +28,8 @@ import {
     FolderOpen,
     GitMerge,
     RotateCcw,
-    Box
+    Box,
+    AlertCircle,
 } from 'lucide-react';
 
 import { KnowledgeNode, VaultCategory, StudySet, MasteryState } from '@/types/serify';
@@ -745,6 +746,17 @@ export default function VaultPage() {
     const hasAnyConcepts = nodes.length > 0;
     const selectedArray = Array.from(selectedNodeIds);
 
+    const vaultStats = useMemo(() => {
+        const total = nodes.length;
+        const needsAttention = nodes.filter(
+            (n) => n.current_mastery === 'shaky' || n.current_mastery === 'revisit'
+        ).length;
+        const strong = nodes.filter(
+            (n) => n.current_mastery === 'mastered' || n.current_mastery === 'solid'
+        ).length;
+        return { total, needsAttention, strong };
+    }, [nodes]);
+
     
     const handleBulkAction = async (action: 'delete' | 'archive') => {
         if (selectedNodeIds.size === 0) return;
@@ -814,61 +826,113 @@ export default function VaultPage() {
         <DashboardLayout>
             <SEO title="Vault" />
 
-            <div className="max-w-[1000px] mx-auto px-6 py-8 pb-32">
-                {}
-                <div className="flex items-start justify-between gap-4 mb-8">
-                    <div>
-                        <div className="flex items-center gap-3 mb-1">
-                            <h1 className="text-3xl font-display text-[var(--text)]">Vault</h1>
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 animate-pulse-subtle">
-                                <Zap size={10} className="text-[var(--accent)]" />
-                                <span className="text-[9px] font-bold text-[var(--accent)] uppercase tracking-tight">Quick Start</span>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-32">
+                <section className="relative mb-6 overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-hard)] md:mb-8 md:p-8">
+
+                        <div className="flex w-full flex-col gap-3 sm:max-w-md sm:flex-row lg:w-auto lg:flex-col xl:flex-row">
+                            <button
+                                type="button"
+                                onClick={() => setIsAddingConcept(true)}
+                                className="btn-primary flex h-11 shrink-0 items-center justify-center gap-2 px-5 font-bold"
+                                style={{ borderRadius: '3px' }}
+                            >
+                                <Plus size={18} strokeWidth={2.5} />
+                                Add concept
+                            </button>
+                            <div className="relative min-w-0 flex-1">
+                                <Search
+                                    size={16}
+                                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+                                    strokeWidth={2}
+                                />
+                                <input
+                                    type="search"
+                                    placeholder="Search concepts, pillars…"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="h-11 w-full border border-[var(--border)] bg-[var(--surface-raised)] pl-11 pr-4 font-mono text-sm text-[var(--text)] outline-none transition-colors placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
+                                    style={{ borderRadius: '3px' }}
+                                    autoComplete="off"
+                                />
                             </div>
                         </div>
-                        <p className="text-[var(--muted)] text-sm mt-1">
-                            Hover over mastery dots to see definitions. Drag and drop concepts to organize them into folders.
-                        </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
-                        <button
-                            onClick={() => setIsAddingConcept(true)}
-                            className="flex h-10 px-4 rounded-xl bg-[var(--surface)] text-[var(--text)] font-semibold items-center gap-2 border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all glass shadow-sm"
-                        >
-                            <Plus size={16} />
-                            <span className="hidden xs:inline">Add Concept</span>
-                        </button>
-                        <div className="relative w-full sm:w-auto">
-                            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-                            <input
-                                type="text"
-                                placeholder="Search concepts..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="h-10 pl-10 pr-4 rounded-xl bg-[var(--surface)] text-sm border border-[var(--border)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none transition-all w-full min-w-[240px] shadow-sm"
-                            />
-                        </div>
-                    </div>
-                </div>
 
-                <div className="flex items-center gap-6 text-[11px] text-[var(--muted)] px-1 mb-4 border-b border-[var(--border)] pb-4 overflow-x-auto whitespace-nowrap scrollbar-none">
-                    <span className="font-semibold uppercase tracking-wider text-[var(--muted)]/60">Mastery Legend:</span>
+
+                    {hasAnyConcepts && (
+                        <div className="relative mt-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+                            {[
+                                {
+                                    label: 'Total concepts',
+                                    value: vaultStats.total,
+                                    hint: 'In your vault',
+                                    icon: Layers,
+                                },
+                                {
+                                    label: 'Strong',
+                                    value: vaultStats.strong,
+                                    hint: 'Mastered + solid',
+                                    icon: Check,
+                                },
+                                {
+                                    label: 'Needs attention',
+                                    value: vaultStats.needsAttention,
+                                    hint: 'Shaky or revisit',
+                                    icon: AlertCircle,
+                                },
+                                {
+                                    label: 'Pillars',
+                                    value: categories.length,
+                                    hint: 'Top-level groups',
+                                    icon: FolderTree,
+                                },
+                            ].map((s) => (
+                                <div
+                                    key={s.label}
+                                    className="flex gap-3 border border-[var(--border)] bg-[var(--bg)] p-4"
+                                    style={{ boxShadow: 'var(--shadow-hard-sm)' }}
+                                >
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[var(--border)] bg-[var(--surface)] text-[var(--accent)]">
+                                        <s.icon size={18} strokeWidth={2} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="font-mono text-[9px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                                            {s.label}
+                                        </div>
+                                        <div className="font-display text-2xl font-bold tabular-nums text-[var(--text)]">
+                                            {s.value}
+                                        </div>
+                                        <div className="truncate font-mono text-[10px] text-[var(--muted)]">{s.hint}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+
+                <div className="paper-card-sm mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-3 font-mono text-[10px] text-[var(--muted)] md:px-5">
+                    <span className="font-black uppercase tracking-[0.15em] text-[var(--text)]/70">Mastery</span>
+                    <span className="hidden h-4 w-px bg-[var(--border)] sm:block" aria-hidden />
                     {Object.entries(MASTERY_CONFIG).map(([key, config]) => (
-                        <div key={key} className="flex items-center gap-1.5 grayscale-[0.3] hover:grayscale-0 transition-all cursor-default group">
-                            <div className={`w-2 h-2 rounded-full ${config.dot}`} />
-                            <span className={`font-medium group-hover:text-[var(--text)] transition-colors`}>{config.label}</span>
+                        <div
+                            key={key}
+                            className="flex items-center gap-1.5 transition-opacity hover:opacity-100"
+                            title={MASTERY_DESCRIPTIONS[key as MasteryState]}
+                        >
+                            <span className={`h-2 w-2 rounded-full ${config.dot}`} />
+                            <span className="text-[var(--text)]">{config.label}</span>
                         </div>
                     ))}
-                    <div className="flex items-center gap-1.5 grayscale-[0.3] hover:grayscale-0 transition-all cursor-default group">
-                        <div className={`w-2 h-2 rounded-full ${DEFAULT_MASTERY.dot}`} />
-                        <span className={`font-medium group-hover:text-[var(--text)] transition-colors`}>{DEFAULT_MASTERY.label}</span>
+                    <div className="flex items-center gap-1.5 border-l border-[var(--border)] pl-4">
+                        <span className={`h-2 w-2 rounded-full ${DEFAULT_MASTERY.dot}`} />
+                        <span className="text-[var(--text)]">{DEFAULT_MASTERY.label}</span>
                     </div>
                 </div>
 
                 {}
                 {hasAnyConcepts && (
-                    <div className="flex flex-col gap-4 mb-8">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="flex items-center gap-1 p-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl glass shrink-0">
+                    <div className="paper-card-sm mb-8 flex flex-col gap-4 p-3 sm:p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="flex w-full max-w-md items-center gap-0.5 border border-[var(--border)] bg-[var(--bg)] p-1 font-mono">
                                 {['all', 'needs_work', 'solid'].map((t) => {
                                     const count = t === 'all'
                                         ? nodes.length
@@ -880,27 +944,31 @@ export default function VaultPage() {
                                     return (
                                         <button
                                             key={t}
+                                            type="button"
                                             onClick={() => setTab(t as Tab)}
-                                            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${tab === t ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                            className={`flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors sm:text-[13px] ${tab === t ? 'bg-[var(--accent)] text-[var(--surface)] shadow-[var(--shadow-hard-sm)]' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                            style={{ borderRadius: '2px' }}
                                         >
-                                            <span>{t === 'all' ? 'All' : t === 'needs_work' ? 'Needs Work' : 'Solid'}</span>
-                                            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${tab === t ? 'bg-white/20 text-white' : 'bg-[var(--bg)] text-[var(--muted)]'}`}>
+                                            <span>{t === 'all' ? 'All' : t === 'needs_work' ? 'Needs work' : 'Solid'}</span>
+                                            <span className={`min-w-[1.25rem] px-1.5 py-0.5 text-center font-mono text-[10px] tabular-nums ${tab === t ? 'bg-black/10 text-[var(--surface)]' : 'bg-[var(--surface)] text-[var(--muted)]'}`}>
                                                 {count}
                                             </span>
                                         </button>
                                     );
                                 })}
                             </div>
-                            <div className="flex items-center gap-2 relative">
+                            <div className="relative flex flex-wrap items-center gap-2">
                                 <button
+                                    type="button"
                                     onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                    className={`h-9 px-3 rounded-xl border text-sm font-medium flex items-center gap-2 transition-colors ${hasActiveFilters || isFilterOpen
-                                        ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)] dark:text-[var(--accent-light)]'
-                                        : 'bg-[var(--surface)] border-[var(--border)] text-[var(--text)] hover:border-[var(--accent)]'
+                                    className={`flex h-10 items-center gap-2 border-2 px-3 font-mono text-xs font-bold uppercase tracking-wide transition-colors ${hasActiveFilters || isFilterOpen
+                                        ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]'
+                                        : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:border-[var(--accent)]'
                                         }`}
+                                    style={{ borderRadius: '3px' }}
                                 >
-                                    <Filter size={14} />
-                                    Filter {hasActiveFilters && <span className="w-5 h-5 rounded-full bg-[var(--accent)] text-white text-xs flex items-center justify-center">{selectedMasteries.length + selectedSources.length}</span>}
+                                    <Filter size={14} strokeWidth={2} />
+                                    Filter {hasActiveFilters && <span className="flex h-5 min-w-[1.25rem] items-center justify-center bg-[var(--accent)] px-1 font-mono text-[10px] text-white">{selectedMasteries.length + selectedSources.length}</span>}
                                 </button>
 
                                 {isFilterOpen && (
@@ -938,24 +1006,29 @@ export default function VaultPage() {
                                 <select
                                     value={sort}
                                     onChange={(e) => setSort(e.target.value as SortOption)}
-                                    className="h-9 px-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] outline-none focus:border-[var(--accent)] transition-colors"
+                                    className="h-10 border-2 border-[var(--border)] bg-[var(--surface)] px-3 font-mono text-xs text-[var(--text)] outline-none transition-colors focus:border-[var(--accent)]"
+                                    style={{ borderRadius: '3px' }}
                                 >
-                                    <option value="last_seen">Recently Seen</option>
+                                    <option value="last_seen">Recently seen</option>
                                     <option value="alpha">Alphabetical</option>
-                                    <option value="mastery">Mastery State</option>
+                                    <option value="mastery">By mastery</option>
                                 </select>
-                                <div className="flex">
+                                <div className="flex border-2 border-[var(--border)]" style={{ borderRadius: '3px' }}>
                                     <button
+                                        type="button"
+                                        title="Grouped by pillar"
                                         onClick={() => setHierarchyMode('hierarchical')}
-                                        className={`h-9 px-3 border border-[var(--border)] rounded-l-xl flex items-center justify-center transition-colors ${hierarchyMode === 'hierarchical' ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                        className={`flex h-10 w-10 items-center justify-center transition-colors ${hierarchyMode === 'hierarchical' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'}`}
                                     >
-                                        <FolderTree size={16} />
+                                        <FolderTree size={16} strokeWidth={2} />
                                     </button>
                                     <button
+                                        type="button"
+                                        title="Flat list"
                                         onClick={() => setHierarchyMode('flat')}
-                                        className={`h-9 px-3 border border-l-0 border-[var(--border)] rounded-r-xl flex items-center justify-center transition-colors ${hierarchyMode === 'flat' ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                        className={`flex h-10 w-10 items-center justify-center border-l-2 border-[var(--border)] transition-colors ${hierarchyMode === 'flat' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--surface)] text-[var(--muted)] hover:text-[var(--text)]'}`}
                                     >
-                                        <LayoutList size={16} />
+                                        <LayoutList size={16} strokeWidth={2} />
                                     </button>
                                 </div>
                             </div>
@@ -991,30 +1064,29 @@ export default function VaultPage() {
 
                 {}
                 {studySets.length > 0 && !search && tab === 'all' && hierarchyMode === 'hierarchical' && (
-                    <div className="mb-8 overflow-hidden">
-                        <h2 className="text-xs font-bold text-[var(--muted)] uppercase tracking-wider mb-3 px-1">
-                            Study Sets
-                        </h2>
-                        <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x -mx-6 px-6 sm:mx-0 sm:px-0 pt-2">
-                            {studySets.map(set => (
+                    <div className="mb-8">
+
+                        <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-2 pt-1 hide-scrollbar sm:mx-0 sm:px-0">
+                            {studySets.map((set) => (
                                 <Link
                                     key={set.id}
                                     href={`/vault/drill?set=${set.id}`}
-                                    className="shrink-0 w-64 p-5 bg-[var(--surface)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] hover:shadow-md transition-all card-hover glass group snap-start block"
+                                    className="paper-card-sm group block w-64 shrink-0 snap-start p-5 transition-transform hover:-translate-y-0.5"
                                 >
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="w-10 h-10 rounded-xl bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center transition-colors group-hover:bg-[var(--accent)] group-hover:text-white">
-                                            <Layers size={18} />
+                                    <div className="mb-4 flex items-start justify-between gap-2">
+                                        <div className="flex h-11 w-11 items-center justify-center border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] transition-colors group-hover:bg-[var(--accent)] group-hover:text-[var(--surface)]">
+                                            <Layers size={20} strokeWidth={2} />
                                         </div>
-                                        <span className="text-xs text-[var(--muted)] font-medium bg-[var(--bg)] px-2 py-1 rounded-full border border-[var(--border)]">
+                                        <span className="border border-[var(--border)] bg-[var(--surface-raised)] px-2 py-1 font-mono text-[10px] font-bold tabular-nums text-[var(--muted)]">
                                             {set.concept_ids.length} concepts
                                         </span>
                                     </div>
-                                    <h3 className="font-bold text-[var(--text)] text-lg mb-1 group-hover:text-[var(--accent)] transition-colors line-clamp-1">
+                                    <h3 className="font-display text-lg font-bold leading-tight text-[var(--text)] transition-colors group-hover:text-[var(--accent)] line-clamp-2">
                                         {set.name}
                                     </h3>
-                                    <p className="text-xs text-[var(--muted)] mt-2">
-                                        Last studied {set.last_studied_at ? new Date(set.last_studied_at).toLocaleDateString() : 'Never'}
+                                    <p className="mt-3 font-mono text-[10px] text-[var(--muted)]">
+                                        Last studied{' '}
+                                        {set.last_studied_at ? new Date(set.last_studied_at).toLocaleDateString() : 'never'}
                                     </p>
                                 </Link>
                             ))}
@@ -1026,12 +1098,12 @@ export default function VaultPage() {
                 {!loading && hasAnyConcepts && (
                     <div className="space-y-6">
                         {filteredNodes.length === 0 ? (
-                            <div className="text-center py-24 px-6 border border-dashed border-[var(--border)] rounded-2xl bg-[var(--surface)] glass">
-                                <div className="w-14 h-14 bg-[var(--accent)]/10 text-[var(--accent)] rounded-2xl flex items-center justify-center mx-auto mb-5 ring-1 ring-[var(--accent)]/20 shadow-inner">
-                                    <Archive size={28} />
+                            <div className="border-2 border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-20 text-center">
+                                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard-sm)]">
+                                    <Archive size={28} strokeWidth={2} />
                                 </div>
-                                <h3 className="text-xl font-bold text-[var(--text)] mb-2">No concepts found</h3>
-                                <p className="text-[var(--muted)] text-[15px] max-w-sm mx-auto leading-relaxed">
+                                <h3 className="font-display text-xl font-bold text-[var(--text)] mb-2">No concepts match</h3>
+                                <p className="mx-auto max-w-sm font-mono text-sm leading-relaxed text-[var(--muted)]">
                                     {tab === 'solid' ? "Keep reviewing — your first solid concept is closer than you think." :
                                      tab === 'needs_work' ? "Great job, all concepts are looking solid." :
                                      search ? `No results for "${search}".` :
@@ -1039,8 +1111,9 @@ export default function VaultPage() {
                                 </p>
                                 {(tab !== 'all' || search !== '') && (
                                     <button
+                                        type="button"
                                         onClick={() => { setTab('all'); setSearch(''); }}
-                                        className="mt-6 px-6 py-2.5 bg-[var(--bg)] hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text)] text-[13px] font-bold rounded-xl transition-all border border-[var(--border)] shadow-sm flex items-center gap-2 mx-auto"
+                                        className="btn-secondary mx-auto mt-6"
                                     >
                                         Clear filters
                                     </button>
@@ -1051,14 +1124,14 @@ export default function VaultPage() {
                                 {hierarchy.grouped.map(({ category, parentGroups, totalNodes, progress, stats }) => {
                                     const isCollapsed = search ? false : collapsedCategories.has(category.id);
                                     return (
-                                        <div key={category.id} className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm">
+                                        <div key={category.id} className="overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard)]">
                                             {/* Category Header */}
                                             <div
                                                 onClick={() => toggleCategory(category.id)}
                                                 onDragOver={(e) => handleDragOver(e, category.id)}
                                                 onDragLeave={handleDragLeave}
                                                 onDrop={(e) => handleDrop(e, category.id, 'category')}
-                                                className={`px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-[var(--bg)] transition-all group border-b border-transparent ${dropTargetId === category.id ? 'bg-[var(--accent)]/10 border-[var(--accent)] !border-b-[var(--accent)] shadow-inner' : ''}`}
+                                                className={`group flex cursor-pointer items-center justify-between border-b-2 border-[var(--border)] px-5 py-4 transition-colors hover:bg-[var(--bg)] ${dropTargetId === category.id ? 'bg-[var(--accent-soft)] ring-2 ring-inset ring-[var(--accent)]' : ''}`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div
@@ -1074,7 +1147,7 @@ export default function VaultPage() {
                                                     <div className="w-8 h-8 rounded-lg bg-[var(--bg)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)] group-hover:border-[var(--accent)] transition-colors">
                                                         <Folder size={14} />
                                                     </div>
-                                                    <h2 className="text-lg font-bold text-[var(--text)]">{category.name}</h2>
+                                                    <h2 className="font-display text-lg font-bold tracking-tight text-[var(--text)]">{category.name}</h2>
                                                 </div>
                                                 <div className="flex items-center gap-4">
                                                     <div className="flex items-center gap-2">
@@ -1106,7 +1179,7 @@ export default function VaultPage() {
                                                     onDragOver={(e) => handleDragOver(e, category.id)}
                                                     onDragLeave={handleDragLeave}
                                                     onDrop={(e) => handleDrop(e, category.id, 'category')}
-                                                    className={`border-t border-[var(--border)] bg-[#fafafa] dark:bg-[#0a0a0a] min-h-[40px] transition-colors p-4 ${dropTargetId === category.id ? 'bg-[var(--accent)]/5' : ''}`}
+                                                    className={`dot-grid-bg min-h-[40px] border-t-2 border-[var(--border)] bg-[var(--bg)] p-4 transition-colors ${dropTargetId === category.id ? 'bg-[var(--accent-soft)]' : ''}`}
                                                 >
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                                         {parentGroups.map((group: any) => renderParentNode(group))}
@@ -1120,12 +1193,12 @@ export default function VaultPage() {
 
                                 {}
                                 {(hierarchy?.uncategorizedGroups.length > 0 || hierarchy?.orphans.length > 0 || (hierarchy?.subjectGroups && hierarchy.subjectGroups.length > 0)) && (
-                                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden glass shadow-sm">
+                                    <div className="overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard)]">
                                         <div
                                             onDragOver={(e) => handleDragOver(e, 'other')}
                                             onDragLeave={handleDragLeave}
                                             onDrop={(e) => handleDrop(e, 'other', 'category')}
-                                            className={`px-5 py-4 border-b border-[var(--border)] bg-[var(--bg)] flex items-center justify-between transition-colors ${dropTargetId === 'other' ? 'bg-[var(--accent)]/10 ring-2 ring-[var(--accent)] ring-inset' : ''}`}
+                                            className={`flex items-center justify-between border-b-2 border-[var(--border)] bg-[var(--bg)] px-5 py-4 transition-colors ${dropTargetId === 'other' ? 'bg-[var(--accent-soft)] ring-2 ring-inset ring-[var(--accent)]' : ''}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <div
@@ -1137,7 +1210,7 @@ export default function VaultPage() {
                                                 <div className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-[var(--muted)]">
                                                     <Layers size={14} />
                                                 </div>
-                                                <h2 className="text-lg font-bold text-[var(--text)]">General Concepts</h2>
+
                                             </div>
                                         </div>
                                         <div className="p-4 space-y-8">
@@ -1191,7 +1264,7 @@ export default function VaultPage() {
                                 )}
                             </>
                         ) : (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-y divide-[var(--border)] glass stagger-children">
+                            <div className="divide-y-2 divide-[var(--border)] overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard)] stagger-children">
                                 {filteredNodes.map((node) => (
                                     <div
                                         key={node.id}
@@ -1217,20 +1290,18 @@ export default function VaultPage() {
 
                 {}
                 {!loading && !hasAnyConcepts && (
-                    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-                        <div className="w-20 h-20 rounded-full bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center mb-6 glass">
-                            <Brain size={32} className="text-[var(--accent)]" />
+                    <div className="border-2 border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-16 text-center shadow-[var(--shadow-hard-sm)]">
+                        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center border-2 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard)]">
+                            <Brain size={36} strokeWidth={1.75} />
                         </div>
-                        <h2 className="text-2xl font-bold text-[var(--text)] mb-3">Your Vault is Empty</h2>
-                        <p className="text-[var(--muted)] max-w-md mb-8">
-                            This is where all your learned concepts live. Start a Learning Session or upload materials to extract and diagnose new concepts!
+                        <p className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">Concept vault</p>
+
+                        <p className="mx-auto mt-3 max-w-md font-mono text-sm leading-relaxed text-[var(--muted)]">
+                            Run a reflection session or paste a link on the dashboard. Concepts you extract will land here, with mastery tracked over time.
                         </p>
-                        <Link
-                            href="/"
-                            className="h-11 px-6 rounded-xl bg-[var(--accent)] text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-lg shadow-[var(--accent)]/20"
-                        >
-                            <Zap size={18} />
-                            Start Learning
+                        <Link href="/" className="btn-primary mt-8 inline-flex gap-2">
+                            <Zap size={18} strokeWidth={2.5} />
+                            Start learning
                         </Link>
                     </div>
                 )}
@@ -1390,17 +1461,21 @@ export default function VaultPage() {
             {}
             {selectedNodeForDetail && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-                        <div className="p-6 border-b border-[var(--border)] flex justify-between items-start">
+                    <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-hard-lg)] animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+                        <div className="flex items-start justify-between border-b-2 border-[var(--border)] p-6">
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].bg} ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].color}`}>
-                                    <Brain size={24} />
+                                <div
+                                    className={`flex h-12 w-12 items-center justify-center border-2 border-[var(--border)] shadow-[var(--shadow-hard-sm)] ${MASTERY_CONFIG[(selectedNodeForDetail.current_mastery || 'developing') as MasteryState].bg} ${MASTERY_CONFIG[(selectedNodeForDetail.current_mastery || 'developing') as MasteryState].color}`}
+                                >
+                                    <Brain size={24} strokeWidth={2} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-bold text-[var(--text)]">{selectedNodeForDetail.display_name}</h3>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].bg} ${MASTERY_CONFIG[selectedNodeForDetail.current_mastery].color} border-current`}>
-                                            {MASTERY_CONFIG[selectedNodeForDetail.current_mastery].label} Mastery
+                                    <h3 className="font-display text-xl font-bold text-[var(--text)]">{selectedNodeForDetail.display_name}</h3>
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                                        <span
+                                            className={`border border-current px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-widest ${MASTERY_CONFIG[(selectedNodeForDetail.current_mastery || 'developing') as MasteryState].bg} ${MASTERY_CONFIG[(selectedNodeForDetail.current_mastery || 'developing') as MasteryState].color}`}
+                                        >
+                                            {MASTERY_CONFIG[(selectedNodeForDetail.current_mastery || 'developing') as MasteryState].label} mastery
                                         </span>
                                         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] bg-[var(--bg)] px-2 py-0.5 rounded-full border border-[var(--border)]">
                                             {selectedNodeForDetail.session_count || 0} Sessions

@@ -23,7 +23,7 @@ export default function Login() {
     }, []);
 
     useEffect(() => {
-        
+
         if (user && !isLoading) {
             if (!user.onboardingCompleted) {
                 router.push('/onboarding');
@@ -47,8 +47,8 @@ export default function Login() {
                     router.push('/');
                 }
             }
-            
-            
+
+
             setTimeout(() => {
                 if (mounted.current) setIsLoading(false);
             }, 5000);
@@ -74,20 +74,20 @@ export default function Login() {
     return (
         <div className="min-h-screen bg-[var(--bg)] flex flex-col justify-center items-center p-6 font-mono relative overflow-hidden">
             <div className="absolute inset-0 hatch-bg pointer-events-none" />
-            <SEO 
-                title="Log In" 
-                description="Log in to Serify to access your personalized learning dashboard and concept vault." 
+            <SEO
+                title="Log In"
+                description="Log in to Serify to access your personalized learning dashboard and concept vault."
             />
 
             <div className="w-full max-w-sm relative z-10 animate-fade-in">
                 <div className="mb-10 text-center">
                     <Link href="/" className="inline-block text-4xl font-display font-bold text-[var(--text)]">Serify</Link>
-                    <p className="text-[11px] font-mono text-[var(--muted)] mt-2">{'// welcome back — let&apos;s reflect'}</p>
+                    <p className="text-[11px] font-mono text-[var(--muted)] mt-2">{'// welcome back'}</p>
                 </div>
 
                 <div className="paper-card p-8">
                     {error && (
-                        <div className="mb-6 p-3 border-2 border-[var(--warn)] bg-[var(--warn)]/5 flex items-start gap-3 text-[var(--warn)] text-[12px] font-mono animate-fade-in" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                        <div className="mb-6 p-3 border-2 border-[var(--warn)] bg-[var(--warn)]/5 flex items-start gap-3 text-[var(--warn)] text-[12px] font-mono animate-fade-in" style={{ boxShadow: 'var(--shadow-hard-sm)' }}>
                             <AlertCircle size={15} className="shrink-0 mt-0.5" />
                             <span>{error}</span>
                         </div>

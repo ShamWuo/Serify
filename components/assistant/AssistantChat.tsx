@@ -23,7 +23,7 @@ const AssistantChat: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-white">
+        <div className="flex flex-col h-full min-h-0 bg-[var(--surface)]">
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scroll-smooth">
                 {proactiveSuggestion && (
                     <div className="bg-[var(--accent)] text-white p-5 rounded-3xl shadow-lg animate-slide-up relative overflow-hidden group">
@@ -87,14 +87,14 @@ const AssistantChat: React.FC = () => {
                 ))}
             </div>
 
-            <div className="p-4 bg-gray-50/50 border-t border-[var(--border)]">
+            <div className="p-3 border-t-2 border-[var(--border)] bg-[var(--bg)]/80 shrink-0">
                 {tierWarning && (
                     <div className="flex items-center gap-2 px-3 py-1.5 mb-2 bg-[#FFF9F2] border border-orange-100 rounded-lg animate-fade-in">
                         <AlertCircle size={14} className="text-orange-500" />
                         <span className="text-[10px] font-bold text-orange-700">This request will use {tierWarning} tokens.</span>
                     </div>
                 )}
-                <div className="relative flex items-center bg-white rounded-xl border border-[var(--border)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/10 transition-all p-1">
+                <div className="relative flex items-center bg-[var(--surface)] border-2 border-[var(--border)] focus-within:border-[var(--accent)] transition-all p-1" style={{ borderRadius: '3px' }}>
                     <input 
                         type="text"
                         value={input}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/Layout/DashboardLayout';
 import SEO from '@/components/Layout/SEO';
 import {
@@ -15,13 +15,13 @@ import {
     MessageSquare,
     Bot,
     Edit3,
-    Zap,
     Trash2,
     X,
     AlertTriangle,
     ChevronRight,
     FlaskConical,
-    CheckCircle2
+    CheckCircle2,
+    Zap
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,7 +58,7 @@ function getIcon(contentType: string) {
         case 'notes':
             return <ClipboardPaste className="text-orange-500" size={18} />;
         case 'flow':
-            return <Zap className="text-purple-500" size={18} />;
+            return <BookOpen className="text-emerald-500" size={18} />;
         default:
             return <Clock className="text-gray-400" size={18} />;
     }
@@ -162,7 +162,7 @@ function SessionRow({
             if (session.sourceType === 'curriculum' && session.sourceId) {
                 router.push(`/learn/curriculum/${session.sourceId}/flow?session=${session.id}`);
             } else {
-                router.push(`/flow/${session.id}`);
+                router.push(`/learn/quick/flow?session=${session.id}`);
             }
         } else {
             router.push(
@@ -279,10 +279,10 @@ function SessionRow({
                             onClick={(e) => e.stopPropagation()}
                         >
                             <Link
-                                href={session.sourceType === 'curriculum' && session.sourceId ? `/learn/curriculum/${session.sourceId}/flow?session=${session.id}` : `/flow/${session.id}`}
-                                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors"
+                                href={session.sourceType === 'curriculum' && session.sourceId ? `/learn/curriculum/${session.sourceId}/flow?session=${session.id}` : `/learn/quick/flow?session=${session.id}`}
+                                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors"
                             >
-                                <Zap size={9} /> {session.completedCount === 0 ? 'Start' : 'Resume'}
+                                <BookOpen size={9} /> {session.completedCount === 0 ? 'Start' : 'Resume'}
                             </Link>
                         </div>
                     )}
@@ -515,11 +515,7 @@ export default function HistoryPage() {
                     </div>
                 ) : (
                     <>
-                        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-                            <div>
-                                <h1 className="text-3xl font-display font-bold text-[var(--text)]">History</h1>
-                                <p className="text-[11px] font-mono text-[var(--muted)] mt-1">{'// analysis and learn mode activity'}</p>
-                            </div>
+                        <header className="flex flex-col md:flex-row md:items-end justify-end gap-4 mb-8">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={13} />
                                 <input
@@ -624,7 +620,7 @@ export default function HistoryPage() {
                                                             if (session.sourceType === 'curriculum' && session.sourceId) {
                                                                 router.push(`/learn/curriculum/${session.sourceId}/flow?session=${session.id}`);
                                                             } else {
-                                                                router.push(`/flow/${session.id}`);
+                                                                router.push(`/learn/quick/flow?session=${session.id}`);
                                                             }
                                                         } else {
                                                             router.push(
@@ -683,10 +679,10 @@ export default function HistoryPage() {
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 >
                                                                     <Link
-                                                                        href={session.sourceType === 'curriculum' && session.sourceId ? `/learn/curriculum/${session.sourceId}/flow?session=${session.id}` : `/flow/${session.id}`}
-                                                                        className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition-colors"
+                                                                        href={session.sourceType === 'curriculum' && session.sourceId ? `/learn/curriculum/${session.sourceId}/flow?session=${session.id}` : `/learn/quick/flow?session=${session.id}`}
+                                                                        className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors"
                                                                     >
-                                                                        <Zap size={9} /> {session.completedCount === 0 ? 'Start' : 'Resume'}
+                                                                        <BookOpen size={9} /> {session.completedCount === 0 ? 'Start' : 'Resume'}
                                                                     </Link>
                                                                 </div>
                                                             )}

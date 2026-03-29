@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
             .eq('id', stepId);
 
-        if (step.step_type !== 'check' && step.step_type !== 'confirm') {
+        if (step.step_type !== 'check' && step.step_type !== 'confirm' && step.step_type !== 'application') {
             return res.status(200).json({ success: true });
         }
 
@@ -96,10 +96,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         };
 
         const teachingHistory = (previousSteps || [])
-            .filter((s) => ['orient', 'build_layer', 'anchor', 'reinforce'].includes(s.step_type))
+            .filter((s) => ['orient', 'build_layer', 'anchor', 'reinforce', 'application'].includes(s.step_type))
             .map(
                 (s) =>
-                    `[${s.step_type}]: ${s.content?.text || s.content?.explanationText || JSON.stringify(s.content)}`
+                    `[${s.step_type === step.step_type && s.id === stepId ? 'CURRENT ' : ''}${s.step_type}]: ${s.content?.text || s.content?.explanationText || s.content?.taskPrompt || JSON.stringify(s.content)}`
             );
 
         const usage = await incrementUsage(userId, 'flow_sessions');
@@ -108,7 +108,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const evaluatorModel = genAI.getGenerativeModel({
             model: 'gemini-2.5-flash',
             generationConfig: { responseMimeType: 'application/json' },
-            systemInstruction: `You are evaluating a learner's answer to a check question in a Flow Mode session.
+            systemInstruction: `You are evaluating a learner's answer in a Flow Mode session. This could be a check question OR a practical application task.
 Return JSON strictly:
 {
   "outcome": "strong" | "partial" | "weak",
@@ -127,7 +127,7 @@ Rules:
 - feedbackText must be shown to the learner. 2-4 sentences max.
 - Path A: confirm + add nuance. Path B: acknowledge right + explain missing. Path C: natural transition without failure.
 - NEVER say "great job", "incorrect", "unfortunately", or "however".
-- Evaluate against WHAT WAS ACTUALLY TAUGHT. Do not penalize for missing info not taught.`
+- Evaluate against WHAT WAS ACTUALLY TAUGHT or TASKED. Do not penalize for missing info not relevant to the prompt.`
         });
 
         const anglesUsedStr =

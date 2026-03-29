@@ -6,10 +6,11 @@ import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import {
-    Zap, Brain, Loader2, ChevronRight, ChevronLeft, CheckCircle2,
-    BookOpen, HelpCircle, Target, Route, ShieldAlert, Replace, Send,
-    Layers, Trophy, Lock
+    BookOpen, Brain, Loader2, ChevronRight, ChevronLeft, CheckCircle2,
+    RefreshCw, SkipForward, AlertCircle, Library, Target, Layers, Replace, Send,
+    Trophy, Lock
 } from 'lucide-react';
+import { normalizeTitle } from '@/lib/formatters';
 import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
 import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
 import { useUsage } from '@/hooks/useUsage';
@@ -37,7 +38,7 @@ function StepIcon({ type }: { type: FlowStepType }) {
         orient: <Target size={16} />,
         build_layer: <Layers size={16} />,
         anchor: <BookOpen size={16} />,
-        check: <HelpCircle size={16} />,
+        check: <BookOpen size={16} />,
         reinforce: <Replace size={16} />,
         confirm: <CheckCircle2 size={16} />,
     };
@@ -139,8 +140,8 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                     <div className="p-5">
                         {content.accelerated && (
                             <div className="flex items-center gap-1.5 mb-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-1.5 rounded-lg w-fit animate-in fade-in slide-in-from-top-2 duration-500">
-                                <Zap size={14} className="text-amber-500 fill-amber-500" />
-                                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Accelerated Path — Based on your mastery</span>
+                                <Library size={14} className="text-emerald-500 fill-emerald-500" />
+                                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Accelerated Path — Based on your mastery</span>
                             </div>
                         )}
 
@@ -279,13 +280,13 @@ function ApplicationStep({ content, stepId, isEvaluated, onEvaluated, readOnly, 
                             onClick={() => setShowHint(true)}
                             className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-widest flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                         >
-                            <HelpCircle size={14} /> Need a hint?
+                            <BookOpen size={14} /> Need a hint?
                         </button>
                     ) : (
                         <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 rounded-xl animate-in slide-in-from-top-2 duration-300">
                             <div className="flex items-center gap-2 mb-1.5">
-                                <Zap size={14} className="text-amber-500" />
-                                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase">Hint</span>
+                                <Library size={14} className="text-emerald-500" />
+                                <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Hint</span>
                             </div>
                             <div className="text-[14px] text-amber-800 dark:text-amber-200 leading-relaxed font-medium">
                                 <MarkdownRenderer className="hint-markdown prose-content">{content.hint}</MarkdownRenderer>
@@ -462,7 +463,7 @@ function ConceptCompleteCard({ conceptName, onNext, onReview, isLast }: {
 
 export default function CurriculumFlowSessionPage() {
     const router = useRouter();
-    const { id: curriculumId } = router.query as { id?: string };
+    const { id: curriculumId, session: urlSessionId } = router.query as { id?: string; session?: string };
     const { user, loading: authLoading } = useAuth();
 
     const [flowSessionId, setFlowSessionId] = useState<string | null>(null);
@@ -520,6 +521,11 @@ export default function CurriculumFlowSessionPage() {
         (async () => {
             setLoading(true);
             try {
+                if (urlSessionId) {
+                    setFlowSessionId(urlSessionId);
+                    return;
+                }
+
                 const { data: { session } } = await supabase.auth.getSession();
                 const res = await fetch('/api/serify/start-curriculum-flow', {
                     method: 'POST',
@@ -538,7 +544,7 @@ export default function CurriculumFlowSessionPage() {
                 setLoading(false);
             }
         })();
-    }, [curriculumId, user, authLoading]);
+    }, [curriculumId, urlSessionId, user, authLoading]);
 
     
     useEffect(() => {
@@ -793,42 +799,6 @@ export default function CurriculumFlowSessionPage() {
     };
 
     
-    
-    
-    
-    
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-    
     const handleSkip = async () => {
         if (!flowSession || !currentConcept || stepping) return;
         if (window.confirm("Are you sure you want to skip this step? You'll move to the next part of the lesson.")) {
@@ -878,7 +848,7 @@ export default function CurriculumFlowSessionPage() {
         if (step_type === 'teach') {
             if (!content?.text) return (
                 <div className="flex flex-col items-center justify-center p-8 text-center bg-red-50/50 rounded-xl border border-red-100">
-                    <ShieldAlert className="text-red-400 mb-2" size={24} />
+                    <AlertCircle className="text-red-400 mb-2" size={24} />
                     <p className="text-sm font-medium text-red-600">Lesson content missing</p>
                     <p className="text-xs text-red-500/80 mt-1">Serify failed to generate the lesson text for this step.</p>
                     <button onClick={() => fetchNextStep()} className="mt-4 text-xs font-bold text-red-700 underline">Try Re-generating</button>
@@ -922,10 +892,6 @@ export default function CurriculumFlowSessionPage() {
             </div>
         );
     };
-
-    
-    
-    
 
     if (isLimitReached) {
         return (
@@ -983,23 +949,20 @@ export default function CurriculumFlowSessionPage() {
             <Head><title>Learn Mode — {currentConcept?.conceptName || 'Loading'}</title></Head>
             <DashboardLayout
                 replaceNav={true}
-                backLink={`/learn/curriculum/${curriculumId}`}
+                backLink={router.query.fromPath ? (router.query.fromPath as string) : `/learn`}
+                backLinkText={normalizeTitle(flowSession?.initial_plan?.title || 'Learning Path')}
+                subTitle={normalizeTitle(currentConcept?.conceptName)}
                 sidebarContent={
                     <CurriculumSidebar
-                        concepts={concepts}
+                        concepts={flowSession?.initial_plan?.concepts || []}
                         currentIndex={currentConceptIndex}
-                        conceptStatuses={concepts.reduce((acc: any, c: any) => {
-                            acc[c.conceptId] = conceptStatuses[c.conceptId] || 'not_started';
-                            return acc;
-                        }, {})}
-                        onConceptClick={handleConceptSelect}
-                        title={flowSession?.initial_plan?.overallStrategy?.replace('Curriculum: ', '')}
+                        conceptStatuses={conceptStatuses}
+                        onConceptClick={setCurrentConceptIndex}
                     />
                 }
             >
                 <div className="max-w-5xl mx-auto px-4 py-6">
 
-                    {}
                     <div className="mb-5">
                         {flowSession && (
                             <ProgressBar
@@ -1035,12 +998,11 @@ export default function CurriculumFlowSessionPage() {
                         </div>
                     </div>
 
-                    {}
                     {fetchError && (
                         <div className="max-w-2xl mx-auto mb-8 bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-500/20 rounded-2xl p-6 shadow-sm">
                             <div className="flex items-start gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-rose-500 flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/20">
-                                    <ShieldAlert size={24} className="text-white" />
+                                    <AlertCircle size={24} className="text-white" />
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-lg font-bold text-rose-700 dark:text-rose-400 mb-1">Navigation Error</h3>
@@ -1070,7 +1032,6 @@ export default function CurriculumFlowSessionPage() {
                         {stepping ? (
                             <div className="flex flex-col items-center justify-center min-h-[320px] gap-8 animate-fade-in">
                                 <div className="relative">
-                                    {}
                                     <div className="w-20 h-20 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin-slow transition-all duration-300 relative z-10"
                                         style={{
                                             borderTopColor: 'var(--accent)',

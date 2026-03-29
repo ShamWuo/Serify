@@ -21,13 +21,13 @@ body {
 
         /* Strokes — faded ink, never pure black */
         --border: #2c2825;
-        --border-soft: #c8bfb0;
+        --border-soft: #958a7a;
         --ink: #2c2825;
 
         /* Typography */
         --text: #2c2825;
-        --muted: #7a6e62;
-        --muted-light: #a89e93;
+        --muted: #5a524a;
+        --muted-light: #756a5f;
 
         /* Primary Accent — architectural forest green */
         --accent: #3d7a44;
@@ -38,9 +38,9 @@ body {
         --terracotta-soft: #f1f7f1;
 
         /* Secondary — desaturated sage / organic leaf */
-        --sage: #7a9c7a;
+        --sage: #4e6e4e;
         --sage-soft: #eaf2ea;
-        --sage-dark: #4e6e4e;
+        --sage-dark: #3a523a;
 
         /* Dark mode amber (unused in light mode but defined) */
         --amber: #d4821f;
@@ -801,12 +801,11 @@ h1, h2, h3, h4, h5, h6 {
    ============================================================ */
 
 .flow-markdown {
-    white-space: pre-wrap;
     word-break: break-word;
 }
 
 .flow-markdown p {
-    margin-bottom: 0.75em;
+    margin-bottom: 0.5em;
 }
 
 .flow-markdown p:last-child {
@@ -923,14 +922,14 @@ h1, h2, h3, h4, h5, h6 {
 /* Prose / markdown content */
 .prose-content,
 .flow-markdown {
-    line-height: 1.75;
+    line-height: 1.6;
     color: var(--text);
     font-family: 'IBM Plex Mono', monospace;
 }
 
 .prose-content p,
 .flow-markdown p {
-    margin: 0.6em 0;
+    margin: 0.4em 0;
 }
 
 .prose-content h1,
@@ -943,8 +942,8 @@ h1, h2, h3, h4, h5, h6 {
 .flow-markdown h4 {
     font-family: 'Space Grotesk', sans-serif;
     font-weight: 700;
-    line-height: 1.3;
-    margin: 1.1em 0 0.5em;
+    line-height: 1.25;
+    margin: 0.8em 0 0.35em;
     color: var(--text);
 }
 

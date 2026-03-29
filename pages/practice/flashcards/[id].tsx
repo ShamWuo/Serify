@@ -6,14 +6,15 @@ import { supabase } from '@/lib/supabase';
 import { Layers, ArrowRight, ArrowLeft, Loader2, CheckCircle, RotateCcw, X, Sparkles, Settings, Shuffle, Repeat } from 'lucide-react';
 import toast from 'react-hot-toast';
 import GeneratingAnimation from '@/components/GeneratingAnimation';
+import * as T from '@/types/serify';
 
 export default function FlashcardsSession() {
     const router = useRouter();
     const { id } = router.query;
     const { user } = useAuth();
     
-    const [deck, setDeck] = useState<any>(null);
-    const [cards, setCards] = useState<any[]>([]);
+    const [deck, setDeck] = useState<T.FlashcardDeck | null>(null);
+    const [cards, setCards] = useState<T.Flashcard[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
     
@@ -25,7 +26,7 @@ export default function FlashcardsSession() {
     const [showSide, setShowSide] = useState<'front' | 'back' | 'random'>('front');
     const [isShuffled, setIsShuffled] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const [displayCards, setDisplayCards] = useState<any[]>([]);
+    const [displayCards, setDisplayCards] = useState<T.Flashcard[]>([]);
 
     useEffect(() => {
         if (!user || !router.isReady || !id) return;
@@ -72,15 +73,23 @@ export default function FlashcardsSession() {
                     if (qErr || !qData) throw new Error("Failed to load flashcards");
 
                     setDeck({
+                        id: id as string,
+                        user_id: user.id,
                         title: sessionData.topic || 'Concept Review',
-                        description: 'Legacy session'
-                    });
+                        description: 'Legacy session',
+                        total_cards: qData.cards?.length || 0,
+                        cards_know_it: 0,
+                        cards_still_learning: 0,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    } as T.FlashcardDeck);
                     setCards(qData.cards || []);
                 }
 
-            } catch (err: any) {
-                console.error(err);
-                toast.error(err.message);
+            } catch (err) {
+                const error = err as Error;
+                console.error(error);
+                toast.error(error.message);
                 router.push('/practice/flashcards');
             } finally {
                 setIsLoading(false);
@@ -169,7 +178,7 @@ export default function FlashcardsSession() {
             setIsCompleted(true);
             setCurrentIndex(0);
             toast.success("Study session finished!");
-        } catch (err: any) {
+        } catch (err) {
             toast.error('Failed to complete session');
         }
     };
@@ -205,8 +214,11 @@ export default function FlashcardsSession() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center px-6">
-                <div className="w-full max-w-lg text-center">
-                    <p className="text-xl font-display text-[var(--text)] mb-8">Building study session...</p>
+                <div className="w-full max-w-lg text-center space-y-8">
+                    <div className="space-y-2">
+                        <h2 className="text-2xl font-display text-[var(--text)]">Curating Your Session</h2>
+                        <p className="text-[var(--muted)] font-typewriter italic">Sharpening the pencil, preparing the deck...</p>
+                    </div>
                     <GeneratingAnimation type="cards" />
                 </div>
             </div>
@@ -219,17 +231,16 @@ export default function FlashcardsSession() {
     const progressPercent = ((currentIndex + 1) / displayCards.length) * 100;
 
     
-    const getFrontText = (card: any) => {
+    const getFrontText = (card: T.Flashcard) => {
         if (showSide === 'back') return card.back;
         if (showSide === 'random') {
-            
             const hash = card.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
             return hash % 2 === 0 ? card.front : card.back;
         }
         return card.front;
     };
 
-    const getBackText = (card: any) => {
+    const getBackText = (card: T.Flashcard) => {
         if (showSide === 'back') return card.front;
         if (showSide === 'random') {
              const hash = card.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
@@ -238,244 +249,276 @@ export default function FlashcardsSession() {
         return card.back;
     };
 
-    return (
+        return (
         <div className="min-h-screen bg-[var(--bg)] flex flex-col relative overflow-hidden">
             <Head>
                 <title>{deck.title} | Flashcards | Serify</title>
             </Head>
 
-            {}
-            <header className="fixed top-0 inset-x-0 h-16 bg-[var(--surface)] border-b border-[var(--border)] z-20 flex items-center justify-between px-6">
-                <div className="flex items-center gap-4">
+            {/* Header Section — "The Studio Header" */}
+            <header className="sticky top-0 z-40 w-full px-6 py-4 flex items-center justify-between border-b-4 border-[var(--ink)] bg-[var(--surface)]/90 backdrop-blur-sm">
+                <div className="flex items-center gap-6">
                     <button 
                         onClick={() => router.push('/practice/flashcards')}
-                        className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--muted)] transition-colors"
+                        className="group flex items-center gap-2 p-2.5 bg-[var(--surface-raised)] border-2 border-[var(--ink)] shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all"
                     >
-                        <X size={20} />
+                        <X size={20} strokeWidth={3} className="text-[var(--ink)]" />
                     </button>
+                    
                     <div className="flex flex-col">
-                        <span className="text-xs font-bold uppercase tracking-wider text-teal-600">Flashcards</span>
-                        <span className="font-semibold text-[var(--text)] line-clamp-1 max-w-[200px] sm:max-w-md">
+                        <div className="flex items-center gap-3">
+                            <span className="washi-tape washi-developing !text-[9px] !px-1.5 !py-0">STUDY PROTOCOL</span>
+                            <span className="text-[10px] font-bold font-mono text-[var(--muted)] opacity-60 uppercase tracking-widest">{currentIndex + 1} OF {displayCards.length} UNITS</span>
+                        </div>
+                        <h1 className="text-xl font-display font-black text-[var(--text)] line-clamp-1 max-w-[180px] sm:max-w-md uppercase tracking-tight">
                             {deck.title}
-                        </span>
+                        </h1>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm font-medium text-[var(--muted)]">
-                        Progress: <span className="text-[var(--text)]">{currentIndex + 1}/{displayCards.length}</span>
-                    </div>
-
+                <div className="flex items-center gap-4">
                     <button 
                         onClick={() => setSettingsOpen(true)}
-                        className="p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-[var(--muted)] hover:text-teal-600 transition-all active:scale-95 shadow-sm"
-                        title="Study Settings"
+                        className="p-3 bg-[var(--bg)] border-2 border-[var(--ink)] shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all active:bg-[var(--accent-soft)]"
                     >
-                        <Settings size={20} />
+                        <Settings size={20} className="text-[var(--ink)]" />
                     </button>
                 </div>
             </header>
 
-            {}
-            <div className="fixed top-16 inset-x-0 h-1 bg-[var(--border)] z-20">
+            {/* Progress Bar — "The Precision Guage" */}
+            <div className="sticky top-[76px] z-40 w-full h-1 bg-[var(--ink)]/5">
                 <div 
-                    className="h-full bg-teal-500 transition-all duration-300 ease-out"
+                    className="h-full bg-[var(--ink)] transition-all duration-1000 ease-out"
                     style={{ width: `${progressPercent}%` }}
                 />
             </div>
+            <main className="flex-1 flex flex-col min-h-0 px-6 py-4 overflow-hidden">
+                <div className="flex-1 flex items-center justify-center min-h-0 py-4 relative">
+                    {!isLoading && displayCards.length > 0 && (
+                        <>
+                            {isCompleted && currentIndex === 0 && !isFlipped ? (
+                                <div className="w-full max-w-md bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard p-10 text-center space-y-6 animate-in zoom-in-95 duration-500 relative z-10">
+                                    <div className="relative inline-flex items-center justify-center w-20 h-20 bg-[var(--accent)] border-4 border-[var(--ink)] shadow-hard rotate-3 mb-2">
+                                        <CheckCircle size={40} className="text-[var(--bg)]" />
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <h2 className="text-3xl font-display font-black text-[var(--text)] tracking-tighter uppercase leading-none">
+                                            Protocol <br/> Complete
+                                        </h2>
+                                        <p className="text-[var(--muted)] font-mono text-[10px] uppercase italic tracking-widest p-3 bg-[var(--bg)] border-2 border-[var(--ink)] border-dashed">
+                                            Session successfully archived.
+                                        </p>
+                                    </div>
 
-            <main className="flex-1 pt-24 pb-32 overflow-y-auto px-4 flex flex-col items-center justify-center">
-                <div className="max-w-2xl w-full space-y-8 animate-fade-in-up">
-                    
-                    {isCompleted && currentIndex === 0 && !isFlipped ? (
-                        <div className="bg-[var(--surface)] border text-center p-12 rounded-[40px] shadow-sm border-[var(--border)] space-y-8 max-w-lg mx-auto">
-                            <div className="w-24 h-24 rounded-full bg-teal-50 text-teal-600 mx-auto flex items-center justify-center border-4 border-teal-100 animate-bounce-slow">
-                                <CheckCircle size={48} />
-                            </div>
-                            <div className="space-y-3">
-                                <h2 className="text-4xl font-display text-[var(--text)] tracking-tight">
-                                    Deck Mastered!
-                                </h2>
-                                <p className="text-[var(--muted)] text-lg">
-                                    You&apos;ve gone through all {displayCards.length} cards. Your progress has been synced to your library.
-                                </p>
-                            </div>
-
-                            <div className="flex flex-col gap-3">
-                                <button 
-                                    onClick={() => handleNext()}
-                                    className="w-full py-4 bg-[var(--text)] text-[var(--bg)] rounded-2xl font-bold hover:opacity-90 transition active:scale-95"
-                                >
-                                    Review Again
-                                </button>
-                                <button 
-                                    onClick={() => router.push('/practice/flashcards')}
-                                    className="w-full py-4 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-2xl font-bold hover:bg-[var(--bg)] transition active:scale-95"
-                                >
-                                    Finish & Return Home
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-12">
-                            {}
-                            <div className="space-y-6">
-                                <div 
-                                    className="relative w-full aspect-[4/3] [perspective:1000px] cursor-pointer group"
-                                    onClick={() => setIsFlipped(!isFlipped)}
-                                >
-                                    <div className={`w-full h-full transition-all duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateX(180deg)]' : ''}`}>
-                                        {}
-                                        <div className="absolute inset-0 w-full h-full bg-white border-2 border-[var(--border)] rounded-[40px] shadow-xl hover:border-teal-300 transition-all [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center">
-                                            <div className="absolute top-8 left-8 text-[10px] font-black uppercase tracking-[0.2em] text-teal-500/40">Front</div>
-                                            <p className="text-2xl md:text-3xl font-display text-[var(--text)] leading-tight">
-                                                {getFrontText(currentCard)}
-                                            </p>
-                                            <div className="absolute bottom-10 flex items-center gap-2 text-[var(--muted)] opacity-30 group-hover:opacity-100 transition-opacity">
-                                                <RotateCcw size={16} /> <span className="text-xs font-bold uppercase tracking-widest">Click to reveal</span>
+                                    <div className="grid grid-cols-2 gap-4 pt-4">
+                                        <button 
+                                            onClick={() => {
+                                                setCurrentIndex(0);
+                                                setIsCompleted(false);
+                                                setIsFlipped(false);
+                                            }}
+                                            className="px-4 py-3 bg-[var(--ink)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-display font-bold uppercase tracking-tighter text-sm"
+                                        >
+                                            Repeat
+                                        </button>
+                                        <button 
+                                            onClick={() => router.push('/practice/flashcards')}
+                                            className="px-4 py-3 bg-[var(--surface-raised)] border-2 border-[var(--ink)] shadow-hard-sm active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-display font-bold uppercase tracking-tighter text-[var(--ink)] text-sm"
+                                        >
+                                            Exit
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="w-full max-w-2xl h-full flex flex-col justify-center relative z-10">
+                                    <div 
+                                        className="w-full group perspective-2000 cursor-pointer max-h-[55vh] mx-auto"
+                                        onClick={() => setIsFlipped(!isFlipped)}
+                                    >
+                                        <div className={`relative w-full aspect-[4/3] sm:aspect-[16/10] transition-all duration-700 preserve-3d ${isFlipped ? 'rotate-x-180' : ''}`}>
+                                            {/* Front Side */}
+                                            <div className="absolute inset-0 backface-hidden bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard p-8 sm:p-10 flex flex-col group-hover:shadow-[10px_10px_0px_var(--ink)] transition-all">
+                                                <div className="flex items-center justify-between mb-4 opacity-40">
+                                                    <span className="text-[9px] font-black font-mono uppercase tracking-[0.4em]">FRONT_FACE</span>
+                                                    <span className="text-[9px] font-black font-mono">{currentIndex + 1}/{displayCards.length}</span>
+                                                </div>
+                                                <div className="flex-1 flex items-center justify-center text-center overflow-hidden">
+                                                    <div className="max-h-full overflow-y-auto custom-scrollbar px-2 w-full">
+                                                        <h3 className="text-xl sm:text-3xl font-display font-black text-[var(--text)] leading-tight tracking-tight text-balance uppercase">
+                                                            {getFrontText(currentCard)}
+                                                        </h3>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 flex items-center justify-center gap-2 opacity-40 group-hover:opacity-100 transition-opacity">
+                                                    <RotateCcw size={14} className="text-[var(--muted)] animate-spin-slow" />
+                                                    <span className="text-[9px] font-bold font-mono text-[var(--muted)] uppercase tracking-widest">Flip Card</span>
+                                                </div>
                                             </div>
-                                        </div>
 
-                                        {}
-                                        <div className="absolute inset-0 w-full h-full bg-slate-50 border-2 border-[var(--border)] rounded-[40px] shadow-xl [transform:rotateX(180deg)] [backface-visibility:hidden] flex flex-col items-center justify-center p-12 text-center overflow-y-auto">
-                                            <div className="absolute top-8 left-8 text-[10px] font-black uppercase tracking-[0.2em] text-teal-600/40">Back</div>
-                                            <p className="text-xl md:text-2xl font-display text-slate-800 leading-relaxed">
-                                                {getBackText(currentCard)}
-                                            </p>
+                                            {/* Back Side */}
+                                            <div className="absolute inset-0 backface-hidden bg-[var(--surface-raised)] border-4 border-[var(--ink)] shadow-hard p-8 sm:p-10 flex flex-col rotate-x-180">
+                                                <div className="flex items-center justify-between mb-4 opacity-40">
+                                                    <span className="text-[9px] font-black font-mono uppercase tracking-[0.4em] text-[var(--accent)]">BACK_FACE</span>
+                                                    <span className="text-[9px] font-black font-mono">SEEN: {currentCard.times_seen} | CORRECT: {currentCard.times_correct}</span>
+                                                </div>
+                                                <div className="flex-1 flex items-center justify-center text-center overflow-hidden">
+                                                    <div className="max-h-full overflow-y-auto custom-scrollbar px-2 w-full">
+                                                        <p className="text-lg sm:text-xl font-mono font-medium text-[var(--text)] leading-relaxed italic text-balance">
+                                                            {getBackText(currentCard)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
+                        </>
+                    )}
 
-                            {}
-                            <div className="flex flex-col items-center gap-8">
-                                <div className="flex items-center justify-center gap-6 w-full max-w-md">
-                                    <button
-                                        onClick={() => markMastery('still_learning')}
-                                        className="flex-1 group flex flex-col items-center gap-2 p-6 rounded-3xl border-2 border-orange-100 bg-orange-50/30 hover:bg-orange-50 hover:border-orange-200 transition-all active:scale-95"
-                                    >
-                                        <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                                            <RotateCcw size={24} />
-                                        </div>
-                                        <span className="text-sm font-bold text-orange-700">Still learning</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => markMastery('know_it')}
-                                        className="flex-1 group flex flex-col items-center gap-2 p-6 rounded-3xl border-2 border-teal-100 bg-teal-50/30 hover:bg-teal-50 hover:border-teal-200 transition-all active:scale-95"
-                                    >
-                                        <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-600 flex items-center justify-center group-hover:bg-teal-200 transition-colors">
-                                            <CheckCircle size={24} />
-                                        </div>
-                                        <span className="text-sm font-bold text-teal-700">Know it</span>
-                                    </button>
-                                </div>
-
-                                {}
-                                <div className="flex items-center gap-8 text-[var(--muted)]">
-                                    <button
-                                        onClick={handlePrev}
-                                        disabled={currentIndex === 0}
-                                        className="p-3 hover:text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        <ArrowLeft size={24} />
-                                    </button>
-                                    <span className="text-sm font-bold tracking-tighter">
-                                        {currentIndex + 1} / {displayCards.length}
-                                    </span>
-                                    <button
-                                        onClick={handleNext}
-                                        className="p-3 hover:text-[var(--text)] transition-colors"
-                                    >
-                                        <ArrowRight size={24} />
-                                    </button>
-                                </div>
-                            </div>
+                    {isLoading && (
+                        <div className="flex flex-col items-center gap-6 animate-pulse">
+                            <div className="w-16 h-16 bg-[var(--surface-raised)] border-4 border-[var(--ink)] shadow-hard-sm" />
+                            <span className="text-[10px] font-black font-mono uppercase tracking-[0.3em] text-[var(--muted)]">Syncing_Session...</span>
                         </div>
                     )}
                 </div>
+
+                {/* Protocol Command Strip */}
+                {!isCompleted && !isLoading && (
+                    <div className="pb-4 sm:pb-6 flex flex-col items-center gap-4 animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex items-center justify-center gap-3 w-full max-w-2xl px-2">
+                            {/* Actions Component */}
+                            <div className="flex-1 flex items-center gap-2 bg-[var(--surface)] border-4 border-[var(--ink)] p-2 shadow-hard-sm">
+                                <button
+                                    onClick={handlePrev}
+                                    disabled={currentIndex === 0}
+                                    className="p-3 bg-[var(--bg)] border-2 border-[var(--ink)] disabled:opacity-20 hover:bg-[var(--ink)] hover:text-[var(--bg)] transition-all"
+                                >
+                                    <ArrowLeft size={16} strokeWidth={3} />
+                                </button>
+                                
+                                <div className="h-8 w-[2px] bg-[var(--ink)]/10 mx-1" />
+
+                                <button
+                                    onClick={() => markMastery('still_learning')}
+                                    className="flex-1 py-3 px-2 bg-[var(--bg)] border-2 border-[var(--ink)] hover:bg-[var(--accent)]/10 transition-all flex items-center justify-center gap-2 group"
+                                >
+                                    <RotateCcw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                                    <span className="text-[10px] font-black font-mono uppercase tracking-widest hidden sm:inline">Revisit</span>
+                                </button>
+
+                                <button
+                                    onClick={() => markMastery('know_it')}
+                                    className="flex-1 py-3 px-2 bg-[var(--accent)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard-xs active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 group"
+                                >
+                                    <CheckCircle size={14} className="group-hover:scale-125 transition-transform" />
+                                    <span className="text-[10px] font-black font-mono uppercase tracking-widest hidden sm:inline text-[var(--bg)]">Mastered</span>
+                                </button>
+
+                                <div className="h-8 w-[2px] bg-[var(--ink)]/10 mx-1" />
+
+                                <button
+                                    onClick={handleNext}
+                                    className="p-3 bg-[var(--ink)] text-[var(--bg)] border-2 border-[var(--ink)] hover:bg-[var(--accent)] transition-all"
+                                >
+                                    <ArrowRight size={16} strokeWidth={3} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Status Bar */}
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-4 py-1.5 px-4 bg-[var(--surface-raised)] border-2 border-[var(--ink)] shadow-hard-xs">
+                                <button 
+                                    onClick={() => setSettingsOpen(true)}
+                                    className="flex items-center gap-2 text-[9px] font-black font-mono uppercase tracking-widest text-[var(--ink)]"
+                                >
+                                    <Settings size={12} />
+                                    Config
+                                </button>
+                                <div className="h-4 w-[2px] bg-[var(--ink)]/20" />
+                                <span className="text-[10px] font-black font-mono tabular-nums tracking-tighter text-[var(--ink)]">
+                                    {currentIndex + 1} OF {displayCards.length}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
 
-            {}
+            {/* AI Insight Node */}
             <button 
-                className="fixed bottom-8 right-8 w-14 h-14 bg-teal-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-90 transition-all group"
-                onClick={() => toast.success("AI Explanation coming soon in Phase 3!")}
+                onClick={() => toast.success("AI generating real-time performance insights...")}
+                className="fixed bottom-6 right-6 w-14 h-14 bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all group flex items-center justify-center z-40 overflow-hidden"
             >
-                <Sparkles size={24} className="group-hover:animate-spin-slow" />
+                <div className="absolute inset-0 bg-grid-pattern opacity-10" />
+                <Sparkles size={24} className="group-hover:rotate-12 transition-transform relative z-10 text-[var(--ink)]" />
             </button>
 
-            {}
+
+            {/* Config Overlay - Settings Modal */}
             {settingsOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12 overflow-hidden">
                     <div 
-                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-in fade-in" 
+                        className="absolute inset-0 bg-[var(--ink)]/60 backdrop-blur-md animate-in fade-in duration-500" 
                         onClick={() => setSettingsOpen(false)}
                     />
-                    <div className="relative w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-[32px] shadow-2xl p-8 animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between mb-8">
-                            <h3 className="text-xl font-display text-[var(--text)]">Study Settings</h3>
+                    <div className="relative w-full max-w-sm bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-500">
+                        <div className="flex items-center justify-between border-b-4 border-[var(--ink)] pb-4">
+                            <h3 className="text-xl font-display font-black text-[var(--ink)] uppercase tracking-tighter">PROTOCOL_CONFIG</h3>
                             <button 
                                 onClick={() => setSettingsOpen(false)}
-                                className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--muted)]"
+                                className="p-2.5 bg-[var(--surface-raised)] border-2 border-[var(--ink)] shadow-hard-sm hover:shadow-none transition-all"
                             >
-                                <X size={20} />
+                                <X size={16} className="text-[var(--ink)]" />
                             </button>
                         </div>
 
                         <div className="space-y-8">
-                            {}
-                            <div className="space-y-4">
-                                <label className="text-xs font-bold text-[var(--muted)] uppercase tracking-widest flex items-center gap-2">
-                                    <Repeat size={14} className="text-teal-500" />
-                                    Answer With
+                            {/* Sequence Toggle */}
+                            <div className="space-y-3">
+                                <label className="flex items-center gap-3 text-[10px] font-black font-mono uppercase tracking-[0.3em] text-[var(--muted)]">
+                                    Recall Axis (POV)
                                 </label>
-                                <div className="grid grid-cols-3 gap-2 p-1 bg-[var(--bg)] border border-[var(--border)] rounded-2xl">
-                                    <button 
-                                        onClick={() => setShowSide('front')}
-                                        className={`py-2 text-xs font-bold rounded-xl transition-all ${showSide === 'front' ? 'bg-[var(--surface)] text-teal-600 shadow-sm border border-[var(--border)]' : 'text-[var(--muted)]'}`}
-                                    >
-                                        Front
-                                    </button>
-                                    <button 
-                                        onClick={() => setShowSide('back')}
-                                        className={`py-2 text-xs font-bold rounded-xl transition-all ${showSide === 'back' ? 'bg-[var(--surface)] text-teal-600 shadow-sm border border-[var(--border)]' : 'text-[var(--muted)]'}`}
-                                    >
-                                        Back
-                                    </button>
-                                    <button 
-                                        onClick={() => setShowSide('random')}
-                                        className={`py-2 text-xs font-bold rounded-xl transition-all ${showSide === 'random' ? 'bg-[var(--surface)] text-teal-600 shadow-sm border border-[var(--border)]' : 'text-[var(--muted)]'}`}
-                                    >
-                                        Mixed
-                                    </button>
+                                <div className="flex gap-1 p-1 bg-[var(--bg)] border-2 border-[var(--ink)]">
+                                    {(['front', 'back', 'random'] as const).map((side) => (
+                                        <button 
+                                            key={side}
+                                            onClick={() => setShowSide(side)}
+                                            className={`flex-1 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${showSide === side ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--ink)]/40 hover:text-[var(--ink)]'}`}
+                                        >
+                                            {side}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            {}
-                            <div className="flex items-center justify-between p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl">
+                            {/* Entropy Toggle */}
+                            <div className="flex items-center justify-between p-4 bg-[var(--surface-raised)] border-2 border-[var(--ink)]">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-teal-50 text-teal-600 rounded-lg">
-                                        <Shuffle size={18} />
-                                    </div>
+                                    <Shuffle size={16} className="text-[var(--ink)]" />
                                     <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-[var(--text)]">Shuffle Cards</span>
-                                        <span className="text-[10px] text-[var(--muted)]">Randomize card order</span>
+                                        <span className="text-[10px] font-black font-mono uppercase tracking-widest text-[var(--ink)]">ENTROPY</span>
+                                        <span className="text-[8px] text-[var(--muted)] italic font-mono lowercase">Shuffle sequence</span>
                                     </div>
                                 </div>
                                 <button 
                                     onClick={() => setIsShuffled(!isShuffled)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isShuffled ? 'bg-teal-500' : 'bg-[var(--border)]'}`}
+                                    className={`w-12 h-6 border-2 border-[var(--ink)] transition-colors relative ${isShuffled ? 'bg-[var(--accent)]' : 'bg-[var(--bg)]'}`}
                                 >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isShuffled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    <div className={`absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-[var(--bg)] border-[1px] border-[var(--ink)] transition-all ${isShuffled ? 'left-7' : 'left-1'}`} />
                                 </button>
                             </div>
                         </div>
 
                         <button 
                             onClick={() => setSettingsOpen(false)}
-                            className="w-full mt-10 py-4 bg-teal-600 text-white rounded-2xl font-bold hover:bg-teal-700 transition active:scale-95 shadow-sm"
+                            className="w-full py-4 bg-[var(--ink)] text-[var(--bg)] border-4 border-[var(--ink)] shadow-hard font-display font-black text-xs uppercase tracking-widest active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all"
                         >
-                            Start Studying
+                            Sync_Config
                         </button>
                     </div>
                 </div>

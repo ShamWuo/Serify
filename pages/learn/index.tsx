@@ -21,8 +21,7 @@ import {
     Loader2,
     Lock,
     Clock,
-    Calendar,
-    Zap
+    Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { normalizeTitle } from '@/lib/formatters';
@@ -385,8 +384,8 @@ export default function LearnIndex() {
                     className="paper-card p-5 relative flex flex-col group"
                 >
                     <div className="flex justify-between items-start mb-2">
-                        <h3 className="font-display font-bold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug" title={normalizeTitle(session?.title)}>
-                            {normalizeTitle(session?.title).replace('Quick Learn: ', '').replace('Quick Learn - ', '')}
+                        <h3 className="font-display font-bold text-base text-[var(--text)] line-clamp-2 pr-3 leading-snug" title={normalizeTitle(session?.title || session?.source_topic || 'Quick Session')}>
+                            {normalizeTitle(session?.title || session?.source_topic || 'Quick Session').replace('Quick Learn: ', '').replace('Quick Learn - ', '')}
                         </h3>
                         <div className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 border border-blue-500/30 bg-blue-500/5">
                             <div className="w-1.5 h-1.5 bg-blue-500" />
@@ -398,13 +397,18 @@ export default function LearnIndex() {
 
                     <div className="flex items-center gap-2 mb-4">
                         <p className="text-[var(--muted)] text-[11px] font-mono">
-                            {'// focal learning session'}
+                            {session.created_at ? new Date(session.created_at).toLocaleDateString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            }) : '// focal learning session'}
                         </p>
                     </div>
 
                     <div className="mt-auto flex items-center gap-2 pt-4">
                         <Link
-                            href={`/learn/quick/flow?sessionId=${session.id}`}
+                            href={`/learn/quick/flow?session=${session.id}`}
                             className="flex-1 text-center px-4 py-2 border-2 border-[var(--border)] text-[12px] font-mono font-bold text-[var(--text)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-all"
                         >
                             {isCompleted ? 'review' : 'resume'} ✦
@@ -439,7 +443,7 @@ export default function LearnIndex() {
                     <div className={`shrink-0 flex items-center gap-1.5 px-2 py-0.5 border ${isCompleted ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-[var(--border)] bg-[var(--surface)]'}`}>
                         <div className={`w-1.5 h-1.5 ${isCompleted ? 'bg-emerald-500' : 'bg-[var(--muted)]'}`} />
                         <span className={`text-[9px] font-mono font-bold uppercase tracking-wider ${isCompleted ? 'text-emerald-600' : 'text-[var(--muted)]'}`}>
-                            {isCompleted ? 'DONE' : 'ROADMAP'}
+                            {isCompleted ? 'DONE' : 'SCHEDULE'}
                         </span>
                     </div>
                 </div>
@@ -528,10 +532,6 @@ export default function LearnIndex() {
 
             <div className="p-6 md:p-10 max-w-4xl mx-auto min-h-[calc(100vh-64px)]">
 
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-[var(--text)] mb-1">Learning</h1>
-                    <p className="text-[var(--muted)] text-sm">Build a tailored curriculum and master it concept by concept.</p>
-                </div>
 
                 <div className="bg-[var(--surface)] border-2 border-[var(--border)] rounded-[4px] shadow-[var(--shadow-hard-sm)] mb-10 overflow-hidden">
 
@@ -557,7 +557,7 @@ export default function LearnIndex() {
                                         className="h-12 px-5 rounded-[2px] font-mono font-bold text-[11px] bg-[var(--surface)] text-[var(--text)] border-2 border-[var(--border)] flex items-center gap-2 hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] disabled:opacity-40 disabled:cursor-not-allowed transition-all uppercase tracking-wider"
                                         style={{boxShadow: 'var(--shadow-hard-sm)'}}
                                     >
-                                        {isStartingQuick ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />} 
+                                        {isStartingQuick ? <Loader2 size={14} className="animate-spin" /> : <BookOpen size={14} />} 
                                         Quick Learn
                                     </button>
                                     <button
@@ -596,10 +596,7 @@ export default function LearnIndex() {
                                 >
                                     <ChevronLeft size={16} />
                                 </button>
-                                <div>
                                     <p className="text-[10px] font-mono font-bold text-[var(--muted)] uppercase tracking-widest opacity-60">{'// tailoring focus'}</p>
-                                    <h2 className="font-display font-black text-xl text-[var(--text)] leading-tight tracking-tight">&quot;{inputValue}&quot;</h2>
-                                </div>
                             </div>
 
                             <p className="text-xs font-mono text-[var(--muted)] mb-8 border-l-2 border-[var(--border)] pl-4 italic">
@@ -690,7 +687,7 @@ export default function LearnIndex() {
                                         disabled={isStartingQuick}
                                         className="flex-1 sm:flex-none h-11 px-5 rounded-xl font-medium bg-[var(--surface)] text-[var(--accent)] border border-[var(--border)] flex items-center justify-center gap-2 hover:bg-[var(--bg)] transition-all disabled:opacity-50"
                                     >
-                                        {isStartingQuick ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+                                        {isStartingQuick ? <Loader2 size={16} className="animate-spin" /> : <BookOpen size={16} />}
                                         Quick Learn
                                     </button>
                                     <button
@@ -816,11 +813,7 @@ export default function LearnIndex() {
                 </div>
 
                 <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-base font-bold text-[var(--text)] flex items-center gap-2">
-                            <BookOpen size={16} className="text-[var(--muted)]" />
-                            Active Learning
-                        </h2>
+                    <div className="flex items-center justify-end mb-4">
                         {sessions.length > 0 && (
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] uppercase font-bold text-[var(--muted)] tracking-wider">Sort by:</span>
@@ -839,8 +832,18 @@ export default function LearnIndex() {
 
                     {loadingSessions ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-40 bg-[var(--surface)] border border-[var(--border)] rounded-2xl animate-pulse" />
+                            {[1, 2, 3, 4, 5, 6].map((i) => (
+                                <div key={i} className="paper-card p-5 h-48 flex flex-col animate-pulse border-dashed">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="h-4 w-3/4 bg-[var(--border)] rounded" />
+                                        <div className="h-4 w-8 bg-[var(--border)] rounded" />
+                                    </div>
+                                    <div className="h-3 w-1/2 bg-[var(--border)]/60 rounded mb-4" />
+                                    <div className="mt-auto flex gap-2">
+                                        <div className="h-9 flex-1 bg-[var(--border)]/40 rounded-lg" />
+                                        <div className="h-9 w-9 bg-[var(--border)]/40 rounded-lg" />
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     ) : sessions.length > 0 ? (
@@ -850,7 +853,7 @@ export default function LearnIndex() {
                     ) : (
                         <div className="text-center py-20 bg-[var(--surface)] border-2 border-dashed border-[var(--border)] rounded-[4px]">
                             <BookOpen size={32} className="mx-auto text-[var(--muted)]/20 mb-4" />
-                            <p className="font-display font-black text-[var(--text)] text-sm mb-2 uppercase tracking-widest">Initial Context Required</p>
+
                             <p className="text-[var(--muted)] text-[10px] font-mono italic">Start a Quick Learn or build a Roadmap above to populate this index.</p>
                         </div>
                     )}

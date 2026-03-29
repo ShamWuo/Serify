@@ -6,13 +6,13 @@ import DashboardLayout from '@/components/Layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import {
-    Zap, Brain, Loader2, ChevronRight, ChevronLeft, CheckCircle2,
-    BookOpen, HelpCircle, Target, Route, ShieldAlert, Replace, Send,
+    BookOpen, Brain, Loader2, ChevronRight, ChevronLeft, CheckCircle2,
+    HelpCircle, Target, Route, ShieldAlert, Replace, Send,
     Layers, Trophy, Lock, AlertTriangle
 } from 'lucide-react';
 import { FlowSession, FlowStep, FlowStepType } from '@/types/serify';
 import { normalizeTitle } from '@/lib/formatters';
-// removed CurriculumSidebar
+import CurriculumSidebar from '@/components/dashboard/CurriculumSidebar';
 import { useUsage } from '@/hooks/useUsage';
 import { UsageGate, UsageWarning } from '@/components/billing/UsageEnforcement';
 import confetti from 'canvas-confetti';
@@ -113,16 +113,16 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                 </div>
             )}
 
-            <div className="prose-content flow-markdown text-[15.5px] mb-10 px-1">
+            <div className="prose-content flow-markdown text-[15.5px] mb-2 px-1 text-balance">
                 <MarkdownRenderer>{content.text}</MarkdownRenderer>
             </div>
 
             {quickChecks.length > 0 && (
-                <div className="border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--accent-soft)]/30 mb-8 shadow-sm">
-                    <div className="px-5 py-4 bg-[var(--surface)] border-b border-[var(--border)] flex items-center justify-between">
+                <div className="border border-[var(--border)] rounded-2xl overflow-hidden bg-[var(--surface)] mb-2 shadow-sm">
+                    <div className="px-5 py-2.5 border-b border-[var(--border)] flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Brain size={14} className="text-[var(--accent)]" />
-                            <p className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-widest">Knowledge Check</p>
+                            <BookOpen size={16} className="text-emerald-500" />
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.15em]">Knowledge Check</span>
                         </div>
                         {quickChecks.length > 1 && (
                             <div className="flex gap-1">
@@ -137,15 +137,15 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                         )}
                     </div>
 
-                    <div className="p-5">
+                    <div className="p-4">
                         {content.accelerated && (
-                            <div className="flex items-center gap-1.5 mb-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-1.5 rounded-lg w-fit animate-in fade-in slide-in-from-top-2 duration-500">
-                                <Zap size={14} className="text-amber-500 fill-amber-500" />
+                            <div className="flex items-center gap-1.5 mb-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-1.5 rounded-lg w-fit animate-in fade-in slide-in-from-top-2 duration-500">
+                                <BookOpen size={14} className="text-amber-500 fill-amber-500" />
                                 <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Accelerated Path — Based on your mastery</span>
                             </div>
                         )}
 
-                        <div className="text-[15px] font-semibold text-[var(--text)] mb-5 leading-snug">
+                        <div className="text-[15px] font-semibold text-[var(--text)] mb-3 leading-snug">
                             <MarkdownRenderer>{currentQ?.question}</MarkdownRenderer>
                         </div>
 
@@ -155,12 +155,12 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                                 const isCorrect = answered && oIdx === currentQ.correctIndex;
                                 const isWrong = answered && isSelected && !isCorrect;
 
-                                let cls = 'p-4 rounded-xl border-2 text-left flex items-start gap-3 transition-all duration-200 shadow-sm ';
-                                if (isCorrect) cls += 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10';
-                                else if (isWrong) cls += 'border-rose-500 bg-rose-50 dark:bg-rose-500/10';
+                                let cls = 'p-4 rounded-2xl border-2 text-left flex items-center gap-3 transition-all duration-200 group relative overflow-hidden shadow-sm ';
+                                if (isCorrect) cls += 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 shadow-emerald-500/10';
+                                else if (isWrong) cls += 'border-rose-500 bg-rose-50 dark:bg-rose-500/10 shadow-rose-500/10';
                                 else if (isSelected) cls += 'border-[var(--accent)] bg-[var(--accent)]/5 ring-4 ring-[var(--accent)]/10';
-                                else if (answered) cls += 'border-[var(--border)] bg-[var(--surface)] opacity-50';
-                                else cls += 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/40 hover:bg-[var(--accent)]/5 hover:-translate-y-0.5';
+                                else if (answered) cls += 'border-[var(--border)] bg-[var(--surface)] opacity-40 grayscale';
+                                else cls += 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent)]/40 hover:-translate-y-0.5 hover:shadow-md';
 
                                 return (
                                     <button
@@ -169,16 +169,20 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                                         disabled={answered || readOnly}
                                         className={cls}
                                     >
-                                        <div className={`shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center text-[11px] font-black transition-all ${isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' :
+                                        <div className={`shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center text-[11px] font-black transition-all ${
+                                            isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' :
                                             isWrong ? 'bg-rose-500 border-rose-500 text-white' :
-                                                isSelected ? 'bg-[var(--accent)] border-[var(--accent)] text-white' :
-                                                    'border-[var(--border)] text-[var(--muted)]'
-                                            }`}>
+                                            isSelected ? 'bg-[var(--accent)] border-[var(--accent)] text-white' :
+                                            'border-[var(--border)] text-[var(--muted)] group-hover:border-[var(--accent)]/50 group-hover:text-[var(--accent)]'
+                                        }`}>
                                             {isCorrect ? '✓' : isWrong ? '✗' : String.fromCharCode(65 + oIdx)}
                                         </div>
-                                        <div className="text-[14px] leading-relaxed flex-1 pt-0.5 font-medium">
+                                        <div className="text-[14px] leading-snug flex-1 font-medium">
                                             <MarkdownRenderer>{opt}</MarkdownRenderer>
                                         </div>
+                                        {isCorrect && (
+                                            <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                                        )}
                                     </button>
                                 );
                             })}
@@ -209,7 +213,7 @@ function TeachStep({ content, onNext, readOnly, stepNumber, totalSteps, savedAns
                 </div>
             )}
 
-            <div className="flex mt-8">
+            <div className="flex mt-4">
                 {readOnly ? <ReadOnlyNotice /> : (
                     <div className="flex items-center gap-4">
                         <ActionButton
@@ -269,7 +273,7 @@ function ApplicationStep({ content, stepId, isEvaluated, onEvaluated, readOnly, 
                 </div>
             </div>
 
-            <div className="prose-content flow-markdown text-[16px] mb-8 bg-[var(--bg)] p-6 rounded-2xl border border-[var(--border)] shadow-sm">
+            <div className="prose-content flow-markdown text-[16px] mb-4 bg-[var(--bg)] p-5 rounded-2xl border border-[var(--border)] shadow-sm">
                 <MarkdownRenderer>{content.taskPrompt}</MarkdownRenderer>
             </div>
 
@@ -285,7 +289,7 @@ function ApplicationStep({ content, stepId, isEvaluated, onEvaluated, readOnly, 
                     ) : (
                         <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 p-4 rounded-xl animate-in slide-in-from-top-2 duration-300">
                             <div className="flex items-center gap-2 mb-1.5">
-                                <Zap size={14} className="text-amber-500" />
+                                <BookOpen size={14} className="text-amber-500" />
                                 <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase">Hint</span>
                             </div>
                             <div className="text-[14px] leading-relaxed font-medium">
@@ -405,7 +409,7 @@ function ReinforceStep({ content, onNext, readOnly, stepNumber, totalSteps }: {
                 </div>
             </div>
 
-            <div className="flex mt-8 px-1">
+            <div className="flex mt-6 px-1">
                 {readOnly ? <ReadOnlyNotice /> : (
                     <ActionButton label="Got it" primary icon={<ChevronRight size={16} />} onClick={() => onNext('got_it')} />
                 )}
@@ -584,7 +588,7 @@ export default function QuickLearnFlowSessionPage() {
         if (!flowSessionId) return;
         (async () => {
             const { data, error: dbErr } = await supabase.from('flow_sessions').select('*').eq('id', flowSessionId).single();
-            if (dbErr || !data) { setError('Flow Engine connection lost.'); setLoading(false); return; }
+            if (dbErr || !data) { setError('Learning Engine connection lost.'); setLoading(false); return; }
             setFlowSession(data as FlowSession);
 
             const statuses: Record<string, 'not_started' | 'in_progress' | 'completed'> = {};
@@ -631,6 +635,7 @@ export default function QuickLearnFlowSessionPage() {
                 if (!orchRes.ok) throw new Error('Orchestration failed');
                 const reader = orchRes.body?.getReader();
                 const decoder = new TextDecoder();
+                let streamError: Error | null = null;
                 if (reader) {
                     while (true) {
                         const { done, value } = await reader.read();
@@ -643,20 +648,38 @@ export default function QuickLearnFlowSessionPage() {
                                     const d = JSON.parse(line.slice(6));
                                     if (d.progress) setProgress(d.progress);
                                     if (d.status) setStatusMessage(d.status);
+                                    if (d.error) streamError = new Error(String(d.error));
                                 } catch (e) {}
                             }
                         }
                     }
                 }
-                // CRITICAL FIX: After stream completes, we MUST call fetchNextStep again to get the actual first step
-                setStepping(false); // Reset stepping so the recursive call isn't blocked
-                return fetchNextStep(false, true); 
+                if (streamError) throw streamError;
+                // After stream completes, call fetchNextStep again to get the actual first step.
+                // Reset stepping first so the guard check doesn't block it.
+                setStepping(false);
+                return fetchNextStep(false, true);
+            }
+
+            // If we still get 'initialize' after the stream ran (e.g. concept_id mismatch),
+            // surface an error instead of looping forever with a blank card.
+            if (data.action === 'initialize') {
+                setFetchError('Failed to load lesson content. The plan may not have saved correctly. Please retry.');
+                return;
             }
 
             if (!res.ok) throw new Error(data.error || 'Step failed');
+
             if (data.stepHistory) {
                 setStepHistory(data.stepHistory);
                 setViewingStepIndex(data.stepHistory.length - 1);
+            } else if (data.step) {
+                // Fallback: no stepHistory in response, but we have the current step
+                setStepHistory(prev => {
+                    const updated = [...prev, data.step];
+                    setViewingStepIndex(updated.length - 1);
+                    return updated;
+                });
             }
             if (data.plannedSteps) setPlannedSteps(data.plannedSteps);
 
@@ -701,6 +724,8 @@ export default function QuickLearnFlowSessionPage() {
 
     const handleEvaluated = (_response: string, evaluation: any) => setPendingEvaluation(evaluation);
 
+    const [completedRoadmapId, setCompletedRoadmapId] = useState<string | null>(null);
+
     const handleAdvanceConcept = () => {
         const nextIdx = currentConceptIndex + 1;
         setConceptJustCompleted(false);
@@ -712,6 +737,31 @@ export default function QuickLearnFlowSessionPage() {
             setPendingEvaluation(null);
         } else {
             setSessionDone(true);
+            // Handle Roadmap Synchronization
+            if (flowSession?.source_type === 'roadmap' && flowSession.source_session_id) {
+                const syncRoadmap = async () => {
+                    try {
+                        const { data: { session: authSession } } = await supabase.auth.getSession();
+                        const res = await fetch('/api/serify/roadmap/complete-session', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${authSession?.access_token}`
+                            },
+                            body: JSON.stringify({ 
+                                roadmapSessionId: flowSession.source_session_id,
+                                flowSessionId: flowSession.id,
+                                mastery: 'solid'
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.roadmapId) setCompletedRoadmapId(data.roadmapId);
+                    } catch (e) {
+                        console.error('Failed to sync roadmap session completion:', e);
+                    }
+                };
+                syncRoadmap();
+            }
         }
     };
 
@@ -768,61 +818,112 @@ export default function QuickLearnFlowSessionPage() {
         return null;
     };
 
+
     const renderMainContent = () => {
         if (isLimitReached) return <div className="flex items-center justify-center min-h-[70vh] p-6"><UsageGate feature='flow_sessions' /></div>;
         if (loading) return <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 animate-fade-in"><div className="w-20 h-20 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin-slow" /></div>;
-        if (sessionDone) return <div className="max-w-xl mx-auto mt-16 text-center px-4"><h1 className="text-3xl font-bold mb-3">Quick Learn Complete!</h1><ActionButton label="Back to Dashboard" onClick={() => router.push(`/`)} /></div>;
-
-        const concepts = flowSession?.initial_plan?.concepts || [];
-        return (
-            <div className="max-w-5xl mx-auto px-4 py-6">
-                <div className="mb-8">
-                    {flowSession && <ProgressBar concepts={concepts.map((c) => ({ ...c, status: conceptStatuses[c.conceptId] || 'not_started' }))} currentConceptId={currentConcept?.conceptId} />}
-                    <div className="flex items-center justify-between mt-3">
-                        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/25 rounded-lg px-3 py-1.5 text-sm font-bold text-[var(--accent)] truncate max-w-xs">
-                            {normalizeTitle(currentConcept?.conceptName) || '—'}
-                        </div>
-                        <span className="text-xs text-[var(--muted)] shrink-0">{currentConceptIndex + 1} / {totalConcepts}</span>
+        if (sessionDone) {
+            const isRoadmap = flowSession?.source_type === 'roadmap';
+            return (
+                <div className="max-w-xl mx-auto mt-16 text-center px-4 space-y-6 animate-in fade-in zoom-in duration-500">
+                    <div className="w-20 h-20 bg-emerald-500/10 border-2 border-emerald-500 rounded-full flex items-center justify-center mx-auto text-emerald-500 mb-4 transition-transform hover:scale-110">
+                        <CheckCircle2 size={40} />
+                    </div>
+                    <div className="space-y-2">
+                        <h1 className="text-4xl font-display font-black tracking-tight uppercase italic underline underline-offset-8 decoration-[var(--accent)]">Protocol Complete</h1>
+                        <p className="font-mono text-[10px] text-[var(--muted)] tracking-widest leading-loose">
+                            {isRoadmap ? 'STRATEGIC OBJECTIVE SECURED • ROADMAP UPDATED' : 'CONCEPTS SYNCHRONIZED • VAULT UPDATED'}
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                        <ActionButton 
+                            label={isRoadmap ? "View Roadmap Timeline" : "Back to Dashboard"} 
+                            primary 
+                            onClick={() => router.push(isRoadmap ? (completedRoadmapId ? `/roadmap/${completedRoadmapId}` : `/roadmap`) : `/`)}
+                        />
+                        <button 
+                            onClick={() => router.push('/')}
+                            className="text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition-colors uppercase tracking-widest underline underline-offset-4"
+                        >
+                            Return Home
+                        </button>
                     </div>
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
-                    <div className="min-w-0">
-                        {fetchError ? (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-12 text-center">
-                                <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4" />
-                                <h3 className="text-lg font-semibold mb-2">Something went wrong</h3>
-                                <p className="text-[var(--muted)] mb-6">{fetchError}</p>
-                                <ActionButton label="Retry Step" primary onClick={() => { setFetchError(null); fetchNextStep(); }} />
-                            </div>
-                        ) : stepping ? (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl min-h-[400px] flex items-center justify-center p-8">
-                                <span className="text-lg font-semibold">{statusMessage}</span>
-                            </div>
-                        ) : conceptJustCompleted ? (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-8 shadow-sm">
-                                <ConceptCompleteCard conceptName={currentConcept?.conceptName?.replace('txt://', '') || ''} onNext={handleAdvanceConcept} onReview={handleReviewConcept} isLast={currentConceptIndex === totalConcepts - 1} />
-                            </div>
-                        ) : (
-                            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 md:p-8 min-h-[280px] shadow-sm">
-                                {renderStep()}
-                                {!isReadOnly && pendingEvaluation && <EvaluationBanner evaluation={pendingEvaluation} onContinue={fetchNextStep} />}
-                            </div>
-                        )}
-                    </div>
-                    <div>
-                        <div className="sticky top-24 space-y-4">
-                            <SessionSidebar concept={currentConcept} onSkip={handleSkip} onSelect={handleConceptSelect} concepts={concepts} currentIdx={currentConceptIndex} conceptStatuses={conceptStatuses} isStepping={stepping} isReadOnly={isReadOnly} />
+            );
+        }
+
+        if (conceptJustCompleted && currentConcept) {
+            return (
+                <div className="max-w-2xl mx-auto px-6 py-12">
+                    <ConceptCompleteCard
+                        conceptName={normalizeTitle(currentConcept.conceptName)}
+                        onNext={handleAdvanceConcept}
+                        onReview={handleReviewConcept}
+                        isLast={currentConceptIndex >= totalConcepts - 1}
+                    />
+                </div>
+            );
+        }
+
+        return (
+            <div className="max-w-4xl mx-auto px-6 py-6 font-sans">
+                <div className="mb-6">
+                    {flowSession && <ProgressBar concepts={concepts.map((c: any) => ({ ...c, status: conceptStatuses[c.conceptId] || 'not_started' }))} currentConceptId={currentConcept?.conceptId} />}
+                    <div className="flex items-center justify-between mt-4">
+                        <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/25 rounded-lg px-3 py-1.5 text-sm font-bold text-[var(--accent)] truncate max-w-sm">
+                            {normalizeTitle(currentConcept?.conceptName) || '—'}
                         </div>
+                        <span className="text-xs text-[var(--muted)] shrink-0 font-mono">{currentConceptIndex + 1} / {totalConcepts}</span>
                     </div>
+                </div>
+                
+                <div className="min-w-0">
+                    {fetchError ? (
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-12 text-center">
+                            <AlertTriangle size={48} className="text-amber-500 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold mb-2">Something went wrong</h3>
+                            <p className="text-[var(--muted)] mb-6">{fetchError}</p>
+                            <ActionButton label="Retry Step" primary onClick={() => { setFetchError(null); fetchNextStep(); }} />
+                        </div>
+                    ) : (stepping || !displayStep) ? (
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl min-h-[400px] flex flex-col items-center justify-center gap-4 p-8">
+                            <div className="w-10 h-10 rounded-full border-4 border-[var(--border)] border-t-[var(--accent)] animate-spin" />
+                            <span className="text-sm text-[var(--muted)]">{statusMessage || 'Preparing your lesson...'}</span>
+                        </div>
+                    ) : (
+                        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-5 md:p-6 min-h-[250px] shadow-sm">
+                            {renderStep()}
+                            {!isReadOnly && pendingEvaluation && <EvaluationBanner evaluation={pendingEvaluation} onContinue={fetchNextStep} />}
+                        </div>
+                    )}
                 </div>
             </div>
         );
     };
 
+
+    const concepts = flowSession?.initial_plan?.concepts || [];
+    const sidebar = (
+        <CurriculumSidebar
+            concepts={concepts.map((c: any) => ({ ...c, name: c.conceptName }))}
+            currentIndex={currentConceptIndex}
+            conceptStatuses={conceptStatuses}
+            onConceptClick={handleConceptSelect}
+            title={normalizeTitle((flowSession as any)?.source_topic) || 'Learn Session'}
+        />
+    );
+
     return (
         <>
-            <Head><title>Learn Mode — {normalizeTitle(currentConcept?.conceptName) || normalizeTitle((flowSession as any)?.title) || 'Loading'}</title></Head>
-            <DashboardLayout replaceNav={true} backLink={`/`}>{renderMainContent()}</DashboardLayout>
+            <Head><title>Learn Mode — {normalizeTitle(currentConcept?.conceptName) || normalizeTitle((flowSession as any)?.source_topic) || 'Loading'}</title></Head>
+            <DashboardLayout 
+                replaceNav={true} 
+                sidebarContent={sidebar}
+                backLink="/learn"
+                backLinkText={normalizeTitle((flowSession as any)?.source_topic) || 'Learn Session'}
+            >
+                {renderMainContent()}
+            </DashboardLayout>
         </>
     );
 }

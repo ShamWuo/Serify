@@ -156,10 +156,11 @@ export interface SessionLearnerProfile {
 export interface FlowSession {
     id: string;
     user_id: string;
-    source_type?: 'session' | 'vault' | 'standalone';
+    source_type?: 'session' | 'vault' | 'standalone' | 'roadmap';
     source_session_id?: string;
     source_concept_id?: string;
     initial_plan: {
+        title?: string;
         concepts: {
             conceptId: string;
             conceptName: string;
@@ -437,3 +438,82 @@ export interface FlashcardStudySession {
     duration_seconds?: number | null;
 }
 
+export interface Schedule {
+    id: string;
+    user_id: string;
+    title: string;
+    exam_type: 'standardized' | 'certification' | 'custom';
+    exam_name?: string;
+    exam_date: Date | string;
+    status: 'active' | 'completed' | 'abandoned';
+    study_days_per_week: number;
+    session_length_minutes: number;
+    preferred_time: 'morning' | 'afternoon' | 'evening';
+    buffer_days: number;
+    total_topics: number;
+    completed_topics: number;
+    total_sessions: number;
+    completed_sessions: number;
+    sessions_missed: number;
+    total_study_minutes: number;
+    current_streak: number;
+    longest_streak: number;
+    exam_outcome?: 'passed' | 'okay' | 'failed' | null;
+    exam_notes?: string;
+    created_at: Date | string;
+    last_activity_at: Date | string;
+}
+
+export type Roadmap = Schedule;
+export type ExamRoadmap = Schedule;
+export type ExamSchedule = Schedule;
+
+export interface ScheduleTopic {
+    id: string;
+    schedule_id: string;
+    user_id: string;
+    concept_id?: string | null;
+    title: string;
+    unit?: string;
+    position: number;
+    weight: number;
+    is_stretch_goal: boolean;
+    status: 'not_started' | 'in_progress' | 'complete' | 'skipped';
+    mastery_at_completion?: MasteryState;
+    sessions_allocated: number;
+    sessions_completed: number;
+    created_at: Date | string;
+}
+
+export type RoadmapTopic = ScheduleTopic;
+
+export interface ScheduleSession {
+    id: string;
+    schedule_id?: string; // fallback
+    roadmap_id: string;
+    topic_id: string;
+    user_id: string;
+    session_type: 'main' | 'warmup' | 'followup' | 'review' | 'exam_day';
+    scheduled_date: Date | string;
+    scheduled_length_minutes?: number;
+    status: 'scheduled' | 'completed' | 'missed' | 'rescheduled';
+    completed_at?: Date | string | null;
+    actual_length_minutes?: number;
+    reflection_session_id?: string | null;
+    mastery_after?: MasteryState;
+    rescheduled_from?: Date | string | null;
+    created_at: Date | string;
+}
+
+export type RoadmapSession = ScheduleSession;
+
+export interface ScheduleNotification {
+    id: string;
+    schedule_id: string;
+    user_id: string;
+    type: 'daily_reminder' | 'streak_risk' | 'exam_approaching' | 'behind_schedule';
+    scheduled_for: Date | string;
+    sent_at?: Date | string | null;
+    dismissed_at?: Date | string | null;
+    created_at: Date | string;
+}

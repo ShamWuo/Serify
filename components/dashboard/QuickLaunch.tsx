@@ -4,7 +4,7 @@ import { Sparkles, BookOpen, Target, History, ChevronRight } from 'lucide-react'
 
 const QuickLaunch: React.FC = () => {
     const links = [
-        { href: '/flow', icon: BookOpen, label: 'Flow mode', meta: 'AI mentor' },
+        { href: '/learn', icon: BookOpen, label: 'Learn mode', meta: 'AI mentor' },
         { href: '/learn', icon: Sparkles, label: 'Knowledge extraction', meta: 'Auto-distill' },
         { href: '/practice', icon: Target, label: 'Active recall', meta: 'Drills' },
         { href: '/history', icon: History, label: 'History', meta: 'All activity' },
@@ -12,14 +12,10 @@ const QuickLaunch: React.FC = () => {
 
     return (
         <div className="paper-card overflow-hidden">
-            <div className="px-4 py-2 border-b-2 border-[var(--border)] flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-[var(--accent)]" />
-                <h3 className="text-[12px] font-display font-bold text-[var(--text)]">Quick access</h3>
-            </div>
             <div className="flex flex-col">
                 {links.map((link, i) => (
                     <Link
-                        key={link.href}
+                        key={`${link.href}-${i}`}
                         href={link.href}
                         className={`flex items-center justify-between px-4 py-2 hover:bg-[var(--accent-soft)] transition-all group/row relative ${
                             i !== links.length - 1 ? 'border-b border-[var(--border-soft)]' : ''

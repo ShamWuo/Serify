@@ -31,7 +31,33 @@ function fixLatexBackslashes(s: string): string {
 export default function MarkdownRenderer({ children, className = '' }: MarkdownRendererProps) {
     const safe = fixLatexBackslashes(children);
     return (
-        <div className={`flow-markdown prose-content ${className}`}>
+        <div className={`flow-markdown prose-content ${className}`} style={{
+            // Tighten default markdown spacing
+            lineHeight: '1.5',
+        }}>
+            <style jsx global>{`
+                .flow-markdown h1, .flow-markdown h2, .flow-markdown h3, .flow-markdown h4 {
+                    margin-top: 0.7em !important;
+                    margin-bottom: 0.25em !important;
+                    line-height: 1.2 !important;
+                }
+                .flow-markdown p {
+                    margin-bottom: 0.4em !important;
+                }
+                .flow-markdown ul, .flow-markdown ol {
+                    margin-top: 0 !important;
+                    margin-bottom: 0.5em !important;
+                }
+                .flow-markdown li {
+                    margin-bottom: 0.15em !important;
+                }
+                .flow-markdown h1:first-child, .flow-markdown h2:first-child, .flow-markdown h3:first-child {
+                    margin-top: 0 !important;
+                }
+                .flow-markdown p:last-child {
+                    margin-bottom: 0 !important;
+                }
+            `}</style>
             <ReactMarkdown
                 remarkPlugins={[remarkMath, remarkGfm]}
                 rehypePlugins={[rehypeKatex, rehypeRaw]}

@@ -334,69 +334,72 @@ export default function ComprehensiveSession() {
                 <div className="w-10" /> {/* Spacer */}
             </header>
 
-            <main className="flex-1 flex flex-col items-center px-4 py-12 md:py-20 animate-fade-in-up">
-                <div className="w-full max-w-3xl space-y-10">
+            <main className="flex-1 flex flex-col items-center px-4 py-8 md:py-12 animate-fade-in-up">
+                <div className="w-full max-w-4xl space-y-8">
                     
                     {/* Progress Marker */}
-                    <div className="flex items-center gap-4 text-indigo-600">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center font-display text-lg">
+                    <div className="flex items-center gap-3 text-indigo-600 bg-indigo-50/50 w-fit px-4 py-2 rounded-2xl border border-indigo-100/50">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-display text-base shadow-sm">
                             {currentIndex + 1}
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">Question {currentIndex + 1} of {questions.length}</span>
-                            <span className="text-xs font-bold uppercase tracking-widest">
-                                {currentQuestion.question_type === 'multiple_choice' ? 'Multiple Choice (MCQ)' :
-                                 currentQuestion.question_type === 'scenario' ? 'Real-world Scenario' : 'Short Answer (SAQ)'}
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-50">Question {currentIndex + 1} of {questions.length}</span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.1em]">
+                                {currentQuestion.question_type === 'multiple_choice' ? 'Multiple Choice' :
+                                 currentQuestion.question_type === 'scenario' ? 'Scenario Case' : 'Short Answer'}
                             </span>
                         </div>
                     </div>
 
                     {/* Question Content */}
-                    <div className="space-y-8 min-h-[400px]">
-                        <div className="space-y-6">
+                    <div className="space-y-6 min-h-[300px]">
+                        <div className="space-y-5">
                             {currentQuestion.question_type === 'scenario' ? (
-                                <div className="space-y-6">
-                                    <div className="p-6 md:p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm space-y-4">
-                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">Contextual Scenario</h3>
-                                        <div className="prose prose-slate max-w-none text-slate-700 leading-relaxed italic">
+                                <div className="space-y-5">
+                                    <div className="p-6 bg-white border border-slate-100 rounded-[28px] shadow-sm space-y-3">
+                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contextual Scenario</h3>
+                                        <div className="prose prose-slate prose-sm max-w-none text-slate-700 leading-relaxed italic">
                                             <ReactMarkdown>{currentQuestion.question_text.split('[TASK]')[0]?.replace('[SCENARIO]', '') || ''}</ReactMarkdown>
                                         </div>
                                     </div>
-                                    <h2 className="text-2xl md:text-3xl font-display text-slate-900 leading-tight">
+                                    <h2 className="text-xl md:text-2xl font-display text-slate-900 leading-tight">
                                         {currentQuestion.question_text.split('[TASK]')[1]?.trim() || 'Analyze and solve.'}
                                     </h2>
                                 </div>
                             ) : (
-                                <h2 className="text-2xl md:text-3xl font-display text-slate-900 leading-tight">
+                                <h2 className="text-xl md:text-2xl font-display text-slate-900 leading-tight max-w-3xl">
                                     {currentQuestion.question_text}
                                 </h2>
                             )}
                         </div>
 
                         {/* Answer Input */}
-                        <div className="pt-4">
+                        <div className="pt-2">
                             {currentQuestion.question_type === 'multiple_choice' ? (
-                                <div className="grid grid-cols-1 gap-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {currentQuestion.options?.map((option, idx) => (
                                         <button 
                                             key={idx}
                                             onClick={() => handleAnswerChange(option)}
-                                            className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-4 group ${
+                                            className={`p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3 group relative overflow-hidden ${
                                                 answers[currentQuestion.id] === option
-                                                ? 'bg-indigo-50 border-indigo-600 shadow-md'
-                                                : 'bg-white border-slate-100 hover:border-indigo-200'
+                                                ? 'bg-indigo-50 border-indigo-600 shadow-md ring-4 ring-indigo-600/5'
+                                                : 'bg-white border-slate-100 hover:border-indigo-300 hover:-translate-y-0.5'
                                             }`}
                                         >
-                                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                                            <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all text-[11px] font-black ${
                                                 answers[currentQuestion.id] === option
                                                 ? 'border-indigo-600 bg-indigo-600 text-white'
-                                                : 'border-slate-200 group-hover:border-indigo-400'
+                                                : 'border-slate-200 text-slate-400 group-hover:border-indigo-400 group-hover:text-indigo-600'
                                             }`}>
-                                                {answers[currentQuestion.id] === option && <Check size={14} strokeWidth={4} />}
+                                                {String.fromCharCode(65 + idx)}
                                             </div>
-                                            <span className={`font-medium ${answers[currentQuestion.id] === option ? 'text-indigo-900' : 'text-slate-700'}`}>
+                                            <span className={`text-[14.5px] font-medium leading-snug flex-1 ${answers[currentQuestion.id] === option ? 'text-indigo-900' : 'text-slate-700'}`}>
                                                 {option}
                                             </span>
+                                            {answers[currentQuestion.id] === option && (
+                                                <Check size={16} className="text-indigo-600 shrink-0" strokeWidth={3} />
+                                            )}
                                         </button>
                                     ))}
                                 </div>
@@ -407,10 +410,10 @@ export default function ComprehensiveSession() {
                                         value={answers[currentQuestion.id] || ''}
                                         onChange={(e) => handleAnswerChange(e.target.value)}
                                         placeholder="Write your answer here..."
-                                        className="w-full min-h-[250px] p-8 bg-white border-2 border-slate-100 rounded-[32px] text-lg leading-relaxed text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 transition-all resize-none shadow-sm group-hover:border-slate-200"
+                                        className="w-full min-h-[200px] p-6 bg-white border-2 border-slate-100 rounded-[28px] text-base leading-relaxed text-slate-800 placeholder-slate-300 focus:outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-600 transition-all resize-none shadow-sm group-hover:border-slate-200"
                                     />
-                                    <div className="absolute top-4 right-6 text-[10px] font-black text-slate-200 uppercase tracking-widest">
-                                        Active Evaluation Enabled
+                                    <div className="absolute top-4 right-6 text-[9px] font-black text-slate-200 uppercase tracking-widest">
+                                        Evaluation Ready
                                     </div>
                                 </div>
                             )}
@@ -418,25 +421,25 @@ export default function ComprehensiveSession() {
                     </div>
 
                     {/* Navigation Buttons */}
-                    <div className="pt-12 border-t border-slate-100 flex items-center justify-between">
+                    <div className="pt-8 border-t border-slate-100 flex items-center justify-between">
                         <button 
                             onClick={prevQuestion}
                             disabled={currentIndex === 0}
-                            className="flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all disabled:opacity-0"
+                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[var(--muted)] font-bold text-sm hover:text-indigo-600 hover:bg-indigo-50 transition-all disabled:opacity-0"
                         >
-                            <ChevronLeft size={20} /> Back
+                            <ChevronLeft size={18} /> Previous
                         </button>
                         <button 
                             onClick={nextQuestion}
                             disabled={isSubmitting || (currentQuestion.question_type === 'multiple_choice' && !answers[currentQuestion.id])}
-                            className="flex items-center gap-2 px-10 py-4 bg-slate-900 text-white font-bold rounded-2xl shadow-xl shadow-slate-200 hover:bg-indigo-600 hover:shadow-indigo-200 hover:-translate-y-1 transition-all disabled:opacity-50"
+                            className="flex items-center gap-2 px-10 py-3 bg-indigo-600 text-white font-bold rounded-2xl shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 hover:-translate-y-1 transition-all disabled:opacity-50"
                         >
                             {isSubmitting ? (
-                                <><Loader2 size={20} className="animate-spin" /> Finalizing...</>
+                                <><Loader2 size={20} className="animate-spin" /> Analyzing...</>
                             ) : currentIndex === questions.length - 1 ? (
                                 'Submit Test'
                             ) : (
-                                <>Next <ChevronRight size={20} /></>
+                                <>Continue <ChevronRight size={20} /></>
                             )}
                         </button>
                     </div>

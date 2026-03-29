@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,7 +18,7 @@ import DashboardV2 from '@/components/dashboard/DashboardV2';
 import ClarificationDialog from '@/components/dashboard/ClarificationDialog';
 
 import LandingPage from '@/components/LandingPage';
-import { Brain, Sparkles, Zap } from 'lucide-react';
+import { Zap, BookOpen, Brain, Sparkles, AlertCircle } from 'lucide-react';
 import { useUsage } from '@/hooks/useUsage';
 import { useFeatureFlags } from '@/contexts/FeatureFlagContext';
 
@@ -47,6 +47,16 @@ export default function Home() {
         originalData?: any;
     }>({ isOpen: false, question: '', options: [] });
     const [isPreAnalyzing, setIsPreAnalyzing] = useState(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    const handleCancel = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        setIsProcessing(false);
+        setIsPreAnalyzing(false);
+    };
 
     useEffect(() => {
         if (!user) return;
@@ -64,7 +74,7 @@ export default function Home() {
                 monday.setHours(0, 0, 0, 0);
 
                 // Fetch real sessions and vault stats
-                const [sessionsRes, activityRes, flowRes, vaultRes]: any = await Promise.all([
+                const [sessionsRes, flowHistoryRes, activityRes, flowActivityRes, vaultRes]: any = await Promise.all([
                     supabase.from('reflection_sessions')
                         .select('id, title, content_type, created_at, depth_score, status')
                         .eq('user_id', user.id)
@@ -74,11 +84,28 @@ export default function Home() {
                         .order('created_at', { ascending: false })
                         .limit(5),
                     
+                    supabase.from('flow_sessions')
+                        .select(`
+                            id, 
+                            created_at, 
+                            status, 
+                            concepts_completed, 
+                            source_type, 
+                            reflection_session_id, 
+                            curriculum_id,
+                            initial_plan,
+                            reflection_session:reflection_session_id (title),
+                            curriculum:curriculum_id (title)
+                        `)
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(5),
+
                     supabase.from('reflection_sessions')
                         .select('created_at')
                         .eq('user_id', user.id)
                         .gte('created_at', monday.toISOString()),
-
+                    
                     supabase.from('flow_sessions')
                         .select('created_at')
                         .eq('user_id', user.id)
@@ -89,30 +116,60 @@ export default function Home() {
                         .eq('user_id', user.id)
                 ]);
 
-                if (sessionsRes && sessionsRes.data) {
-                    const mapped: SessionRow[] = sessionsRes.data.map((s: any) => ({
+                // Map reflection sessions
+                const reflectionMapped: any[] = (sessionsRes?.data || []).map((s: any) => ({
+                    id: s.id,
+                    title: normalizeTitle(s.title),
+                    type: s.content_type || 'text',
+                    date: s.created_at ? formatDistanceToNow(new Date(s.created_at), { addSuffix: true }) : 'Recent',
+                    mastery: {
+                        solid: (s.depth_score || 0) > 80 ? 70 : 40,
+                        developing: 20,
+                        shaky: (s.depth_score || 0) < 60 ? 30 : 5,
+                        revisit: (s.depth_score || 0) < 40 ? 10 : 5
+                    },
+                    gaps: (s.depth_score || 0) < 70 ? 2 : 0,
+                    materials: ['quiz', 'explain', 'tutor'],
+                    rawDate: new Date(s.created_at || 0)
+                }));
+
+                // Map flow sessions
+                const flowMapped: any[] = (flowHistoryRes?.data || []).map((s: any) => {
+                    const completedCount = s.concepts_completed?.length || 0;
+                    const totalCount = (s.initial_plan as any)?.concepts?.length || 5;
+                    const title = s.curriculum?.title || s.reflection_session?.title || 'Continuous Flow';
+                    
+                    return {
                         id: s.id,
-                        title: normalizeTitle(s.title),
-                        type: s.content_type || 'text',
+                        title: normalizeTitle(title),
+                        type: 'flow',
                         date: s.created_at ? formatDistanceToNow(new Date(s.created_at), { addSuffix: true }) : 'Recent',
-                        // Calculate mastery from depth score or use a default if not available
                         mastery: {
-                            solid: (s.depth_score || 0) > 80 ? 70 : 40,
-                            developing: 20,
-                            shaky: (s.depth_score || 0) < 60 ? 30 : 5,
-                            revisit: (s.depth_score || 0) < 40 ? 10 : 5
+                            solid: Math.round((completedCount / (totalCount || 1)) * 100),
+                            developing: 0,
+                            shaky: 0,
+                            revisit: 0
                         },
-                        gaps: (s.depth_score || 0) < 70 ? 2 : 0,
-                        materials: ['flashcards', 'quiz'] 
-                    }));
-                    setLatestSessions(mapped);
-                }
+                        gaps: 0,
+                        materials: ['tutor'],
+                        rawDate: new Date(s.created_at || 0),
+                        sourceType: s.source_type,
+                        sourceId: s.curriculum_id || s.reflection_session_id
+                    };
+                });
+
+                // Merge and sort
+                const combined = [...reflectionMapped, ...flowMapped]
+                    .sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime())
+                    .slice(0, 5);
+
+                setLatestSessions(combined);
 
                 if (vaultRes && vaultRes.data) {
                     setVaultCount(vaultRes.data.length);
                 }
-                
-                const allActivity = [...(activityRes?.data || []), ...(flowRes?.data || [])];
+
+                const allActivity = [...(activityRes?.data || []), ...(flowActivityRes?.data || [])];
                 const days = Array.from({ length: 7 }, (_, i) => {
                     const d = new Date(monday);
                     d.setDate(monday.getDate() + i);
@@ -141,6 +198,9 @@ export default function Home() {
 
     const handleAnalyze = async (data: any, isClarified = false) => {
         setIsProcessing(true);
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         try {
             // Pre-analysis step
             if (!isClarified && data.content && data.content.trim().length > 0) {
@@ -152,6 +212,7 @@ export default function Home() {
                             'Content-Type': 'application/json',
                             ...(token ? { Authorization: `Bearer ${token}` } : {}),
                         },
+                        signal: controller.signal,
                         body: JSON.stringify({
                             content: data.content,
                             contentType: data.type,
@@ -208,7 +269,6 @@ export default function Home() {
             }
 
             if (data.mode === 'learn') {
-                const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000);
                 const qRes = await fetch('/api/serify/start-quick-learn', {
                     method: 'POST',
@@ -231,7 +291,6 @@ export default function Home() {
                 throw new Error(errData.error || 'Failed to start quick learn');
             }
 
-            const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
 
             const res = await fetch('/api/serify/extract', {
@@ -254,7 +313,11 @@ export default function Home() {
             
             if (res.ok) {
                 const { sessionId } = await res.json();
-                router.push(`/session/${sessionId}`);
+                if (data.mode === 'flow') {
+                    router.push(`/flow?session=${sessionId}`);
+                } else {
+                    router.push(`/session/${sessionId}`);
+                }
             } else {
                 const errData = await res.json();
                 throw new Error(errData.error || 'Failed to extract content');
@@ -279,7 +342,7 @@ export default function Home() {
                     </div>
                     
                     <div className="flex flex-col items-center gap-2">
-                        <p className="text-sm font-black tracking-[0.2em] text-[var(--text)] uppercase opacity-80">Serify is arriving</p>
+                        <p className="text-sm font-black tracking-[0.2em] text-[var(--text)] uppercase">Serify is arriving</p>
                         <p className="text-[10px] text-[var(--muted)] font-medium">Preparing your personalized knowledge landscape...</p>
                     </div>
 
@@ -291,7 +354,7 @@ export default function Home() {
                             >
                                 Skip & Enter anyway
                             </button>
-                            <p className="text-[10px] text-[var(--muted)] max-w-[240px] text-center leading-relaxed">
+                            <p className="text-[10px] text-[var(--muted)] max-w-[240px] text-center leading-relaxed font-mono">
                                 The connection is taking longer than usual. You can enter now and data will load in the background.
                             </p>
                         </div>
@@ -316,6 +379,7 @@ export default function Home() {
                     trend={trend}
                     vaultCount={vaultCount}
                     handleAnalyze={handleAnalyze}
+                    handleCancel={handleCancel}
                     isDemo={isDemo}
                     isProcessing={isProcessing || isPreAnalyzing}
                 />
@@ -326,10 +390,12 @@ export default function Home() {
                             <section className="animate-slide-up">
                                 <SmartInputCard 
                                     onAnalyze={handleAnalyze} 
+                                    onCancel={handleCancel}
                                     tokenBalance={isDemo ? 1000 : ((user?.monthlyLimit || 0) - (user?.tokensUsed || 0))} 
-                                totalLimit={isDemo ? 1000 : (user?.monthlyLimit || 0)}                                    isProcessing={isProcessing || isPreAnalyzing}
+                                    totalLimit={isDemo ? 1000 : (user?.monthlyLimit || 0)}
+                                    isProcessing={isProcessing || isPreAnalyzing}
                                 />
-                                {latestSessions.length === 0 && (
+{latestSessions.length === 0 && (
                                     <p className="mt-4 text-center text-xs text-[var(--muted)] italic animate-fade-in" style={{ animationDelay: '500ms' }}>
                                         Start with something you recently watched, read, or studied.
                                     </p>
@@ -346,8 +412,8 @@ export default function Home() {
                                 {latestSessions.length === 0 && (
                                     <div className="bg-white rounded-2xl border border-[var(--border)] p-6 shadow-sm">
                                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-4">You&apos;re all set.</h3>
-                                        <div className="flex items-center gap-2 mb-4 text-[var(--accent)] bg-emerald-50 py-2 px-3 rounded-lg w-fit">
-                                            <Zap size={14} fill="currentColor" />
+                                        <div className="flex items-center gap-2 mb-4 text-emerald-500 bg-emerald-50 py-2 px-3 rounded-lg w-fit">
+                                            <BookOpen size={14} fill="currentColor" />
                                             <span className="text-xs font-bold">{user?.monthlyLimit || 50} tokens ready</span>
                                         </div>
                                         <p className="text-sm text-[var(--muted)] leading-relaxed">

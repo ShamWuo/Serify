@@ -87,7 +87,10 @@ export type TokenAction =
     | 'practice_flashcards_generation'
     | 'practice_scenario_generation'
     | 'deep_dive'
-    | 'manual_synthesis';
+    | 'manual_synthesis'
+    | 'create_roadmap_custom'
+    | 'create_roadmap_preset'
+    | 'roadmap_warmup';
 
 export interface UsageCheckResult {
     allowed: boolean;
@@ -116,38 +119,43 @@ export async function canAfford(
         };
     }
 
-    const { data: tracking } = await (client as any)
-        .from('usage_tracking')
-        .select('plan, tokens_used, monthly_limit')
-        .eq('user_id', userId)
-        .maybeSingle();
+    try {
+        const { data: tracking } = await (client as any)
+            .from('usage_tracking')
+            .select('plan, tokens_used, monthly_limit')
+            .eq('user_id', userId)
+            .maybeSingle();
 
-    const { data: costData } = await (client as any)
-        .from('token_costs')
-        .select('token_cost')
-        .eq('action', action)
-        .maybeSingle();
+        const { data: costData } = await (client as any)
+            .from('token_costs')
+            .select('token_cost')
+            .eq('action', action)
+            .maybeSingle();
 
-    if (!tracking || !costData) {
-        return { allowed: false, cost: 0, tokensUsed: 0, monthlyLimit: 0, percentUsed: 100, plan: 'free' };
+        
+        const plan = tracking?.plan || 'free';
+        const tokens_used = tracking?.tokens_used ?? 0;
+        const monthly_limit = tracking?.monthly_limit ?? 50;
+        const cost = costData?.token_cost ?? 1; 
+
+        if (plan === 'proplus') return { allowed: true, cost: 0, tokensUsed: tokens_used, monthlyLimit: null, percentUsed: 0, plan: 'proplus' };
+        
+        const allowed = cost === 0 || (tokens_used + cost <= monthly_limit);
+        
+        return {
+            allowed,
+            cost,
+            tokensUsed: tokens_used,
+            monthlyLimit: monthly_limit,
+            percentUsed: monthly_limit ? (tokens_used / monthly_limit) * 100 : 0,
+            plan,
+            featureName: action
+        };
+    } catch (err) {
+        console.error('Error in canAfford:', err);
+        
+        return { allowed: true, cost: 0, tokensUsed: 0, monthlyLimit: 50, percentUsed: 0, plan: 'free' };
     }
-
-    const { plan, tokens_used, monthly_limit } = tracking;
-    const cost = costData.token_cost;
-
-    if (plan === 'proplus') return { allowed: true, cost: 0, tokensUsed: 0, monthlyLimit: null, percentUsed: 0, plan: 'proplus' };
-    
-    const allowed = cost === 0 || (tokens_used + cost <= monthly_limit);
-    
-    return {
-        allowed,
-        cost,
-        tokensUsed: tokens_used,
-        monthlyLimit: monthly_limit,
-        percentUsed: monthly_limit ? (tokens_used / monthly_limit) * 100 : 0,
-        plan,
-        featureName: action
-    };
 }
 
 export async function consumeTokens(
@@ -184,6 +192,9 @@ export async function consumeTokens(
         'practice_scenario_generation': 'practice',
         'deep_dive': 'deep_dives',
         'manual_synthesis': 'other',
+        'create_roadmap_custom': 'exam_prep',
+        'create_roadmap_preset': 'exam_prep',
+        'roadmap_warmup': 'exam_prep',
     };
     const category = categories[action] || 'other';
 

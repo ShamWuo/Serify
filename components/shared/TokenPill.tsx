@@ -1,5 +1,4 @@
-import React from 'react';
-import { Zap } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 
 interface TokenPillProps {
     used: number;
@@ -25,7 +24,7 @@ const TokenPill: React.FC<TokenPillProps> = ({ used, limit, className = "" }) =>
 
     return (
         <div className={`flex items-center gap-2.5 px-4 py-2 bg-white border border-[var(--border)] rounded-2xl shadow-xl shadow-black/[0.02] ${pulseClass} ${className}`}>
-            <Zap size={14} strokeWidth={3} className={iconClass} fill={percent >= 70 ? "currentColor" : "none"} />
+            <BookOpen size={14} strokeWidth={3} className={iconClass} fill={percent >= 70 ? "currentColor" : "none"} />
             <span className={`text-[10px] font-black uppercase tracking-[0.2em] italic ${colorClass}`}>
                 {limit - used} <span className="text-[var(--muted)]/40 font-black not-italic ml-1">UNITS REMAINING</span>
             </span>

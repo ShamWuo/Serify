@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Zap } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 interface KnowledgeMiniMapProps {
@@ -54,7 +54,7 @@ export default function KnowledgeMiniMap({ userId }: KnowledgeMiniMapProps) {
     if (loading) {
         return (
             <div className="w-full h-32 flex items-center justify-center bg-[var(--bg)]/50 rounded-2xl animate-pulse">
-                <Zap size={20} className="text-[var(--accent)]/30" />
+                <BookOpen size={20} className="text-[var(--accent)]/30" />
             </div>
         );
     }

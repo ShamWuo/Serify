@@ -22,7 +22,9 @@ import {
     Layers,
     RefreshCw,
     MessageSquare,
-    Activity
+    Activity,
+    Moon,
+    Sun
 } from 'lucide-react';
 
 function useScrollReveal() {
@@ -57,13 +59,13 @@ export default function LandingPage() {
     const revealRef = useScrollReveal();
     const [isDark, setIsDark] = useState(true);
     const [mounted, setMounted] = useState(false);
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const darkVideoRef = useRef<HTMLVideoElement>(null);
+    const lightVideoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
-        if (videoRef.current) {
-            videoRef.current.playbackRate = 0.56;
-        }
-    }, [mounted]);
+        if (darkVideoRef.current) darkVideoRef.current.playbackRate = 0.6;
+        if (lightVideoRef.current) lightVideoRef.current.playbackRate = 0.6;
+    }, [mounted, isDark]);
 
     useEffect(() => {
         setMounted(true);
@@ -86,10 +88,31 @@ export default function LandingPage() {
             { }
             <nav className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg)]/80 backdrop-blur-xl border-b-2 border-[var(--border)] w-full transition-all duration-300">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <Link href="/" className="text-xl font-display font-bold tracking-tight text-[var(--text)]">Serify</Link>
-                    <div className="flex items-center gap-6">
-                        <Link href="/login" className="text-[11px] font-bold uppercase tracking-widest text-[var(--text)] opacity-80 hover:opacity-100 transition-opacity">log in</Link>
-                        <Link href="/signup" className="px-5 py-2 rounded-full bg-[var(--text)] text-[var(--bg)] text-[11px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">Get Started</Link>
+                    <Link href="/" className="text-xl font-display font-bold tracking-tight text-[var(--text)] group flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[var(--accent)] flex items-center justify-center rounded-sm rotate-3 group-hover:rotate-0 transition-transform">
+                            <span className="text-[var(--bg)] text-lg">S</span>
+                        </div>
+                        <span className="group-hover:translate-x-1 transition-transform">Serify</span>
+                    </Link>
+                    <div className="flex items-center gap-4 sm:gap-8">
+                        <button 
+                            onClick={() => setIsDark(!isDark)}
+                            className="p-2 rounded-full hover:bg-[var(--border)]/10 transition-colors group relative"
+                            aria-label="Toggle Theme"
+                        >
+                            {isDark ? (
+                                <Sun size={20} className="text-[var(--text)] group-hover:rotate-45 transition-transform" />
+                            ) : (
+                                <Moon size={20} className="text-[var(--text)] group-hover:-rotate-12 transition-transform" />
+                            )}
+                            <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-2 py-1 bg-[var(--text)] text-[var(--bg)] text-[9px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap hidden sm:block">
+                                {isDark ? 'Light' : 'Dark'} Mode
+                            </span>
+                        </button>
+                        <div className="flex items-center gap-6">
+                            <Link href="/login" className="text-[11px] font-bold uppercase tracking-widest text-[var(--text)] opacity-80 hover:opacity-100 transition-opacity">log in</Link>
+                            <Link href="/signup" className="px-5 py-2 rounded-full bg-[var(--text)] text-[var(--bg)] text-[11px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[var(--shadow-hard-sm)]">Get Started</Link>
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -98,47 +121,63 @@ export default function LandingPage() {
             <section className="relative pt-16 pb-16 md:pt-20 md:pb-20 overflow-hidden min-h-screen flex items-center bg-[var(--bg)] transition-colors duration-700">
                 {/* Premium Hero Background - High Quality Assets */}
                 <div className="absolute inset-0 z-0 select-none pointer-events-none w-full overflow-hidden">
+                    {/* Dark Mode Video */}
                     <video
-                        ref={videoRef}
+                        ref={darkVideoRef}
                         autoPlay
                         loop
                         muted
                         playsInline
-                        className={`w-full h-full object-cover transition-opacity duration-1000 ${mounted && !isDark ? 'opacity-90 grayscale-[5%]' : 'opacity-70'}`}
+                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${mounted && isDark ? 'opacity-70' : 'opacity-0'}`}
                         style={{ maxWidth: '100%', width: '100vw' }}
                     >
                         <source src="/LandingHeroDark.mp4" type="video/mp4" />
                     </video>
-                    {/* Balanced Gradient for Readability */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[var(--bg)]/10 to-[var(--bg)]" />
+                    
+                    {/* Light Mode Video */}
+                    <video
+                        ref={lightVideoRef}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${mounted && !isDark ? 'opacity-90 grayscale-[5%]' : 'opacity-0'}`}
+                        style={{ maxWidth: '100%', width: '100vw' }}
+                    >
+                        <source src="/LandingHeroLight.mp4" type="video/mp4" />
+                    </video>
+
+                    {/* Premium Organic Overlays */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg)]/40 via-transparent to-[var(--bg)]" />
+                    <div className={`absolute inset-0 opacity-20 pointer-events-none transition-opacity duration-700 ${isDark ? 'bg-[#52b788]/5 mix-blend-overlay' : 'bg-[#3d7a44]/5 mix-blend-multiply'}`} />
                 </div>
 
                 <div className="relative z-10 max-w-7xl mx-auto px-6 w-full text-center">
                     <div className="max-w-4xl mx-auto space-y-8">
                         { }
-                        <div className="flex flex-col items-center gap-4 animate-fade-in">
-                            <div className="inline-flex items-center gap-3 px-3 py-1.5 rounded-full bg-[var(--surface-raised)] border-2 border-[var(--border)] text-[var(--text)] text-[10px] font-bold uppercase tracking-widest shadow-[var(--shadow-hard-sm)]">
-                                <span className="text-[var(--accent)] font-black">Serify 2.5</span>
-                                <div className="w-px h-2.5 bg-[var(--border-soft)]" />
-                                <span className="text-[var(--muted)]">The New Standard in AI Learning</span>
-                            </div>
-
-                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-black leading-[1.05] tracking-tight text-[var(--text)] stagger-item">
-                                Master Any Subject <br />
-                                <span className="text-[var(--accent)]">In Half The Time.</span>
+                        <div className="flex flex-col items-center gap-6 animate-fade-in">
+                            <h1 className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-display font-black leading-[0.9] tracking-tight text-[var(--text)] stagger-item">
+                                Master Any <br />
+                                <span className="text-[var(--accent)] italic">Subject.</span>
                             </h1>
                         </div>
 
-                        <p className="text-lg md:text-xl text-[var(--muted)] leading-relaxed max-w-2xl mx-auto font-medium animate-fade-in-up" style={{ animationDelay: '200ms' }}>
-                            Serify’s diagnostic engine identifies your hidden knowledge gaps and builds a personalized path to absolute mastery. Stop guessing, start understanding.
-                        </p>
+                        <div className="max-w-3xl mx-auto px-6 py-4 bg-[var(--bg)]/40 backdrop-blur-sm border-y border-[var(--border)]/10 animate-fade-in" style={{ animationDelay: '200ms' }}>
+                            <p className="text-xl sm:text-2xl md:text-3xl text-[var(--text)] font-mono tracking-tight leading-relaxed">
+                                Serify targets the{' '}
+                                <span className="relative inline-block group">
+                                    <span className="relative z-10 text-[var(--accent)] font-bold italic underline border-b-2 border-dashed border-[var(--accent)] underline-offset-4">illusion of competence</span>
+                                </span>{' '}
+                                using AI-driven cognitive analysis.
+                            </p>
+                        </div>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-                             <Link href="/signup" className="px-10 py-4 bg-[var(--accent)] text-[#faf6ed] rounded-full text-lg font-display font-bold shadow-xl shadow-[var(--accent)]/20 hover:scale-105 active:scale-95 transition-all border-2 border-[var(--ink)]">
-                                Start Free Session
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-10 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+                             <Link href="/signup" className="group relative px-12 py-5 bg-[var(--text)] text-[var(--bg)] rounded-sm text-xl font-display font-black hover:translate-x-[-4px] hover:translate-y-[-4px] transition-all duration-200 shadow-[var(--shadow-hard-sm)] hover:shadow-[var(--shadow-hard)]">
+                                Start Mastery Session
                             </Link>
-                            <Link href="/?demo=true" className="px-10 py-4 bg-[var(--surface-raised)] border-2 border-[var(--border)] text-[var(--text)] rounded-full text-lg font-display font-bold hover:bg-[var(--bg)] transition-all shadow-[var(--shadow-hard)]">
-                                Try Demo
+                            <Link href="/?demo=true" className="px-10 py-4 bg-[var(--bg)]/90 backdrop-blur-md border-2 border-[var(--border)] text-[var(--text)] rounded-sm text-lg font-display font-bold hover:bg-[var(--surface-raised)] transition-all flex items-center gap-2 group shadow-[var(--shadow-hard-sm)]">
+                                Watch Flow Demo <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                             </Link>
                         </div>
 
@@ -209,7 +248,7 @@ export default function LandingPage() {
                                         </div>
                                         <div>
                                             <h3 className="text-lg font-bold mb-2">{item.title}</h3>
-                                            <p className="text-[var(--text)] opacity-80 text-sm leading-relaxed">{item.desc}</p>
+                                            <p className="text-[var(--text)] text-sm leading-relaxed">{item.desc}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -563,25 +602,60 @@ export default function LandingPage() {
             </section>
 
             { }
-             <section className="py-24 md:py-32 relative overflow-hidden">
-                <div className="absolute inset-0 bg-[var(--dark)]" />
+            {/* High-Impact Bottom CTA — Architect's Final Pen */}
+            <section className="py-32 md:py-48 relative overflow-hidden bg-[var(--bg)] transition-colors duration-500">
+                <div className="max-w-5xl mx-auto px-6 relative z-10">
+                    <div className="paper-card p-12 md:p-20 text-center relative overflow-hidden group">
+                        {/* Decorative background elements consistent with organic theme */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--accent)]/5 rounded-full blur-[80px] -mr-32 -mt-32 transition-transform group-hover:scale-110 duration-700" />
+                        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full blur-[80px] -ml-32 -mb-32 transition-transform group-hover:scale-110 duration-700" />
+                        
+                        <div className="relative z-10 max-w-2xl mx-auto flex flex-col items-center">
+                            <div className="w-16 h-16 bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center rounded-sm mb-8 rotate-[5deg] group-hover:rotate-0 transition-transform shadow-[var(--shadow-hard-sm)]" style={{border: '1.5px solid var(--accent)'}}>
+                                <BrainCircuit size={32} />
+                            </div>
 
-                <div className="relative z-10 max-w-3xl mx-auto px-6 text-center scroll-reveal">
-                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-display text-[var(--bg)] mb-5 leading-tight">
-                        Stop Guessing.<br />Start Understanding.
-                    </h2>
-                    <p className="text-[var(--bg)]/80 max-w-xl mx-auto mb-10 font-mono text-[13px]">
-                        Join thousands of learners using Serify to achieve real mastery.
-                    </p>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                        <Link href="/signup" className="flex items-center gap-2 px-8 py-4 bg-[var(--bg)] text-[var(--ink)] font-bold text-base hover:bg-[var(--surface-raised)] transition-all shadow-hard">
-                            Create Free Account <ArrowRight size={18} />
-                        </Link>
-                        <Link href="/?demo=true" className="btn-ghost flex items-center gap-2 px-8 py-4 text-[var(--bg)] font-semibold text-base border-[var(--bg)]/50 hover:bg-[var(--bg)]/10">
-                            Try Demo First
-                        </Link>
+                            <h2 className="text-4xl sm:text-5xl md:text-6xl font-display font-black leading-[1.1] text-[var(--text)] mb-8 tracking-tight">
+                                Stop Guessing.<br />
+                                <span className="text-[var(--accent)] italic">Start Understanding.</span>
+                            </h2>
+                            
+                            <p className="text-lg md:text-xl text-[var(--muted)] max-w-lg mb-12 font-mono italic leading-relaxed">
+                                &quot;Serify targets the illusion of competence, moving you from passive reading to cognitive mastery.&quot;
+                            </p>
+
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full sm:w-auto">
+                                <Link 
+                                    href="/signup" 
+                                    className="btn-primary px-10 py-5 text-xl w-full sm:w-auto"
+                                >
+                                    Create Free Account
+                                </Link>
+                                <Link 
+                                    href="/?demo=true" 
+                                    className="btn-secondary px-10 py-5 text-xl w-full sm:w-auto"
+                                >
+                                    Try Demo First
+                                </Link>
+                            </div>
+
+                            <div className="mt-12 flex items-center gap-8 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                                <div className="flex flex-col items-center gap-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Trusted by</span>
+                                    <span className="text-sm font-display font-bold text-[var(--text)]">10k+ Learners</span>
+                                </div>
+                                <div className="w-[1px] h-8 bg-[var(--border-soft)]" />
+                                <div className="flex flex-col items-center gap-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">Methodology</span>
+                                    <span className="text-sm font-display font-bold text-[var(--text)]">Cognitive Science</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                
+                {/* Visual anchor / line work */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[2px] h-16 bg-gradient-to-t from-[var(--border)] to-transparent opacity-20" />
             </section>
 
             { }
