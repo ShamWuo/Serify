@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { Clock, Loader2, Sparkles, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Clock, Loader2, Sparkles, AlertTriangle, ArrowRight, X, Layout, Target, BrainCircuit, Zap, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import GeneratingAnimation from '@/components/GeneratingAnimation';
 
 export default function ExamSetup() {
     const router = useRouter();
@@ -66,119 +67,180 @@ export default function ExamSetup() {
         }
     };
 
+    if (authLoading) return null;
+
     return (
-        <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--bg)] flex flex-col font-mono text-[var(--text)] relative overflow-hidden">
             <Head>
-                <title>Exam Setup | Serify</title>
+                <title>Exam Simulation Setup | Serify</title>
             </Head>
 
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-orange-500/5 rounded-full blur-[100px] -z-10" />
+            {/* Dot Grid Background */}
+            <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none" 
+                 style={{ 
+                    backgroundImage: `radial-gradient(circle, var(--ink) 1.5px, transparent 1.5px)`,
+                    backgroundSize: `24px 24px`
+                 }} 
+            />
 
-            {isGenerating ? (
-                 <div className="text-center space-y-8 animate-fade-in-up">
-                 <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-orange-50 border border-orange-100 shadow-sm">
-                     <Clock size={40} className="text-orange-600 relative z-10" />
-                     <Sparkles size={20} className="text-orange-400 absolute -top-2 -right-2 animate-pulse" />
-                 </div>
- 
-                 <div className="space-y-3">
-                     <h1 className="text-3xl font-display text-[var(--text)] tracking-tight">
-                         Generating Exam Simulation...
-                     </h1>
-                     <p className="text-[var(--muted)] text-lg">
-                         Compiling {questionCount} rigorous questions.
-                     </p>
-                 </div>
- 
-                 <div className="pt-8 flex justify-center">
-                     <Loader2 size={32} className="text-orange-600 animate-spin" />
-                 </div>
-             </div>
-            ) : (
-                <div className="w-full max-w-xl bg-[var(--surface)] border-2 border-[var(--border)] paper-card p-8 space-y-8 animate-fade-in-up">
-                    
-                    <div className="text-center space-y-4">
-                        <div className="mx-auto w-14 h-14 bg-[var(--bg)] text-[var(--ink)] border-2 border-[var(--border)] flex items-center justify-center shadow-hard-sm">
-                            <Clock size={24} />
+            {/* Navigation Header */}
+            <header className="h-16 bg-[var(--surface)] border-b-2 border-[var(--ink)] z-20 flex items-center justify-between px-6 shrink-0 shadow-hard-sm">
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => router.push('/practice')}
+                        className="p-2 border-2 border-transparent hover:border-[var(--ink)] hover:bg-[var(--bg)] transition-all"
+                    >
+                        <X size={20} />
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-orange-600 text-white flex items-center justify-center shadow-hard-sm border border-black">
+                            <Clock size={18} />
                         </div>
                         <div>
-                            <h1 className="text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-[var(--muted)] mb-1">{'//'} Exam Configuration</h1>
-                            <h2 className="text-3xl font-display font-medium text-[var(--text)] tracking-tight">Setup Simulation</h2>
-                        </div>
-                        <p className="text-[11px] font-mono text-[var(--muted)] uppercase tracking-tight">Simulate high-stakes testing conditions for {topic ? `"${topic}"` : 'your selected concepts'}.</p>
-                    </div>
-
-                    <div className="space-y-6 pt-4">
-                        
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--muted)]">Length & Time</label>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <span className="text-[9px] font-bold font-mono text-[var(--muted)] uppercase">Questions</span>
-                                    <div className="flex bg-[var(--bg)] p-1 border-2 border-[var(--border)]">
-                                        {[5, 10, 20].map(val => (
-                                            <button 
-                                                key={val}
-                                                onClick={() => setQuestionCount(val)}
-                                                className={`flex-1 py-1.5 text-xs font-mono font-bold transition-all ${questionCount === val ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:bg-[var(--surface)]'}`}
-                                            >
-                                                {val}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <span className="text-[9px] font-bold font-mono text-[var(--muted)] uppercase">Time (Min)</span>
-                                    <div className="flex bg-[var(--bg)] p-1 border-2 border-[var(--border)]">
-                                        {[10, 15, 30].map(val => (
-                                            <button 
-                                                key={val}
-                                                onClick={() => setTimeLimit(val)}
-                                                className={`flex-1 py-1.5 text-xs font-mono font-bold transition-all ${timeLimit === val ? 'bg-[var(--ink)] text-[var(--bg)]' : 'text-[var(--muted)] hover:bg-[var(--surface)]'}`}
-                                            >
-                                                {val}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
+                            <span className="font-display font-bold text-[14px] text-[var(--text)] uppercase tracking-tight">EXAM SIMULATION</span>
+                            <div className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest leading-none mt-0.5">
+                                TIMED PERFORMANCE UNIT
                             </div>
                         </div>
-
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--muted)]">Format Bias</label>
-                            <div className="grid grid-cols-3 gap-3">
-                                {['standard', 'scenario', 'coding'].map(f => (
-                                    <button 
-                                        key={f}
-                                        onClick={() => setFormat(f)}
-                                        className={`px-4 py-2 border-2 text-[10px] font-bold font-mono uppercase tracking-widest transition-all ${format === f ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--bg)] shadow-hard-sm' : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]'}`}
-                                    >
-                                        {f}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
                     </div>
-                    
-                    <div className="pt-6 border-t-2 border-[var(--border)] flex justify-between items-center">
-                        <button 
-                            onClick={() => router.push('/practice')}
-                            className="text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--muted)] hover:text-[var(--text)] transition"
-                        >
-                            Cancel
-                        </button>
-                        
-                        <button 
-                            onClick={handleStart}
-                            className="bg-[var(--ink)] text-[var(--bg)] px-8 py-3 border-2 border-[var(--ink)] shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 transition-all font-display font-bold text-sm flex items-center gap-2"
-                        >
-                            Start Simulation <ArrowRight size={16} />
-                        </button>
-                    </div>
-
                 </div>
-            )}
+            </header>
+
+            <main className="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
+                {isGenerating ? (
+                    <div className="max-w-2xl w-full text-center space-y-10 animate-fade-in-up">
+                         <div className="space-y-4">
+                            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--muted)] italic">
+                                {'//'} Calibration In Progress...
+                            </p>
+                            <h1 className="text-4xl font-display font-bold text-[var(--text)] leading-tight">
+                                Constructing Your Simulation
+                            </h1>
+                            <p className="text-[var(--muted)] text-sm max-w-sm mx-auto leading-relaxed">
+                                Compiling {questionCount} rigorous prompts for <span className="text-[var(--text)] font-bold">{topic || 'Vault Selection'}</span>.
+                            </p>
+                        </div>
+                        
+                        <div className="py-10">
+                            <GeneratingAnimation type="exam" />
+                        </div>
+
+                        <div className="flex justify-center items-center gap-4 text-[10px] font-bold text-[var(--muted)] uppercase tracking-[0.2em] opacity-40">
+                             <Layout size={14} /> <span>SCENARIO ARTIFACTS</span>
+                             <div className="w-1 h-1 bg-[var(--muted)] rounded-full" />
+                             <BrainCircuit size={14} /> <span>NEURAL PROBES</span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="w-full max-w-2xl space-y-10 animate-fade-in-up pb-12">
+                        <div className="space-y-3">
+                            <div className="washi-tape washi-revisit mb-4 !border-orange-600 bg-orange-50 text-orange-900 font-bold uppercase">
+                                CONFIGURATION TERMINAL
+                            </div>
+                            <h2 className="text-5xl font-display font-bold text-[var(--text)] tracking-tighter leading-none">
+                                Define the <br/>
+                                <span className="text-orange-600 italic underline decoration-4 underline-offset-8">Simulation</span> parameters
+                            </h2>
+                            <p className="text-[var(--muted)] text-sm max-w-md">
+                                Adjust the parameters to fit your training requirements. Exams use higher difficulty and strict time limits.
+                            </p>
+                        </div>
+
+                        <div className="paper-card border-4 p-8 bg-[var(--surface-raised)] space-y-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 border-b-2 border-[var(--ink)] pb-2 mb-4">
+                                        <Layout size={16} className="text-orange-600" />
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text)]">QUANTITY & DURATION</label>
+                                    </div>
+                                    
+                                    <div className="space-y-6">
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center text-[10px] font-mono font-bold uppercase">
+                                                <span>PROMPTS</span>
+                                                <span className="text-orange-600 bg-orange-50 px-2 py-0.5 border border-orange-600">{questionCount} ITEMS</span>
+                                            </div>
+                                            <input 
+                                                type="range"
+                                                min="5"
+                                                max="25"
+                                                step="5"
+                                                value={questionCount}
+                                                onChange={(e) => setQuestionCount(parseInt(e.target.value))}
+                                                className="w-full cursor-pointer accent-orange-600 border-2 border-[var(--ink)] h-3 rounded-none bg-[var(--bg)]"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between items-center text-[10px] font-mono font-bold uppercase">
+                                                <span>TIME LIMIT</span>
+                                                <span className="text-orange-600 bg-orange-50 px-2 py-0.5 border border-orange-600">{timeLimit} MINUTES</span>
+                                            </div>
+                                            <input 
+                                                type="range"
+                                                min="5"
+                                                max="45"
+                                                step="5"
+                                                value={timeLimit}
+                                                onChange={(e) => setTimeLimit(parseInt(e.target.value))}
+                                                className="w-full cursor-pointer accent-orange-600 border-2 border-[var(--ink)] h-3 rounded-none bg-[var(--bg)]"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 border-b-2 border-[var(--ink)] pb-2 mb-4">
+                                        <BrainCircuit size={16} className="text-orange-600" />
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text)]">DIFFICULTY PROTOCOL</label>
+                                    </div>
+                                    
+                                    <div className="space-y-4">
+                                        {[
+                                            { id: 'standard', label: 'Standard Bias' },
+                                            { id: 'scenario', label: 'Scenario Heavy' },
+                                            { id: 'coding', label: 'Technical/Code' }
+                                        ].map((lvl) => (
+                                            <button 
+                                                key={lvl.id}
+                                                onClick={() => setFormat(lvl.id)}
+                                                className={`w-full p-4 border-2 text-left flex items-center justify-between transition-all font-bold ${
+                                                    format === lvl.id 
+                                                    ? 'bg-[var(--ink)] text-white border-[var(--ink)] shadow-hard-sm -translate-y-0.5 -translate-x-0.5' 
+                                                    : 'bg-[var(--bg)] text-[var(--muted)] border-[var(--border-soft)] hover:border-[var(--ink)] hover:text-[var(--text)]'
+                                                }`}
+                                            >
+                                                <span className="uppercase text-[11px] tracking-widest">{lvl.label}</span>
+                                                {format === lvl.id && <Zap size={14} className="text-orange-400 fill-orange-400" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div className="pt-6 border-t-2 border-dashed border-[var(--border-soft)] flex flex-col md:flex-row items-center gap-6">
+                                <div className="flex-1 text-[10px] font-bold text-[var(--muted)] uppercase leading-relaxed tracking-wider italic">
+                                     !! WARNING: Failure will automatically adjust concept mastery in the vault. Continuous focus is mandatory.
+                                </div>
+                                <button 
+                                    onClick={handleStart}
+                                    className="btn-primary w-full md:w-auto h-16 px-10 !bg-orange-600 !border-black text-lg hover:shadow-hard-lg"
+                                >
+                                    ENGAGE SIMULATION <ArrowRight size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="text-center pt-8">
+                            <p className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-[0.5em] opacity-30">
+                                Serify performance monitoring system // active
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
     );
 }

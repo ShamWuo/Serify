@@ -112,7 +112,7 @@ export function generateInitialSchedule(
 
   // Add Exam Day
   sessions.push({
-    schedule_id: roadmapId,
+    roadmap_id: roadmapId,
     topic_id: topics[topics.length - 1].id,
     user_id: userId,
     session_type: 'exam_day',

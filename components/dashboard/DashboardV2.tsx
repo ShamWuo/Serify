@@ -116,13 +116,13 @@ export default function DashboardV2({
                     <div className="lg:col-span-7 space-y-6">
                         <button
                             onClick={() => router.push('/roadmap/create')}
-                            className="paper-card p-6 text-left space-y-4 group border-2 border-[var(--accent)]/70 shadow-[var(--shadow-hard)] hover:scale-[1.01] transition-all bg-gradient-to-br from-white to-[var(--bg)] relative overflow-hidden"
+                            className="paper-card p-6 text-left space-y-4 group border-2 border-[var(--accent)]/70 shadow-[var(--shadow-hard)] hover:scale-[1.01] transition-all bg-gradient-to-br from-[var(--surface)] to-[var(--bg)] relative overflow-hidden"
                         >
                             <div className="absolute top-0 right-0 p-4 opacity-[0.03] translate-x-4 -translate-y-4">
                                 <Sparkles size={120} />
                             </div>
                             <div className="flex items-start justify-between relative z-10">
-                                <div className="w-12 h-12 border-2 border-[var(--accent)] bg-white flex items-center justify-center text-[var(--accent)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
+                                <div className="w-12 h-12 border-2 border-[var(--accent)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--accent)]" style={{boxShadow:'var(--shadow-hard-sm)'}}>
                                     <Sparkles size={24} strokeWidth={2} />
                                 </div>
                             </div>

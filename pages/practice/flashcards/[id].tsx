@@ -250,7 +250,7 @@ export default function FlashcardsSession() {
     };
 
         return (
-        <div className="min-h-screen bg-[var(--bg)] flex flex-col relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--bg)] bg-dot-grid flex flex-col relative overflow-hidden">
             <Head>
                 <title>{deck.title} | Flashcards | Serify</title>
             </Head>

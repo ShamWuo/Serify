@@ -77,6 +77,29 @@ function Tooltip({ content, children }: { content: string; children: React.React
     );
 }
 
+const VaultSkeleton = () => (
+    <DashboardLayout>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 pb-32 animate-pulse">
+            <div className="h-64 border-2 border-[var(--border)] bg-[var(--surface)] mb-8 p-10 flex flex-col justify-between">
+                <div className="space-y-4">
+                    <div className="h-4 w-32 bg-[var(--border-soft)]" />
+                    <div className="h-12 w-64 bg-[var(--border-soft)]" />
+                    <div className="h-4 w-96 bg-[var(--border-soft)]" />
+                </div>
+                <div className="grid grid-cols-4 gap-4 mt-8">
+                    {[1, 2, 3, 4].map(i => <div key={i} className="h-20 border-2 border-[var(--border)] bg-[var(--bg)]" />)}
+                </div>
+            </div>
+            <div className="h-16 border-b-2 border-dashed border-[var(--border)] mb-8" />
+            <div className="space-y-12">
+                {[1, 2].map(i => (
+                    <div key={i} className="h-48 border-2 border-[var(--border)] bg-[var(--surface)]" />
+                ))}
+            </div>
+        </div>
+    </DashboardLayout>
+);
+
 export default function VaultPage() {
     const { user } = useAuth();
     const router = useRouter();
@@ -831,62 +854,63 @@ export default function VaultPage() {
     const hasAnyConcepts = nodes.length > 0;
     const selectedArray = Array.from(selectedNodeIds);
 
+
     if (!user && !loading) {
         return (
-            <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-6 relative overflow-hidden font-mono transition-colors duration-500">
-                <div className="absolute inset-0 hatch-bg opacity-[0.03] pointer-events-none" />
-                
-                <div className="max-w-md w-full paper-card p-10 md:p-14 text-center space-y-10 animate-fade-in relative z-10">
-                    <div className="mx-auto w-20 h-20 border-2 border-[var(--ink)] bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center -rotate-[5deg] shadow-[var(--shadow-hard-sm)]">
-                        <FolderTree size={44} />
-                    </div>
+            <DashboardLayout>
+                <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center p-6 relative overflow-hidden font-mono transition-colors duration-500">
+                    <div className="absolute inset-0 hatch-bg opacity-[0.03] pointer-events-none" />
                     
-                    <div className="space-y-4">
-                        <h1 className="text-4xl font-display font-black text-[var(--text)] leading-tight tracking-tight">
-                            Explore Your <br/>
-                            <span className="text-[var(--accent)] italic">Concept Vault</span>
-                        </h1>
-                        <p className="text-[13px] text-[var(--muted)] leading-relaxed italic">
-                            &quot;The Vault catalogs every concept you&apos;ve analyzed, tracking your mastery path across all subjects.&quot;
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 py-4 text-left border-y-2 border-[var(--border-soft)] border-dashed">
-                        {[
-                            { icon: Layers, text: 'Hierarchical Knowledge Mapping' },
-                            { icon: GitMerge, text: 'Automated Concept Merging' },
-                            { icon: Archive, text: 'Deep Mastery Analytics' }
-                        ].map((item, idx) => (
-                            <div key={idx} className="flex items-center gap-3">
-                                <item.icon size={16} className="text-[var(--accent)]" />
-                                <span className="text-[11px] font-bold text-[var(--text)] uppercase tracking-wider">{item.text}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="space-y-6">
-                        <Link 
-                            href="/login" 
-                            className="btn-primary w-full py-5 text-xl"
-                        >
-                            Log In to Enter
-                        </Link>
+                    <div className="max-w-md w-full paper-card p-10 md:p-14 text-center space-y-10 animate-fade-in relative z-10">
+                        <div className="mx-auto w-20 h-20 border-2 border-[var(--ink)] bg-[var(--accent)]/10 text-[var(--accent)] flex items-center justify-center -rotate-[5deg] shadow-[var(--shadow-hard-sm)]">
+                            <FolderTree size={44} />
+                        </div>
                         
-                        <Link 
-                            href="/" 
-                            className="block text-[11px] font-black text-[var(--muted)] uppercase tracking-[0.2em] hover:text-[var(--accent)] transition-all"
-                        >
-                            &larr; Back to Base
-                        </Link>
+                        <div className="space-y-4">
+                            <h1 className="text-4xl font-display font-black text-[var(--text)] leading-tight tracking-tight">
+                                Explore Your <br/>
+                                <span className="text-[var(--accent)] italic">Concept Vault</span>
+                            </h1>
+                            <p className="text-[13px] text-[var(--muted)] leading-relaxed italic">
+                                &quot;The Vault catalogs every concept you&apos;ve analyzed, tracking your mastery path across all subjects.&quot;
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 py-4 text-left border-y-2 border-[var(--border-soft)] border-dashed">
+                            {[
+                                { icon: Layers, text: 'Hierarchical Knowledge Mapping' },
+                                { icon: GitMerge, text: 'Automated Concept Merging' },
+                                { icon: Archive, text: 'Deep Mastery Analytics' }
+                            ].map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-3">
+                                    <item.icon size={16} className="text-[var(--accent)]" />
+                                    <span className="text-[11px] font-bold text-[var(--text)] uppercase tracking-wider">{item.text}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="space-y-6">
+                            <Link 
+                                href="/login" 
+                                className="btn-primary w-full py-5 text-xl"
+                            >
+                                Log In to Enter
+                            </Link>
+                            
+                            <Link 
+                                href="/" 
+                                className="block text-[11px] font-black text-[var(--muted)] uppercase tracking-[0.2em] hover:text-[var(--accent)] transition-all"
+                            >
+                                &larr; Back to Base
+                            </Link>
+                        </div>
                     </div>
                 </div>
-                
-                <div className="mt-12 text-[10px] font-black text-[var(--muted)] uppercase tracking-[0.5em] opacity-30">
-                    Serify Vault Engine // Ver 2.5
-                </div>
-            </div>
+            </DashboardLayout>
         );
     }
+
+    if (loading && !hasAnyConcepts) return <VaultSkeleton />;
 
     return (
         <DashboardLayout>
@@ -894,71 +918,72 @@ export default function VaultPage() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10 pb-32">
                 {/* Header & Stats Section */}
-                <section className="relative mb-8 overflow-hidden border-2 border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-hard)] md:p-10">
-                    <div className="absolute top-0 right-0 w-32 h-32 opacity-[0.03] rotate-12 pointer-events-none">
-                        <Box size={128} />
+                <section className="relative mb-12 border-2 border-[var(--border)] bg-[var(--surface)] p-10 shadow-[var(--shadow-hard)] overflow-hidden">
+                    <div className="absolute top-0 right-0 w-48 h-48 opacity-[0.03] rotate-12 pointer-events-none translate-x-8 -translate-y-8">
+                        <Box size={192} strokeWidth={0.5} />
                     </div>
+                    <div className="absolute top-0 left-0 w-full h-1 bg-[var(--accent)]" />
                     
-                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-10">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 font-mono text-[10px] font-black uppercase tracking-[0.3em] text-[var(--accent)]">
-                                <span className="w-8 h-px bg-[var(--accent)]" />
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 mb-12 relative z-10">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 font-mono text-[11px] font-black uppercase tracking-[0.4em] text-[var(--accent)]">
+                                <span className="w-10 h-px bg-[var(--accent)]" />
                                 Knowledge Catalog
                             </div>
-                            <h1 className="text-4xl md:text-5xl font-display font-black text-[var(--text)] tracking-tight">
+                            <h1 className="text-5xl md:text-6xl font-display font-black text-[var(--text)] tracking-tighter leading-none">
                                 Concept <span className="text-[var(--accent)]">Vault</span>
                             </h1>
-                            <p className="max-w-xl text-[13px] text-[var(--muted)] font-medium leading-relaxed italic">
+                            <p className="max-w-xl text-[14px] text-[var(--muted)] font-medium leading-relaxed italic opacity-80">
                                 &quot;A living repository of your mastered concepts, structural pillars, and unexplored territories.&quot;
                             </p>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-stretch gap-3">
-                            <div className="relative min-w-[280px]">
+                        <div className="flex flex-col sm:flex-row items-stretch gap-4">
+                            <div className="relative min-w-[320px] shadow-[var(--shadow-hard-sm)]">
                                 <Search
-                                    size={16}
+                                    size={18}
                                     className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]"
                                     strokeWidth={3}
                                 />
                                 <input
                                     type="search"
-                                    placeholder="Search architecture..."
+                                    placeholder="Search architectural nodes..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="h-12 w-full border-2 border-[var(--border)] bg-[var(--surface-raised)] pl-12 pr-4 font-mono text-sm text-[var(--text)] outline-none transition-all placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--surface)] shadow-inner"
+                                    className="h-14 w-full border-2 border-[var(--border)] bg-[var(--surface-raised)] pl-12 pr-4 font-mono text-sm text-[var(--text)] outline-none transition-all placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:bg-[var(--surface)] shadow-inner"
                                     autoComplete="off"
                                 />
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setIsAddingConcept(true)}
-                                className="btn-primary h-12 px-6 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-sm shadow-[var(--shadow-hard-sm)] hover:shadow-[var(--shadow-hard)] hover:-translate-y-0.5 active:translate-y-0 transition-all"
+                                className="btn-primary h-14 px-8 flex items-center justify-center gap-3 font-black uppercase tracking-[0.2em] text-xs shadow-[var(--shadow-hard-sm)] hover:shadow-[var(--shadow-hard)] hover:-translate-y-0.5 active:translate-y-0 transition-all border-2 border-[var(--border)]"
                             >
-                                <Plus size={18} strokeWidth={3} />
-                                New Concept
+                                <Plus size={20} strokeWidth={3} />
+                                New Spec
                             </button>
                         </div>
                     </div>
 
-                    {hasAnyConcepts && (
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {nodes.length > 0 && (
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
                             {[
-                                { label: 'Total Nodes', value: vaultStats.total, icon: Layers, color: 'text-[var(--text)]' },
+                                { label: 'Total Catalog', value: vaultStats.total, icon: Layers, color: 'text-[var(--text)]' },
                                 { label: 'Stronghold', value: vaultStats.strong, icon: Check, color: 'text-emerald-600' },
-                                { label: 'Needs Revisit', value: vaultStats.needsAttention, icon: AlertCircle, color: 'text-rose-600' },
-                                { label: 'Pillars', value: categories.length, icon: FolderTree, color: 'text-[var(--accent)]' },
+                                { label: 'Deficiencies', value: vaultStats.needsAttention, icon: AlertCircle, color: 'text-rose-600' },
+                                { label: 'Main Pillars', value: categories.length, icon: FolderTree, color: 'text-[var(--accent)]' },
                             ].map((s) => (
                                 <div
                                     key={s.label}
-                                    className="group flex flex-col p-4 border-2 border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--surface-raised)] transition-colors shadow-[4px_4px_0px_var(--border)]"
+                                    className="group flex flex-col p-6 border-2 border-[var(--border)] bg-[var(--bg)] hover:bg-[var(--surface-raised)] transition-all shadow-[var(--shadow-hard-sm)] hover:shadow-[var(--shadow-hard)] hover:-translate-y-1"
                                 >
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className={`p-2 border border-[var(--border)] bg-[var(--surface)] ${s.color} shadow-[2px_2px_0] group-hover:rotate-3 transition-transform`}>
-                                            <s.icon size={18} strokeWidth={2.5} />
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className={`p-2.5 border-2 border-[var(--border)] bg-[var(--surface)] ${s.color} shadow-[3px_3px_0] group-hover:rotate-12 transition-transform`}>
+                                            <s.icon size={20} strokeWidth={2.5} />
                                         </div>
-                                        <div className="font-display text-2xl font-black tabular-nums">{s.value}</div>
+                                        <div className="font-display text-3xl font-black tabular-nums tracking-tighter">{s.value}</div>
                                     </div>
-                                    <div className="font-mono text-[9px] font-black uppercase tracking-widest text-[var(--muted)] mt-auto">
+                                    <div className="font-mono text-[10px] font-black uppercase tracking-[0.2em] text-[var(--muted)] mt-auto border-t border-[var(--border)]/10 pt-3">
                                         {s.label}
                                     </div>
                                 </div>
@@ -967,54 +992,57 @@ export default function VaultPage() {
                     )}
                 </section>
 
-                {/* Controls & Filters Area */}
-                <div className="sticky top-0 z-[60] py-4 bg-[var(--bg)]/80 backdrop-blur-md mb-8 border-b-2 border-dashed border-[var(--border)]">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center p-1 border-2 border-[var(--border)] bg-[var(--surface-raised)] shadow-[2px_2px_0px_var(--border)]">
+                {/* Command Control Bar */}
+                <div className="sticky top-0 z-[60] py-6 px-4 -mx-4 sm:mx-0 sm:px-0 bg-[var(--bg)]/90 backdrop-blur-xl mb-12 border-b-2 border-dashed border-[var(--border)] transition-all">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center p-1.5 border-2 border-[var(--border)] bg-[var(--surface-raised)] shadow-[var(--shadow-hard-sm)]">
                             {['all', 'needs_work', 'solid'].map((t) => (
                                 <button
                                     key={t}
                                     onClick={() => setTab(t as Tab)}
-                                    className={`px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${tab === t ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)]'}`}
+                                    className={`px-8 py-2.5 text-[11px] font-black uppercase tracking-[0.3em] transition-all ${tab === t ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)]'}`}
                                 >
                                     {t.replace('_', ' ')}
                                 </button>
                             ))}
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                              <button
                                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                                className={`flex items-center gap-2 px-4 h-10 border-2 font-mono text-[10px] font-black uppercase tracking-widest transition-all ${hasActiveFilters || isFilterOpen ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg)]'}`}
+                                className={`flex items-center gap-2 px-6 h-12 border-2 font-mono text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-[var(--shadow-hard-sm)] ${hasActiveFilters || isFilterOpen ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:bg-[var(--bg)]'}`}
                             >
-                                <Filter size={14} />
-                                Filters {hasActiveFilters && <span className="ml-1 bg-white text-[var(--accent)] px-1">{selectedMasteries.length + selectedSources.length}</span>}
+                                <Filter size={16} strokeWidth={2.5}/>
+                                Filters {hasActiveFilters && <span className="ml-1 bg-white text-[var(--accent)] px-1.5 rounded-sm">{selectedMasteries.length + selectedSources.length}</span>}
                             </button>
 
-                            <div className="flex border-2 border-[var(--border)] bg-[var(--surface-raised)] p-0.5">
+                            <div className="flex border-2 border-[var(--border)] bg-[var(--surface-raised)] p-1 shadow-[var(--shadow-hard-sm)]">
                                 <button
                                     onClick={() => setHierarchyMode('hierarchical')}
-                                    className={`p-1.5 ${hierarchyMode === 'hierarchical' ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                    className={`flex items-center gap-2 px-3 py-2 ${hierarchyMode === 'hierarchical' ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
                                 >
-                                    <FolderTree size={16} />
+                                    <FolderTree size={18} strokeWidth={2.5}/>
                                 </button>
                                 <button
                                     onClick={() => setHierarchyMode('flat')}
-                                    className={`p-1.5 ${hierarchyMode === 'flat' ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
+                                    className={`flex items-center gap-2 px-3 py-2 ${hierarchyMode === 'flat' ? 'bg-[var(--accent)] text-white shadow-inner' : 'text-[var(--muted)] hover:text-[var(--text)]'}`}
                                 >
-                                    <LayoutList size={16} />
+                                    <LayoutList size={18} strokeWidth={2.5}/>
                                 </button>
                             </div>
 
-                            <select
-                                value={sort}
-                                onChange={(e) => setSort(e.target.value as SortOption)}
-                                className="h-10 border-2 border-[var(--border)] bg-[var(--surface)] px-4 font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--text)] outline-none focus:border-[var(--accent)]"
-                            >
-                                <option value="last_seen">Chronology</option>
-                                <option value="alpha">Lexical</option>
-                                <option value="mastery">Authority</option>
-                            </select>
+                            <div className="relative group">
+                                <select
+                                    value={sort}
+                                    onChange={(e) => setSort(e.target.value as SortOption)}
+                                    className="h-12 border-2 border-[var(--border)] bg-[var(--surface)] pl-4 pr-10 font-mono text-[11px] font-black uppercase tracking-widest text-[var(--text)] outline-none focus:border-[var(--accent)] appearance-none shadow-[var(--shadow-hard-sm)] cursor-pointer"
+                                >
+                                    <option value="last_seen">Chronology</option>
+                                    <option value="alpha">Lexical</option>
+                                    <option value="mastery">Authority</option>
+                                </select>
+                                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none group-hover:text-[var(--accent)] transition-colors" />
+                            </div>
                         </div>
                     </div>
                     
@@ -1236,20 +1264,53 @@ export default function VaultPage() {
                     </div>
                 )}
 
-                {/* Empty State Fallback */}
+                {/* Premium Empty State */}
                 {!loading && !hasAnyConcepts && (
-                    <div className="border-4 border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-24 text-center shadow-[var(--shadow-hard)]">
-                        <div className="mx-auto mb-10 flex h-28 w-28 items-center justify-center border-4 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard-lg)] animate-bounce-slow">
-                            <Brain size={48} strokeWidth={1.5} />
+                    <div className="relative border-4 border-dashed border-[var(--border)] bg-[var(--surface)] px-8 py-32 text-center shadow-[var(--shadow-hard)] overflow-hidden">
+                        {/* Blueprint decorative lines */}
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none hatch-bg" />
+                        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-[var(--border)] opacity-20" />
+                        <div className="absolute top-0 left-1/2 w-[1px] h-full bg-[var(--border)] opacity-20" />
+                        
+                        <div className="relative z-10 flex flex-col items-center">
+                            <div className="mb-12 relative">
+                                <div className="absolute inset-0 bg-[var(--accent)]/10 blur-3xl rounded-full" />
+                                <div className="relative flex h-36 w-36 items-center justify-center border-4 border-[var(--border)] bg-[var(--bg)] text-[var(--accent)] shadow-[var(--shadow-hard-lg)] rotate-3 animate-float mb-4">
+                                    <Brain size={64} strokeWidth={1} />
+                                </div>
+                                <div className="absolute -bottom-2 -right-4 bg-[var(--surface)] border-2 border-[var(--border)] px-4 py-1.5 font-mono text-[10px] font-black uppercase tracking-widest shadow-[var(--shadow-hard-sm)] rotate-6">
+                                    Plot: Vacant
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 mb-12">
+                                <h2 className="font-display text-5xl font-black text-[var(--text)] tracking-tighter max-w-2xl leading-none">
+                                    Archetype Initialized but <span className="text-[var(--accent)]">Unoccupied</span>
+                                </h2>
+                                <p className="mx-auto max-w-lg font-mono text-sm leading-relaxed text-[var(--muted)] italic border-l-4 border-[var(--accent)]/20 pl-6 text-left">
+                                    &quot;The architectural framework for your knowledge is standing. To populate this catalog, process your first learning session. Your structural pillars await assignment.&quot;
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-6 items-center">
+                                <Link href="/" className="btn-primary flex h-16 px-12 items-center gap-4 font-black uppercase tracking-[0.2em] text-sm shadow-[var(--shadow-hard)] hover:shadow-[var(--shadow-hard-lg)] hover:-translate-y-1 active:translate-y-0 transition-all border-2 border-[var(--border)]">
+                                    <Zap size={22} strokeWidth={2.5} />
+                                    Begin Construction
+                                </Link>
+                                <div className="flex flex-col items-start gap-1">
+                                    <div className="flex gap-1">
+                                        {[1,2,3].map(i => <div key={i} className="w-1.5 h-1.5 bg-[var(--accent)] rounded-full animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />)}
+                                    </div>
+                                    <span className="font-mono text-[10px] font-black uppercase text-[var(--muted)] tracking-widest">Awaiting Input Data</span>
+                                </div>
+                            </div>
                         </div>
-                        <h2 className="font-display text-4xl font-black text-[var(--text)] mb-4 tracking-tight">Vault Initialized but <span className="text-[var(--accent)]">Vacant</span></h2>
-                        <p className="mx-auto max-w-lg font-mono text-sm leading-relaxed text-[var(--muted)] italic mb-10">
-                            &quot;The catalog is ready to record your conceptual breakthroughs. Process your first session to populate the vault.&quot;
-                        </p>
-                        <Link href="/" className="btn-primary inline-flex h-14 px-10 items-center gap-3 font-black uppercase tracking-[0.2em] text-sm shadow-[var(--shadow-hard)] hover:shadow-[var(--shadow-hard-lg)] hover:-translate-y-1 active:translate-y-0 transition-all">
-                            <Zap size={20} strokeWidth={2.5} />
-                            Deploy First Analysis
-                        </Link>
+
+                        {/* Diagnostic system log decorative footer */}
+                        <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between font-mono text-[8px] font-black text-[var(--muted)] opacity-30 uppercase tracking-[0.3em]">
+                            <div>System: Ready // Module: Vault_Core // Status: Null_Reference</div>
+                            <div>REF_ID: SERIFY_ARCHITECT_001</div>
+                        </div>
                     </div>
                 )}
             </div>

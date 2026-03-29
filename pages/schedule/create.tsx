@@ -237,11 +237,13 @@ export default function CreateSchedule() {
                     Authorization: `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    goal,
+                    title: goal,
+                    examName: goal,
                     examDate,
                     topics,
                     startDate,
-                    dailyMinutes,
+                    sessionLength: dailyMinutes,
+                    studyDaysPerWeek: 7 - offDays.length,
                     offDays
                 })
             });

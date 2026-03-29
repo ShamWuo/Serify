@@ -137,13 +137,27 @@ export default function TutorMode() {
 
     const sendMessage = async () => {
         if (!inputStr.trim() || sending) return;
-        if (!isAllowed) return;
-
+        
         const userMsg = { role: 'user', content: inputStr };
         const newMessages = [...messages, userMsg];
         setMessages(newMessages);
         setInputStr('');
         setSending(true);
+
+        if (!isAllowed) {
+            setTimeout(() => {
+                setMessages((prev) => [
+                    ...prev,
+                    { 
+                        role: 'model', 
+                        content: '### Usage Limit Reached\n\nYou have reached your daily limit for AI-guided tutoring. Please upgrade to **Pro+** for unlimited conversations or wait until tomorrow to continue.',
+                        isLimitError: true 
+                    }
+                ]);
+                setSending(false);
+            }, 800);
+            return;
+        }
 
         try {
             const {
@@ -166,6 +180,15 @@ export default function TutorMode() {
                 const data = await res.json();
                 setMessages((prev) => [...prev, { role: 'model', content: data.reply }]);
                 increment();
+            } else if (res.status === 403) {
+                setMessages((prev) => [
+                    ...prev,
+                    { 
+                        role: 'model', 
+                        content: '### Usage Limit Reached\n\nYou have reached your daily limit for AI-guided tutoring. Please upgrade to **Pro+** for unlimited conversations or wait until tomorrow to continue.',
+                        isLimitError: true 
+                    }
+                ]);
             } else {
                 setMessages((prev) => [
                     ...prev,
@@ -310,7 +333,9 @@ export default function TutorMode() {
                                 <div
                                     className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-5 py-4 ${msg.role === 'user'
                                         ? 'bg-indigo-600 text-white rounded-br-sm'
-                                        : 'bg-white border border-[var(--border)] shadow-sm text-[var(--text)] rounded-bl-sm'
+                                        : msg.isLimitError 
+                                            ? 'bg-rose-50 border border-rose-200 text-rose-900 rounded-bl-sm shadow-sm'
+                                            : 'bg-white border border-[var(--border)] shadow-sm text-[var(--text)] rounded-bl-sm'
                                         }`}
                                 >
                                     <div
@@ -318,6 +343,14 @@ export default function TutorMode() {
                                     >
                                         <MarkdownRenderer>{msg.content}</MarkdownRenderer>
                                     </div>
+                                    {msg.isLimitError && (
+                                        <Link
+                                            href="/pricing"
+                                            className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 transition-all no-underline"
+                                        >
+                                            View Plans <ArrowRight size={14} />
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         ))}

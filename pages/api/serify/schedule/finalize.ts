@@ -26,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (authError || !user) return res.status(401).json({ error: 'Unauthorized' });
 
   const { 
-    title, 
+    title,
+    goal,
     examType, 
     examName, 
     examDate, 
@@ -37,7 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     bufferDays 
   } = req.body;
 
-  if (!title || !examDate || !topics || topics.length === 0) {
+  const finalTitle = title || goal;
+
+  if (!finalTitle || !examDate || !topics || topics.length === 0) {
     return res.status(400).json({ error: 'Missing required schedule details' });
   }
 
@@ -54,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from('exam_roadmaps')
       .insert({
         user_id: user.id,
-        title,
+        title: finalTitle,
         exam_type: examType,
         exam_name: examName,
         exam_date: examDate,
@@ -71,16 +74,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (scheduleError) throw scheduleError;
 
     // 3. Create Topics
-    const topicsToInsert = topics.map((t: any, idx: number) => ({
-      roadmap_id: schedule.id,
-      user_id: user.id,
-      title: t.title,
-      unit: t.unit,
-      position: idx,
-      weight: t.importance === 'high' ? 1.5 : (t.importance === 'low' ? 0.7 : 1.0),
-      sessions_allocated: Number(t.estimatedSessions || 1),
-      status: 'not_started'
-    }));
+    const topicsToInsert = topics.map((t: any, idx: number) => {
+      let weight = 1.0;
+      if (t.importance === 'high' || t.weight === 3) weight = 1.5;
+      else if (t.importance === 'low' || t.weight === 1) weight = 0.7;
+      else if (t.importance === 'medium' || t.weight === 2) weight = 1.0;
+
+      return {
+        roadmap_id: schedule.id,
+        user_id: user.id,
+        title: t.title,
+        unit: t.unit,
+        position: idx,
+        weight,
+        sessions_allocated: Number(t.sessions_allocated || t.estimatedSessions || 1),
+        status: 'not_started'
+      };
+    });
 
     const { data: savedTopics, error: topicsError } = await supabaseAdmin!
       .from('roadmap_topics')

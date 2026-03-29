@@ -3,9 +3,8 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { Zap, ArrowRight, ArrowLeft, CheckCircle, Loader2, Award, Info } from 'lucide-react';
+import { Zap, ArrowRight, ArrowLeft, CheckCircle, Loader2, Award, Info, Target, Timer, BarChart3, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
-import GeneratingAnimation from '@/components/GeneratingAnimation';
 
 export default function QuickQuizSession() {
     const router = useRouter();
@@ -16,7 +15,6 @@ export default function QuickQuizSession() {
     const [questions, setQuestions] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [answers, setAnswers] = useState<Record<string, string>>({});
-    
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCompleted, setIsCompleted] = useState(false);
@@ -32,7 +30,6 @@ export default function QuickQuizSession() {
         const loadSession = async () => {
             setIsLoading(true);
             try {
-                
                 const { data: sessionData, error: sessionErr } = await supabase
                     .from('practice_sessions')
                     .select('*')
@@ -44,7 +41,6 @@ export default function QuickQuizSession() {
 
                 setSession(sessionData);
 
-                
                 const { data: qData, error: qErr } = await supabase
                     .from('practice_responses')
                     .select('*')
@@ -53,7 +49,6 @@ export default function QuickQuizSession() {
 
                 if (qErr || !qData) throw new Error("Failed to load questions");
 
-                
                 const processedQuestions = qData.map(q => {
                     const feedback = q.ai_feedback ? JSON.parse(q.ai_feedback) : {};
                     return {
@@ -77,7 +72,6 @@ export default function QuickQuizSession() {
                     setScore(sessionData.overall_performance ? parseInt(sessionData.overall_performance) : 0);
                 }
 
-                
                 const stored = localStorage.getItem('serify_last_quiz_concepts');
                 if (stored) {
                     try {
@@ -96,8 +90,7 @@ export default function QuickQuizSession() {
         };
 
         loadSession();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user, router.isReady, id]);
+    }, [user, router.isReady, id, router]);
 
     const handleAnswerSelect = (option: string) => {
         if (isCompleted || showFeedback) return;
@@ -118,8 +111,6 @@ export default function QuickQuizSession() {
     const handlePrev = () => {
         if (currentIndex > 0) {
             setCurrentIndex(prev => prev - 1);
-            
-            
             setShowFeedback(!!answers[questions[currentIndex-1].id]);
         }
     };
@@ -151,7 +142,6 @@ export default function QuickQuizSession() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
-            
             const { data: finalQs } = await supabase
                 .from('practice_responses')
                 .select('*')
@@ -183,10 +173,10 @@ export default function QuickQuizSession() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center px-6 text-center">
-                <div className="w-full max-w-lg space-y-8">
-                    <p className="text-xl font-display text-[var(--text)]">Loading your session...</p>
-                    <Loader2 size={40} className="animate-spin text-yellow-500 mx-auto" />
+            <div className="min-h-screen bg-[var(--bg)] bg-dot-grid flex flex-col items-center justify-center p-6 text-center">
+                <div className="space-y-4">
+                    <Loader2 size={40} className="animate-spin text-[var(--accent)] mx-auto" />
+                    <p className="text-sm font-mono text-[var(--muted)] uppercase tracking-widest">Initialising Quiz Protocol...</p>
                 </div>
             </div>
         );
@@ -206,153 +196,216 @@ export default function QuickQuizSession() {
     };
 
     return (
-        <div className="min-h-screen bg-[var(--bg)] flex flex-col relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--bg)] bg-dot-grid flex flex-col relative overflow-hidden font-sans">
             <Head>
                 <title>MCQ Session | Serify</title>
             </Head>
 
-            {/* Minimalist Progress Bar */}
-            <div className="fixed top-0 inset-x-0 h-1.5 bg-[var(--border)] z-50">
-                <div 
-                    className="h-full bg-yellow-500 transition-all duration-300 ease-out"
-                    style={{ width: `${progressPercent}%` }}
-                />
-            </div>
-
-            <main className="flex-1 pt-8 pb-24 overflow-y-auto px-4 md:px-8">
-                <div className="max-w-4xl mx-auto space-y-6">
-                    
-                    {isCompleted && currentIndex === 0 && (
-                        <div className="bg-white border text-center p-8 rounded-3xl shadow-sm border-[var(--border)] space-y-6 animate-fade-in-up">
-                            <div className="w-16 h-16 rounded-full bg-yellow-50 text-yellow-600 mx-auto flex items-center justify-center border-4 border-yellow-100">
-                                <Award size={28} />
-                            </div>
-                            <div className="flex flex-col gap-1 items-center">
-                                <span className="text-[10px] font-mono text-[var(--muted)] uppercase tracking-wider">Protocol Complete // Knowledge Secured</span>
-                                <p className="text-[var(--muted)] mt-1">
-                                    You scored <span className="font-bold text-[var(--text)] text-lg">{score}/100</span>
-                                </p>
-                            </div>
-
-                            <button 
-                                onClick={() => router.push('/practice')}
-                                className="px-8 py-2.5 bg-yellow-600 text-white rounded-xl font-bold hover:bg-yellow-700 transition-all shadow-md shadow-yellow-600/20"
-                            >
-                                Return to Dashboard
-                            </button>
+            {/* Technical Header */}
+            <header className="sticky top-0 z-50 bg-[var(--bg)]/80 backdrop-blur-md border-b border-[var(--border)] px-4 py-3 md:px-8">
+                <div className="max-w-5xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => router.push('/practice')}
+                            className="p-2 hover:bg-[var(--surface)] rounded-lg transition-colors border border-transparent hover:border-[var(--border)]"
+                        >
+                            <ArrowLeft size={18} />
+                        </button>
+                        <div>
+                            <h1 className="text-sm font-black uppercase tracking-tighter flex items-center gap-2">
+                                <Zap size={14} className="text-[var(--accent)]" />
+                                Quick Quiz Protocol
+                            </h1>
+                            <p className="text-[10px] font-mono text-[var(--muted)] leading-none uppercase tracking-widest">
+                                {`ID: ${id?.toString().slice(0, 8)} // Session Active`}
+                            </p>
                         </div>
-                    )}
+                    </div>
 
-                    <div className="space-y-6 animate-fade-in-up">
-                        <div className="flex items-center justify-between">
-                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-50 text-yellow-800 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] border border-yellow-100">
-                                Question {currentIndex + 1} of {questions.length}
-                            </div>
-                            {(showFeedback || isCompleted) && isAnswered && (
-                                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] border ${
-                                    isCorrect ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'
-                                }`}>
-                                    {isCorrect ? '✓ Correct' : '✗ Incorrect'}
-                                </div>
-                            )}
+                    <div className="hidden md:flex items-center gap-6">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] font-mono text-[var(--muted)] uppercase tracking-widest">Progress</span>
+                            <span className="text-xs font-black">{currentIndex + 1} / {questions.length}</span>
                         </div>
-
-                        <div className="space-y-1.5">
-                             {currentQuestion.target_concept && (
-                                 <p className="text-[10px] font-black text-yellow-700/50 uppercase tracking-[0.2em]">
-                                     Focus Area: {getConceptName(currentQuestion.target_concept)}
-                                 </p>
-                             )}
-                            <h2 className="text-xl md:text-2xl font-display text-[var(--text)] leading-tight max-w-3xl">
-                                {currentQuestion.question_text}
-                            </h2>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {(currentQuestion.options as string[])?.map((option, idx) => {
-                                const isSelected = answers[currentQuestion.id] === option;
-                                const isCorrectOpt = fbData && fbData.expected_answer === option;
-                                
-                                let optionStyle = "border-[var(--border)] bg-[var(--surface)] hover:border-yellow-300 text-[var(--text)]";
-                                
-                                if (!showFeedback && !isCompleted) {
-                                    if (isSelected) {
-                                        optionStyle = "border-yellow-500 bg-yellow-50/50 text-yellow-900 shadow-[0_0_0_1px_rgba(234,179,8,1)]";
-                                    }
-                                } else {
-                                    if (isCorrectOpt) {
-                                        optionStyle = "border-emerald-500 bg-emerald-50 text-emerald-900";
-                                    } else if (isSelected && !isCorrectOpt) {
-                                        optionStyle = "border-red-500 bg-red-50 text-red-900";
-                                    } else {
-                                        optionStyle = "border-[var(--border)] bg-white opacity-40 grayscale";
-                                    }
-                                }
-
-                                return (
-                                    <button
-                                        key={idx}
-                                        onClick={() => handleAnswerSelect(option)}
-                                        disabled={isCompleted || showFeedback}
-                                        className={`w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 group relative overflow-hidden ${optionStyle} ${!isCompleted && !showFeedback && !isSelected ? 'hover:-translate-y-0.5 hover:shadow-md' : ''}`}
-                                    >
-                                        <div className="flex gap-3 items-center">
-                                            <div className={`w-8 h-8 rounded-xl border-2 shrink-0 flex items-center justify-center text-xs font-black transition-all ${
-                                                isSelected ? (!showFeedback && !isCompleted ? 'border-yellow-500 bg-yellow-500 text-white' : (isCorrectOpt ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-red-500 bg-red-500 text-white')) : 
-                                                (isCorrectOpt && (showFeedback || isCompleted) ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-200 text-slate-400 group-hover:border-yellow-400 group-hover:text-yellow-600')
-                                            }`}>
-                                                {String.fromCharCode(65 + idx)}
-                                            </div>
-                                            <span className="text-[15px] leading-tight font-medium flex-1">{option}</span>
-                                            {isCorrectOpt && (showFeedback || isCompleted) && (
-                                                <CheckCircle size={18} className="text-emerald-500 shrink-0" />
-                                            )}
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        
-                        {(showFeedback || isCompleted) && fbData?.explanation && (
-                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex gap-3 mt-4 animate-fade-in-up">
-                                <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-                                    <Info className="text-blue-500" size={16} />
-                                </div>
-                                <div className="space-y-0.5">
-                                    <p className="font-black text-slate-400 text-[9px] uppercase tracking-[0.2em]">Learning Insight</p>
-                                    <p className="text-slate-700 leading-relaxed text-[13.5px] font-medium">
-                                        {fbData.explanation}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex justify-between items-center pt-6 border-t border-[var(--border)]">
-                            <button
-                                onClick={handlePrev}
-                                disabled={currentIndex === 0 || isSubmitting}
-                                className="px-5 py-2.5 flex items-center gap-2 rounded-xl text-[var(--muted)] font-bold text-sm hover:text-[var(--text)] hover:bg-[var(--surface)] border border-transparent hover:border-[var(--border)] disabled:opacity-0 transition-all"
-                            >
-                                <ArrowLeft size={16} /> Previous
-                            </button>
-
-                            <button
-                                onClick={handleNext}
-                                disabled={isSubmitting || (!isAnswered && !isCompleted)}
-                                className="px-8 py-2.5 flex items-center justify-center gap-2 rounded-xl text-white font-bold text-sm bg-yellow-600 hover:bg-yellow-700 shadow-lg shadow-yellow-600/20 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-wait transition-all"
-                            >
-                                {isSubmitting ? (
-                                    <><Loader2 size={16} className="animate-spin" /> Analyzing...</>
-                                ) : currentIndex === questions.length - 1 ? (
-                                    isCompleted ? 'Finish Quiz' : <><CheckCircle size={16} /> Submit Quiz</>
-                                ) : (
-                                    <>Continue <ArrowRight size={16} /></>
-                                )}
-                            </button>
+                        <div className="w-32 h-2 bg-[var(--border)] rounded-full overflow-hidden">
+                            <div 
+                                className="h-full bg-[var(--accent)] transition-all duration-500 ease-out"
+                                style={{ width: `${progressPercent}%` }}
+                            />
                         </div>
                     </div>
                 </div>
+            </header>
+
+            <main className="flex-1 overflow-y-auto px-4 py-8 md:px-8">
+                <div className="max-w-3xl mx-auto">
+                    {isCompleted && currentIndex === 0 ? (
+                        /* Results Summary */
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                             <div className="paper-card p-10 text-center border-t-4 border-t-[var(--accent)]">
+                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] mb-6 shadow-glow">
+                                    <Award size={40} />
+                                </div>
+                                <h2 className="text-4xl font-black tracking-tighter mb-2 font-display uppercase">Protocol Complete</h2>
+                                <p className="text-[var(--muted)] font-mono text-sm uppercase tracking-widest mb-8">Performance Analysis Summary</p>
+                                
+                                <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-10">
+                                    <div className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl">
+                                        <p className="text-[10px] font-mono text-[var(--muted)] uppercase tracking-widest mb-1">Final Score</p>
+                                        <p className="text-3xl font-black text-[var(--accent)]">{score}%</p>
+                                    </div>
+                                    <div className="p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl">
+                                        <p className="text-[10px] font-mono text-[var(--muted)] uppercase tracking-widest mb-1">Status</p>
+                                        <p className="text-xl font-black uppercase tracking-tighter pt-1">
+                                            {(score ?? 0) >= 70 ? 'Optimal' : 'Developing'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                    <button 
+                                        onClick={() => router.push('/practice')}
+                                        className="px-8 py-3 bg-[var(--text)] text-[var(--bg)] rounded-xl font-bold hover:opacity-90 transition-all shadow-hard active:translate-y-1 active:shadow-none"
+                                    >
+                                        Return to Workshop
+                                    </button>
+                                    <button 
+                                        onClick={() => router.reload()}
+                                        className="px-8 py-3 bg-[var(--bg)] border-2 border-[var(--text)] text-[var(--text)] rounded-xl font-bold hover:bg-[var(--surface)] transition-all"
+                                    >
+                                        Retry Protocol
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Active Session */
+                        <div className="space-y-8">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="washi-tape bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/20 px-3 py-1 rounded-sm text-[10px] font-black uppercase tracking-[0.2em]">
+                                    Module {currentIndex + 1}
+                                </div>
+                                {(showFeedback || isCompleted) && isAnswered && (
+                                    <div className={`flex items-center gap-2 px-3 py-1 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] border ${
+                                        isCorrect ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
+                                    }`}>
+                                        {isCorrect ? '✓ Verified' : '✗ Misalignment'}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-4">
+                                {currentQuestion.target_concept && (
+                                    <p className="text-[10px] font-mono text-[var(--muted)] uppercase tracking-[0.3em] flex items-center gap-2">
+                                        <Target size={12} />
+                                        Vector: {getConceptName(currentQuestion.target_concept)}
+                                    </p>
+                                )}
+                                <h2 className="text-2xl md:text-3xl font-display font-black text-[var(--text)] leading-tight tracking-tight">
+                                    {currentQuestion.question_text}
+                                </h2>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4 pt-4">
+                                {(currentQuestion.options as string[])?.map((option, idx) => {
+                                    const isSelected = answers[currentQuestion.id] === option;
+                                    const isCorrectOpt = fbData && fbData.expected_answer === option;
+                                    
+                                    let optionStyle = "border-[var(--border)] bg-[var(--bg)] hover:border-[var(--accent)] hover:bg-[var(--surface)]";
+                                    let indicatorStyle = "border-[var(--border)] text-[var(--muted)]";
+                                    
+                                    if (!showFeedback && !isCompleted) {
+                                        if (isSelected) {
+                                            optionStyle = "border-[var(--accent)] bg-[var(--accent)]/5 ring-1 ring-[var(--accent)]";
+                                            indicatorStyle = "bg-[var(--accent)] border-[var(--accent)] text-white";
+                                        }
+                                    } else {
+                                        if (isCorrectOpt) {
+                                            optionStyle = "border-emerald-500 bg-emerald-500/5 ring-1 ring-emerald-500";
+                                            indicatorStyle = "bg-emerald-500 border-emerald-500 text-white";
+                                        } else if (isSelected && !isCorrectOpt) {
+                                            optionStyle = "border-red-500 bg-red-500/5 ring-1 ring-red-500";
+                                            indicatorStyle = "bg-red-500 border-red-500 text-white";
+                                        } else {
+                                            optionStyle = "border-[var(--border)] bg-[var(--bg)] opacity-40";
+                                            indicatorStyle = "border-[var(--border)] text-[var(--muted)] opacity-50";
+                                        }
+                                    }
+
+                                    return (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleAnswerSelect(option)}
+                                            disabled={isCompleted || showFeedback}
+                                            className={`paper-card group flex items-center gap-4 w-full p-5 text-left transition-all duration-200 ${optionStyle} ${!isCompleted && !showFeedback && !isSelected ? 'hover:-translate-y-1 hover:shadow-hard' : ''}`}
+                                        >
+                                            <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-xs font-black transition-all shrink-0 font-mono ${indicatorStyle}`}>
+                                                {String.fromCharCode(65 + idx)}
+                                            </div>
+                                            <span className="flex-1 font-medium text-[15px] leading-snug">{option}</span>
+                                            {isCorrectOpt && (showFeedback || isCompleted) && (
+                                                <div className="h-6 w-6 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 scale-110">
+                                                    <CheckCircle size={16} />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {(showFeedback || isCompleted) && fbData?.explanation && (
+                                <div className="paper-card bg-[var(--surface)] p-6 border-l-4 border-l-blue-500 animate-in fade-in slide-in-from-left-2 transition-all">
+                                    <div className="flex gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
+                                            <Info className="text-blue-500" size={20} />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/70 mb-1">Intelligence Insight</h4>
+                                            <p className="text-sm leading-relaxed text-[var(--text)] font-medium">
+                                                {fbData.explanation}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Footer Navigation */}
+                            <div className="flex h-16 items-center justify-between mt-12 pt-8 border-t border-[var(--border)]">
+                                <button
+                                    onClick={handlePrev}
+                                    disabled={currentIndex === 0 || isSubmitting}
+                                    className="px-4 py-2 flex items-center gap-2 rounded-lg text-[var(--muted)] font-bold text-xs hover:text-[var(--text)] hover:bg-[var(--surface)] transition-all disabled:opacity-0"
+                                >
+                                    <ArrowLeft size={16} /> Previous
+                                </button>
+
+                                <button
+                                    onClick={handleNext}
+                                    disabled={isSubmitting || (!isAnswered && !isCompleted)}
+                                    className="px-8 py-3 flex items-center justify-center gap-3 rounded-xl text-[var(--bg)] font-black uppercase tracking-widest text-[10px] bg-[var(--text)] hover:opacity-90 shadow-hard active:translate-y-1 active:shadow-none transition-all disabled:opacity-50 disabled:cursor-wait"
+                                >
+                                    {isSubmitting ? (
+                                        <><Loader2 size={16} className="animate-spin" /> Analyzing</>
+                                    ) : currentIndex === questions.length - 1 ? (
+                                        isCompleted ? 'Finalise' : <><CheckCircle size={16} /> Submit</>
+                                    ) : (
+                                        <>Next <ArrowRight size={16} /></>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </main>
+
+            {/* Background Architecture */}
+            <div className="fixed bottom-4 left-4 pointer-events-none opacity-20 hidden lg:block">
+                <div className="flex flex-col gap-1">
+                    <div className="h-px w-32 bg-[var(--border)]" />
+                    <div className="h-px w-24 bg-[var(--border)]" />
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--muted)] pt-2">Blueprint V2 // QC-101</span>
+                </div>
+            </div>
         </div>
     );
 }

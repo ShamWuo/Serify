@@ -18,7 +18,7 @@ import DashboardV2 from '@/components/dashboard/DashboardV2';
 import ClarificationDialog from '@/components/dashboard/ClarificationDialog';
 
 import LandingPage from '@/components/LandingPage';
-import { Zap, BookOpen, Brain, Sparkles, AlertCircle } from 'lucide-react';
+import { Zap, BookOpen, Brain, Sparkles, AlertCircle, AlertTriangle, X } from 'lucide-react';
 import { useUsage } from '@/hooks/useUsage';
 import { useFeatureFlags } from '@/contexts/FeatureFlagContext';
 
@@ -38,6 +38,7 @@ export default function Home() {
     const [dataLoading, setDataLoading] = useState(true);
 
     const [showSlowLoadingNotice, setShowSlowLoadingNotice] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
     
     // Clarification states
     const [clarificationData, setClarificationData] = useState<{
@@ -375,20 +376,64 @@ export default function Home() {
             <SEO title="Home" description="Your personal learning command center." />
             
             {isEnabled('new_dashboard_v2') ? (
-                <DashboardV2 
-                    user={user}
-                    latestSessions={latestSessions}
-                    activityDays={activityDays}
-                    streak={streak}
-                    trend={trend}
-                    vaultCount={vaultCount}
-                    handleAnalyze={handleAnalyze}
-                    handleCancel={handleCancel}
-                    isDemo={isDemo}
-                    isProcessing={isProcessing || isPreAnalyzing}
-                />
+                <div className="space-y-4">
+                    {errorMsg && (
+                        <div className="max-w-7xl mx-auto px-4">
+                            <div className="bg-rose-50 border-2 border-rose-200 p-4 rounded-xl flex items-start gap-3 animate-fade-in shadow-sm">
+                                <AlertTriangle size={18} className="text-rose-500 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-rose-800">{errorMsg.includes('limit') ? 'Usage Limit Reached' : 'Action Failed'}</p>
+                                    <p className="text-xs text-rose-600 mt-0.5">{errorMsg}</p>
+                                    {errorMsg.includes('limit') && (
+                                        <button 
+                                            onClick={() => router.push('/pricing')}
+                                            className="mt-2 text-[10px] font-black uppercase tracking-widest text-rose-700 hover:underline"
+                                        >
+                                            Upgrade Plan →
+                                        </button>
+                                    )}
+                                </div>
+                                <button onClick={() => setErrorMsg('')} className="text-rose-400 hover:text-rose-600">
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                    <DashboardV2 
+                        user={user}
+                        latestSessions={latestSessions}
+                        activityDays={activityDays}
+                        streak={streak}
+                        trend={trend}
+                        vaultCount={vaultCount}
+                        handleAnalyze={handleAnalyze}
+                        handleCancel={handleCancel}
+                        isDemo={isDemo}
+                        isProcessing={isProcessing || isPreAnalyzing}
+                    />
+                </div>
             ) : (
                 <div className="max-w-[1240px] mx-auto px-6 pt-8 pb-12 md:pt-12 md:pb-20 relative z-10">
+                    {errorMsg && (
+                        <div className="mb-6 bg-rose-50 border-2 border-rose-200 p-4 rounded-xl flex items-start gap-3 animate-fade-in shadow-sm">
+                            <AlertTriangle size={18} className="text-rose-500 shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                                <p className="text-sm font-bold text-rose-800">{errorMsg.includes('limit') ? 'Usage Limit Reached' : 'Action Failed'}</p>
+                                <p className="text-xs text-rose-600 mt-0.5">{errorMsg}</p>
+                                {errorMsg.includes('limit') && (
+                                    <button 
+                                        onClick={() => router.push('/pricing')}
+                                        className="mt-2 text-[10px] font-black uppercase tracking-widest text-rose-700 hover:underline"
+                                    >
+                                        Upgrade Plan →
+                                    </button>
+                                )}
+                            </div>
+                            <button onClick={() => setErrorMsg('')} className="text-rose-400 hover:text-rose-600">
+                                <X size={16} />
+                            </button>
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 xl:gap-8">
                         <div className="space-y-4">
                             <section className="animate-slide-up">
@@ -414,9 +459,9 @@ export default function Home() {
                         <div className="space-y-10">
                             <section className="animate-slide-up" style={{ animationDelay: '200ms' }}>
                                 {latestSessions.length === 0 && (
-                                    <div className="bg-white rounded-2xl border border-[var(--border)] p-6 shadow-sm">
+                                    <div className="bg-[var(--surface-raised)] rounded-2xl border border-[var(--border)] p-6 shadow-sm">
                                         <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[var(--muted)] mb-4">You&apos;re all set.</h3>
-                                        <div className="flex items-center gap-2 mb-4 text-emerald-500 bg-emerald-50 py-2 px-3 rounded-lg w-fit">
+                                        <div className="flex items-center gap-2 mb-4 text-[var(--accent)] bg-[var(--accent-soft)] py-2 px-3 rounded-lg w-fit">
                                             <BookOpen size={14} fill="currentColor" />
                                             <span className="text-xs font-bold">{user?.monthlyLimit || 50} tokens ready</span>
                                         </div>
@@ -441,15 +486,18 @@ export default function Home() {
                                 />
                             </section>
 
-                            <div className="p-6 rounded-2xl bg-gradient-to-br from-[var(--bg)] to-[#f8fafc] border border-[var(--border)] shadow-sm group hover:border-[var(--accent)]/30 transition-all">
-                                <div className="w-10 h-10 rounded-xl bg-white border border-[var(--border)] flex items-center justify-center text-[var(--accent)] mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                            <div className="p-6 rounded-2xl bg-gradient-to-br from-[var(--surface)] to-[var(--bg)] border border-[var(--border)] shadow-sm group hover:border-[var(--accent)]/30 transition-all overflow-hidden relative">
+                                <div className="absolute top-0 right-0 p-4 opacity-[0.05] translate-x-4 -translate-y-4">
+                                    <Sparkles size={100} />
+                                </div>
+                                <div className="w-10 h-10 rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] mb-4 shadow-sm group-hover:scale-110 transition-transform relative z-10">
                                     <Sparkles size={18} />
                                 </div>
-                                <h4 className="text-[15px] font-bold text-[var(--text)] mb-2">Start Learning</h4>
-                                <p className="text-xs text-[var(--muted)] leading-relaxed mb-4">Give the AI your goal and it will generate a structured multi-session curriculum.</p>
+                                <h4 className="text-[15px] font-bold text-[var(--text)] mb-2 relative z-10">Start Learning</h4>
+                                <p className="text-xs text-[var(--muted)] leading-relaxed mb-4 relative z-10">Give the AI your goal and it will generate a structured multi-session curriculum.</p>
                                 <button 
                                     onClick={() => router.push('/learn')}
-                                    className="w-full py-2.5 bg-white border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold hover:text-[var(--accent)] hover:border-[var(--accent)]/50 transition-all"
+                                    className="w-full py-2.5 bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--text)] rounded-xl text-xs font-bold hover:text-[var(--accent)] hover:border-[var(--accent)]/50 transition-all relative z-10"
                                 >
                                     Learn →
                                 </button>

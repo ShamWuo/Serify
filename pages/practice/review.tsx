@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { RefreshCcw, ArrowLeft, ArrowRight, CheckCircle, Target, Loader2, Sparkles, BrainCircuit } from 'lucide-react';
+import { RefreshCcw, ArrowLeft, ArrowRight, CheckCircle, Target, Loader2, Sparkles, BrainCircuit, X, History } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SpacedReview() {
@@ -22,7 +22,7 @@ export default function SpacedReview() {
         const loadDueItems = async () => {
             setIsLoading(true);
             try {
-                
+                // Fetch items due for review
                 const { data, error } = await supabase
                     .from('review_schedule')
                     .select(`
@@ -40,7 +40,7 @@ export default function SpacedReview() {
 
                 if (error) throw error;
                 
-                
+                // Allow filtering by specific concepts if passed in query
                 let filteredData = data || [];
                 if (router.query.concepts) {
                      const selectedIds = (router.query.concepts as string).split(',');
@@ -84,12 +84,12 @@ export default function SpacedReview() {
                 toast.success(<div className="flex items-center gap-2"><Sparkles size={16} className="text-yellow-500" /> Concept Mastered!</div>);
             }
 
-            
+            // Move to next item or complete
             setIsFlipped(false);
             if (currentIndex < dueItems.length - 1) {
                 setCurrentIndex(prev => prev + 1);
             } else {
-                setCurrentIndex(prev => prev + 1); 
+                setCurrentIndex(prev => prev + 1); // Trigger isCompleted
             }
 
         } catch (err: any) {
@@ -102,7 +102,7 @@ export default function SpacedReview() {
     if (isLoading) {
         return (
             <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
-                <Loader2 size={32} className="text-emerald-600 animate-spin" />
+                <Loader2 size={32} className="text-[var(--accent)] animate-spin" />
             </div>
         );
     }
@@ -110,109 +110,123 @@ export default function SpacedReview() {
     const isCompleted = currentIndex >= dueItems.length;
 
     return (
-        <div className="min-h-screen bg-[var(--bg)] flex flex-col relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--bg)] bg-dot-grid flex flex-col relative overflow-hidden font-mono">
             <Head>
                 <title>Spaced Review | Serify</title>
             </Head>
 
-            {}
-            <header className="absolute top-0 inset-x-0 h-16 border-b-2 border-[var(--border)] z-20 flex items-center justify-between px-6 bg-[var(--surface)]">
-                <div className="flex items-center gap-2">
-                    <button onClick={() => router.push('/practice')} className="p-1.5 hover:bg-[var(--bg)] border border-transparent hover:border-[var(--border)] group transition-all mr-2">
-                        <ArrowLeft size={18} className="text-[var(--text)] group-hover:-translate-x-0.5 transition-transform" />
+            {/* Sticky Header */}
+            <header className="sticky top-0 z-50 w-full px-6 py-4 flex items-center justify-between border-b-4 border-[var(--ink)] bg-[var(--surface)]/90 backdrop-blur-sm">
+                <div className="flex items-center gap-6">
+                    <button 
+                        onClick={() => router.push('/practice')}
+                        className="group flex items-center gap-2 p-2.5 bg-[var(--surface-raised)] border-2 border-[var(--ink)] shadow-hard-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all"
+                    >
+                        <X size={20} strokeWidth={3} className="text-[var(--ink)]" />
                     </button>
-                    <RefreshCcw size={16} className="text-[var(--accent)]" />
-                    <span className="font-display font-medium text-[var(--text)] text-sm tracking-tight">Spaced Review</span>
-                </div>
-                {!isCompleted && dueItems.length > 0 && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold font-mono text-[var(--muted)] uppercase tracking-widest bg-[var(--bg)] px-3 py-1 border border-[var(--border)] shadow-hard-sm">
-                            {currentIndex + 1} {'//'} {dueItems.length} Due
-                        </span>
+                    
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3">
+                            <span className="washi-tape washi-developing !text-[9px] !px-1.5 !py-0">NEURAL RECALIBRATION</span>
+                            {!isCompleted && dueItems.length > 0 && (
+                                <span className="text-[10px] font-bold font-mono text-[var(--muted)] opacity-60 uppercase tracking-widest">{currentIndex + 1} OF {dueItems.length} DUE</span>
+                            )}
+                        </div>
+                        <h1 className="text-xl font-display font-black text-[var(--text)] uppercase tracking-tight">
+                            Spaced Review
+                        </h1>
                     </div>
-                )}
+                </div>
+
+                <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-[var(--bg)] border-2 border-[var(--ink)]">
+                    <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+                    <span className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">Active Recall Active</span>
+                </div>
             </header>
 
-            <main className="flex-1 pt-24 pb-32 flex flex-col items-center justify-center px-4 relative z-10">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-500/5 rounded-full blur-[100px] -z-10" />
-
+            <main className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
                 <div className="w-full max-w-2xl mx-auto">
                     {dueItems.length === 0 ? (
-                        <div className="text-center space-y-6 animate-fade-in-up bg-[var(--surface)] p-12 paper-card border-2 border-[var(--border)]">
-                            <div className="w-16 h-16 bg-[var(--bg)] text-[var(--accent)] border-2 border-[var(--border)] mx-auto flex items-center justify-center shadow-hard-sm">
-                                <CheckCircle size={28} />
+                        <div className="text-center space-y-8 animate-in zoom-in-95 duration-500 bg-[var(--surface)] p-12 paper-card border-4 border-[var(--ink)] shadow-hard">
+                            <div className="w-20 h-20 bg-[var(--accent)] border-4 border-[var(--ink)] text-[var(--bg)] mx-auto flex items-center justify-center shadow-hard-sm rotate-3">
+                                <CheckCircle size={40} />
                             </div>
-                            <div className="space-y-2">
-                                <h1 className="text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-[var(--muted)]">{'//'} Session Status</h1>
-                                <h2 className="text-3xl font-display font-medium text-[var(--text)] tracking-tight">Caught Up!</h2>
+                            <div className="space-y-4">
+                                <h1 className="text-[12px] font-bold font-mono uppercase tracking-[0.2em] text-[var(--muted)] border-b-2 border-[var(--border)] pb-2 inline-block">{'//'} SYNC COMPLETE</h1>
+                                <h2 className="text-4xl font-display font-black text-[var(--text)] tracking-tight uppercase">Caught Up!</h2>
+                                <p className="text-[13px] font-mono text-[var(--muted)] max-w-sm mx-auto leading-relaxed italic">
+                                    Your neural map is currently optimized. Check back later for scheduled reinforcements.
+                                </p>
                             </div>
-                            <p className="text-[12px] font-mono text-[var(--muted)] uppercase tracking-tight">
-                                There are no concepts due for review right now.
-                            </p>
-                            <div className="pt-4">
+                            <div className="pt-6">
                                 <button 
                                     onClick={() => router.push('/practice')}
-                                    className="px-8 py-3 bg-[var(--ink)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 transition-all font-display font-bold text-sm"
+                                    className="px-10 py-4 bg-[var(--ink)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard hover:-translate-y-1 active:translate-y-0.5 transition-all font-display font-black text-sm uppercase tracking-widest"
                                 >
-                                    Return to Arena
+                                    Return to Workshop
                                 </button>
                             </div>
                         </div>
                     ) : isCompleted ? (
-                        <div className="text-center space-y-6 animate-fade-in-up bg-[var(--surface)] p-12 paper-card border-2 border-[var(--border)]">
-                            <div className="w-16 h-16 bg-[var(--bg)] text-[var(--accent)] border-2 border-[var(--border)] mx-auto flex items-center justify-center shadow-hard-sm">
-                                <Target size={28} />
+                        <div className="text-center space-y-8 animate-in zoom-in-95 duration-500 bg-[var(--surface)] p-12 paper-card border-4 border-[var(--ink)] shadow-hard">
+                            <div className="w-20 h-20 bg-[var(--accent)] border-4 border-[var(--ink)] text-[var(--bg)] mx-auto flex items-center justify-center shadow-hard-sm -rotate-3">
+                                <Target size={40} />
                             </div>
-                            <div className="space-y-2">
-                                <h1 className="text-[10px] font-bold font-mono uppercase tracking-[0.2em] text-[var(--muted)]">{'//'} Review Complete</h1>
-                                <h2 className="text-3xl font-display font-medium text-[var(--text)] tracking-tight">Neural Boost</h2>
+                            <div className="space-y-4">
+                                <h1 className="text-[12px] font-bold font-mono uppercase tracking-[0.2em] text-[var(--muted)] border-b-2 border-[var(--border)] pb-2 inline-block">{'//'} SESSION LOGGED</h1>
+                                <h2 className="text-4xl font-display font-black text-[var(--text)] tracking-tight uppercase">Neural Boosted</h2>
+                                <p className="text-[13px] font-mono text-[var(--muted)] max-w-sm mx-auto leading-relaxed italic">
+                                    Evaluated {dueItems.length} concepts. Your memory traces have been successfully reinforced.
+                                </p>
                             </div>
-                            <p className="text-[12px] font-mono text-[var(--muted)] uppercase tracking-tight">
-                                Reviewed {dueItems.length} concepts. Your neural pathways are getting stronger.
-                            </p>
-                            <div className="pt-4">
+                            <div className="pt-6">
                                 <button 
                                     onClick={() => router.push('/practice')}
-                                    className="px-8 py-3 bg-[var(--ink)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard hover:-translate-y-0.5 active:translate-y-0.5 transition-all font-display font-bold text-sm"
+                                    className="px-10 py-4 bg-[var(--ink)] text-[var(--bg)] border-2 border-[var(--ink)] shadow-hard hover:-translate-y-1 active:translate-y-0.5 transition-all font-display font-black text-sm uppercase tracking-widest"
                                 >
-                                    Finish Session
+                                    Finish Protocol
                                 </button>
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-8 animate-fade-in-up">
-                            <div className="text-center space-y-2">
-                                <h1 className="text-3xl md:text-5xl font-display font-bold tracking-tight text-[var(--text)]">
+                        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-500">
+                            {/* Concept Name Banner */}
+                            <div className="text-center space-y-3">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--bg)] border-2 border-[var(--ink)] text-[10px] font-bold text-[var(--muted)] uppercase tracking-widest">
+                                    <BrainCircuit size={12} className="text-[var(--accent)]" /> RECALL TARGET
+                                </div>
+                                <h1 className="text-4xl md:text-6xl font-display font-black tracking-tighter text-[var(--text)] uppercase leading-none">
                                     {(dueItems[currentIndex].knowledge_nodes as any).display_name}
                                 </h1>
-                                <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--muted)] flex items-center justify-center gap-2">
-                                    <BrainCircuit size={12} className="text-[var(--accent)]" /> Active Recall Session
-                                </p>
                             </div>
 
+                            {/* Flashcard Component */}
                             <div 
-                                className={`w-full min-h-[350px] perspective-1000 cursor-pointer ${isEvaluatable() ? '' : 'animate-pulse-slow'}`}
+                                className="w-full perspective-2000 cursor-pointer min-h-[380px]"
                                 onClick={() => !isFlipped && setIsFlipped(true)}
                             >
-                                <div className={`relative w-full h-full duration-700 preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+                                <div className={`relative w-full h-full duration-700 preserve-3d ${isFlipped ? 'rotate-x-180' : ''}`}>
                                     
-                                    <div className="absolute inset-0 backface-hidden bg-[var(--surface)] border-2 border-[var(--border)] shadow-hard p-12 flex flex-col items-center justify-center text-center hover:border-[var(--accent)] transition-all">
-                                        <div className="w-14 h-14 bg-[var(--bg)] text-[var(--muted)] border-2 border-[var(--border)] flex items-center justify-center mb-8 shadow-hard-sm">
-                                            <BrainCircuit size={24} />
+                                    {/* Front Side */}
+                                    <div className="absolute inset-0 backface-hidden bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard p-12 flex flex-col items-center justify-center text-center hover:border-[var(--accent)] transition-all group">
+                                        <div className="w-16 h-16 bg-[var(--bg)] text-[var(--muted)] border-2 border-[var(--ink)] flex items-center justify-center mb-10 shadow-hard-sm group-hover:rotate-6 transition-transform">
+                                            <BrainCircuit size={32} />
                                         </div>
-                                        <h3 className="text-2xl font-display font-medium text-[var(--text)] leading-snug">
-                                            What is <span className="underline decoration-[var(--accent)] decoration-2">{(dueItems[currentIndex].knowledge_nodes as any).display_name}</span>?
+                                        <h3 className="text-2xl sm:text-3xl font-display font-black text-[var(--text)] tracking-tight leading-tight uppercase">
+                                            Define the structural model of <br/>
+                                            <span className="bg-[var(--accent)] text-[var(--bg)] px-2">{(dueItems[currentIndex].knowledge_nodes as any).display_name}</span>
                                         </h3>
-                                        <div className="mt-10 washi-tape washi-mastered text-[8px] py-1 px-4 flex items-center gap-2">
-                                            TAP TO REVEAL ANSWER <ArrowRight size={10} />
+                                        <div className="mt-12 washi-tape washi-mastered !text-[10px] !py-1.5 !px-6 flex items-center gap-2 animate-pulse">
+                                            FLIP TO REVEAL SCHEMA <ArrowRight size={12} />
                                         </div>
                                     </div>
 
-                                    <div className="absolute inset-0 backface-hidden rotate-y-180 bg-[var(--surface)] border-4 border-[var(--accent)] shadow-hard p-8 md:p-12 flex flex-col overflow-y-auto">
-                                        <h4 className="font-bold font-mono text-[var(--accent)] uppercase tracking-[0.2em] text-[10px] mb-6 flex items-center gap-2">
-                                            <Sparkles size={12} /> {'//'} Mental Model
+                                    {/* Back Side */}
+                                    <div className="absolute inset-0 backface-hidden rotate-x-180 bg-[var(--surface-raised)] border-4 border-[var(--accent)] shadow-hard p-10 md:p-14 flex flex-col overflow-y-auto">
+                                        <h4 className="font-black font-mono text-[var(--accent)] uppercase tracking-[0.3em] text-[10px] mb-8 flex items-center gap-3 border-b-2 border-[var(--accent)]/20 pb-2">
+                                            <Sparkles size={14} /> {'//'} ARCHITECTURAL SCHEMA
                                         </h4>
-                                        <div className="font-mono text-[13px] leading-relaxed text-[var(--text)] space-y-4">
+                                        <div className="font-mono text-lg leading-relaxed text-[var(--text)] space-y-6 italic">
                                             {(dueItems[currentIndex].knowledge_nodes as any).definition}
                                         </div>
                                     </div>
@@ -220,44 +234,29 @@ export default function SpacedReview() {
                                 </div>
                             </div>
 
-                            {}
-                            <div className={`transition-all duration-700 transform ${isFlipped ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12 pointer-events-none'}`}>
-                                <div className="bg-[var(--surface)] border-2 border-[var(--border)] shadow-hard-sm p-3 grid grid-cols-4 gap-3">
-                                    <button 
-                                        disabled={isEvaluating}
-                                        onClick={() => handleRating(1)}
-                                        className="flex flex-col items-center justify-center py-4 bg-red-50 hover:bg-red-100 border-2 border-red-200 transition-all group disabled:opacity-50 active:scale-95"
-                                    >
-                                        <span className="text-[14px] font-bold font-mono text-red-700">1</span>
-                                        <span className="text-[9px] font-bold font-mono uppercase tracking-widest text-red-600/60 mt-1">Again</span>
-                                    </button>
-                                    <button 
-                                        disabled={isEvaluating}
-                                        onClick={() => handleRating(2)}
-                                        className="flex flex-col items-center justify-center py-4 bg-orange-50 hover:bg-orange-100 border-2 border-orange-200 transition-all group disabled:opacity-50 active:scale-95"
-                                    >
-                                        <span className="text-[14px] font-bold font-mono text-orange-700">2</span>
-                                        <span className="text-[9px] font-bold font-mono uppercase tracking-widest text-orange-600/60 mt-1">Hard</span>
-                                    </button>
-                                    <button 
-                                        disabled={isEvaluating}
-                                        onClick={() => handleRating(3)}
-                                        className="flex flex-col items-center justify-center py-4 bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-200 transition-all group disabled:opacity-50 active:scale-95"
-                                    >
-                                        <span className="text-[14px] font-bold font-mono text-emerald-700">3</span>
-                                        <span className="text-[9px] font-bold font-mono uppercase tracking-widest text-emerald-600/60 mt-1">Good</span>
-                                    </button>
-                                    <button 
-                                        disabled={isEvaluating}
-                                        onClick={() => handleRating(4)}
-                                        className="flex flex-col items-center justify-center py-4 bg-sky-50 hover:bg-sky-100 border-2 border-sky-200 transition-all group disabled:opacity-50 active:scale-95"
-                                    >
-                                        <span className="text-[14px] font-bold font-mono text-sky-700">4</span>
-                                        <span className="text-[9px] font-bold font-mono uppercase tracking-widest text-sky-600/60 mt-1">Easy</span>
-                                    </button>
+                            {/* Evaluation Controls */}
+                            <div className={`transition-all duration-700 transform ${isFlipped ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95 pointer-events-none'}`}>
+                                <div className="bg-[var(--surface)] border-4 border-[var(--ink)] shadow-hard p-4 grid grid-cols-4 gap-4">
+                                    {[
+                                        { val: 1, label: 'Again', color: 'red', desc: 'No Recall' },
+                                        { val: 2, label: 'Hard', color: 'orange', desc: 'Struggled' },
+                                        { val: 3, label: 'Good', color: 'emerald', desc: 'Solid' },
+                                        { val: 4, label: 'Easy', color: 'sky', desc: 'Instant' }
+                                    ].map((rating) => (
+                                        <button 
+                                            key={rating.val}
+                                            disabled={isEvaluating}
+                                            onClick={() => handleRating(rating.val)}
+                                            className={`flex flex-col items-center justify-center py-5 border-2 border-[var(--ink)] transition-all group disabled:opacity-50 active:translate-x-1 active:translate-y-1 active:shadow-none bg-[var(--bg)] hover:bg-${rating.color}-500 hover:text-white shadow-hard-xs`}
+                                        >
+                                            <span className="text-2xl font-black font-mono group-hover:scale-125 transition-transform">{rating.val}</span>
+                                            <span className="text-[10px] font-black font-mono uppercase tracking-widest mt-1">{rating.label}</span>
+                                            <span className="text-[8px] font-bold font-mono uppercase opacity-40 mt-0.5 group-hover:opacity-100">{rating.desc}</span>
+                                        </button>
+                                    ))}
                                 </div>
-                                <p className="text-center text-[10px] text-[var(--muted)] mt-6 font-bold font-mono uppercase tracking-[0.2em] opacity-60">
-                                    {'//'} Rate recalibration accuracy
+                                <p className="text-center text-[10px] text-[var(--muted)] mt-8 font-black font-mono uppercase tracking-[0.3em] opacity-50 flex items-center justify-center gap-2">
+                                    <History size={12} /> Calibration Phase: Rate your recall fidelity
                                 </p>
                             </div>
 
@@ -265,10 +264,14 @@ export default function SpacedReview() {
                     )}
                 </div>
             </main>
+
+            {/* Background Branding */}
+            <div className="fixed bottom-8 left-8 pointer-events-none opacity-20 hidden lg:block">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-[2px] bg-[var(--ink)]" />
+                    <span className="text-[10px] font-black font-mono uppercase tracking-[0.5em] text-[var(--ink)]">Serify Neural Engine</span>
+                </div>
+            </div>
         </div>
     );
-
-    function isEvaluatable() {
-        return true;
-    }
 }

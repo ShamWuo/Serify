@@ -5,7 +5,7 @@ import { useAssistant } from '../../contexts/AssistantContext';
 import AssistantSuggestedAction from './AssistantSuggestedAction';
 
 const AssistantChat: React.FC = () => {
-    const { messages, sendMessage, proactiveSuggestion, tierWarning } = useAssistant();
+    const { messages, sendMessage, proactiveSuggestion, tierWarning, error, isLoading } = useAssistant();
     const router = useRouter();
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -14,7 +14,7 @@ const AssistantChat: React.FC = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [messages]);
+    }, [messages, error, isLoading]);
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -85,6 +85,49 @@ const AssistantChat: React.FC = () => {
                         </div>
                     </div>
                 ))}
+
+                {error && (
+                    <div className="flex justify-center animate-shake">
+                        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3 max-w-[90%] shadow-sm">
+                            <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-xs font-bold text-red-800 mb-1">
+                                    {error.message?.includes('limit_reached') || error.message?.includes('403') 
+                                        ? 'Usage Limit Reached' 
+                                        : 'Message Failed'}
+                                </p>
+                                <p className="text-[11px] text-red-600 leading-relaxed">
+                                    {error.message?.includes('limit_reached') || error.message?.includes('403')
+                                        ? 'You have reached your daily AI limit. Upgrade to Pro+ for unlimited conversations.'
+                                        : 'Something went wrong while sending your message. Please try again.'}
+                                </p>
+                                {(error.message?.includes('limit_reached') || error.message?.includes('403')) && (
+                                    <button 
+                                        onClick={() => router.push('/pricing')}
+                                        className="mt-3 text-[10px] font-black uppercase tracking-widest text-red-700 hover:underline"
+                                    >
+                                        View Plans →
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {isLoading && (
+                    <div className="flex justify-start animate-pulse">
+                        <div className="flex gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-[var(--accent)]/20 flex items-center justify-center text-[var(--accent)]">
+                                <Sparkles size={14} className="animate-spin-slow" />
+                            </div>
+                            <div className="p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)] rounded-tl-none flex gap-1">
+                                <div className="w-1 h-1 bg-[var(--muted)] rounded-full animate-bounce" />
+                                <div className="w-1 h-1 bg-[var(--muted)] rounded-full animate-bounce [animation-delay:0.2s]" />
+                                <div className="w-1 h-1 bg-[var(--muted)] rounded-full animate-bounce [animation-delay:0.4s]" />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="p-3 border-t-2 border-[var(--border)] bg-[var(--bg)]/80 shrink-0">

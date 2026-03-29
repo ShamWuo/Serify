@@ -21,7 +21,8 @@ import {
     Loader2,
     Lock,
     Clock,
-    Calendar
+    Calendar,
+    X
 } from 'lucide-react';
 import Link from 'next/link';
 import { normalizeTitle } from '@/lib/formatters';
@@ -534,6 +535,28 @@ export default function LearnIndex() {
 
 
                 <div className="bg-[var(--surface)] border-2 border-[var(--border)] rounded-[4px] shadow-[var(--shadow-hard-sm)] mb-10 overflow-hidden">
+                    {errorMsg && (
+                        <div className="px-6 md:px-8 pt-6">
+                            <div className="bg-rose-50 border-2 border-rose-200 p-4 rounded flex items-start gap-3 animate-fade-in shadow-sm">
+                                <AlertTriangle size={18} className="text-rose-500 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <p className="text-sm font-bold text-rose-800">{errorMsg.includes('limit') ? 'Usage Limit Reached' : 'Action Failed'}</p>
+                                    <p className="text-xs text-rose-600 mt-0.5">{errorMsg}</p>
+                                    {errorMsg.includes('limit') && (
+                                        <button 
+                                            onClick={() => router.push('/pricing')}
+                                            className="mt-2 text-[10px] font-black uppercase tracking-widest text-rose-700 hover:underline"
+                                        >
+                                            Upgrade Plan →
+                                        </button>
+                                    )}
+                                </div>
+                                <button onClick={() => setErrorMsg('')} className="text-rose-400 hover:text-rose-600">
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {step === 'input' && (
                         <div className="p-6 md:p-8">

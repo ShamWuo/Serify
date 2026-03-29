@@ -1005,17 +1005,30 @@ export default function CurriculumFlowSessionPage() {
                                     <AlertCircle size={24} className="text-white" />
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-rose-700 dark:text-rose-400 mb-1">Navigation Error</h3>
+                                    <h3 className="text-lg font-bold text-rose-700 dark:text-rose-400 mb-1">
+                                        {fetchError.includes('limit_reached') || fetchError.includes('403') ? 'Usage Limit Reached' : 'Navigation Error'}
+                                    </h3>
                                     <p className="text-[14px] text-rose-600/80 dark:text-rose-300/60 leading-relaxed mb-4">
-                                        {fetchError}
+                                        {fetchError.includes('limit_reached') || fetchError.includes('403')
+                                            ? 'You have reached your daily token limit for AI guidance. Upgrade to Pro+ for unlimited steps.'
+                                            : fetchError}
                                     </p>
                                     <div className="flex gap-3">
-                                        <button
-                                            onClick={() => { setFetchError(null); fetchNextStep(); }}
-                                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm"
-                                        >
-                                            Retry Request
-                                        </button>
+                                        {fetchError.includes('limit_reached') || fetchError.includes('403') ? (
+                                            <button
+                                                onClick={() => router.push('/pricing')}
+                                                className="px-4 py-2 bg-[var(--accent)] hover:opacity-90 text-white text-xs font-bold rounded-lg transition-all shadow-sm"
+                                            >
+                                                View Plans
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={() => { setFetchError(null); fetchNextStep(); }}
+                                                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm"
+                                            >
+                                                Retry Request
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => window.location.reload()}
                                             className="px-4 py-2 bg-white dark:bg-[var(--surface)] border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-bold rounded-lg transition-all"

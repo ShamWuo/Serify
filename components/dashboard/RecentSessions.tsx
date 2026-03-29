@@ -88,7 +88,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) =>
                     <Link
                         key={session.id}
                         href={getSessionLink(session)}
-                        className="group block bg-white border-2 border-[var(--border-soft)] hover:border-[var(--accent)] hover:shadow-[3px_3px_0px_var(--border-soft)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all duration-200 relative overflow-hidden active:translate-x-[0px] active:translate-y-[0px] active:shadow-none"
+                        className="group block bg-[var(--surface)] border-2 border-[var(--border-soft)] hover:border-[var(--accent)] hover:shadow-[3px_3px_0px_var(--border-soft)] hover:translate-x-[-2px] hover:translate-y-[-2px] transition-all duration-200 relative overflow-hidden active:translate-x-[0px] active:translate-y-[0px] active:shadow-none"
                     >
                         {/* Type Indicator Tag */}
                         <div className="absolute top-0 right-0 px-2 py-1 bg-[var(--surface-raised)] border-l border-b border-[var(--border-soft)] group-hover:bg-[var(--accent)]/10 transition-colors">
@@ -99,7 +99,7 @@ const RecentSessions: React.FC<RecentSessionsProps> = ({ sessions, loading }) =>
 
                         <div className="p-4 flex flex-col gap-4">
                             <div className="flex items-start gap-4 pr-14">
-                                <div className="shrink-0 w-10 h-10 border-2 border-[var(--border-soft)] bg-[var(--surface)] text-[var(--muted)] flex items-center justify-center group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all">
+                                <div className="shrink-0 w-10 h-10 border-2 border-[var(--border-soft)] bg-[var(--surface-raised)] text-[var(--muted)] flex items-center justify-center group-hover:border-[var(--accent)] group-hover:text-[var(--accent)] transition-all">
                                     {getIcon(session.type, session.sourceType)}
                                 </div>
                                 
